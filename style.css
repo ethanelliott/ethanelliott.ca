@@ -1,0 +1,254 @@
+@import url(http://fonts.googleapis.com/css?family=Roboto:400,100,300,500,700,900,400italic,700italic,300italic);
+
+
+* {
+  padding:0;
+  margin:0;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+}
+
+body {
+    overflow:hidden;
+}
+
+@media screen and (max-width: 920px) {
+    * {
+        font-size: 10px;
+    }
+    #title {
+      width:100vw !important;
+    }
+    #about {
+      width:100vw !important;
+    }
+    #nav {
+      width:100vw !important;
+    }
+    #content {
+      width:96vw !important;
+    }
+    #content > #contentHeader {
+      font-weight: bold;
+      font-size: 4em;
+    }
+    #content > #contentContent {
+      margin-top:0.5em;
+      font-size:2.8em;
+    }
+    #contentContent > h1 {
+      font-size:3em;
+      font-weight: bold;
+    }
+
+    #logo {
+      display:block;
+      width:100%;
+    }
+    #logo::after {
+      content:""
+    }
+}
+
+#canvas {
+  z-index:0;
+  position:absolute;
+  top:0;
+  left:0;
+  bottom:0;
+  right:0;
+
+}
+
+main {
+  display: block;
+  height:100vh;
+  width:100vw;
+  background: rgba(0,0,0,0);
+  position:absolute;
+  z-index: 100;
+}
+
+main > #title {
+  width:60vw;
+  max-width:800px !important;
+  margin:auto auto;
+  margin-top:35vh;
+  text-align:center;
+  background:rgba(0,0,0,0.8);
+  transition: all 0.5s;
+  text-shadow:0px 0px 10px #000000;
+  color:#eeeeee;
+}
+
+main > #title > #name {
+  color:#eeeeee;
+  font-size:5em;
+  font-weight: 200;
+  margin-left: 2vw;
+  margin-right: 2vw;
+}
+
+#logo {
+  font-size:6em;
+  display:inline-block;
+  font-weight:normal;
+  color:#0037d4;
+}
+
+#logo > #brackets {
+  font-size:1em;
+  font-weight:100;
+  color:#eeeeee;
+}
+#speciale {
+  display: inline-block;
+  font-size:1em;
+  -webkit-transform: rotate(-180deg) scale(1,-1);
+  -moz-transform: rotate(-180deg) scale(1,-1);
+}
+
+main > #about {
+  width:60vw;
+  max-width:800px !important;
+  margin:auto auto;
+  margin-top:2vh;
+  text-align:center;
+  background:rgba(0,0,0,0.8);
+  text-shadow:0px 0px 10px #000000;
+  color:#eeeeee;
+}
+
+#about > #program {
+  color:#eeeeee;
+  font-size:2em;
+  font-weight: 200;
+  margin:0 1vw;
+}
+
+#about > #gradYear {
+  color:#eeeeee;
+  font-size:2em;
+  font-weight: 200;
+}
+
+#about > #codeName {
+  color:#eeeeee;
+  font-size:1.5em;
+  font-weight: 200;
+  display: block;
+  margin:0 2vw;
+  margin-top:1.5vh;
+  font-style: italic;
+}
+
+main > #nav {
+  width:50vw;
+  max-width: 800px !important;
+  margin:auto auto;
+  color:#eeeeee;
+  font-weight: 200;
+  text-align:center;
+  background:rgba(0,0,0,0.8);
+  text-shadow:0px 0px 10px #000000;
+  color:#eeeeee;
+}
+
+#nav > ul {
+  list-style-type: none;
+}
+
+#nav > ul > li {
+  display:inline-block;
+  font-size: 1.2em;
+  margin: 1vh 1vw;
+
+}
+
+#nav > ul > li > a {
+  text-decoration:none;
+  padding:1vh 1vw;
+  line-height: 5vh;
+  font-size: 1em;
+  color:#eee;
+  border-bottom:2px solid #fff;
+  transition: all 0.25s;
+}
+#nav > ul > li > a:hover {
+  text-decoration:none;
+  padding:1vh 1vw;
+  line-height: 5vh;
+  color:#eee;
+  border-bottom:2px solid #0037d4 !important;
+}
+
+main > #content {
+  width:60vw;
+  max-width: 800px;
+  height:0vh;
+  margin:auto auto;
+  overflow-y: auto;
+  color:#eeeeee;
+  font-weight: normal;
+  margin-top:2vh;
+  text-align:left;
+  background:rgba(228,228,228,1);
+  border:0px solid black;
+  transition: all 0.5s;
+  color:#000000;
+}
+
+#content > #contentHeader {
+  font-weight: bold;
+  font-size: 2em;
+}
+
+#content > #contentContent {
+  margin-top:0.5em;
+  font-size:1.4em;
+}
+
+#contentContent > ul {
+  margin-left:2em;
+}
+
+#contentContent > p {
+  text-indent : 2em;
+}
+
+#contentContent > h1 {
+  font-size:1em;
+  font-weight: bold;
+}
+
+footer {
+  display: block;
+  width:100vw;
+  background: rgba(0,0,0,0);
+  position:fixed;
+  bottom:0;
+  left:0;
+  z-index: 200;
+  text-shadow:0px 0px 10px #000000;
+  color:#eeeeee;
+}
+
+footer > #contact {
+  width:50vw;
+  max-width: 800px;
+  margin:auto auto;
+  margin-top:2vh;
+  text-align:center;
+  background:rgba(0,0,0,0.8)
+}
+
+#contact > #linkImg > a > img {
+  height:4vh;
+  padding:0.5vh 0.5vw;
+  transition: all 0.25s;
+}
+
+#contact > #linkImg > a > img:hover {
+  height:5vh;
+  padding:0 0.25vw;
+}

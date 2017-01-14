@@ -1,0 +1,40 @@
+<h1>Frontend Languages:</h1>
+<ul>
+<li>HTML5</li>
+<li>Jade</li>
+<li>CSS3</li>
+<li>Bootstrap</li>
+<li>Stylus</li>
+<li>JavaScript</li>
+<li>JQuery</li>
+<li>WPILib</li>
+</ul>
+<br>
+<h1>Backend Languages:</h1>
+<ul>
+<li>C/C++</li>
+<li>Python</li>
+<li>NodeJS</li>
+<li>ExpressJS</li>
+<li>MongoDB</li>
+<li>MySQL</li>
+<li>PHP</li>
+<li>LabVIEW</li>
+<li>LabView NI-IMAQ</li>
+<li>MATLAB</li>
+<li>Maple</li>
+<li>GO</li>
+<li>Visual Basic</li>
+<li>Java</li>
+</ul>
+<br>
+<h1>Platforms and Dev Tools:</h1>
+<ul>
+<li>Eclipse</li>
+<li>Git/GitHub</li>
+<li>mercurial</li>
+<li>NPM</li>
+<li>Linux</li>
+<li>Source Tree</li>
+<li>BitBucket</li>
+</ul>
