@@ -1,76 +1,262 @@
 <html>
-  <head>
-    <meta name="description" content="Ethan Elliott: developer, designer, and professional problem solver">
-    <meta name="author" content="Ethan Elliott">
-    <link rel="author" href="https://plus.google.com/+EthanElliott29">
+	<head>
+		<title>Ethan Elliott</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	    <meta name="theme-color" content="#296fcc">
+		<link href="font-awesome.min.css" rel="stylesheet" type="text/css" media="screen">
+	    <link href="style.css" rel="stylesheet" type="text/css" media="screen">
+	    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+	    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+		<script src="p5.min.js"></script>
+	    <script src="script.js"></script>
+	</head>
+	<body>
+		<div class="right-side-menu">
+			<a class="item-top" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#front-wrapper').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Top</div></a>
+			<a class="item-about" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#about').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>About Me</div></a>
+			<a class="item-skills" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#skills').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Skills</div></a>
+			<a class="item-projects" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#projects').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Projects</div></a>
+			<a class="item-resume" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#resume').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Resume</div></a>
+		</div>
+		<div id="front-wrapper">
+			<div id="sketch-wrapper"></div>
+			<div id="front-content">
+				<div id="title" style="">
+					<span id="logo"><span id="brackets">[</span><span id="speciale">E</span>E<span id="brackets">]</span></span>
+			        <span id="name"><span class="blueE">E</span>than <span class="blueE">E</span>lliott</span>
+				</div>
+				<div id="program">UOIT Software Engineering 2020</div>
+				<div id="front-menu-container">
+					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#about').offset().top}, 1000);"><div id="front-menu-item">About</div></a>
+					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#skills').offset().top}, 1000);"><div id="front-menu-item">Skills</div></a>
+					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#projects').offset().top}, 1000);"><div id="front-menu-item">Projects</div></a>
+					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#resume').offset().top}, 1000);"><div id="front-menu-item">Resume</div></a>
+					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#contact').offset().top}, 1000);"><div id="front-menu-item">Contact</div></a>
+				</div>
+			</div>
+		</div>
+		<main>
+			<div id="about"></div>
+			<div id="main-content-section" class="about content-section-dark">
+				<div id="main-content-wrapper">
+					<div id="main-content-header">Hey! I'm Ethan.</div>
+					<div id="main-content-flex-wrapper">
+						<div class="about-me-wrapper">
+							<p class="sub-heading">I'm a hardworking, energetic, and detail-oriented software engineering student passionate about developing for the future.</p>
+							<div class="line-break"></div>
+							<p class="text">
+								&emsp;&emsp;I'm a second year student at the <a href="http://uoit.ca" target="_blank">University of Ontario Institute of Technology</a> in Oshawa, Ontario, studying Software Engineering. I started programming in the 4th grade, and have since worked on everything from websites to robots. In those years, I have self-taught over 15 languages with fluency, including javascript, C++, Python, and PHP. I have experience designing and developing functional software for websites, as well as robot and application code.
+								<br /><br />
+								&emsp;&emsp;Writing code is my art. I love learning and advancing my knowledge to remain at the forefront of software development. I'm always looking for opportunities to learn from others. My goal is to write code that leaves an impression on the user.
+								<br /><br />
+								&emsp;&emsp;If I'm not writing code, I can usually be found cycling, traveling, or playing music on my drums, piano, or ukulele.
+								And of course, drinking coffee. ☕
+							</p>
+						</div>
+						<div class="phone-wrapper" style="flex:2;">
+		                  <div class="iphone-container light">
+		                    <div class="phone-shape">
+		                      <span class="button-one buttons"></span>
+		                      <span class="button-two buttons"></span>
+		                      <span class="button-three buttons"></span>
+		                      <span class="button-four button last"></span>
+		                      <div class="top-details">
+		                        <span class="camera"></span>
+		                        <span class="circle"></span>
+		                        <span class="speaker"></span>
+		                      </div>
+		                      <div class="phone-screen">
+		                        <div class="ph-wr-c">
+									<img src="me.jpg" />
+		                        </div>
+		                      </div>
+		                      <div class="circle-button"></div>
+		                      </div>
+		                    </div>
+		                </div>
+					</div>
+				</div>
+			</div>
+			<div id="skills"></div>
+			<div id="main-content-section" class="skills">
+				<div id="main-content-wrapper">
+					<div id="main-content-header">Skills</div>
+					<div id="skills-table-wrapper">
+						<div id="skills-table-row">
+							<div id="skill-table-cell">
+								Web Devlopment
+							</div>
+							<div id="skill-table-cell">
+								Robotics
+							</div>
+						</div>
+						<div id="skills-table-row">
+							<div id="skill-table-cell">
 
-    <!-- Google Authorship and Publisher Markup -->
-    <link rel="author" href=" https://plus.google.com/+EthanElliott29/posts">
-    <link rel="publisher" href=" https://plus.google.com/+EthanElliott29">
+							</div>
+							<div id="skill-table-cell">
 
-    <!-- Schema.org markup for Google+ -->
-    <meta itemprop="name" content="Ethan Elliott | Home">
-    <meta itemprop="description" content="Ethan Elliott">
-    <meta itemprop="image" content="/favicon.ico">
+							</div>
+						</div>
+					</div>
+					<div id="skills-bubble-wrapper">
+						<div id="skill-bubble">
+							<img src="icons/html.png" />
+							HTML
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/js.png" />
+							Javascript
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/css.png" />
+							CSS3
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/bootstrap.png" />
+							Bootstrap
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/sass.png" />
+							Stylus
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/jquery.png" />
+							jQuery
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/nodejs.png" />
+							Nodejs
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/react.png" />
+							Reactjs
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/angular.png" />
+							Angularjs
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/express.png" />
+							Expressjs
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/socket-io.png" />
+							Socket.io
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/p5js.png" />
+							p5js
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/c.png" />
+							C / C++
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/python.png" />
+							Python
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/php.png" />
+							PHP
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/java.png" />
+							Java
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/mysql.png" />
+							MySQL
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/vb.png" />
+							Visual Basic
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/matlab.png" />
+							MATLAB
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/maple.png" />
+							Maple
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/go.png" />
+							GO
+						</div>
+						<div id="skill-bubble">
+							<img src="icons/labview.jpg" />
+							LabVIEW
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="projects"></div>
+			<div id="main-content-section" class="projects content-section-dark">
+				<div id="main-content-wrapper">
+					<div id="main-content-header">Projects</div>
+					<div id="project-card-wrapper">
 
-    <!-- Twitter Card data -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:site" content="@EthanElliott29">
-    <meta name="twitter:title" content="Ethan Elliott | Home">
-    <meta name="twitter:description" content="Ethan Elliott">
-    <meta name="twitter:creator" content="@EthanElliott29">
-
-    <!-- Open Graph data -->
-    <meta property="og:title" content="Ethan Elliott | Home">
-    <meta property="og:type" content="article">
-    <meta property="og:url" content=" http://www.ethanelliott.ca/">
-    <meta property="og:image" content="/favicon.ico">
-    <meta property="og:description" content="Ethan Elliott">
-    <meta property="og:site_name" content="EthanElliott.ca">
-
-    <script src="analytics.js"></script>
-
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0059B3">
-    <link href="style.css" rel="stylesheet" type="text/css" media="screen">
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
-    <script src="scripts.js"></script>
-
-    <title>Ethan Elliott</title>
-  </head>
-  <body onresize="canvasResize();">
-    <canvas id="canvas"></canvas>
-    <script src="scripts.js"></script>
-    <main>
-      <div id="title">
-        <span id="logo"><span id="brackets">[</span><span id="speciale">E</span>E<span id="brackets">]</span></span>
-        <span id="name">Ethan Elliott</span>
-      </div>
-      <div id="about">
-        <span id="program">UOIT Software Engineering</span>
-        <span id="gradYear">2020</span>
-        <span id="codeName">Professional Problem Solver</span>
-      </div>
-      <div id="nav">
-        <ul>
-          <li><a id="navAbout" href="javascript:void(0)">About</a></li>
-          <li><a id="navLanguages" href="javascript:void(0)">Languages</a></li>
-          <li><a id="navExperience" href="javascript:void(0)">Experience</a></li>
-        </ul>
-      </div>
-      <div id="content">
-        <span id="contentHeader">Header</span>
-        <div id="contentContent"></div>
-      </div>
-    </main>
-    <footer>
-      <div id="contact">
-        <span id="linkImg"><a href="mailto:ee@ethanelliott.ca"><img src="box/email.png"></img></a></span>
-        <span id="linkImg"><a href="http://github.com/ethanelliott"><img src="box/github.png"></img></a></span>
-        <span id="linkImg"><a href="http://www.linkedin.com/in/ethandelliott"><img src="box/linkedin.png"></img></a></span>
-        <span id="linkImg"><a href="/weather"><img src="box/cloud.png"></img></a></span>
-      </div>
-    </footer>
-  </body>
+					</div>
+				</div>
+			</div>
+			<div id="resume"></div>
+			<div id="main-content-section" class="resume">
+				<div id="main-content-wrapper">
+					<div id="main-content-header">Resume</div>
+					<div id="resume-container">
+						<a href="resume.pdf" target="_blank">
+							<img src="resume.png" style="width:100%;"/>
+						</a>
+					</div>
+				</div>
+			</div>
+			<div id="contact"></div>
+			<div id="main-content-section" class="content-section-social">
+				<div id="main-content-wrapper" class="flex-middle-row">
+					<a id="social-button" href="mailto:ee@ethanelliott.ca" target="_blank">
+						<i class="fa fa-envelope" aria-hidden="true"></i>
+					</a>
+					<a id="social-button" href="'http://github.com/ethanelliott" target="_blank">
+						<i class="fa fa-github" aria-hidden="true"></i>
+					</a>
+					<a id="social-button" href="http://www.linkedin.com/in/ethandelliott" target="_blank">
+						<i class="fa fa-linkedin" aria-hidden="true"></i>
+					</a>
+					<a id="social-button" href="https://wakatime.com/@ethanelliott" target="_blank">
+						<svg version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.000000 1000.000000" preserveAspectRatio="xMidYMid meet">
+							<g transform="translate(0.000000,1000.000000) scale(0.100000,-0.100000)"
+							 stroke="none">
+							<path d="M4660 9989 c-388 -26 -817 -109 -1195 -229 -451 -144 -960 -400
+							-1357 -682 -959 -680 -1651 -1683 -1948 -2823 -266 -1021 -198 -2109 193
+							-3100 313 -793 851 -1520 1525 -2061 455 -364 1041 -679 1587 -854 999 -319
+							2066 -319 3070 1 449 142 960 399 1357 681 959 680 1651 1683 1948 2823 266
+							1021 198 2109 -193 3100 -313 793 -852 1521 -1525 2061 -455 364 -1043 680
+							-1587 853 -603 192 -1251 272 -1875 230z m785 -1268 c1259 -168 2319 -922
+							2874 -2046 394 -796 492 -1688 280 -2548 -331 -1343 -1383 -2395 -2726 -2726
+							-467 -115 -955 -139 -1428 -70 -1111 161 -2092 815 -2665 1776 -444 743 -613
+							1591 -489 2458 95 671 390 1326 838 1860 96 116 330 350 446 446 602 504 1322
+							800 2115 869 168 14 581 4 755 -19z"/>
+							<path d="M7035 6551 c-44 -26 -142 -149 -815 -1025 -421 -547 -767 -995 -770
+							-995 -3 -1 -72 98 -153 218 -81 121 -161 231 -179 244 -86 63 -207 62 -281 -3
+							-18 -15 -98 -125 -177 -244 -80 -118 -148 -215 -151 -216 -3 0 -228 297 -499
+							660 -271 363 -504 669 -518 680 -37 30 -124 52 -169 44 -81 -15 -148 -66 -177
+							-136 -18 -42 -21 -134 -6 -172 10 -26 1111 -1492 1198 -1595 25 -29 64 -62 86
+							-72 53 -24 139 -24 192 0 51 23 85 63 235 281 66 96 124 175 129 175 5 0 72
+							-91 149 -203 77 -112 150 -212 163 -222 71 -60 196 -66 270 -14 52 36 1781
+							2268 1799 2321 19 58 8 154 -24 202 -44 66 -97 95 -181 99 -64 3 -76 0 -121
+							-27z"/>
+							</g>
+						</svg>
+					</a>
+				</div>
+			</div>
+		</main>
+		<footer>
+			<div id="copyright">
+				Copyright (c) 2017 Ethan Elliott All Rights Reserved.
+			</div>
+			<img src="canada.png" style="width:50px;" />
+		</footer>
+	</body>
 </html>
