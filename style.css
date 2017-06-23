@@ -70,6 +70,7 @@ html {
 #front-wrapper {
 	height:100vh;
 	width:100vw;
+	background: black;
 }
 
 #sketch-wrapper {
@@ -214,7 +215,6 @@ main {
 .circle-me {
 	background: url('me.jpg');
 	background-repeat: no-repeat;
-    background-attachment: fixed;
     background-position: center;
 	background-size: 80vw;
 	width:80vw;
@@ -428,7 +428,7 @@ main {
 .about-me-wrapper > .sub-heading {
 	font-size: 24px;
 	font-weight: bold;
-	line-height: 30px;
+	line-height: 40px;
 }
 .about-me-wrapper > .text {
 	font-size: 20px;
@@ -448,9 +448,10 @@ main {
 .line-break {
 	width:100%;
 	height: 0;
-	border-bottom: 2px solid var(--main-accent-colour);
+	border-bottom: 5px solid var(--main-accent-colour);
 	margin-top: 2vh;
 	margin-bottom: 2vh;
+	border-radius: 5px;
 }
 
 #resume-container {
