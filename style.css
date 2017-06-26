@@ -188,6 +188,7 @@ header {
 
 main {
 	width:100vw;
+	min-width: 350px;
 }
 
 #main-content-section {
@@ -496,7 +497,7 @@ footer {
 /*Default Phone Color Styles - White*/
 
 .phone-shape {width: 295px;height: 532px;border-radius: 40px;border: 2px solid #fff;margin:0 auto;padding: 60px 10px;background-color: #f3f3f3;position: relative;box-shadow: 0 0 25px 4px rgba(0,0,0,0.3);}
-.phone-screen {height: 522px;width: 295px;background-color: #fff;box-shadow: 0 0 0 5px rgba(0,0,0,0.6) inset;overflow: hidden;position: relative;}
+.phone-screen {height: 522px;width: 295px;background-color: #fff;box-shadow: 0 0 0 5px rgba(0,0,0,1) inset;overflow: hidden;position: relative;}
 .top-details {position: absolute;left: 0;top: 17px;width: 100%;}
 .camera, .circle, .speaker {border-radius: 100px;display: block;background-color: #e1e1e1;}
 .camera {height: 7px;width: 7px;margin: auto;}
@@ -526,6 +527,10 @@ footer {
 	height: 100%;
 }
 
+.ph-wr-c > img {
+	filter: contrast(120%) saturate(110%);
+}
+
 @media only screen and (max-width: 900px) {
 	.phone-wrapper {
 		display: none;
@@ -535,6 +540,16 @@ footer {
 	}
 	#main-content-wrapper {
 		width:90%;
+	}
+}
+
+@media only screen and (max-width: 700px) {
+	* {
+		font-size: 15px;
+	}
+	#logo {
+		text-align: center;
+		display: block;
 	}
 }
 
