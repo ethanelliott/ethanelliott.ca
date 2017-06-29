@@ -1,266 +1,254 @@
 <html>
-	<head>
-		<title>Ethan Elliott</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-		<meta HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
-		<meta HTTP-EQUIV="EXPIRES" CONTENT="Mon, 22 Jul 2002 11:12:01 GMT">
-	    <meta name="theme-color" content="#296fcc">
-		<link href="font-awesome.min.css" rel="stylesheet" type="text/css" media="screen">
-	    <link href="style.css" rel="stylesheet" type="text/css" media="screen">
-	    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-	    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
-		<script src="p5.min.js"></script>
-	    <script src="script.js"></script>
-	</head>
-	<body>
-		<div class="right-side-menu">
-			<a class="item-top" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#front-wrapper').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Top</div></a>
-			<a class="item-about" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#about').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>About Me</div></a>
-			<a class="item-skills" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#skills').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Skills</div></a>
-			<a class="item-projects" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#projects').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Projects</div></a>
-			<a class="item-resume" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#resume').offset().top}, 1000);"><div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Resume</div></a>
-		</div>
-		<div id="front-wrapper">
-			<div id="sketch-wrapper"></div>
-			<div id="front-content">
-				<div id="title" style="">
-					<span id="logo"><span id="brackets">[</span><span id="speciale">E</span>E<span id="brackets">]</span></span>
-			        <span id="name"><span class="blueE">E</span>than <span class="blueE">E</span>lliott</span>
-				</div>
-				<div id="program">UOIT Software Engineering 2020</div>
-				<div id="front-menu-container">
-					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#about').offset().top}, 1000);"><div id="front-menu-item">About</div></a>
-					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#skills').offset().top}, 1000);"><div id="front-menu-item">Skills</div></a>
-					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#projects').offset().top}, 1000);"><div id="front-menu-item">Projects</div></a>
-					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#resume').offset().top}, 1000);"><div id="front-menu-item">Resume</div></a>
-					<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#contact').offset().top}, 1000);"><div id="front-menu-item">Contact</div></a>
-				</div>
+
+<head>
+	<title>Ethan Elliott</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<meta HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
+	<meta HTTP-EQUIV="EXPIRES" CONTENT="Mon, 22 Jul 2002 11:12:01 GMT">
+	<meta name="theme-color" content="#296fcc">
+	<link href="font-awesome.min.css" rel="stylesheet" type="text/css" media="screen">
+	<link href="style.css" rel="stylesheet" type="text/css" media="screen">
+	<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+	<script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<script src="p5.min.js"></script>
+	<script src="script.js"></script>
+</head>
+
+<body>
+	<div class="right-side-menu">
+		<a class="item-top" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#front-wrapper').offset().top}, 1000);">
+			<div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Top</div>
+		</a>
+		<a class="item-about" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#about').offset().top}, 1000);">
+			<div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>About Me</div>
+		</a>
+		<a class="item-skills" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#skills').offset().top}, 1000);">
+			<div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Skills</div>
+		</a>
+		<a class="item-projects" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#projects').offset().top}, 1000);">
+			<div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Projects</div>
+		</a>
+		<a class="item-resume" href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#resume').offset().top}, 1000);">
+			<div id="front-menu-item"><i class="fa fa-circle dot" aria-hidden="true"></i>Resume</div>
+		</a>
+	</div>
+	<div id="front-wrapper">
+		<div id="sketch-wrapper"></div>
+		<div id="front-content">
+			<div id="title" style="">
+				<span id="logo"><span id="brackets">[</span><span id="speciale">E</span>E<span id="brackets">]</span></span>
+				<span id="name"><span class="blueE">E</span>than <span class="blueE">E</span>lliott</span>
+			</div>
+			<div id="program">UOIT Software Engineering 2020</div>
+			<div id="front-menu-container">
+				<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#about').offset().top}, 1000);">
+					<div id="front-menu-item">About</div>
+				</a>
+				<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#skills').offset().top}, 1000);">
+					<div id="front-menu-item">Skills</div>
+				</a>
+				<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#projects').offset().top}, 1000);">
+					<div id="front-menu-item">Projects</div>
+				</a>
+				<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#resume').offset().top}, 1000);">
+					<div id="front-menu-item">Resume</div>
+				</a>
+				<a href="javascript:void(0);" onclick="$('html, body').animate({scrollTop: $('#contact').offset().top}, 1000);">
+					<div id="front-menu-item">Contact</div>
+				</a>
 			</div>
 		</div>
-		<main>
-			<div id="about"></div>
-			<div id="main-content-section" class="about content-section-dark">
-				<div id="main-content-wrapper">
-					<div id="main-content-header">Hey! I'm Ethan.</div>
-					<div id="main-content-flex-wrapper">
-						<div class="about-me-wrapper">
-							<p class="sub-heading">I'm a hardworking, energetic, and detail-oriented software engineering student passionate about developing for the future.</p>
-							<div class="circle-me"></div>
-							<div class="line-break"></div>
-							<p class="text">
-								&emsp;&emsp;I'm a second year student at the <a href="http://uoit.ca" target="_blank">University of Ontario Institute of Technology</a> in Oshawa, Ontario, studying Software Engineering. I started programming in the 4th grade, and have since worked on everything from websites to robots. In those years, I have self-taught over 15 languages with fluency, including javascript, C++, Python, and PHP. I have experience designing and developing functional software for websites, as well as robot and application code.
-								<br /><br />
-								&emsp;&emsp;Writing code is my art. I love learning and advancing my knowledge to remain at the forefront of software development. I'm always looking for opportunities to learn from others. My goal is to write code that leaves an impression on the user.
-								<br /><br />
-								&emsp;&emsp;If I'm not writing code, I can usually be found cycling, traveling, or playing music on my drums, piano, or ukulele.
-								And of course, drinking coffee. <i class="fa fa-coffee" aria-hidden="true"></i>
-							</p>
-						</div>
-						<div class="phone-wrapper" style="flex:2;">
-		                  <div class="iphone-container light">
-		                    <div class="phone-shape">
-		                      <span class="button-one buttons"></span>
-		                      <span class="button-two buttons"></span>
-		                      <span class="button-three buttons"></span>
-		                      <span class="button-four button last"></span>
-		                      <div class="top-details">
-		                        <span class="camera"></span>
-		                        <span class="circle"></span>
-		                        <span class="speaker"></span>
-		                      </div>
-		                      <div class="phone-screen">
-		                        <div class="ph-wr-c">
-									<img src="me.jpg" />
-		                        </div>
-		                      </div>
-		                      <div class="circle-button"></div>
-		                      </div>
-		                    </div>
-		                </div>
+	</div>
+	<main>
+		<div id="about"></div>
+		<div id="main-content-section" class="about content-section-dark">
+			<div id="main-content-wrapper">
+				<div id="main-content-header">Hey! I'm Ethan.</div>
+				<div id="main-content-flex-wrapper">
+					<div class="about-me-wrapper">
+						<p class="sub-heading">I'm a hardworking, energetic, and detail-oriented software engineering student passionate about developing for the future.</p>
+						<div class="circle-me"></div>
+						<div class="line-break"></div>
+						<p class="text">
+							&emsp;&emsp;I'm a second year student at the <a href="http://uoit.ca" target="_blank">University of Ontario Institute of Technology</a> in Oshawa, Ontario, studying Software Engineering. I started programming in the 4th grade, and have since worked
+							on everything from websites to robots. In those years, I have self-taught over 15 languages with fluency, including javascript, C++, Python, and PHP. I have experience designing and developing functional software for websites, as well as robot
+							and application code.
+							<br /><br /> &emsp;&emsp;Writing code is my art. I love learning and advancing my knowledge to remain at the forefront of software development. I'm always looking for opportunities to learn from others. My goal is to write code that leaves an impression
+							on the user.
+							<br /><br /> &emsp;&emsp;If I'm not writing code, I can usually be found cycling, traveling, or playing music on my drums, piano, or ukulele. And of course, drinking coffee. <i class="fa fa-coffee" aria-hidden="true"></i>
+						</p>
 					</div>
-				</div>
-			</div>
-			<div id="skills"></div>
-			<div id="main-content-section" class="skills">
-				<div id="main-content-wrapper">
-					<div id="main-content-header">Skills</div>
-					<div class="heading">Tools and Platforms</div>
-					<div id="skills-bubble-wrapper">
-						<div id="skill-bubble">
-							<img src="icons/git.png" />
-							Git
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/mercurial.png" />
-							Mercurial
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/tux.png" />
-							Linux
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/sourcetree.png" />
-							Source Tree
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/github.png" />
-							Github
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/bitbucket.png" />
-							BitBucket
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/bash.png" />
-							Bash
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/eclipse.png" />
-							Eclipse
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/atomio.png" />
-							Atom.io
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/npm.png" />
-							NPM
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/choco.png" />
-							Chocolatey
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/yarn.png" />
-							Yarn
-						</div>
-					</div>
-					<div class="heading">Languages</div>
-					<div id="skills-bubble-wrapper">
-						<div id="skill-bubble">
-							<img src="icons/html.png" />
-							HTML
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/js.png" />
-							Javascript
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/css.png" />
-							CSS3
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/bootstrap.png" />
-							Bootstrap
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/sass.png" />
-							Stylus
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/jquery.png" />
-							jQuery
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/nodejs.png" />
-							Nodejs
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/react.png" />
-							Reactjs
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/angular.png" />
-							Angularjs
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/express.png" />
-							Expressjs
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/socket-io.png" />
-							Socket.io
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/p5js.png" />
-							p5js
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/c.png" />
-							C / C++
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/python.png" />
-							Python
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/php.png" />
-							PHP
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/java.png" />
-							Java
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/mysql.png" />
-							MySQL
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/vb.png" />
-							Visual Basic
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/matlab.png" />
-							MATLAB
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/maple.png" />
-							Maple
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/go.png" />
-							GO
-						</div>
-						<div id="skill-bubble">
-							<img src="icons/labview.jpg" />
-							LabVIEW
+					<div class="phone-wrapper" style="flex:2;">
+						<div class="iphone-container light">
+							<div class="phone-shape">
+								<span class="button-one buttons"></span>
+								<span class="button-two buttons"></span>
+								<span class="button-three buttons"></span>
+								<span class="button-four button last"></span>
+								<div class="top-details">
+									<span class="camera"></span>
+									<span class="circle"></span>
+									<span class="speaker"></span>
+								</div>
+								<div class="phone-screen">
+									<div class="ph-wr-c">
+										<img src="me.jpg" />
+									</div>
+								</div>
+								<div class="circle-button"></div>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
-			<div id="projects"></div>
-			<div id="main-content-section" class="projects content-section-dark">
-				<div id="main-content-wrapper">
-					<div id="main-content-header">Projects</div>
-					<div id="project-card-wrapper">
-						Coming Soon
+		</div>
+		<div id="skills"></div>
+		<div id="main-content-section" class="skills">
+			<div id="main-content-wrapper">
+				<div id="main-content-header">Skills</div>
+				<div class="heading">Tools and Platforms</div>
+				<div id="skills-bubble-wrapper">
+					<div id="skill-bubble">
+						<img src="icons/git.png" /> Git
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/mercurial.png" /> Mercurial
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/tux.png" /> Linux
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/sourcetree.png" /> Source Tree
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/github.png" /> Github
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/bitbucket.png" /> BitBucket
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/bash.png" /> Bash
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/eclipse.png" /> Eclipse
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/atomio.png" /> Atom.io
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/npm.png" /> NPM
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/choco.png" /> Chocolatey
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/yarn.png" /> Yarn
+					</div>
+				</div>
+				<div class="heading">Languages</div>
+				<div id="skills-bubble-wrapper">
+					<div id="skill-bubble">
+						<img src="icons/html.png" /> HTML
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/js.png" /> Javascript
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/css.png" /> CSS3
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/bootstrap.png" /> Bootstrap
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/sass.png" /> Stylus
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/jquery.png" /> jQuery
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/nodejs.png" /> Nodejs
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/react.png" /> Reactjs
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/angular.png" /> Angularjs
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/express.png" /> Expressjs
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/socket-io.png" /> Socket.io
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/p5js.png" /> p5js
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/c.png" /> C / C++
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/python.png" /> Python
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/php.png" /> PHP
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/java.png" /> Java
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/mysql.png" /> MySQL
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/vb.png" /> Visual Basic
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/matlab.png" /> MATLAB
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/maple.png" /> Maple
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/go.png" /> GO
+					</div>
+					<div id="skill-bubble">
+						<img src="icons/labview.jpg" /> LabVIEW
 					</div>
 				</div>
 			</div>
-			<div id="resume"></div>
-			<div id="main-content-section" class="resume">
-				<div id="main-content-wrapper">
-					<div id="main-content-header">Resume</div>
-					<div id="resume-container">
-						<a href="resume.pdf" target="_blank">
+		</div>
+		<div id="projects"></div>
+		<div id="main-content-section" class="projects content-section-dark">
+			<div id="main-content-wrapper">
+				<div id="main-content-header">Projects</div>
+				<div id="project-card-wrapper">
+					Coming Soon
+				</div>
+			</div>
+		</div>
+		<div id="resume"></div>
+		<div id="main-content-section" class="resume">
+			<div id="main-content-wrapper">
+				<div id="main-content-header">Resume</div>
+				<div id="resume-container">
+					<a href="resume.pdf" target="_blank">
 							<img src="resume.png" style="width:100%;"/>
 						</a>
-					</div>
 				</div>
 			</div>
-			<div id="contact"></div>
-			<div id="main-content-section" class="content-section-social">
-				<div id="main-content-wrapper" class="flex-middle-row">
-					<a id="social-button" href="mailto:ee@ethanelliott.ca" target="_blank">
+		</div>
+		<div id="contact"></div>
+		<div id="main-content-section" class="content-section-social">
+			<div id="main-content-wrapper" class="flex-middle-row">
+				<a id="social-button" href="mailto:ee@ethanelliott.ca" target="_blank">
 						<i class="fa fa-envelope" aria-hidden="true"></i>
 					</a>
-					<a id="social-button" href="http://github.com/ethanelliott" target="_blank">
+				<a id="social-button" href="http://github.com/ethanelliott" target="_blank">
 						<i class="fa fa-github" aria-hidden="true"></i>
 					</a>
-					<a id="social-button" href="http://www.linkedin.com/in/ethandelliott" target="_blank">
+				<a id="social-button" href="http://www.linkedin.com/in/ethandelliott" target="_blank">
 						<i class="fa fa-linkedin" aria-hidden="true"></i>
 					</a>
-					<a id="social-button" href="https://wakatime.com/@ethanelliott" target="_blank">
+				<a id="social-button" href="https://wakatime.com/@ethanelliott" target="_blank">
 						<svg version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.000000 1000.000000" preserveAspectRatio="xMidYMid meet">
 							<g transform="translate(0.000000,1000.000000) scale(0.100000,-0.100000)"
 							 stroke="none">
@@ -286,14 +274,15 @@
 							</g>
 						</svg>
 					</a>
-				</div>
 			</div>
-		</main>
-		<footer>
-			<div id="copyright">
-				Copyright (c) 2017 Ethan Elliott All Rights Reserved.
-			</div>
-			<img src="canada.png" style="width:50px;" />
-		</footer>
-	</body>
+		</div>
+	</main>
+	<footer>
+		<div id="copyright">
+			Copyright (c) 2017 Ethan Elliott All Rights Reserved.
+		</div>
+		<img src="canada.png" style="width:50px;" />
+	</footer>
+</body>
+
 </html>
