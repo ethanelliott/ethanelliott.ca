@@ -19,6 +19,10 @@
 		})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 		ga('create', 'UA-89121545-1', 'auto');
 		ga('send', 'pageview');
+
+		if (location.protocol == 'http:') {
+			location.href = location.href.replace(/^http:/, 'https:');
+		}
 	</script>
 </head>
 
@@ -229,7 +233,7 @@
 			<div id="main-content-wrapper">
 				<div id="main-content-header">Projects</div>
 				<div id="project-card-wrapper">
-					
+
 				</div>
 			</div>
 		</div>
