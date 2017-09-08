@@ -54,6 +54,7 @@ function setup() {
 		points[i] = new PointInSpace();
 	}
 }
+
 function draw()
 {
 	frameRate(60);
@@ -115,12 +116,12 @@ $(window).scroll(function() {
 
  var projects = [
 	 {
-		 name: "Name of Project",
+		 name: "The Green Alliance",
 		 image: "this.jpg",
-		 description:"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-		 url: "http://google.ca",
-		 //codeUrl: "http://github.com/ethanelliott",
-		 languages: ["Javascript", "HTML", "CSS"],
+		 description:"",
+		 //url: "http://tga.ethanelliott.ca",
+		 codeUrl: "http://github.com/ethanelliott/tga",
+		 languages: ["NodeJS", "ExpressJs", "MongoDB", "Javascript", "JQuery", "Jade", "HTML", "CSS"],
 		 tags: ["tagWord", "project"]
 	 },
 	 {
@@ -152,34 +153,67 @@ $(window).scroll(function() {
 	 }
  ];
 
- function loadProjects() {
+  function searchProjects() {
+ 	var search = $(".project-search").val().toUpperCase();
+	var refinedSearchArray = [];
+	var test = false;
+ 	for (var i = 0; i < projects.length; i++) {
+		test = false;
+		for (var j = 0; j < projects[i].languages.length; j++) {
+			if (projects[i].languages[j].toUpperCase().indexOf(search) > -1) {
+				test = true;
+				break;
+			}
+		}
+		for (var k = 0; k < projects[i].tags.length; k++) {
+			if (projects[i].tags[k].toUpperCase().indexOf(search) > -1) {
+				test = true;
+				break;
+			}
+		}
+		if (projects[i].name.toUpperCase().indexOf(search) > -1 || projects[i].description.toUpperCase().indexOf(search) > -1 || projects[i].name.toUpperCase().indexOf(search) > -1) {
+			test = true;
+		}
+
+		if (test) {
+			refinedSearchArray.push(projects[i]);
+		}
+	}
+	if (refinedSearchArray.length > 0) {
+		loadProjects(refinedSearchArray);
+	} else {
+		$("#project-card-wrapper").html("No projects match search terms");
+	}
+  }
+
+ function loadProjects(projectArray) {
 	 var output = "";
-	 for (var i = 0; i < projects.length; i++)
+	 for (var i = 0; i < projectArray.length; i++)
 	 {
 		 output += '<div id="project-card">';
-		 output += '<div id="project-card-image"><img src="' + projects[i].image + '" /></div>';
-		 output += '<div id="project-card-title">' + projects[i].name + '</div>';
-		 output += '<div id="project-card-description">' + projects[i].description + '</div>';
+		 output += '<div id="project-card-image"><img src="' + projectArray[i].image + '" /></div>';
+		 output += '<div id="project-card-title">' + projectArray[i].name + '</div>';
+		 output += '<div id="project-card-description">' + projectArray[i].description + '</div>';
 		 output += '<div class="chip-container">'
-		 for (var j = 0; j < projects[i].languages.length; j++)
+		 for (var j = 0; j < projectArray[i].languages.length; j++)
 		 {
-			 output += '<div class="chip">' + projects[i].languages[j].toUpperCase() + '</div>';
+			 output += '<div class="chip">' + projectArray[i].languages[j].toUpperCase() + '</div>';
 		 }
 		 output += '</div>';
 		 output += '<div id="project-card-url-container">';
-		 if (projects[i].codeUrl) {
-			output += '<a href="' + projects[i].codeUrl + '"><div>View the code</div></a>';
+		 if (projectArray[i].codeUrl) {
+			output += '<a href="' + projectArray[i].codeUrl + '" target="_blank"><div>View the code</div></a>';
 		 }
 		 if (projects[i].url) {
-			output += '<a href="' + projects[i].url + '"><div>View the project</div></a>';
+			output += '<a href="' + projectArray[i].url + '" target="_blank"><div>View the project</div></a>';
 		 }
 		 output += '</div>';
 		 output += '</div>';
 	 }
-	 //$("#project-card-wrapper").html(output);
+	 $("#project-card-wrapper").html(output);
  }
 
  $(window).load(function(){
-	 loadProjects();
+	 loadProjects(projects);
 	 $('.right-side-menu').fadeOut(0);
  });

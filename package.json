@@ -1,0 +1,23 @@
+{
+    "name": "ethanelliott.ca",
+    "version": "1.0.0",
+    "description": "",
+    "main": "debug.js",
+    "dependencies": {
+        "express": "^4.15.3"
+    },
+    "devDependencies": {},
+    "scripts": {
+        "start": "nodemon debug.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ethanelliott/ethanelliott.ca.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/ethanelliott/ethanelliott.ca/issues"
+    },
+    "homepage": "https://github.com/ethanelliott/ethanelliott.ca#readme"
+}

@@ -274,7 +274,7 @@ main {
 
 #project-card-title {
     font-size: 20px;
-    font-weight: 300;
+    font-weight: bold;
     color: #000000;
     margin-left: 2vw;
     margin-top: 2vh;
@@ -295,6 +295,7 @@ main {
     width: 100%;
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-start;
     margin-bottom: 1vh;
@@ -312,6 +313,24 @@ main {
     padding-left: 0.5em;
     padding-right: 0.5em;
     margin-right: 1em;
+    margin-top: 1em;
+}
+
+.project-search {
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    font-size: 2.5em;
+    padding: 0.25em;
+    width: 50%;
+    float: right;
+    color: rgba(255, 255, 255, 1);
+    font-style: italic;
+    border-radius: 12px;
+}
+
+.project-search:active, .project-search:focus {
+    border: none;
+    outline: none;
 }
 
 #project-card-url-container {
@@ -667,6 +686,9 @@ footer {
     #logo {
         text-align: center;
         display: block;
+    }
+    .right-side-menu {
+        display: none;
     }
 }
 
