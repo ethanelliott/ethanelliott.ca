@@ -210,7 +210,7 @@ $(window).scroll(function() {
 		 output += '</div>';
 		 output += '</div>';
 	 }
-	 $("#project-card-wrapper").html(output);
+	 //$("#project-card-wrapper").html(output);
  }
 
  $(window).load(function(){
