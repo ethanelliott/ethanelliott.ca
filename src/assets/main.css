@@ -63,3 +63,11 @@ header {
 .logo .backwards-e {
     transform: rotate(-180deg) scale(1, -1);
 }
+
+button {
+    outline: none;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 1rem;
+}
