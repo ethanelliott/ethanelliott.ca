@@ -1,9 +1,9 @@
 {
   "name": "ethanelliott.ca",
-  "$schema": "node_modules/nx/schemas/project-schema.json",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "prefix": "app",
-  "sourceRoot": "./src",
+  "prefix": "ee",
+  "sourceRoot": "apps/ethanelliott.ca/src",
   "tags": [],
   "targets": {
     "build": {
@@ -12,22 +12,22 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/ethanelliott.ca",
-        "index": "./src/index.html",
-        "browser": "./src/main.ts",
+        "outputPath": "dist/apps/ethanelliott.ca",
+        "index": "apps/ethanelliott.ca/src/index.html",
+        "browser": "apps/ethanelliott.ca/src/main.ts",
         "polyfills": [
           "zone.js"
         ],
-        "tsConfig": "tsconfig.app.json",
+        "tsConfig": "apps/ethanelliott.ca/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
         "assets": [
           {
             "glob": "**/*",
-            "input": "public"
+            "input": "apps/ethanelliott.ca/public"
           }
         ],
         "styles": [
-          "./src/styles.scss"
+          "apps/ethanelliott.ca/src/styles.scss"
         ],
         "scripts": []
       },
@@ -67,19 +67,8 @@
       },
       "defaultConfiguration": "development"
     },
-    "extract-i18n": {
-      "executor": "@angular-devkit/build-angular:extract-i18n",
-      "options": {
-        "buildTarget": "ethanelliott.ca:build"
-      }
-    },
     "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": [
-          "./src"
-        ]
-      }
+      "executor": "@nx/eslint:lint"
     }
   }
 }
