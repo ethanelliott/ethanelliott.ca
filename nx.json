@@ -51,5 +51,6 @@
       "unitTestRunner": "jest"
     }
   },
-  "defaultProject": "ethanelliott.ca"
+  "defaultProject": "ethanelliott.ca",
+  "nxCloudAccessToken": "YTYxNTY4MDEtMDRkOS00MTcwLTljMGUtMzlmYjAzOGI4ZTdjfHJlYWQtd3JpdGU="
 }
