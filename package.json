@@ -1,6 +1,9 @@
 {
   "name": "@ethanelliott.ca/source",
   "version": "0.0.0",
+  "engines": {
+    "node": "23"
+  },
   "scripts": {
     "start": "nx serve",
     "build": "nx build"
