@@ -8,16 +8,12 @@
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/ethanelliott.ca",
         "index": "apps/ethanelliott.ca/src/index.html",
         "browser": "apps/ethanelliott.ca/src/main.ts",
-        "polyfills": [
-          "zone.js"
-        ],
+        "polyfills": ["zone.js"],
         "tsConfig": "apps/ethanelliott.ca/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
         "assets": [
@@ -26,9 +22,7 @@
             "input": "apps/ethanelliott.ca/public"
           }
         ],
-        "styles": [
-          "apps/ethanelliott.ca/src/styles.scss"
-        ],
+        "styles": ["apps/ethanelliott.ca/src/styles.scss"],
         "scripts": []
       },
       "configurations": {
@@ -65,7 +59,8 @@
           "buildTarget": "ethanelliott.ca:build:development"
         }
       },
-      "defaultConfiguration": "development"
+      "defaultConfiguration": "development",
+      "continuous": true
     },
     "lint": {
       "executor": "@nx/eslint:lint"

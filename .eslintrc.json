@@ -12,6 +12,12 @@
       "files": ["*.js", "*.jsx"],
       "extends": ["plugin:@nx/javascript"],
       "rules": {}
+    },
+    {
+      "files": ["*.ts"],
+      "rules": {
+        "@angular-eslint/prefer-standalone": "off"
+      }
     }
   ]
 }

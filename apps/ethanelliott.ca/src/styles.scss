@@ -1,54 +1,7 @@
 @use '@angular/material' as mat;
 
-@include mat.core();
-
-// @mixin theme($name, $palette) {
-//   $light-theme: mat.define-theme(
-//     (
-//       color: (
-//         theme-type: light,
-//         primary: $palette,
-//       ),
-//     )
-//   );
-
-//   $dark-theme: mat.define-theme(
-//     (
-//       color: (
-//         theme-type: dark,
-//         primary: $palette,
-//       ),
-//     )
-//   );
-
-//   html {
-//     body.#{$name}-theme {
-//       @include mat.all-component-themes($light-theme);
-//       p {
-//         color: mat.get-theme-color($light-theme, primary);
-//       }
-
-//       &.dark-theme {
-//         @include mat.all-component-colors($dark-theme);
-//         p {
-//           color: mat.get-theme-color($dark-theme, primary);
-//         }
-//       }
-//     }
-//   }
-// }
-// @include theme('magenta', mat.$magenta-palette);
-// @include theme('violet', mat.$violet-palette);
-// @include theme('rose', mat.$rose-palette);
-// @include theme('red', mat.$red-palette);
-// @include theme('orange', mat.$orange-palette);
-// @include theme('yellow', mat.$yellow-palette);
-// @include theme('chartreuse', mat.$chartreuse-palette);
-// @include theme('spring-green', mat.$spring-green-palette);
-// @include theme('green', mat.$green-palette);
-// @include theme('cyan', mat.$cyan-palette);
-// @include theme('azure', mat.$azure-palette);
-// @include theme('blue', mat.$blue-palette);
+@include mat.elevation-classes();
+@include mat.app-background();
 
 html {
   $light-theme: mat.define-theme(
