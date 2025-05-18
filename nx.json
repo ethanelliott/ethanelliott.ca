@@ -34,5 +34,6 @@
     }
   },
   "defaultProject": "ethanelliott.ca",
-  "nxCloudAccessToken": "YTYxNTY4MDEtMDRkOS00MTcwLTljMGUtMzlmYjAzOGI4ZTdjfHJlYWQtd3JpdGU="
+  "nxCloudAccessToken": "YTYxNTY4MDEtMDRkOS00MTcwLTljMGUtMzlmYjAzOGI4ZTdjfHJlYWQtd3JpdGU=",
+  "defaultBase": "main"
 }
