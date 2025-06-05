@@ -23,6 +23,11 @@
         "{workspaceRoot}/.eslintignore",
         "{workspaceRoot}/eslint.config.js"
       ]
+    },
+    "@nx/esbuild:esbuild": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
     }
   },
   "generators": {
@@ -35,5 +40,13 @@
   },
   "defaultProject": "ethanelliott.ca",
   "nxCloudAccessToken": "YTYxNTY4MDEtMDRkOS00MTcwLTljMGUtMzlmYjAzOGI4ZTdjfHJlYWQtd3JpdGU=",
-  "defaultBase": "main"
+  "defaultBase": "main",
+  "plugins": [
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "eslint:lint"
+      }
+    }
+  ]
 }
