@@ -7,27 +7,18 @@ export const K8sPlugin = fp(async function (fastify: FastifyInstance) {
     reply.send({ live: true });
   });
 
-  const metric = new prometheus.Summary({
-    name: 'http_request_duration_seconds',
-    help: 'request duration summary in seconds',
-    maxAgeSeconds: 60,
-    ageBuckets: 5,
-  });
-
-  metric.get999Percentile = () => {
-    return metric.get().values[6].value;
-  };
-
-  function canAcceptMoreRequests() {
-    // twice the expected duration
-    return metric.get999Percentile() <= (0.1 * 2) / 1e3;
-  }
-
   fastify.get('/readiness', async (request, reply) => {
-    if (canAcceptMoreRequests()) {
-      return reply.send({ ready: true });
-    } else {
-      throw new Error('NOT READY');
-    }
+    const metric = prometheus.register.getSingleMetric(
+      'http_request_summary_seconds'
+    );
+    const { values } = await metric.get();
+
+    const pt999 = values
+      .filter((e) => 'quantile' in e.labels && e.labels.quantile === 0.999)
+      .reduce((a, c) => {
+        return a === 0 ? c.value : (a + c.value) / 2;
+      }, 0);
+
+    return reply.send({ ready: true, values: pt999 });
   });
 });
