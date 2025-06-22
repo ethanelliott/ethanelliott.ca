@@ -19,8 +19,12 @@ export const SwaggerPlugin = fp(async function (fastify: FastifyInstance) {
   await fastify.register(swaggerUI, {
     routePrefix: '/swagger',
     uiConfig: {
-      docExpansion: 'full',
+      docExpansion: 'none',
       deepLinking: true,
+      syntaxHighlight: {
+        activate: true,
+        theme: 'nord',
+      },
     },
   });
 });

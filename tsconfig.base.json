@@ -14,7 +14,10 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@ee/di": ["libs/backend/shared/di/src/index.ts"],
+      "@ee/starter": ["libs/backend/shared/starter/src/index.ts"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

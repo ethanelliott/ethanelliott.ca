@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-export const RootRouter = async function (fastify: FastifyInstance) {
+export async function RootRouter(fastify: FastifyInstance) {
   fastify.get(
     '/',
     { preHandler: fastify.circuitBreaker() },
@@ -24,4 +24,4 @@ export const RootRouter = async function (fastify: FastifyInstance) {
       return reply.send({ message: 'Hello API', echo: request.body });
     }
   );
-};
+}
