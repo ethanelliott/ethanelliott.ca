@@ -29,8 +29,10 @@
         "development": {},
         "production": {
           "generateLockfile": true,
+          "thirdParty": false,
           "esbuildOptions": {
             "sourcemap": false,
+            "bundle": true,
             "outExtension": {
               ".js": ".js"
             }

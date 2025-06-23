@@ -5,10 +5,10 @@ import { provide } from '@ee/di';
 
 export async function starter<T extends FastifyPluginAsync>(
   Application: T,
-  appConfig?: AppConfig
+  appConfig: AppConfig
 ) {
   for (const provider of appConfig.providers) {
-    provide(provider);
+    provide(provider as any);
   }
 
   const host = process.env.HOST ?? '0.0.0.0';
@@ -26,8 +26,6 @@ export async function starter<T extends FastifyPluginAsync>(
     if (err) {
       server.log.error(err);
       process.exit(1);
-    } else {
-      console.log(`[ ready ] http://${host}:${port}`);
     }
   });
 }
