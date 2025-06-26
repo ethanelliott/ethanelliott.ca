@@ -10,13 +10,21 @@ export type ResolveType<I> = I extends Token<infer T>
 
 export type Class<T = any> = new (...args: any[]) => T;
 
+export type TokenOptions<T> = {
+  multi?: boolean;
+  factory?: () => T;
+};
+
 export class Token<T> {
   id: symbol;
 
   type?: T;
 
-  constructor(description: string) {
+  options?: TokenOptions<T>;
+
+  constructor(description: string, options?: TokenOptions<T>) {
     this.id = Symbol(description);
+    this.options = options;
   }
 
   toString() {
@@ -24,14 +32,15 @@ export class Token<T> {
   }
 }
 
-export function createToken<T>(description: string) {
-  return new Token<T>(description);
+export function createToken<T>(description: string, options?: TokenOptions<T>) {
+  return new Token<T>(description, options);
 }
 
 export type Injectable<T> = Token<T> | Class<T>;
 
 export type Provider<T> = {
-  provide: Injectable<T>;
+  provide: Injectable<T | Array<T>>;
+  multi?: boolean;
 };
 
 export type FactoryProvider<T> = Provider<T> & {
@@ -57,19 +66,19 @@ export function isProvider<T>(
   );
 }
 
-export function isFactoryProvider<T extends Injectable<any>>(
+export function isFactoryProvider<T>(
   possiblyProvider: Providable<T>
 ): possiblyProvider is FactoryProvider<T> {
   return 'useFactory' in possiblyProvider;
 }
 
-export function isValueProvider<T extends Injectable<any>>(
+export function isValueProvider<T>(
   possiblyProvider: Providable<T>
 ): possiblyProvider is ValueProvider<T> {
   return 'useValue' in possiblyProvider;
 }
 
-export function isClassProvider<T extends Injectable<any>>(
+export function isClassProvider<T>(
   possiblyProvider: Providable<T>
 ): possiblyProvider is ClassProvider<T> {
   return 'useClass' in possiblyProvider;
@@ -101,7 +110,10 @@ export type Provide<T> = Providable<T> | Class<T> | Injectable<T>;
 export class Injector {
   private _instances = new Map<Injectable<any>, any>();
 
-  private _providers = new Map<Injectable<any>, Providable<any>>();
+  private _providers = new Map<
+    Injectable<any>,
+    Providable<any> | Array<Providable<any>>
+  >();
 
   private _resolving = new Set<Injectable<any>>();
 
@@ -114,7 +126,30 @@ export class Injector {
   provide<T>(injectable: Injectable<T>, useValue: T): void;
   provide<T>(providable: Provide<T>, value?: T) {
     if (isProvider(providable)) {
-      this._providers.set(providable.provide, providable);
+      if (providable.multi === true) {
+        const currentProviders =
+          this._providers.get(providable.provide) ??
+          ([] as Array<Providable<any>>);
+
+        if (Array.isArray(currentProviders)) {
+          currentProviders.push(providable);
+          this._providers.set(providable.provide, currentProviders);
+        } else {
+          throw new Error(
+            `Cannot provide as multi, since [${providable.provide}] is already provided as single.`
+          );
+        }
+      } else {
+        const currentProviders = this._providers.get(providable.provide);
+
+        if (currentProviders && Array.isArray(currentProviders)) {
+          throw new Error(
+            `Cannot provide as single, since [${providable.provide}] is already provided as multi.`
+          );
+        }
+
+        this._providers.set(providable.provide, providable);
+      }
     } else if (isClass(providable)) {
       this._providers.set(providable, {
         provide: providable,
@@ -132,7 +167,7 @@ export class Injector {
     }
   }
 
-  inject<T>(injectable: Injectable<T>): T {
+  inject<T>(injectable: Injectable<T>) {
     const immediatelyResolvedInstance = this._instances.get(injectable);
     if (immediatelyResolvedInstance) {
       return immediatelyResolvedInstance;
@@ -148,7 +183,7 @@ export class Injector {
 
     this._resolving.add(injectable);
 
-    let instance: T;
+    let instance: T | Array<T>;
 
     try {
       instance = this._resolveInstance(injectable);
@@ -164,28 +199,15 @@ export class Injector {
     return `Injector[${this.description || 'anonymous'}]`;
   }
 
-  private _resolveInstance<T>(injectable: Injectable<T>): T {
+  private _resolveInstance<T>(injectable: Injectable<T>): T | Array<T> {
     const provider = this._providers.get(injectable);
 
     if (provider) {
-      if (isFactoryProvider(provider)) {
-        const deps = provider?.deps ?? [];
-        const resolvedDeps = deps.map((dep) => this.inject(dep));
-
-        return provider.useFactory(...resolvedDeps);
+      if (Array.isArray(provider)) {
+        return provider.map((p) => this._resolveProvider(p));
+      } else {
+        return this._resolveProvider(provider);
       }
-
-      if (isValueProvider(provider)) {
-        return provider.useValue;
-      }
-
-      if (isClassProvider(provider)) {
-        return this._instantiateClass(provider.useClass);
-      }
-
-      throw new Error(
-        `Unknown provider type for injectable: ${String(injectable)}`
-      );
     }
 
     if (isClass(injectable)) {
@@ -204,6 +226,27 @@ export class Injector {
       `Cannot instantiate unknown injectable: ${String(
         injectable
       )} in injector: ${this.toString()}`
+    );
+  }
+
+  private _resolveProvider<T>(provider: Providable<T>): T {
+    if (isFactoryProvider(provider)) {
+      const deps = provider?.deps ?? [];
+      const resolvedDeps = deps.map((dep) => this.inject(dep));
+
+      return provider.useFactory(...resolvedDeps);
+    }
+
+    if (isValueProvider(provider)) {
+      return provider.useValue;
+    }
+
+    if (isClassProvider(provider)) {
+      return this._instantiateClass(provider.useClass);
+    }
+
+    throw new Error(
+      `Unknown provider type for injectable: ${String(provider)}`
     );
   }
 

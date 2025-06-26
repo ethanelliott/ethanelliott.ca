@@ -18,6 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "@ee/di": ["libs/backend/shared/di/src/index.ts"],
+      "@ee/environment": ["libs/backend/shared/environment/src/index.ts"],
       "@ee/starter": ["libs/backend/shared/starter/src/index.ts"]
     }
   },

@@ -2,6 +2,7 @@ import Fastify, { FastifyPluginAsync } from 'fastify';
 import { AppConfig } from './app-config';
 import { MainPlugin } from './plugins';
 import { provide } from '@ee/di';
+import { injectApplicationInitializers } from './app-initializer';
 
 export async function starter<T extends FastifyPluginAsync>(
   Application: T,
@@ -11,18 +12,19 @@ export async function starter<T extends FastifyPluginAsync>(
     provide(provider as any);
   }
 
-  const host = process.env.HOST ?? '0.0.0.0';
-  const port = process.env.PORT ? Number(process.env.PORT) : 8080;
+  await injectApplicationInitializers().reduce(
+    (a, c) => a.then(() => c()),
+    Promise.resolve()
+  );
 
   const server = Fastify({
     logger: true,
   });
 
   await server.register(MainPlugin);
-
   await server.register(Application);
 
-  server.listen({ port, host }, (err) => {
+  server.listen({ port: 8080, host: '0.0.0.0' }, (err) => {
     if (err) {
       server.log.error(err);
       process.exit(1);

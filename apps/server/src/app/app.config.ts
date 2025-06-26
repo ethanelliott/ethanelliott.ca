@@ -1,5 +1,12 @@
-import { AppConfig } from '@ee/starter';
+import { AppConfig, provideApplicationInitializer } from '@ee/starter';
 
 export const appConfig: AppConfig = {
-  providers: [],
+  providers: [
+    provideApplicationInitializer(() => {
+      console.log('hello');
+    }),
+    provideApplicationInitializer(() => {
+      console.log('world');
+    }),
+  ],
 };
