@@ -11,8 +11,10 @@ import { ZodPlugin } from './zod';
 import { CorsPlugin } from './cors';
 import { ReferencePlugin } from './reference';
 import { K8sPlugin } from './k8s';
+import { GracefulShutdownPlugin } from './graceful-shutdown';
 
 export const MainPlugin = fp(async function (fastify: FastifyInstance) {
+  await fastify.register(GracefulShutdownPlugin);
   await fastify.register(SensiblePlugin);
   await fastify.register(CircuitBreakerPlugin);
   await fastify.register(UnderPressurePlugin);
