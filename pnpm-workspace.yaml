@@ -7,3 +7,4 @@ onlyBuiltDependencies:
   - msgpackr-extract
   - nx
   - sqlite3
+  - unrs-resolver
