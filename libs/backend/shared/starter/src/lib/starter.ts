@@ -18,7 +18,11 @@ export async function starter<T extends FastifyPluginAsync>(
   );
 
   const server = Fastify({
-    logger: true,
+    logger: {
+      transport: {
+        target: 'pino-pretty',
+      },
+    },
   });
 
   await server.register(MainPlugin);
