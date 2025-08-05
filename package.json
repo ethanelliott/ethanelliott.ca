@@ -55,6 +55,8 @@
     "@angular/compiler-cli": "20.1.4",
     "@angular/language-service": "20.1.4",
     "@angular/material": "20.1.4",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.32.0",
     "@nx/esbuild": "21.3.11",
     "@nx/eslint": "21.3.11",
     "@nx/eslint-plugin": "21.3.11",
