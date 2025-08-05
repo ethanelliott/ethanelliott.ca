@@ -8,6 +8,11 @@ export type ResolveType<I> = I extends Token<infer T>
   ? R
   : I;
 
+export type MultiToken<T> = Token<T[]> & { multi: true };
+export type SingleToken<T> = Token<T> & { multi: false };
+
+export type ElementType<T> = T extends readonly (infer U)[] ? U : T;
+
 export type Class<T = any> = new (...args: any[]) => T;
 
 export type TokenOptions<T> = {
@@ -17,30 +22,44 @@ export type TokenOptions<T> = {
 
 export class Token<T> {
   id: symbol;
+  multi: boolean;
 
   type?: T;
 
-  options?: TokenOptions<T>;
-
-  constructor(description: string, options?: TokenOptions<T>) {
+  constructor(description: string, options?: { multi?: boolean }) {
     this.id = Symbol(description);
-    this.options = options;
+    this.multi = options?.multi ?? false;
   }
 
   toString() {
-    return `Token[${this.id.description}]`;
+    return `Token[${this.id.description}]${this.multi ? '[multi]' : ''}`;
   }
 }
 
-export function createToken<T>(description: string, options?: TokenOptions<T>) {
-  return new Token<T>(description, options);
+export function createToken<T>(description: string): SingleToken<T>;
+export function createToken<T>(
+  description: string,
+  options: { multi: true }
+): MultiToken<T>;
+export function createToken<T>(
+  description: string,
+  options?: { multi?: boolean }
+): SingleToken<T> | MultiToken<T> {
+  const token = new Token<T>(description, options);
+  if (options?.multi) {
+    (token as any).multi = true;
+    return token as MultiToken<T>;
+  }
+  (token as any).multi = false;
+  return token as SingleToken<T>;
 }
 
-export type Injectable<T> = Token<T> | Class<T>;
+export type Injectable<T = any> = Token<T> | MultiToken<any> | Class<T>;
+
+export type AnyToken = Token<any> | MultiToken<any>;
 
 export type Provider<T> = {
   provide: Injectable<T | Array<T>>;
-  multi?: boolean;
 };
 
 export type FactoryProvider<T> = Provider<T> & {
@@ -108,58 +127,95 @@ export type Providable<T> =
 export type Provide<T> = Providable<T> | Class<T> | Injectable<T>;
 
 export class Injector {
-  private _instances = new Map<Injectable<any>, any>();
+  private _instances = new Map<Injectable, any>();
 
-  private _providers = new Map<
-    Injectable<any>,
-    Providable<any> | Array<Providable<any>>
-  >();
+  private _providers = new Map<Injectable, Providable<any>>();
 
-  private _resolving = new Set<Injectable<any>>();
+  private _multiProviders = new Map<Injectable, Providable<any>[]>();
+
+  private _resolving = new Set<Injectable>();
 
   constructor(public description?: string) {}
 
+  // Special overloads for multi tokens
+  provide<T>(multiToken: MultiToken<T>, useValue: ElementType<T>): void;
+  provide<T>(
+    provider: FactoryProvider<ElementType<T>> & { provide: MultiToken<T> }
+  ): void;
+  provide<T>(
+    provider: ValueProvider<ElementType<T>> & { provide: MultiToken<T> }
+  ): void;
+  provide<T>(
+    provider: ClassProvider<ElementType<T>> & { provide: MultiToken<T> }
+  ): void;
+
+  // Regular overloads
   provide<T>(provider: FactoryProvider<T>): void;
   provide<T>(provider: ValueProvider<T>): void;
   provide<T>(provider: ClassProvider<T>): void;
   provide<T>(targetClass: Class<T>): void;
   provide<T>(injectable: Injectable<T>, useValue: T): void;
-  provide<T>(providable: Provide<T>, value?: T) {
+  provide<T>(providable: any, value?: T) {
     if (isProvider(providable)) {
-      if (providable.multi === true) {
-        const currentProviders =
-          this._providers.get(providable.provide) ??
-          ([] as Array<Providable<any>>);
+      const injectable = providable.provide;
 
-        if (Array.isArray(currentProviders)) {
-          currentProviders.push(providable);
-          this._providers.set(providable.provide, currentProviders);
-        } else {
-          throw new Error(
-            `Cannot provide as multi, since [${providable.provide}] is already provided as single.`
-          );
-        }
+      // Check if this is a multi token
+      if (isToken(injectable) && injectable.multi) {
+        // For multi tokens, add to the array of providers
+        const existingProviders = this._multiProviders.get(injectable) || [];
+        this._multiProviders.set(injectable, [
+          ...existingProviders,
+          providable as Providable<any>,
+        ]);
       } else {
-        const currentProviders = this._providers.get(providable.provide);
-
-        if (currentProviders && Array.isArray(currentProviders)) {
+        // For non-multi tokens, check if already provided
+        if (this._providers.has(injectable)) {
           throw new Error(
-            `Cannot provide as single, since [${providable.provide}] is already provided as multi.`
+            `Provider already registered for: ${String(
+              injectable
+            )}. Use a multi token if you want to provide multiple values.`
           );
         }
-
-        this._providers.set(providable.provide, providable);
+        this._providers.set(injectable, providable as Providable<any>);
       }
     } else if (isClass(providable)) {
+      // Classes cannot be multi by definition
+      if (this._providers.has(providable)) {
+        throw new Error(
+          `Provider already registered for class: ${String(
+            providable
+          )}. Classes cannot be multi providers.`
+        );
+      }
       this._providers.set(providable, {
         provide: providable,
         useClass: providable,
       } as ClassProvider<T>);
     } else if (value !== undefined) {
-      this._providers.set(providable, {
-        provide: providable,
-        useValue: value,
-      } as ValueProvider<T>);
+      // Check if this is a multi token
+      if (isToken(providable) && providable.multi) {
+        const valueProvider: ValueProvider<any> = {
+          provide: providable,
+          useValue: value,
+        };
+        const existingProviders = this._multiProviders.get(providable) || [];
+        this._multiProviders.set(providable, [
+          ...existingProviders,
+          valueProvider,
+        ]);
+      } else {
+        if (this._providers.has(providable)) {
+          throw new Error(
+            `Provider already registered for: ${String(
+              providable
+            )}. Use a multi token if you want to provide multiple values.`
+          );
+        }
+        this._providers.set(providable, {
+          provide: providable,
+          useValue: value,
+        } as ValueProvider<T>);
+      }
     } else {
       throw new Error(
         `Invalid provider configuration for: ${String(providable)}`
@@ -167,7 +223,32 @@ export class Injector {
     }
   }
 
-  inject<T>(injectable: Injectable<T>) {
+  inject<T>(injectable: Injectable<T>): T;
+  inject<T>(injectable: MultiToken<T>): T;
+  inject<T>(injectable: Injectable<T>): T {
+    // For multi tokens, we don't cache instances since they should always resolve fresh
+    if (isToken(injectable) && injectable.multi) {
+      if (this._resolving.has(injectable)) {
+        throw new Error(
+          `Circular dependency detected while resolving multi token: ${String(
+            injectable
+          )}`
+        );
+      }
+
+      this._resolving.add(injectable);
+
+      let instance: T;
+
+      try {
+        instance = this._resolveInstance(injectable);
+      } finally {
+        this._resolving.delete(injectable);
+      }
+
+      return instance;
+    }
+
     const immediatelyResolvedInstance = this._instances.get(injectable);
     if (immediatelyResolvedInstance) {
       return immediatelyResolvedInstance;
@@ -183,7 +264,7 @@ export class Injector {
 
     this._resolving.add(injectable);
 
-    let instance: T | Array<T>;
+    let instance: T;
 
     try {
       instance = this._resolveInstance(injectable);
@@ -199,15 +280,43 @@ export class Injector {
     return `Injector[${this.description || 'anonymous'}]`;
   }
 
-  private _resolveInstance<T>(injectable: Injectable<T>): T | Array<T> {
+  private _resolveInstance<T>(injectable: Injectable): T {
+    // Check if this is a multi token first
+    if (isToken(injectable) && injectable.multi) {
+      const multiProviders = this._multiProviders.get(injectable) || [];
+
+      if (multiProviders.length === 0) {
+        // Return empty array for multi tokens with no providers
+        return [] as any;
+      }
+
+      const resolvedValues = multiProviders.map((provider) => {
+        if (isFactoryProvider(provider)) {
+          const deps = provider?.deps ?? [];
+          const resolvedDeps = deps.map((dep) => this.inject(dep));
+          return provider.useFactory(...resolvedDeps);
+        }
+
+        if (isValueProvider(provider)) {
+          return provider.useValue;
+        }
+
+        if (isClassProvider(provider)) {
+          return this._instantiateClass(provider.useClass);
+        }
+
+        throw new Error(
+          `Unknown provider type for multi injectable: ${String(injectable)}`
+        );
+      });
+
+      return resolvedValues as any;
+    }
+
     const provider = this._providers.get(injectable);
 
     if (provider) {
-      if (Array.isArray(provider)) {
-        return provider.map((p) => this._resolveProvider(p));
-      } else {
-        return this._resolveProvider(provider);
-      }
+      return this._resolveProvider(provider);
     }
 
     if (isClass(injectable)) {
@@ -251,39 +360,37 @@ export class Injector {
   }
 
   private _instantiateClass<T>(targetClass: Class<T>): T {
-    console.log(
-      targetClass,
-      Reflect.getMetadataKeys(targetClass),
-      Reflect.getOwnMetadataKeys(targetClass)
-    );
-    const paramTypes = getConstructorDeps(targetClass);
-
-    console.log(paramTypes);
-
-    const dependencies = paramTypes.map((paramType) => {
-      if (paramType === undefined) {
-        throw new Error(
-          `Cannot resolve dependency for class ${targetClass.name}. A constructor parameter type is undefined. ` +
-            `Ensure all constructor parameters are Injectable types (Classes or Tokens).`
-        );
-      }
-      return this.inject(paramType as Injectable<any>);
-    });
-
-    return new targetClass(...dependencies);
+    return new targetClass();
   }
 }
 
-function getConstructorDeps<T>(target: new (...args: any[]) => T): any[] {
-  return Reflect.getMetadata('design:paramtypes', target) || [];
+// Helper functions for creating providers for multi tokens
+export function createMultiProvider<T>(
+  token: MultiToken<T>,
+  config: {
+    useFactory: (...args: ReadonlyArray<any>) => ElementType<T>;
+    deps?: ReadonlyArray<any>;
+  }
+): FactoryProvider<ElementType<T>> & { provide: MultiToken<T> };
+export function createMultiProvider<T>(
+  token: MultiToken<T>,
+  config: {
+    useValue: ElementType<T>;
+  }
+): ValueProvider<ElementType<T>> & { provide: MultiToken<T> };
+export function createMultiProvider<T>(
+  token: MultiToken<T>,
+  config: {
+    useClass: Class<ElementType<T>>;
+  }
+): ClassProvider<ElementType<T>> & { provide: MultiToken<T> };
+export function createMultiProvider<T>(token: MultiToken<T>, config: any): any {
+  return {
+    provide: token,
+    ...config,
+  };
 }
 
 export function createInjector(description?: string) {
   return new Injector(description);
-}
-
-export function Injectable() {
-  return function (...deps: any) {
-    console.log('Injectable()', deps);
-  };
 }
