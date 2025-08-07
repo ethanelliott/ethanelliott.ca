@@ -23,7 +23,6 @@ export class Database {
     this.dataSource
       .initialize()
       .then(() => {
-        console.log('✅ Database connection established successfully');
         console.log(
           `📊 Registered entities: ${this._entities
             .map((e) => e.name)
@@ -31,7 +30,6 @@ export class Database {
         );
       })
       .catch((error) => {
-        console.error('❌ Error during Data Source initialization:', error);
         process.exit(1);
       });
   }
