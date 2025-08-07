@@ -3,16 +3,18 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinTable,
   ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { z } from 'zod';
 import { ENTITIES } from '../../data-source';
 import { Category, SimpleCategorySchema } from '../categories/category';
 import { Medium, SimpleMediumSchema } from '../mediums/medium';
-import { Tag, SimpleTagSchema } from '../tags/tag';
+import { SimpleTagSchema, Tag } from '../tags/tag';
 
 export const enum TransactionType {
   INCOME = 'INCOME',
@@ -20,6 +22,9 @@ export const enum TransactionType {
 }
 
 @Entity()
+@Index(['date', 'type'])
+@Index(['category', 'date'])
+@Index(['medium', 'date'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -27,21 +32,22 @@ export class Transaction {
   @CreateDateColumn()
   timestamp!: Date;
 
+  @UpdateDateColumn()
+  updatedAt!: Date;
+
   @Column('text')
   type!: TransactionType;
 
   @ManyToOne(() => Medium, (medium) => medium.name)
-  @JoinTable()
   medium!: Medium;
 
   @Column('date')
   date!: string;
 
-  @Column('float')
+  @Column('decimal', { precision: 10, scale: 2 })
   amount!: number;
 
   @ManyToOne(() => Category, (category) => category.name)
-  @JoinTable()
   category!: Category;
 
   @ManyToMany(() => Tag, (tag) => tag.name)
@@ -67,6 +73,7 @@ export type TransactionIn = z.infer<typeof TransactionInSchema>;
 export const TransactionOutSchema = TransactionInSchema.extend({
   id: z.string().uuid(),
   timestamp: z.date(),
+  updatedAt: z.date(),
 });
 
 export type TransactionOut = z.infer<typeof TransactionOutSchema>;

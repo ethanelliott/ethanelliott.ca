@@ -14,15 +14,38 @@ export class Database {
     synchronize: true,
     logging: true,
     entities: this._entities,
+    extra: {
+      foreignKeys: true,
+    },
   });
 
   constructor() {
-    this.dataSource.initialize().catch((error) => {
-      console.error('Error during Data Source initialization:', error);
-    });
+    this.dataSource
+      .initialize()
+      .then(() => {
+        console.log('✅ Database connection established successfully');
+        console.log(
+          `📊 Registered entities: ${this._entities
+            .map((e) => e.name)
+            .join(', ')}`
+        );
+      })
+      .catch((error) => {
+        console.error('❌ Error during Data Source initialization:', error);
+        process.exit(1);
+      });
   }
 
   repositoryFor<T extends ObjectLiteral>(entity: new () => T) {
     return this.dataSource.getRepository<T>(entity);
+  }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.dataSource.query('SELECT 1');
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

@@ -76,7 +76,7 @@ export async function MediumsRouter(fastify: FastifyInstance) {
       schema: {
         tags: ['Mediums'],
         params: z.object({
-          name: z.string().uuid(),
+          name: z.string(),
         }),
         body: FullMediumSchema,
         response: { 200: FullMediumSchema },
@@ -96,7 +96,7 @@ export async function MediumsRouter(fastify: FastifyInstance) {
       schema: {
         tags: ['Mediums'],
         params: z.object({
-          name: z.string().uuid(),
+          name: z.string(),
         }),
       },
     },

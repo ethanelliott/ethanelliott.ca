@@ -76,7 +76,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
       schema: {
         tags: ['Categories'],
         params: z.object({
-          name: z.string().uuid(),
+          name: z.string(),
         }),
         body: FullCategorySchema,
         response: { 200: FullCategorySchema },
@@ -99,7 +99,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
       schema: {
         tags: ['Categories'],
         params: z.object({
-          name: z.string().uuid(),
+          name: z.string(),
         }),
       },
     },
