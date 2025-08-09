@@ -15,9 +15,10 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   fastify.get(
     '/',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
+        description: '🔒 Get all transactions (requires authentication)',
         response: {
           200: z.array(TransactionOutSchema),
         },
@@ -32,9 +33,10 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   fastify.post(
     '/',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
+        description: '🔒 Create new transaction (requires authentication)',
         body: TransactionInSchema,
         response: { 200: TransactionOutSchema },
       },

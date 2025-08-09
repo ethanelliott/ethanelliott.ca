@@ -9,6 +9,7 @@ import { PrometheusPlugin } from './prometheus';
 import { HelmetPlugin } from './helmet';
 import { ZodPlugin } from './zod';
 import { CorsPlugin } from './cors';
+import { JWTPlugin } from './jwt';
 import { ReferencePlugin } from './reference';
 import { K8sPlugin } from './k8s';
 import { GracefulShutdownPlugin } from './graceful-shutdown';
@@ -23,6 +24,7 @@ export const MainPlugin = fp(async function (fastify: FastifyInstance) {
   await fastify.register(HelmetPlugin);
   await fastify.register(ZodPlugin);
   await fastify.register(CorsPlugin);
+  await fastify.register(JWTPlugin);
   await fastify.register(K8sPlugin);
 
   // Must register swagger last ...

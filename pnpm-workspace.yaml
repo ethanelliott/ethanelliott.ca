@@ -1,6 +1,7 @@
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@swc/core'
+  - bcrypt
   - better-sqlite3
   - esbuild
   - lmdb
