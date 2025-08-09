@@ -11,7 +11,6 @@ export class UsersService {
   async getById(id: string) {
     const user = await this._repository.findOne({
       where: { id },
-      relations: ['credentials'],
     });
 
     if (!user) {
@@ -27,7 +26,7 @@ export class UsersService {
       timestamp: user.timestamp,
       updatedAt: user.updatedAt,
       hasPassword: !!user.passwordHash,
-      credentialsCount: user.credentials.length,
+      // credentialsCount: user.credentials.length,
     };
   }
 

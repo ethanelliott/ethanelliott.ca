@@ -74,9 +74,6 @@ importers:
       '@nx/angular':
         specifier: 21.3.11
         version: 21.3.11(7525518314300cf4a8865cb4da2dbc65)
-      '@ownid/webauthn':
-        specifier: ^1.0.0
-        version: 1.0.0
       '@scalar/fastify-api-reference':
         specifier: ^1.31.4
         version: 1.31.4
@@ -2441,9 +2438,6 @@ packages:
   '@opentelemetry/api@1.9.0':
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
-
-  '@ownid/webauthn@1.0.0':
-    resolution: {integrity: sha512-RTOOKMijZbLytAucFNmxPO8LdpaWz9HojgB578ZtLazAPCT5DXejXYzKFciDmq5X0pozos6TYIctE/gMZXtK7g==}
 
   '@parcel/watcher-android-arm64@2.5.1':
     resolution: {integrity: sha512-KF8+j9nNbUN8vzOFDpRMsaKBHZ/mcjEjMToVMJOhTozkDonQFFrRcfdLWn6yWKCmJKmdVxSgHiYvTCef4/qcBA==}
@@ -11668,8 +11662,6 @@ snapshots:
       - debug
 
   '@opentelemetry/api@1.9.0': {}
-
-  '@ownid/webauthn@1.0.0': {}
 
   '@parcel/watcher-android-arm64@2.5.1':
     optional: true

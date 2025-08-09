@@ -63,7 +63,7 @@ export class AuthService {
   // Configuration - in production, these should come from environment variables
   private readonly RP_NAME = 'Finance App';
   private readonly RP_ID = 'localhost'; // Change to your domain in production
-  private readonly ORIGIN = 'http://localhost:4200'; // Change to your frontend URL
+  private readonly ORIGIN = 'https://localhost:4200'; // Change to your frontend URL
   private readonly ACCESS_TOKEN_EXPIRY = '15m';
   private readonly REFRESH_TOKEN_EXPIRY = 30; // days
 
@@ -178,7 +178,7 @@ export class AuthService {
 
       if (user && user.credentials.length > 0) {
         allowCredentials = user.credentials.map((cred) => ({
-          id: cred.credentialId,
+          id: cred.credentialId, // This should already be in base64url format from storage
           transports: cred.transports
             ? (JSON.parse(cred.transports) as AuthenticatorTransportFuture[])
             : undefined,
@@ -206,7 +206,10 @@ export class AuthService {
     authenticationResponse: AuthenticationResponseJSON,
     expectedChallenge: string
   ): Promise<AuthTokens> {
-    const credentialId = authenticationResponse.id;
+    const rawCredentialId = authenticationResponse.id;
+
+    // Convert the credential ID to match our storage format (base64url)
+    const credentialId = Buffer.from(rawCredentialId).toString('base64url');
 
     const credential = await this._credentialRepository.findOneBy({
       credentialId: credentialId,
@@ -231,7 +234,7 @@ export class AuthService {
         expectedOrigin: this.ORIGIN,
         expectedRPID: this.RP_ID,
         credential: {
-          id: credential.credentialId,
+          id: credential.credentialId, // Use the stored credential ID (base64url)
           publicKey: new Uint8Array(
             Buffer.from(credential.publicKey, 'base64url')
           ),

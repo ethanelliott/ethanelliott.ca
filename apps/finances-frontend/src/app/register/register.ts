@@ -16,7 +16,8 @@ import {
 } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
-import { fido2Create } from '@ownid/webauthn';
+import { startRegistration } from '@simplewebauthn/browser';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'fin-register',
@@ -93,6 +94,7 @@ import { fido2Create } from '@ownid/webauthn';
 })
 export class UserRegister {
   private _http = inject(HttpClient);
+  private _router = inject(Router);
 
   name = signal('');
   username = signal('');
@@ -118,9 +120,8 @@ export class UserRegister {
       console.log('Registration started:', registerResponse);
 
       // Step 2: Create passkey
-      const passkeyCredential = await fido2Create(
-        registerResponse.registrationOptions.options,
-        this.username()
+      const passkeyCredential = await startRegistration(
+        registerResponse.registrationOptions.options
       );
 
       console.log('Passkey created:', passkeyCredential);
@@ -129,7 +130,7 @@ export class UserRegister {
       const completeResponse: any = await firstValueFrom(
         this._http.post('http://localhost:8080/users/register/complete', {
           sessionId: registerResponse.sessionId,
-          credential: passkeyCredential.data,
+          credential: passkeyCredential,
         })
       );
 
@@ -137,7 +138,7 @@ export class UserRegister {
       alert('🎉 Account created successfully! You are now logged in.');
 
       // Redirect to main app or dashboard
-      window.location.href = '/';
+      // this._router.navigate(['/']);
     } catch (error: any) {
       console.error('Registration failed:', error);
       alert(

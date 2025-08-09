@@ -32,7 +32,6 @@
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/under-pressure": "^9.0.3",
     "@nx/angular": "21.3.11",
-    "@ownid/webauthn": "^1.0.0",
     "@scalar/fastify-api-reference": "^1.31.4",
     "@simplewebauthn/browser": "^13.1.2",
     "@simplewebauthn/server": "^13.1.2",

@@ -15,7 +15,7 @@ import {
 } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
-import { fido2Get } from '@ownid/webauthn';
+import { startAuthentication } from '@simplewebauthn/browser';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -107,10 +107,7 @@ export class UserLogin {
       console.log('Authentication started:', authResponse);
 
       // Step 2: Get passkey assertion
-      const passkeyAssertion = await fido2Get(
-        authResponse.options,
-        this.username()
-      );
+      const passkeyAssertion = await startAuthentication(authResponse.options);
 
       console.log('Passkey assertion:', passkeyAssertion);
 
