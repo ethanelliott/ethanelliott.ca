@@ -38,21 +38,25 @@ export async function UsersRouter(fastify: FastifyInstance) {
   // 🎯 === AUTHENTICATION ROUTES === 🎯
 
   /**
-   * 📝 REGISTER USER
+   * 📝 REGISTER USER - Passkeys required for maximum security!
    */
   fastify.post(
     '/register',
     {
       schema: {
         tags: ['Authentication'],
-        description:
-          'Register a new user (password optional - passkeys preferred!)',
+        description: 'Register a new user - passkeys mandatory for security!',
         body: UserRegistrationSchema,
         response: {
           201: z.object({
             success: z.boolean(),
             user: SafeUserSchema,
-            requiresPasskey: z.boolean(),
+            registrationOptions: z.object({
+              userId: z.string(),
+              options: z.any(), // PublicKeyCredentialCreationOptionsJSON
+              challenge: z.string(),
+            }),
+            sessionId: z.string(),
             message: z.string(),
           }),
           409: z.object({ error: z.string(), message: z.string() }),
@@ -62,9 +66,17 @@ export async function UsersRouter(fastify: FastifyInstance) {
     async (request, reply) => {
       const userData = request.body as UserRegistration;
 
-      const { user, requiresPasskey } = await _authService.registerUser(
+      const { user, registrationOptions } = await _authService.registerUser(
         userData
       );
+
+      // Store challenge temporarily for passkey registration
+      const sessionId = `reg_${user.id}_${Date.now()}`;
+      challengeStore.set(sessionId, {
+        challenge: registrationOptions.challenge,
+        userId: user.id,
+        expires: Date.now() + 5 * 60 * 1000, // 5 minutes
+      });
 
       return reply.code(201).send({
         success: true,
@@ -78,24 +90,31 @@ export async function UsersRouter(fastify: FastifyInstance) {
           timestamp: user.timestamp,
           updatedAt: user.updatedAt,
         },
-        requiresPasskey,
-        message: requiresPasskey
-          ? '🔑 Account created! Please set up a passkey to secure your account.'
-          : '✅ Account created successfully!',
+        registrationOptions: {
+          userId: registrationOptions.userId,
+          options: registrationOptions.options,
+          challenge: registrationOptions.challenge,
+        },
+        sessionId,
+        message:
+          '🔑 Account created! Please complete passkey setup to secure your account.',
       });
     }
   );
 
   /**
-   * 🔐 PASSWORD LOGIN (Fallback)
+   * ✅ COMPLETE INITIAL PASSKEY REGISTRATION (for new users)
    */
   fastify.post(
-    '/login/password',
+    '/register/complete',
     {
       schema: {
         tags: ['Authentication'],
-        description: 'Login with password (fallback method)',
-        body: UserLoginSchema.extend({ password: z.string() }),
+        description: 'Complete initial passkey registration for new users',
+        body: z.object({
+          sessionId: z.string(),
+          credential: z.any(), // RegistrationResponseJSON
+        }),
         response: {
           200: z.object({
             success: z.boolean(),
@@ -104,36 +123,78 @@ export async function UsersRouter(fastify: FastifyInstance) {
               username: z.string(),
               name: z.string(),
             }),
+            credential: z.object({
+              id: z.string(),
+              deviceType: z.string().optional(),
+              backedUp: z.boolean(),
+              createdAt: z.date(),
+            }),
             message: z.string(),
           }),
-          401: z.object({ error: z.string(), message: z.string() }),
         },
       },
     },
     async (request, reply) => {
-      const credentials = request.body as UserLogin & { password: string };
+      const { sessionId, credential } = request.body as {
+        sessionId: string;
+        credential: RegistrationResponseJSON;
+      };
 
-      const tokens = await _authService.loginWithPassword(credentials);
+      const challengeData = challengeStore.get(sessionId);
+      if (!challengeData || !challengeData.userId) {
+        throw fastify.httpErrors.badRequest('Invalid or expired session');
+      }
 
-      // Sign the JWT token properly
+      const userCredential = await _authService.completePasskeyRegistration(
+        challengeData.userId,
+        credential,
+        challengeData.challenge
+      );
+
+      challengeStore.delete(sessionId);
+
+      // Generate tokens for the newly registered user
+      const user = await _usersService.getById(challengeData.userId);
+      if (!user) {
+        throw fastify.httpErrors.internalServerError(
+          'User not found after registration'
+        );
+      }
+
+      // Generate access token and refresh token
       const accessToken = (fastify as any).signToken({
-        userId: tokens.user.id,
-        username: tokens.user.username,
+        userId: user.id,
+        username: user.username,
       });
 
+      // Generate refresh token manually
+      const refreshTokenValue =
+        Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15);
+
       // Set secure cookies
-      (fastify as any).setAuthCookies(reply, accessToken, tokens.refreshToken);
+      (fastify as any).setAuthCookies(reply, accessToken, refreshTokenValue);
 
       return reply.send({
         success: true,
-        user: tokens.user,
-        message: '🔐 Logged in with password. Consider upgrading to passkeys!',
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+        },
+        credential: {
+          id: userCredential.id,
+          deviceType: userCredential.deviceType,
+          backedUp: userCredential.backedUp,
+          createdAt: userCredential.createdAt,
+        },
+        message: '🎉 Welcome! Your account is now secured with a passkey.',
       });
     }
   );
 
   /**
-   * 🚀 START PASSKEY REGISTRATION
+   * 🚀 START PASSKEY REGISTRATION (for existing authenticated users)
    */
   fastify.post(
     '/passkey/register/start',
@@ -175,7 +236,7 @@ export async function UsersRouter(fastify: FastifyInstance) {
   );
 
   /**
-   * ✅ COMPLETE PASSKEY REGISTRATION
+   * ✅ COMPLETE PASSKEY REGISTRATION (for existing authenticated users)
    */
   fastify.post(
     '/passkey/register/complete',
@@ -617,6 +678,33 @@ export async function UsersRouter(fastify: FastifyInstance) {
       return reply.send({
         success: true,
         message: 'Account deleted successfully',
+      });
+    }
+  );
+
+  /**
+   * 🗑️ ADMIN: WIPE ALL USERS
+   */
+  fastify.delete(
+    '/admin/all',
+    {
+      schema: {
+        tags: ['Admin'],
+        description: 'Wipe all users (admin/testing only)',
+        response: {
+          200: z.object({
+            success: z.boolean(),
+            message: z.string(),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      await _authService.deleteAllUsers();
+
+      return reply.send({
+        success: true,
+        message: 'All users deleted successfully',
       });
     }
   );

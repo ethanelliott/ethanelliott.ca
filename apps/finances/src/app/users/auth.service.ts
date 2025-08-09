@@ -1,5 +1,4 @@
 import { inject } from '@ee/di';
-import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import HttpErrors from 'http-errors';
 import {
@@ -17,7 +16,7 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   AuthenticatorTransportFuture,
 } from '@simplewebauthn/server';
-import { Database } from '../../data-source';
+import { Database } from '../data-source';
 import {
   User,
   UserCredential,
@@ -65,7 +64,6 @@ export class AuthService {
   private readonly RP_NAME = 'Finance App';
   private readonly RP_ID = 'localhost'; // Change to your domain in production
   private readonly ORIGIN = 'http://localhost:4200'; // Change to your frontend URL
-  private readonly SALT_ROUNDS = 12;
   private readonly ACCESS_TOKEN_EXPIRY = '15m';
   private readonly REFRESH_TOKEN_EXPIRY = 30; // days
 
@@ -77,21 +75,11 @@ export class AuthService {
   ): Promise<PasskeyRegistrationOptions> {
     const user = await this._userRepository.findOne({
       where: { id: userId },
-      relations: ['credentials'],
     });
 
     if (!user) {
       throw new HttpErrors.NotFound('User not found');
     }
-
-    // Get existing credentials to exclude them
-    const excludeCredentials = user.credentials.map((cred) => ({
-      id: cred.credentialId,
-      transports: cred.transports
-        ? (JSON.parse(cred.transports) as AuthenticatorTransportFuture[])
-        : undefined,
-    }));
-
     const options = await generateRegistrationOptions({
       rpName: this.RP_NAME,
       rpID: this.RP_ID,
@@ -99,7 +87,6 @@ export class AuthService {
       userName: user.username,
       userDisplayName: user.name,
       attestationType: 'none', // We trust the client
-      excludeCredentials,
       authenticatorSelection: {
         residentKey: 'preferred', // Prefer passkeys stored on device
         userVerification: 'preferred',
@@ -285,11 +272,11 @@ export class AuthService {
   }
 
   /**
-   * 📧 REGISTER USER - Start with passkey preference!
+   * 📧 REGISTER USER - Passkeys required for maximum security!
    */
   async registerUser(
     userData: UserRegistration
-  ): Promise<{ user: User; requiresPasskey: boolean }> {
+  ): Promise<{ user: User; registrationOptions: PasskeyRegistrationOptions }> {
     // Check if user already exists
     const existingUser = await this._userRepository.findOne({
       where: [{ username: userData.username }],
@@ -302,77 +289,29 @@ export class AuthService {
     // Generate a unique WebAuthn user ID
     const webAuthnUserId = randomBytes(32).toString('base64url');
 
-    // Create user
+    // Create user without password - passkeys only!
     const user = new User();
     user.name = userData.name;
     user.username = userData.username;
     user.webAuthnUserId = webAuthnUserId;
     user.isActive = true;
-
-    // Only hash password if provided (we prefer passkeys!)
-    if (userData.password) {
-      user.passwordHash = await bcrypt.hash(
-        userData.password,
-        this.SALT_ROUNDS
-      );
-    }
+    // No password hash - passkeys provide better security!
 
     const savedUser = await this._userRepository.save(user);
 
+    // Immediately start passkey registration process
+    const registrationOptions = await this.startPasskeyRegistration(
+      savedUser.id
+    );
+
     return {
       user: savedUser,
-      requiresPasskey: !userData.password, // If no password, they must set up passkey
+      registrationOptions,
     };
   }
 
   /**
-   * 🔐 LOGIN WITH PASSWORD (fallback option)
-   */
-  async loginWithPassword(credentials: UserLogin): Promise<AuthTokens> {
-    if (!credentials.password) {
-      throw new HttpErrors.BadRequest(
-        'Password is required for password login'
-      );
-    }
-
-    const user = await this._userRepository.findOneBy({
-      username: credentials.username,
-    });
-
-    if (!user || !user.isActive) {
-      throw new HttpErrors.Unauthorized('Invalid credentials');
-    }
-
-    // Check if account is locked
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      throw new HttpErrors.Unauthorized(
-        'Account is temporarily locked due to too many failed attempts'
-      );
-    }
-
-    if (!user.passwordHash) {
-      throw new HttpErrors.Unauthorized(
-        'Password login not available. Please use passkey authentication.'
-      );
-    }
-
-    const isValidPassword = await bcrypt.compare(
-      credentials.password,
-      user.passwordHash
-    );
-    if (!isValidPassword) {
-      await this._recordFailedLogin(user.id);
-      throw new HttpErrors.Unauthorized('Invalid credentials');
-    }
-
-    // Reset failed attempts on successful login
-    await this._updateSuccessfulLogin(user.id);
-
-    return await this._generateTokens(user);
-  }
-
-  /**
-   * 🔄 REFRESH TOKENS
+   *  REFRESH TOKENS
    */
   async refreshTokens(refreshToken: string): Promise<AuthTokens> {
     const tokenRecord = await this._refreshTokenRepository.findOneBy({
@@ -418,14 +357,13 @@ export class AuthService {
       throw new HttpErrors.NotFound('User not found');
     }
 
-    const hasPassword = !!user.passwordHash;
+    const hasPassword = false; // No more passwords! Passkeys only for maximum security
     const passkeyCount = user.credentials.length;
 
-    // Calculate security score (0-100)
+    // Calculate security score (0-100) - Passkeys provide superior security
     let securityScore = 0;
-    if (passkeyCount > 0) securityScore += 60; // Passkeys are awesome!
-    if (passkeyCount > 1) securityScore += 20; // Multiple passkeys even better!
-    if (hasPassword) securityScore += 10; // Password as backup
+    if (passkeyCount > 0) securityScore += 80; // Passkeys are the gold standard!
+    if (passkeyCount > 1) securityScore += 20; // Multiple passkeys for redundancy
 
     return {
       user,
@@ -469,8 +407,17 @@ export class AuthService {
     }
   }
 
+  /**
+   * 🗑️ DELETE ALL USERS (for testing/admin purposes)
+   */
+  async deleteAllUsers(): Promise<void> {
+    await this._refreshTokenRepository.deleteAll();
+    await this._credentialRepository.deleteAll();
+    await this._userRepository.deleteAll();
+  }
+
   // Private helper methods
-  private async _generateTokens(user: User): Promise<AuthTokens> {
+  async _generateTokens(user: User): Promise<AuthTokens> {
     const payload: JWTPayload = {
       userId: user.id,
       username: user.username,

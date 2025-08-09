@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { z } from 'zod';
-import { ENTITIES } from '../../data-source';
+import { ENTITIES } from '../data-source';
 
 // Entity for storing user's passkey credentials
 @Entity()
@@ -100,9 +100,6 @@ export class User {
   isActive!: boolean;
 
   @Column('boolean', { default: false })
-  emailVerified!: boolean;
-
-  @Column('boolean', { default: false })
   requireMFA!: boolean;
 
   @Column('datetime', { nullable: true })
@@ -156,19 +153,18 @@ export const UserRegistrationSchema = z.object({
     .min(3)
     .max(50)
     .regex(/^[a-zA-Z0-9_]+$/),
-  password: z.string().min(8).optional(),
+  // Removed password field - passkeys only!
 });
 
 export const UserLoginSchema = z.object({
   username: z.string(),
-  password: z.string().optional(),
+  // Removed password field - passkeys only!
 });
 
 export const FullUserSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   username: z.string(),
-  email: z.string().email(),
   isActive: z.boolean(),
   requireMFA: z.boolean(),
   lastLoginAt: z.date().nullable(),

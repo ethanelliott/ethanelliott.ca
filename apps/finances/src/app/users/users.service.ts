@@ -1,5 +1,5 @@
 import { inject } from '@ee/di';
-import { Database } from '../../data-source';
+import { Database } from '../data-source';
 import { AuthService } from './auth.service';
 import { User } from './user';
 
