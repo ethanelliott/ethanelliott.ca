@@ -181,17 +181,17 @@ import { FinanceApiService } from '../../services/finance-api.service';
       font-size: 2rem;
       font-weight: 400;
       margin: 0;
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
     }
 
     .page-subtitle {
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       margin: 4px 0 0 0;
     }
 
     .add-category-card {
       margin-bottom: 24px;
-      border: 2px solid var(--mat-primary-color);
+      border: 2px solid var(--mat-sys-primary);
     }
 
     .category-form {
@@ -220,7 +220,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
     .empty-state {
       text-align: center;
       padding: 64px 32px;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .empty-state mat-icon {
@@ -255,7 +255,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
     }
 
     .category-icon {
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
       font-size: 24px;
       width: 24px;
       height: 24px;

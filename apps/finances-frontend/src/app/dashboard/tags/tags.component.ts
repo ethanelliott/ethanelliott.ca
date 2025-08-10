@@ -173,17 +173,17 @@ import { FinanceApiService } from '../../services/finance-api.service';
       font-size: 2rem;
       font-weight: 400;
       margin: 0;
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
     }
 
     .page-subtitle {
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       margin: 4px 0 0 0;
     }
 
     .add-tag-card {
       margin-bottom: 24px;
-      border: 2px solid var(--mat-primary-color);
+      border: 2px solid var(--mat-sys-primary);
     }
 
     .tag-form {
@@ -212,7 +212,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
     .empty-state {
       text-align: center;
       padding: 64px 32px;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .empty-state mat-icon {
@@ -245,12 +245,12 @@ import { FinanceApiService } from '../../services/finance-api.service';
       border-radius: 16px;
       background: var(--mat-primary-container-color);
       color: var(--mat-on-primary-container-color);
-      border: 1px solid var(--mat-primary-color);
+      border: 1px solid var(--mat-sys-primary);
       transition: all 0.2s ease;
     }
 
     .tag-chip:not([disabled]):hover {
-      background: var(--mat-primary-color);
+      background: var(--mat-sys-primary);
       color: var(--mat-on-primary-color);
       transform: translateY(-1px);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -285,7 +285,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
     .suggestion-chip:not([disabled]):hover {
       background: var(--mat-primary-container-color);
       color: var(--mat-on-primary-container-color);
-      border-color: var(--mat-primary-color);
+      border-color: var(--mat-sys-primary);
       transform: translateY(-1px);
     }
 

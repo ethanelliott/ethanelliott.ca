@@ -244,11 +244,11 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
       font-size: 2rem;
       font-weight: 400;
       margin: 0;
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
     }
 
     .page-subtitle {
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       margin: 4px 0 0 0;
     }
 
@@ -265,7 +265,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
     }
 
     .profile-avatar {
-      background: var(--mat-primary-color);
+      background: var(--mat-sys-primary);
       color: var(--mat-on-primary-color);
       display: flex;
       align-items: center;
@@ -292,7 +292,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
     }
 
     .stat-item mat-icon {
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
       font-size: 24px;
       width: 24px;
       height: 24px;
@@ -305,7 +305,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
 
     .stat-label {
       font-size: 0.875rem;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .stat-value {
@@ -366,7 +366,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
     }
 
     .security-info mat-icon {
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
       font-size: 24px;
       width: 24px;
       height: 24px;
@@ -381,7 +381,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
     .security-text p {
       margin: 0;
       font-size: 0.875rem;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .security-status {
@@ -424,7 +424,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
     .danger-info p {
       margin: 0;
       font-size: 0.875rem;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .delete-button {

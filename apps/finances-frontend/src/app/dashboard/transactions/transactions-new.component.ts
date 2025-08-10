@@ -293,11 +293,11 @@ import {
       font-size: 2rem;
       font-weight: 400;
       margin: 0;
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
     }
 
     .page-subtitle {
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       margin: 4px 0 0 0;
     }
 
@@ -308,7 +308,7 @@ import {
 
     .transaction-form-card {
       margin-bottom: 24px;
-      border: 2px solid var(--mat-primary-color);
+      border: 2px solid var(--mat-sys-primary);
     }
 
     .transaction-form {
@@ -367,7 +367,7 @@ import {
     .empty-state {
       text-align: center;
       padding: 64px 32px;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .empty-state mat-icon {
@@ -394,10 +394,10 @@ import {
       justify-content: space-between;
       align-items: center;
       padding: 20px;
-      border: 1px solid var(--mat-divider-color);
+      border: 1px solid var(--mat-sys-outline-variant);
       border-radius: 8px;
       margin-bottom: 8px;
-      background: var(--mat-surface-color);
+      background: var(--mat-sys-surface);
       transition: all 0.2s ease;
     }
 
@@ -435,7 +435,7 @@ import {
 
     .transaction-meta {
       font-size: 0.875rem;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       margin-bottom: 8px;
     }
 
@@ -501,7 +501,7 @@ import {
     }
 
     .action-button {
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .delete-action {

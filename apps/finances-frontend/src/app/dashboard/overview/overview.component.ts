@@ -39,9 +39,6 @@ interface OverviewStats {
     <div class="overview-container">
       <div class="overview-header">
         <h1 class="page-title">Financial Overview</h1>
-        <p class="page-subtitle">
-          Get a comprehensive view of your financial health
-        </p>
       </div>
 
       @if (loading()) {
@@ -264,6 +261,10 @@ interface OverviewStats {
     </div>
   `,
   styles: `
+    mat-card-header + mat-card-content {
+      margin-top: 1rem;
+    }
+
     .overview-container {
       max-width: 1200px;
       margin: 0 auto;
@@ -277,10 +278,11 @@ interface OverviewStats {
 
     .page-title {
       font-size: 2.5rem;
+      line-height: 3rem;
       font-weight: 300;
       margin: 0;
-      color: var(--mat-primary-color);
-      background: linear-gradient(135deg, var(--mat-primary-color), var(--mat-secondary-color));
+      color: var(--mat-sys-primary);
+      background: linear-gradient(135deg, var(--mat-sys-primary), var(--mat-sys-tertiary));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -288,7 +290,7 @@ interface OverviewStats {
 
     .page-subtitle {
       font-size: 1.1rem;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       margin: 8px 0 0 0;
     }
 
@@ -329,7 +331,7 @@ interface OverviewStats {
 
     .stat-label {
       font-size: 0.875rem;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       margin-bottom: 8px;
     }
 
@@ -340,19 +342,19 @@ interface OverviewStats {
     }
 
     .stat-value.income {
-      color: var(--mat-success-color, #4caf50);
+      color: var(--mat-sys-tertiary);
     }
 
     .stat-value.expense {
-      color: var(--mat-error-color, #f44336);
+      color: var(--mat-sys-error);
     }
 
     .stat-value.positive {
-      color: var(--mat-success-color, #4caf50);
+      color: var(--mat-sys-tertiary);
     }
 
     .stat-value.negative {
-      color: var(--mat-error-color, #f44336);
+      color: var(--mat-sys-error);
     }
 
     .stat-icon {
@@ -371,23 +373,23 @@ interface OverviewStats {
     }
 
     .income-icon {
-      background: linear-gradient(135deg, #4caf50, #66bb6a);
-      color: white;
+      background: linear-gradient(135deg, var(--mat-sys-tertiary), var(--mat-sys-tertiary-container));
+      color: var(--mat-sys-on-tertiary);
     }
 
     .expense-icon {
-      background: linear-gradient(135deg, #f44336, #ef5350);
-      color: white;
+      background: linear-gradient(135deg, var(--mat-sys-error), var(--mat-sys-error-container));
+      color: var(--mat-sys-on-error);
     }
 
     .net-worth-icon {
-      background: linear-gradient(135deg, var(--mat-primary-color), var(--mat-secondary-color));
-      color: white;
+      background: linear-gradient(135deg, var(--mat-sys-primary), var(--mat-sys-primary-container));
+      color: var(--mat-sys-on-primary);
     }
 
     .transaction-icon {
-      background: linear-gradient(135deg, #ff9800, #ffb74d);
-      color: white;
+      background: linear-gradient(135deg, var(--mat-sys-secondary), var(--mat-sys-secondary-container));
+      color: var(--mat-sys-on-secondary);
     }
 
     .quick-actions-section {
@@ -430,7 +432,7 @@ interface OverviewStats {
     }
 
     .insight-icon {
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
       font-size: 32px;
       width: 32px;
       height: 32px;
@@ -449,7 +451,7 @@ interface OverviewStats {
     .empty-state {
       text-align: center;
       padding: 32px;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .empty-state mat-icon {
@@ -461,7 +463,7 @@ interface OverviewStats {
     }
 
     .empty-state a {
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
       cursor: pointer;
       text-decoration: none;
     }
@@ -481,7 +483,7 @@ interface OverviewStats {
       justify-content: space-between;
       align-items: center;
       padding: 16px 0;
-      border-bottom: 1px solid var(--mat-divider-color);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
     }
 
     .transaction-item:last-child {
@@ -499,7 +501,7 @@ interface OverviewStats {
 
     .transaction-meta {
       font-size: 0.875rem;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
     }
 
     .transaction-amount {
@@ -508,11 +510,11 @@ interface OverviewStats {
     }
 
     .transaction-amount.income {
-      color: var(--mat-success-color, #4caf50);
+      color: var(--mat-sys-tertiary);
     }
 
     .transaction-amount.expense {
-      color: var(--mat-error-color, #f44336);
+      color: var(--mat-sys-error);
     }
 
     .view-all-container {

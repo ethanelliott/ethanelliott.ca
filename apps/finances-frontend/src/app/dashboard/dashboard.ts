@@ -150,13 +150,12 @@ import { FinanceApiService } from '../services/finance-api.service';
 
     .sidenav {
       width: 280px;
-      background: var(--mat-sidenav-container-background-color);
-      border-right: 1px solid var(--mat-divider-color);
+      --mat-sidenav-container-background-color: var(--mat-sys-surface-container-high)
     }
 
     .sidenav-header {
       padding: 24px 16px;
-      border-bottom: 1px solid var(--mat-divider-color);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
     }
 
     .logo-container {
@@ -169,13 +168,12 @@ import { FinanceApiService } from '../services/finance-api.service';
       font-size: 32px;
       width: 32px;
       height: 32px;
-      color: var(--mat-primary-color);
+      color: var(--mat-sys-primary);
     }
 
     .logo-text {
-      font-size: 20px;
-      font-weight: 600;
-      color: var(--mat-primary-color);
+      font-size: 1.5rem;
+      color: var(--mat-sys-on-surface);
     }
 
     .nav-list {
@@ -186,18 +184,18 @@ import { FinanceApiService } from '../services/finance-api.service';
       padding: 16px 16px 8px 16px;
       font-size: 12px;
       font-weight: 600;
-      color: var(--mat-secondary-text-color);
+      color: var(--mat-sys-on-surface-variant);
       text-transform: uppercase;
       letter-spacing: 0.1em;
     }
 
     .active-link {
-      background: var(--mat-primary-container-color) !important;
-      color: var(--mat-on-primary-container-color) !important;
+      background: var(--mat-sys-primary-container) !important;
+      color: var(--mat-sys-on-primary-container) !important;
     }
 
     .active-link mat-icon {
-      color: var(--mat-on-primary-container-color) !important;
+      color: var(--mat-sys-on-primary-container) !important;
     }
 
     .toolbar {
@@ -226,7 +224,7 @@ import { FinanceApiService } from '../services/finance-api.service';
 
     .content-container {
       padding: 24px;
-      background: var(--mat-surface-color);
+      background: var(--mat-sys-surface);
       min-height: calc(100vh - 64px);
     }
 
