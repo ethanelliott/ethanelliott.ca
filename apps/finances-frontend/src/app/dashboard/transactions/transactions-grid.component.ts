@@ -16,7 +16,7 @@ import {
   colorSchemeDark,
 } from 'ag-grid-community';
 import { Transaction } from '../../services/finance-api.service';
-import { TransactionsService } from '../../services/transactions.service';
+import { injectFinanceStore } from '../../store/finance.provider';
 import {
   ActionsCellRendererComponent,
   ActionsCellRendererParams,
@@ -33,7 +33,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   template: `
     <ag-grid-angular
       class="transactions-grid"
-      [rowData]="transactionsService.transactions()"
+      [rowData]="financeStore.transactions()"
       [columnDefs]="columnDefs"
       [gridOptions]="gridOptions"
       [domLayout]="'autoHeight'"
@@ -55,9 +55,9 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   `,
 })
 export class TransactionsGridComponent {
-  readonly transactionsService = inject(TransactionsService);
+  readonly financeStore = injectFinanceStore();
 
-  // Only keep the edit transaction output since the service handles the rest
+  // Only keep the edit transaction output since the store handles the rest
   editTransaction = output<Transaction>();
 
   private gridApi!: GridApi;
@@ -65,7 +65,7 @@ export class TransactionsGridComponent {
   constructor() {
     // Use effect to watch for changes in transactions
     effect(() => {
-      const currentTransactions = this.transactionsService.transactions();
+      const currentTransactions = this.financeStore.transactions();
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', currentTransactions);
       }
@@ -152,7 +152,7 @@ export class TransactionsGridComponent {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: () => ({
-        values: this.transactionsService.categories(),
+        values: this.financeStore.categories(),
       }),
     },
     {
@@ -164,7 +164,7 @@ export class TransactionsGridComponent {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: () => ({
-        values: this.transactionsService.mediums(),
+        values: this.financeStore.mediums(),
       }),
     },
     {
@@ -250,20 +250,18 @@ export class TransactionsGridComponent {
       return;
     }
 
-    this.transactionsService
-      .updateTransaction(transaction.id, transaction)
-      .subscribe({
-        next: (success) => {
-          if (!success) {
-            // Refresh the grid to revert changes on failure
-            this.gridApi.refreshCells();
-          }
-        },
-        error: () => {
-          // Refresh the grid to revert changes on error
-          this.gridApi.refreshCells();
-        },
-      });
+    this.financeStore.updateTransaction({
+      id: transaction.id,
+      transaction: {
+        type: transaction.type,
+        amount: transaction.amount,
+        category: transaction.category,
+        medium: transaction.medium,
+        date: transaction.date,
+        tags: transaction.tags,
+        description: transaction.description,
+      },
+    });
   }
 
   private onEditTransaction(transaction: Transaction): void {
@@ -273,7 +271,7 @@ export class TransactionsGridComponent {
   private onDeleteTransaction(id: string): void {
     if (!confirm('Are you sure you want to delete this transaction?')) return;
 
-    this.transactionsService.deleteTransaction(id).subscribe();
+    this.financeStore.deleteTransaction(id);
   }
 
   private formatCurrency(amount: number): string {

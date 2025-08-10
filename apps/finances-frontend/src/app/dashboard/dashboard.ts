@@ -37,61 +37,82 @@ import { FinanceApiService } from '../services/finance-api.service';
           [mode]="'side'"
           [opened]="true"
         >
-          <div class="sidenav-header">
-            <div class="logo-container">
-              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
-              <span class="logo-text">Finances</span>
+          <div class="sidenav-wrapper">
+            <div class="sidenav-header">
+              <div class="logo-container">
+                <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
+                <span class="logo-text">Finances</span>
+              </div>
+            </div>
+            <div class="sidenav-main">
+              <mat-nav-list class="nav-list">
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/overview"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>dashboard</mat-icon>
+                  <span matListItemTitle>Overview</span>
+                </a>
+
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/transactions"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>receipt_long</mat-icon>
+                  <span matListItemTitle>Transactions</span>
+                </a>
+
+                <div class="nav-section-title">Manage</div>
+
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/categories"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>category</mat-icon>
+                  <span matListItemTitle>Categories</span>
+                </a>
+
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/mediums"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>payment</mat-icon>
+                  <span matListItemTitle>Payment Methods</span>
+                </a>
+
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/tags"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>local_offer</mat-icon>
+                  <span matListItemTitle>Tags</span>
+                </a>
+              </mat-nav-list>
+            </div>
+
+            <div class="sidenav-footer">
+              <mat-nav-list>
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/profile"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>person</mat-icon>
+                  <span matListItemTitle>Profile</span>
+                </a>
+
+                <a mat-list-item (click)="logout()" class="logout-item">
+                  <mat-icon matListItemIcon>logout</mat-icon>
+                  <span matListItemTitle>Logout</span>
+                </a>
+              </mat-nav-list>
             </div>
           </div>
-
-          <mat-nav-list class="nav-list">
-            <a
-              mat-list-item
-              routerLink="/dashboard/overview"
-              routerLinkActive="active-link"
-            >
-              <mat-icon matListItemIcon>dashboard</mat-icon>
-              <span matListItemTitle>Overview</span>
-            </a>
-
-            <a
-              mat-list-item
-              routerLink="/dashboard/transactions"
-              routerLinkActive="active-link"
-            >
-              <mat-icon matListItemIcon>receipt_long</mat-icon>
-              <span matListItemTitle>Transactions</span>
-            </a>
-
-            <div class="nav-section-title">Manage</div>
-
-            <a
-              mat-list-item
-              routerLink="/dashboard/categories"
-              routerLinkActive="active-link"
-            >
-              <mat-icon matListItemIcon>category</mat-icon>
-              <span matListItemTitle>Categories</span>
-            </a>
-
-            <a
-              mat-list-item
-              routerLink="/dashboard/mediums"
-              routerLinkActive="active-link"
-            >
-              <mat-icon matListItemIcon>payment</mat-icon>
-              <span matListItemTitle>Payment Methods</span>
-            </a>
-
-            <a
-              mat-list-item
-              routerLink="/dashboard/tags"
-              routerLinkActive="active-link"
-            >
-              <mat-icon matListItemIcon>local_offer</mat-icon>
-              <span matListItemTitle>Tags</span>
-            </a>
-          </mat-nav-list>
         </mat-sidenav>
 
         <mat-sidenav-content class="main-content">
@@ -107,27 +128,6 @@ import { FinanceApiService } from '../services/finance-api.service';
             </button>
 
             <span class="toolbar-title">{{ currentPageTitle() }}</span>
-
-            <span class="spacer"></span>
-
-            <button
-              mat-icon-button
-              [matMenuTriggerFor]="userMenu"
-              class="user-menu-button"
-            >
-              <mat-icon>account_circle</mat-icon>
-            </button>
-
-            <mat-menu #userMenu="matMenu">
-              <button mat-menu-item routerLink="/dashboard/profile">
-                <mat-icon>person</mat-icon>
-                <span>Profile</span>
-              </button>
-              <button mat-menu-item (click)="logout()">
-                <mat-icon>logout</mat-icon>
-                <span>Logout</span>
-              </button>
-            </mat-menu>
           </mat-toolbar>
 
           <div class="content-container">
@@ -150,7 +150,9 @@ import { FinanceApiService } from '../services/finance-api.service';
 
     .sidenav {
       width: 280px;
-      --mat-sidenav-container-background-color: var(--mat-sys-surface-container-high)
+      --mat-sidenav-container-background-color: var(--mat-sys-surface-container-high);
+      display: flex;
+      flex-direction: column;
     }
 
     .sidenav-header {
@@ -178,6 +180,30 @@ import { FinanceApiService } from '../services/finance-api.service';
 
     .nav-list {
       padding: 8px 0;
+      flex: 1;
+    }
+
+    .sidenav-wrapper {
+      height: 100%;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    .sidenav-main {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    .sidenav-footer {
+      margin-top: auto;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      padding-top: 8px;
+    }
+
+    .logout-item {
+      cursor: pointer;
     }
 
     .nav-section-title {
@@ -212,14 +238,6 @@ import { FinanceApiService } from '../services/finance-api.service';
       flex: 1;
       font-size: 20px;
       font-weight: 500;
-    }
-
-    .spacer {
-      flex: 1;
-    }
-
-    .user-menu-button {
-      margin-left: 16px;
     }
 
     .content-container {

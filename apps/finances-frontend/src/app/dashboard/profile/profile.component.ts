@@ -3,7 +3,7 @@ import {
   Component,
   inject,
   OnInit,
-  signal,
+  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -12,16 +12,15 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
-import { FinanceApiService, User } from '../../services/finance-api.service';
+import { injectUserStore } from '../../store';
 
 @Component({
   selector: 'app-profile',
@@ -36,6 +35,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
     MatInputModule,
     MatProgressSpinnerModule,
     MatDividerModule,
+    MatListModule,
   ],
   template: `
     <div class="profile-container">
@@ -49,20 +49,20 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
         </div>
       </div>
 
-      @if (loading()) {
+      @if (userStore.loading()) {
       <div class="loading-container">
         <mat-spinner></mat-spinner>
         <p>Loading profile...</p>
       </div>
-      } @else {
+      } @else if (userStore.user()) {
       <!-- Profile Info Card -->
       <mat-card class="profile-info-card">
         <mat-card-header>
           <div mat-card-avatar class="profile-avatar">
             <mat-icon>account_circle</mat-icon>
           </div>
-          <mat-card-title>{{ user()?.name }}</mat-card-title>
-          <mat-card-subtitle>@{{ user()?.username }}</mat-card-subtitle>
+          <mat-card-title>{{ userStore.displayName() }}</mat-card-title>
+          <mat-card-subtitle>@{{ userStore.username() }}</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <div class="profile-stats">
@@ -71,7 +71,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
               <div class="stat-info">
                 <span class="stat-label">Member Since</span>
                 <span class="stat-value">{{
-                  formatDate(user()?.timestamp || null)
+                  formatDate(userStore.memberSince())
                 }}</span>
               </div>
             </div>
@@ -80,7 +80,7 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
               <div class="stat-info">
                 <span class="stat-label">Last Login</span>
                 <span class="stat-value">{{
-                  formatDate(user()?.lastLoginAt || null) || 'Never'
+                  formatDate(userStore.lastLoginAt()) || 'Never'
                 }}</span>
               </div>
             </div>
@@ -90,64 +90,13 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
                 <span class="stat-label">Account Status</span>
                 <span
                   class="stat-value"
-                  [class]="user()?.isActive ? 'active' : 'inactive'"
+                  [class]="userStore.isActive() ? 'active' : 'inactive'"
                 >
-                  {{ user()?.isActive ? 'Active' : 'Inactive' }}
+                  {{ userStore.isActive() ? 'Active' : 'Inactive' }}
                 </span>
               </div>
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Edit Profile Card -->
-      <mat-card class="edit-profile-card">
-        <mat-card-header>
-          <mat-card-title>Edit Profile</mat-card-title>
-          <mat-card-subtitle
-            >Update your personal information</mat-card-subtitle
-          >
-        </mat-card-header>
-        <mat-card-content>
-          <form [formGroup]="profileForm" class="profile-form">
-            <mat-form-field appearance="outline" class="name-field">
-              <mat-label>Display Name</mat-label>
-              <input matInput formControlName="name" required />
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="username-field">
-              <mat-label>Username</mat-label>
-              <input matInput formControlName="username" readonly />
-              <mat-hint>Username cannot be changed</mat-hint>
-            </mat-form-field>
-
-            <div class="form-actions">
-              <button
-                mat-raised-button
-                color="primary"
-                (click)="updateProfile()"
-                [disabled]="!profileForm.valid || !hasChanges() || updating()"
-                class="save-button"
-              >
-                @if (updating()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                Updating... } @else {
-                <ng-container>
-                  <mat-icon>save</mat-icon>
-                  Save Changes
-                </ng-container>
-                }
-              </button>
-              <button
-                mat-button
-                (click)="resetForm()"
-                [disabled]="updating()"
-                class="reset-button"
-              >
-                Reset
-              </button>
-            </div>
-          </form>
         </mat-card-content>
       </mat-card>
 
@@ -199,31 +148,30 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
           >
         </mat-card-header>
         <mat-card-content>
-          <div class="danger-section">
-            <div class="danger-info">
-              <h4>Delete Account</h4>
-              <p>
-                Permanently delete your account and all associated data. This
-                action cannot be undone.
-              </p>
+          <mat-list-item>
+            <h4 matListItemTitle>Delete Account</h4>
+            <p matListItemLine>
+              Permanently delete your account and all associated data. This
+              action cannot be undone.
+            </p>
+            <div matListItemMeta>
+              <button
+                mat-flat-button
+                (click)="deleteAccount()"
+                [disabled]="userStore.deleting()"
+                class="delete-button"
+              >
+                @if (userStore.deleting()) {
+                <mat-spinner diameter="20"></mat-spinner>
+                Deleting... } @else {
+                <ng-container>
+                  <mat-icon>delete_forever</mat-icon>
+                  Delete Account
+                </ng-container>
+                }
+              </button>
             </div>
-            <button
-              mat-raised-button
-              color="warn"
-              (click)="deleteAccount()"
-              [disabled]="deleting()"
-              class="delete-button"
-            >
-              @if (deleting()) {
-              <mat-spinner diameter="20"></mat-spinner>
-              Deleting... } @else {
-              <ng-container>
-                <mat-icon>delete_forever</mat-icon>
-                Delete Account
-              </ng-container>
-              }
-            </button>
-          </div>
+          </mat-list-item>
         </mat-card-content>
       </mat-card>
       }
@@ -460,101 +408,62 @@ import { FinanceApiService, User } from '../../services/finance-api.service';
     }
   `,
 })
-export class ProfileComponent implements OnInit {
-  private readonly apiService = inject(FinanceApiService);
+export class ProfileComponent {
+  protected readonly userStore = injectUserStore();
   private readonly fb = inject(FormBuilder);
-  private readonly snackBar = inject(MatSnackBar);
-  private readonly router = inject(Router);
-
-  loading = signal(true);
-  updating = signal(false);
-  deleting = signal(false);
-  user = signal<User | null>(null);
-  originalName = signal('');
 
   profileForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(1)]],
     username: [''],
   });
 
-  ngOnInit() {
-    this.loadProfile();
-  }
+  constructor() {
+    this.userStore.loadProfile();
 
-  private loadProfile() {
-    this.apiService.getProfile().subscribe({
-      next: (user) => {
-        this.user.set(user);
-        this.originalName.set(user.name);
-        this.profileForm.patchValue({
-          name: user.name,
-          username: user.username,
-        });
-        this.loading.set(false);
-      },
-      error: (error) => {
-        console.error('Error loading profile:', error);
-        this.loading.set(false);
-        this.snackBar.open('Error loading profile', 'Close', {
-          duration: 3000,
-        });
-      },
+    // Update form when user data changes
+    effect(() => {
+      const user = this.userStore.user();
+      if (user) {
+        this.profileForm.patchValue(
+          {
+            name: user.name,
+            username: user.username,
+          },
+          { emitEvent: false }
+        ); // Prevent triggering valueChanges
+      }
     });
   }
 
-  hasChanges(): boolean {
-    return this.profileForm.value.name !== this.originalName();
-  }
-
   updateProfile() {
-    if (!this.profileForm.valid || !this.hasChanges()) return;
+    if (!this.profileForm.valid || !this.hasFormChanges()) return;
 
-    this.updating.set(true);
     const updates = {
       name: this.profileForm.value.name.trim(),
     };
 
-    this.apiService.updateProfile(updates).subscribe({
-      next: (updatedUser) => {
-        this.updating.set(false);
-        this.user.set(updatedUser);
-        this.originalName.set(updatedUser.name);
-        this.snackBar.open('Profile updated successfully', 'Close', {
-          duration: 3000,
-        });
-      },
-      error: (error) => {
-        console.error('Error updating profile:', error);
-        this.updating.set(false);
-        this.snackBar.open('Error updating profile', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    this.userStore.updateProfile(updates);
+  }
+
+  hasFormChanges(): boolean {
+    const currentName = this.profileForm.value.name;
+    const originalName = this.userStore.user()?.name;
+    return currentName !== originalName;
   }
 
   resetForm() {
-    this.profileForm.patchValue({
-      name: this.originalName(),
-    });
+    const user = this.userStore.user();
+    if (user) {
+      this.profileForm.patchValue({
+        name: user.name,
+        username: user.username,
+      });
+    }
   }
 
   logout() {
     const refreshToken = localStorage.getItem('refreshToken');
-    this.apiService.logout(refreshToken || undefined).subscribe({
-      next: () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        this.router.navigate(['/']);
-      },
-      error: (error) => {
-        console.error('Logout error:', error);
-        // Clear tokens anyway
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        this.router.navigate(['/']);
-      },
-    });
+    this.userStore.logout(refreshToken || undefined);
   }
 
   deleteAccount() {
@@ -563,37 +472,15 @@ export class ProfileComponent implements OnInit {
     );
 
     if (confirmation !== 'DELETE') {
-      this.snackBar.open('Account deletion cancelled', 'Close', {
-        duration: 3000,
-      });
       return;
     }
 
-    this.deleting.set(true);
-
-    this.apiService.deleteAccount().subscribe({
-      next: () => {
-        this.deleting.set(false);
-        this.snackBar.open('Account deleted successfully', 'Close', {
-          duration: 5000,
-        });
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        this.router.navigate(['/']);
-      },
-      error: (error) => {
-        console.error('Error deleting account:', error);
-        this.deleting.set(false);
-        this.snackBar.open('Error deleting account', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    this.userStore.deleteAccount();
   }
 
   formatDate(date: Date | string | null): string {
     if (!date) return 'Never';
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('en-CA', {
       month: 'long',
       day: 'numeric',
       year: 'numeric',

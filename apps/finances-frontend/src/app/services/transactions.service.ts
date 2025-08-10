@@ -2,6 +2,16 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, forkJoin, BehaviorSubject, catchError, of } from 'rxjs';
 import { FinanceApiService, Transaction } from './finance-api.service';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachMonthOfInterval,
+  isWithinInterval,
+  subMonths,
+  startOfYear,
+  endOfYear,
+} from 'date-fns';
 
 @Injectable({
   providedIn: 'root',
@@ -43,6 +53,180 @@ export class TransactionsService {
   readonly netAmount = computed(
     () => this.totalIncome() - this.totalExpenses()
   );
+
+  // Monthly analytics computed values
+  readonly currentMonthTransactions = computed(() => {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+
+    return this.transactions().filter((t) =>
+      isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
+    );
+  });
+
+  readonly currentMonthIncome = computed(() =>
+    this.currentMonthTransactions()
+      .filter((t) => t.type === 'INCOME')
+      .reduce((sum, t) => sum + t.amount, 0)
+  );
+
+  readonly currentMonthExpenses = computed(() =>
+    this.currentMonthTransactions()
+      .filter((t) => t.type === 'EXPENSE')
+      .reduce((sum, t) => sum + t.amount, 0)
+  );
+
+  readonly currentMonthNet = computed(
+    () => this.currentMonthIncome() - this.currentMonthExpenses()
+  );
+
+  // Previous month for comparison
+  readonly previousMonthTransactions = computed(() => {
+    const lastMonth = subMonths(new Date(), 1);
+    const monthStart = startOfMonth(lastMonth);
+    const monthEnd = endOfMonth(lastMonth);
+
+    return this.transactions().filter((t) =>
+      isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
+    );
+  });
+
+  readonly previousMonthExpenses = computed(() =>
+    this.previousMonthTransactions()
+      .filter((t) => t.type === 'EXPENSE')
+      .reduce((sum, t) => sum + t.amount, 0)
+  );
+
+  // Monthly trend data (last 12 months)
+  readonly monthlyTrends = computed(() => {
+    const now = new Date();
+    const startDate = subMonths(now, 11); // Last 12 months
+    const months = eachMonthOfInterval({ start: startDate, end: now });
+
+    return months.map((month) => {
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      const monthTransactions = this.transactions().filter((t) =>
+        isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
+      );
+
+      const income = monthTransactions
+        .filter((t) => t.type === 'INCOME')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const expenses = monthTransactions
+        .filter((t) => t.type === 'EXPENSE')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      return {
+        month: format(month, 'MMM yyyy'),
+        date: month,
+        income,
+        expenses,
+        net: income - expenses,
+        transactionCount: monthTransactions.length,
+      };
+    });
+  });
+
+  // Category breakdown for current month
+  readonly currentMonthCategoryBreakdown = computed(() => {
+    const transactions = this.currentMonthTransactions().filter(
+      (t) => t.type === 'EXPENSE'
+    );
+    const categoryMap = new Map<string, number>();
+
+    transactions.forEach((t) => {
+      categoryMap.set(
+        t.category,
+        (categoryMap.get(t.category) || 0) + t.amount
+      );
+    });
+
+    return Array.from(categoryMap.entries())
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount);
+  });
+
+  // Medium breakdown
+  readonly mediumBreakdown = computed(() => {
+    const transactions = this.transactions();
+    const mediumMap = new Map<
+      string,
+      { income: number; expenses: number; count: number }
+    >();
+
+    transactions.forEach((t) => {
+      const current = mediumMap.get(t.medium) || {
+        income: 0,
+        expenses: 0,
+        count: 0,
+      };
+      if (t.type === 'INCOME') {
+        current.income += t.amount;
+      } else {
+        current.expenses += t.amount;
+      }
+      current.count++;
+      mediumMap.set(t.medium, current);
+    });
+
+    return Array.from(mediumMap.entries())
+      .map(([medium, data]) => ({ medium, ...data }))
+      .sort((a, b) => b.income + b.expenses - (a.income + a.expenses));
+  });
+
+  // Financial health score (0-100)
+  readonly financialHealthScore = computed(() => {
+    const monthlyData = this.monthlyTrends();
+    if (monthlyData.length < 3) return 50; // Default score for insufficient data
+
+    const recent3Months = monthlyData.slice(-3);
+    const avgNet = recent3Months.reduce((sum, m) => sum + m.net, 0) / 3;
+    const avgExpenses =
+      recent3Months.reduce((sum, m) => sum + m.expenses, 0) / 3;
+
+    // Score factors
+    let score = 50; // Base score
+
+    // Net worth trend (+/- 30 points)
+    if (avgNet > 0) score += Math.min(30, (avgNet / 1000) * 5);
+    else score -= Math.min(30, (Math.abs(avgNet) / 1000) * 5);
+
+    // Spending consistency (+/- 20 points)
+    const expenseVariance =
+      recent3Months.reduce(
+        (sum, m) => sum + Math.pow(m.expenses - avgExpenses, 2),
+        0
+      ) / 3;
+    const consistency = Math.max(0, 20 - expenseVariance / 10000);
+    score += consistency;
+
+    return Math.max(0, Math.min(100, Math.round(score)));
+  });
+
+  // Top spending patterns
+  readonly topMerchants = computed(() => {
+    const merchantMap = new Map<string, { amount: number; count: number }>();
+
+    this.transactions()
+      .filter((t) => t.type === 'EXPENSE')
+      .forEach((t) => {
+        const current = merchantMap.get(t.description) || {
+          amount: 0,
+          count: 0,
+        };
+        current.amount += t.amount;
+        current.count++;
+        merchantMap.set(t.description, current);
+      });
+
+    return Array.from(merchantMap.entries())
+      .map(([description, data]) => ({ description, ...data }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+  });
 
   constructor() {
     // Load initial data

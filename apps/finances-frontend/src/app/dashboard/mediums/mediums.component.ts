@@ -21,7 +21,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
-import { FinanceApiService } from '../../services/finance-api.service';
+import { injectFinanceStore } from '../../store/finance.provider';
 
 @Component({
   selector: 'app-mediums',
@@ -89,7 +89,8 @@ import { FinanceApiService } from '../../services/finance-api.service';
         <mat-card-header>
           <mat-card-title>All Payment Methods</mat-card-title>
           <mat-card-subtitle
-            >{{ mediums().length }} payment methods available</mat-card-subtitle
+            >{{ financeStore.mediums().length }} payment methods
+            available</mat-card-subtitle
           >
         </mat-card-header>
         <mat-card-content>
@@ -98,7 +99,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
             <mat-spinner></mat-spinner>
             <p>Loading payment methods...</p>
           </div>
-          } @else if (mediums().length === 0) {
+          } @else if (financeStore.mediums().length === 0) {
           <div class="empty-state">
             <mat-icon>payment</mat-icon>
             <h3>No payment methods yet</h3>
@@ -109,7 +110,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
           </div>
           } @else {
           <mat-list class="mediums-list">
-            @for (medium of mediums(); track medium) {
+            @for (medium of financeStore.mediums(); track medium) {
             <mat-list-item class="medium-item">
               <div matListItemTitle class="medium-info">
                 <mat-icon matListItemIcon class="medium-icon">{{
@@ -153,7 +154,9 @@ import { FinanceApiService } from '../../services/finance-api.service';
             <button
               mat-stroked-button
               (click)="addSuggestedMedium(suggestion)"
-              [disabled]="mediums().includes(suggestion) || submitting()"
+              [disabled]="
+                financeStore.mediums().includes(suggestion) || submitting()
+              "
               class="suggestion-chip"
             >
               <mat-icon>{{ getMediumIcon(suggestion) }}</mat-icon>
@@ -316,14 +319,13 @@ import { FinanceApiService } from '../../services/finance-api.service';
   `,
 })
 export class MediumsComponent implements OnInit {
-  private readonly apiService = inject(FinanceApiService);
+  readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
 
   loading = signal(true);
   submitting = signal(false);
   deleting = signal(new Set<string>());
-  mediums = signal<string[]>([]);
 
   mediumForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -345,23 +347,11 @@ export class MediumsComponent implements OnInit {
   ];
 
   ngOnInit() {
-    this.loadMediums();
-  }
-
-  private loadMediums() {
-    this.apiService.getAllMediums().subscribe({
-      next: (mediums) => {
-        this.mediums.set(mediums);
-        this.loading.set(false);
-      },
-      error: (error) => {
-        console.error('Error loading mediums:', error);
-        this.loading.set(false);
-        this.snackBar.open('Error loading payment methods', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    // Load data if not already loaded
+    if (!this.financeStore.initialLoadComplete()) {
+      this.financeStore.loadAllData();
+    }
+    this.loading.set(false);
   }
 
   addMedium() {
@@ -370,44 +360,15 @@ export class MediumsComponent implements OnInit {
     this.submitting.set(true);
     const mediumName = this.mediumForm.value.name.trim();
 
-    this.apiService.createMedium({ name: mediumName }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.snackBar.open('Payment method added successfully', 'Close', {
-          duration: 3000,
-        });
-        this.mediumForm.reset();
-        this.loadMediums();
-      },
-      error: (error) => {
-        console.error('Error adding medium:', error);
-        this.submitting.set(false);
-        this.snackBar.open('Error adding payment method', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    this.financeStore.createMedium(mediumName);
+    this.submitting.set(false);
+    this.mediumForm.reset();
   }
 
   addSuggestedMedium(mediumName: string) {
     this.submitting.set(true);
-
-    this.apiService.createMedium({ name: mediumName }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.snackBar.open(`"${mediumName}" added successfully`, 'Close', {
-          duration: 3000,
-        });
-        this.loadMediums();
-      },
-      error: (error) => {
-        console.error('Error adding suggested medium:', error);
-        this.submitting.set(false);
-        this.snackBar.open('Error adding payment method', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    this.financeStore.createMedium(mediumName);
+    this.submitting.set(false);
   }
 
   deleteMedium(mediumName: string) {
@@ -423,31 +384,12 @@ export class MediumsComponent implements OnInit {
     newDeleting.add(mediumName);
     this.deleting.set(newDeleting);
 
-    this.apiService.deleteMedium(mediumName).subscribe({
-      next: () => {
-        // Remove from deleting set
-        const updatedDeleting = new Set(this.deleting());
-        updatedDeleting.delete(mediumName);
-        this.deleting.set(updatedDeleting);
+    this.financeStore.deleteMedium(mediumName);
 
-        this.snackBar.open('Payment method deleted successfully', 'Close', {
-          duration: 3000,
-        });
-        this.loadMediums();
-      },
-      error: (error) => {
-        console.error('Error deleting medium:', error);
-
-        // Remove from deleting set on error too
-        const updatedDeleting = new Set(this.deleting());
-        updatedDeleting.delete(mediumName);
-        this.deleting.set(updatedDeleting);
-
-        this.snackBar.open('Error deleting payment method', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    // Remove from deleting set
+    const updatedDeleting = new Set(this.deleting());
+    updatedDeleting.delete(mediumName);
+    this.deleting.set(updatedDeleting);
   }
 
   getMediumIcon(mediumName: string): string {

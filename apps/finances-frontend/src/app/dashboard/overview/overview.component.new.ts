@@ -3,7 +3,6 @@ import {
   Component,
   inject,
   computed,
-  OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -17,7 +16,7 @@ import { Router } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
 import { Chart, ChartConfiguration, ChartType, registerables } from 'chart.js';
 import { Transaction } from '../../services/finance-api.service';
-import { injectFinanceStore } from '../../store/finance.provider';
+import { TransactionsService } from '../../services/transactions.service';
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -54,16 +53,9 @@ interface MonthComparison {
     BaseChartDirective,
   ],
 })
-export class OverviewComponent implements OnInit {
-  readonly financeStore = injectFinanceStore();
+export class OverviewComponent {
+  readonly transactionsService = inject(TransactionsService);
   private readonly router = inject(Router);
-
-  ngOnInit() {
-    // Load all data when component initializes
-    if (!this.financeStore.initialLoadComplete()) {
-      this.financeStore.loadAllData();
-    }
-  }
 
   // Chart options
   readonly chartOptions: ChartConfiguration['options'] = {
@@ -96,11 +88,11 @@ export class OverviewComponent implements OnInit {
     },
   };
 
-  // Computed values based on the store
+  // Computed values based on the transactions service
   readonly stats = computed(() => {
-    const transactions = this.financeStore.transactions();
-    const income = this.financeStore.totalIncome();
-    const expenses = this.financeStore.totalExpenses();
+    const transactions = this.transactionsService.transactions();
+    const income = this.transactionsService.totalIncome();
+    const expenses = this.transactionsService.totalExpenses();
 
     // Find most common category and medium
     const categoryCount = new Map<string, number>();
@@ -123,23 +115,26 @@ export class OverviewComponent implements OnInit {
     return {
       totalIncome: income,
       totalExpenses: expenses,
-      netWorth: this.financeStore.netAmount(),
-      transactionCount: this.financeStore.transactionCount(),
+      netWorth: this.transactionsService.netAmount(),
+      transactionCount: this.transactionsService.transactionCount(),
       topCategory,
       topMedium,
     };
   });
 
   readonly recentTransactions = computed(() => {
-    return this.financeStore.recentTransactions();
+    return this.transactionsService
+      .transactions()
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
   });
 
-  readonly loading = computed(() => this.financeStore.loading());
+  readonly loading = computed(() => this.transactionsService.loading());
 
   // Monthly comparisons
   readonly monthlyIncomeComparison = computed(() => {
-    const current = this.financeStore.currentMonthIncome();
-    const previous = this.financeStore
+    const current = this.transactionsService.currentMonthIncome();
+    const previous = this.transactionsService
       .previousMonthTransactions()
       .filter((t) => t.type === 'INCOME')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -148,15 +143,15 @@ export class OverviewComponent implements OnInit {
   });
 
   readonly monthlyExpenseComparison = computed(() => {
-    const current = this.financeStore.currentMonthExpenses();
-    const previous = this.financeStore.previousMonthExpenses();
+    const current = this.transactionsService.currentMonthExpenses();
+    const previous = this.transactionsService.previousMonthExpenses();
 
     return this.calculateComparison(current, previous);
   });
 
   // Chart data
   readonly monthlyTrendsChartData = computed(() => {
-    const trends = this.financeStore.monthlyTrends();
+    const trends = this.transactionsService.monthlyTrends();
 
     return {
       labels: trends.map((t) => t.month),
@@ -187,7 +182,7 @@ export class OverviewComponent implements OnInit {
   });
 
   readonly categoryChartData = computed(() => {
-    const breakdown = this.financeStore.currentMonthCategoryBreakdown();
+    const breakdown = this.transactionsService.currentMonthCategoryBreakdown();
 
     return {
       labels: breakdown.map((c) => c.category),
@@ -242,7 +237,7 @@ export class OverviewComponent implements OnInit {
   }
 
   getHealthScoreClass(): string {
-    const score = this.financeStore.financialHealthScore();
+    const score = this.transactionsService.financialHealthScore();
     if (score >= 80) return 'excellent';
     if (score >= 60) return 'good';
     if (score >= 40) return 'fair';
@@ -250,7 +245,7 @@ export class OverviewComponent implements OnInit {
   }
 
   getHealthScoreDescription(): string {
-    const score = this.financeStore.financialHealthScore();
+    const score = this.transactionsService.financialHealthScore();
     if (score >= 80) return 'Excellent financial health!';
     if (score >= 60) return 'Good financial position';
     if (score >= 40) return 'Room for improvement';
@@ -270,7 +265,7 @@ export class OverviewComponent implements OnInit {
   }
 
   getAverageMonthlySpending(): number {
-    const trends = this.financeStore.monthlyTrends();
+    const trends = this.transactionsService.monthlyTrends();
     if (trends.length === 0) return 0;
 
     return (
@@ -279,7 +274,7 @@ export class OverviewComponent implements OnInit {
   }
 
   getAverageTransactionAmount(): number {
-    const transactions = this.financeStore.transactions();
+    const transactions = this.transactionsService.transactions();
     if (transactions.length === 0) return 0;
 
     const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
@@ -287,7 +282,7 @@ export class OverviewComponent implements OnInit {
   }
 
   getMostActiveDay(): string {
-    const transactions = this.financeStore.transactions();
+    const transactions = this.transactionsService.transactions();
     const dayCount = new Map<string, number>();
 
     transactions.forEach((t) => {

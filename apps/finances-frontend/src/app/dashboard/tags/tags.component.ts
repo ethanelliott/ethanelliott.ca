@@ -20,7 +20,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
-import { FinanceApiService } from '../../services/finance-api.service';
+import { injectFinanceStore } from '../../store/finance.provider';
 
 @Component({
   selector: 'app-tags',
@@ -89,7 +89,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
         <mat-card-header>
           <mat-card-title>All Tags</mat-card-title>
           <mat-card-subtitle
-            >{{ tags().length }} tags available</mat-card-subtitle
+            >{{ financeStore.tags().length }} tags available</mat-card-subtitle
           >
         </mat-card-header>
         <mat-card-content>
@@ -98,7 +98,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
             <mat-spinner></mat-spinner>
             <p>Loading tags...</p>
           </div>
-          } @else if (tags().length === 0) {
+          } @else if (financeStore.tags().length === 0) {
           <div class="empty-state">
             <mat-icon>local_offer</mat-icon>
             <h3>No tags yet</h3>
@@ -108,7 +108,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
           </div>
           } @else {
           <div class="tags-container-chips">
-            @for (tag of tags(); track tag) {
+            @for (tag of financeStore.tags(); track tag) {
             <div class="tag-chip-container">
               <mat-chip class="tag-chip" [disabled]="deleting().has(tag)">
                 <mat-icon matChipAvatar>local_offer</mat-icon>
@@ -146,7 +146,9 @@ import { FinanceApiService } from '../../services/finance-api.service';
             @for (suggestion of commonTags; track suggestion) {
             <mat-chip
               (click)="addSuggestedTag(suggestion)"
-              [disabled]="tags().includes(suggestion) || submitting()"
+              [disabled]="
+                financeStore.tags().includes(suggestion) || submitting()
+              "
               class="suggestion-chip"
             >
               <mat-icon matChipAvatar>add</mat-icon>
@@ -312,14 +314,13 @@ import { FinanceApiService } from '../../services/finance-api.service';
   `,
 })
 export class TagsComponent implements OnInit {
-  private readonly apiService = inject(FinanceApiService);
+  readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
 
   loading = signal(true);
   submitting = signal(false);
   deleting = signal(new Set<string>());
-  tags = signal<string[]>([]);
 
   tagForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -349,21 +350,11 @@ export class TagsComponent implements OnInit {
   ];
 
   ngOnInit() {
-    this.loadTags();
-  }
-
-  private loadTags() {
-    this.apiService.getAllTags().subscribe({
-      next: (tags) => {
-        this.tags.set(tags);
-        this.loading.set(false);
-      },
-      error: (error) => {
-        console.error('Error loading tags:', error);
-        this.loading.set(false);
-        this.snackBar.open('Error loading tags', 'Close', { duration: 3000 });
-      },
-    });
+    // Load data if not already loaded
+    if (!this.financeStore.initialLoadComplete()) {
+      this.financeStore.loadAllData();
+    }
+    this.loading.set(false);
   }
 
   addTag() {
@@ -372,40 +363,15 @@ export class TagsComponent implements OnInit {
     this.submitting.set(true);
     const tagName = this.tagForm.value.name.trim().toLowerCase();
 
-    this.apiService.createTag({ name: tagName }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.snackBar.open('Tag added successfully', 'Close', {
-          duration: 3000,
-        });
-        this.tagForm.reset();
-        this.loadTags();
-      },
-      error: (error) => {
-        console.error('Error adding tag:', error);
-        this.submitting.set(false);
-        this.snackBar.open('Error adding tag', 'Close', { duration: 3000 });
-      },
-    });
+    this.financeStore.createTag(tagName);
+    this.submitting.set(false);
+    this.tagForm.reset();
   }
 
   addSuggestedTag(tagName: string) {
     this.submitting.set(true);
-
-    this.apiService.createTag({ name: tagName }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.snackBar.open(`"${tagName}" tag added successfully`, 'Close', {
-          duration: 3000,
-        });
-        this.loadTags();
-      },
-      error: (error) => {
-        console.error('Error adding suggested tag:', error);
-        this.submitting.set(false);
-        this.snackBar.open('Error adding tag', 'Close', { duration: 3000 });
-      },
-    });
+    this.financeStore.createTag(tagName);
+    this.submitting.set(false);
   }
 
   deleteTag(tagName: string) {
@@ -417,28 +383,11 @@ export class TagsComponent implements OnInit {
     newDeleting.add(tagName);
     this.deleting.set(newDeleting);
 
-    this.apiService.deleteTag(tagName).subscribe({
-      next: () => {
-        // Remove from deleting set
-        const updatedDeleting = new Set(this.deleting());
-        updatedDeleting.delete(tagName);
-        this.deleting.set(updatedDeleting);
+    this.financeStore.deleteTag(tagName);
 
-        this.snackBar.open('Tag deleted successfully', 'Close', {
-          duration: 3000,
-        });
-        this.loadTags();
-      },
-      error: (error) => {
-        console.error('Error deleting tag:', error);
-
-        // Remove from deleting set on error too
-        const updatedDeleting = new Set(this.deleting());
-        updatedDeleting.delete(tagName);
-        this.deleting.set(updatedDeleting);
-
-        this.snackBar.open('Error deleting tag', 'Close', { duration: 3000 });
-      },
-    });
+    // Remove from deleting set
+    const updatedDeleting = new Set(this.deleting());
+    updatedDeleting.delete(tagName);
+    this.deleting.set(updatedDeleting);
   }
 }

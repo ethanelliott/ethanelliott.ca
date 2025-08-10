@@ -125,8 +125,12 @@ export class FinanceApiService {
   }
 
   // User Profile
-  getProfile(): Observable<User> {
-    return this._http.get<User>(`${this.baseUrl}/users/profile`);
+  getProfile() {
+    return this._http.get<{
+      success: boolean;
+      user: User;
+      credentials: Array<any>;
+    }>(`${this.baseUrl}/users/profile`);
   }
 
   updateProfile(updates: { name?: string }): Observable<User> {

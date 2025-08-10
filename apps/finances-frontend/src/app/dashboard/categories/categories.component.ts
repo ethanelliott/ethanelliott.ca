@@ -21,7 +21,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
-import { FinanceApiService } from '../../services/finance-api.service';
+import { injectFinanceStore } from '../../store/finance.provider';
 
 @Component({
   selector: 'app-categories',
@@ -91,7 +91,8 @@ import { FinanceApiService } from '../../services/finance-api.service';
         <mat-card-header>
           <mat-card-title>All Categories</mat-card-title>
           <mat-card-subtitle
-            >{{ categories().length }} categories available</mat-card-subtitle
+            >{{ financeStore.categories().length }} categories
+            available</mat-card-subtitle
           >
         </mat-card-header>
         <mat-card-content>
@@ -100,7 +101,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
             <mat-spinner></mat-spinner>
             <p>Loading categories...</p>
           </div>
-          } @else if (categories().length === 0) {
+          } @else if (financeStore.categories().length === 0) {
           <div class="empty-state">
             <mat-icon>category</mat-icon>
             <h3>No categories yet</h3>
@@ -111,7 +112,7 @@ import { FinanceApiService } from '../../services/finance-api.service';
           </div>
           } @else {
           <mat-list class="categories-list">
-            @for (category of categories(); track category) {
+            @for (category of financeStore.categories(); track category) {
             <mat-list-item class="category-item">
               <div matListItemTitle class="category-info">
                 <mat-icon matListItemIcon class="category-icon"
@@ -155,7 +156,9 @@ import { FinanceApiService } from '../../services/finance-api.service';
             <button
               mat-stroked-button
               (click)="addSuggestedCategory(suggestion)"
-              [disabled]="categories().includes(suggestion) || submitting()"
+              [disabled]="
+                financeStore.categories().includes(suggestion) || submitting()
+              "
               class="suggestion-chip"
             >
               {{ suggestion }}
@@ -316,14 +319,13 @@ import { FinanceApiService } from '../../services/finance-api.service';
   `,
 })
 export class CategoriesComponent implements OnInit {
-  private readonly apiService = inject(FinanceApiService);
+  readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
 
   loading = signal(true);
   submitting = signal(false);
   deleting = signal(new Set<string>());
-  categories = signal<string[]>([]);
 
   categoryForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -351,23 +353,11 @@ export class CategoriesComponent implements OnInit {
   ];
 
   ngOnInit() {
-    this.loadCategories();
-  }
-
-  private loadCategories() {
-    this.apiService.getAllCategories().subscribe({
-      next: (categories) => {
-        this.categories.set(categories);
-        this.loading.set(false);
-      },
-      error: (error) => {
-        console.error('Error loading categories:', error);
-        this.loading.set(false);
-        this.snackBar.open('Error loading categories', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    // Load data if not already loaded
+    if (!this.financeStore.initialLoadComplete()) {
+      this.financeStore.loadAllData();
+    }
+    this.loading.set(false);
   }
 
   addCategory() {
@@ -376,44 +366,15 @@ export class CategoriesComponent implements OnInit {
     this.submitting.set(true);
     const categoryName = this.categoryForm.value.name.trim();
 
-    this.apiService.createCategory({ name: categoryName }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.snackBar.open('Category added successfully', 'Close', {
-          duration: 3000,
-        });
-        this.categoryForm.reset();
-        this.loadCategories();
-      },
-      error: (error) => {
-        console.error('Error adding category:', error);
-        this.submitting.set(false);
-        this.snackBar.open('Error adding category', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    this.financeStore.createCategory(categoryName);
+    this.submitting.set(false);
+    this.categoryForm.reset();
   }
 
   addSuggestedCategory(categoryName: string) {
     this.submitting.set(true);
-
-    this.apiService.createCategory({ name: categoryName }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.snackBar.open(`"${categoryName}" added successfully`, 'Close', {
-          duration: 3000,
-        });
-        this.loadCategories();
-      },
-      error: (error) => {
-        console.error('Error adding suggested category:', error);
-        this.submitting.set(false);
-        this.snackBar.open('Error adding category', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    this.financeStore.createCategory(categoryName);
+    this.submitting.set(false);
   }
 
   deleteCategory(categoryName: string) {
@@ -429,30 +390,11 @@ export class CategoriesComponent implements OnInit {
     newDeleting.add(categoryName);
     this.deleting.set(newDeleting);
 
-    this.apiService.deleteCategory(categoryName).subscribe({
-      next: () => {
-        // Remove from deleting set
-        const updatedDeleting = new Set(this.deleting());
-        updatedDeleting.delete(categoryName);
-        this.deleting.set(updatedDeleting);
+    this.financeStore.deleteCategory(categoryName);
 
-        this.snackBar.open('Category deleted successfully', 'Close', {
-          duration: 3000,
-        });
-        this.loadCategories();
-      },
-      error: (error) => {
-        console.error('Error deleting category:', error);
-
-        // Remove from deleting set on error too
-        const updatedDeleting = new Set(this.deleting());
-        updatedDeleting.delete(categoryName);
-        this.deleting.set(updatedDeleting);
-
-        this.snackBar.open('Error deleting category', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
+    // Remove from deleting set
+    const updatedDeleting = new Set(this.deleting());
+    updatedDeleting.delete(categoryName);
+    this.deleting.set(updatedDeleting);
   }
 }

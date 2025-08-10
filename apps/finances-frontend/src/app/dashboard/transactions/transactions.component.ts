@@ -1,5 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  OnInit,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -7,7 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Transaction } from '../../services/finance-api.service';
-import { TransactionsService } from '../../services/transactions.service';
+import { injectFinanceStore } from '../../store/finance.provider';
 import { TransactionDialogComponent } from './transaction-dialog.component';
 import { TransactionsGridComponent } from './transactions-grid.component';
 
@@ -31,7 +36,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
         <div class="header-content">
           <h1 class="page-title">Transactions</h1>
           <p class="page-subtitle">
-            {{ transactionsService.transactionCount() }} transactions total
+            {{ financeStore.transactionCount() }} transactions total
           </p>
         </div>
         <button
@@ -48,12 +53,12 @@ import { TransactionsGridComponent } from './transactions-grid.component';
       <!-- Transactions Grid -->
       <mat-card class="grid-card">
         <mat-card-content>
-          @if (transactionsService.loading()) {
+          @if (financeStore.loading()) {
           <div class="loading-container">
             <mat-spinner></mat-spinner>
             <p>Loading transactions...</p>
           </div>
-          } @else if (transactionsService.transactionCount() === 0) {
+          } @else if (financeStore.transactionCount() === 0) {
           <div class="empty-state">
             <mat-icon>receipt_long</mat-icon>
             <h3>No transactions yet</h3>
@@ -160,9 +165,16 @@ import { TransactionsGridComponent } from './transactions-grid.component';
     }
   `,
 })
-export class TransactionsComponent {
-  readonly transactionsService = inject(TransactionsService);
+export class TransactionsComponent implements OnInit {
+  readonly financeStore = injectFinanceStore();
   private readonly dialog = inject(MatDialog);
+
+  ngOnInit() {
+    // Load all data when component initializes
+    if (!this.financeStore.initialLoadComplete()) {
+      this.financeStore.loadAllData();
+    }
+  }
 
   openTransactionDialog(transaction?: Transaction) {
     const dialogRef = this.dialog.open(TransactionDialogComponent, {
@@ -170,16 +182,16 @@ export class TransactionsComponent {
       maxWidth: '90vw',
       data: {
         transaction,
-        categories: this.transactionsService.categories(),
-        mediums: this.transactionsService.mediums(),
-        tags: this.transactionsService.tags(),
+        categories: this.financeStore.categories(),
+        mediums: this.financeStore.mediums(),
+        tags: this.financeStore.tags(),
       },
     });
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result && !result.error) {
-        // The service handles the success notifications, just refresh data if needed
-        this.transactionsService.loadAllData();
+        // The store handles the success notifications, just refresh data if needed
+        this.financeStore.refreshTransactions();
       }
     });
   }

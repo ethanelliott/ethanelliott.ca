@@ -31,7 +31,7 @@ import {
   FinanceApiService,
   Transaction,
 } from '../../services/finance-api.service';
-import { TransactionsService } from '../../services/transactions.service';
+import { injectFinanceStore } from '../../store/finance.provider';
 
 export interface TransactionDialogData {
   transaction?: Transaction;
@@ -264,7 +264,7 @@ export interface TransactionDialogData {
   `,
 })
 export class TransactionDialogComponent implements OnInit {
-  private readonly transactionsService = inject(TransactionsService);
+  private readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<TransactionDialogComponent>);
 
@@ -373,22 +373,19 @@ export class TransactionDialogComponent implements OnInit {
       description: formValue.description,
     };
 
-    const operation = this.data.transaction
-      ? this.transactionsService.updateTransaction(
-          this.data.transaction.id!,
-          transaction
-        )
-      : this.transactionsService.createTransaction(transaction);
+    if (this.data.transaction) {
+      // Update existing transaction
+      this.financeStore.updateTransaction({
+        id: this.data.transaction.id!,
+        transaction,
+      });
+    } else {
+      // Create new transaction
+      this.financeStore.createTransaction(transaction);
+    }
 
-    operation.subscribe({
-      next: (success) => {
-        this.submitting.set(false);
-        this.dialogRef.close({ success });
-      },
-      error: () => {
-        this.submitting.set(false);
-        this.dialogRef.close({ error: true });
-      },
-    });
+    // Close dialog immediately - the store handles the operation
+    this.submitting.set(false);
+    this.dialogRef.close({ success: true });
   }
 }
