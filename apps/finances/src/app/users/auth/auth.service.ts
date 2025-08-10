@@ -16,14 +16,14 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   AuthenticatorTransportFuture,
 } from '@simplewebauthn/server';
-import { Database } from '../data-source';
+import { Database } from '../../data-source';
 import {
   User,
   UserCredential,
   RefreshToken,
   UserRegistration,
   UserLogin,
-} from './user';
+} from '../user';
 
 export interface JWTPayload {
   userId: string;

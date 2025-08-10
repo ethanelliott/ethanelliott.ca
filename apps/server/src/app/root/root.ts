@@ -1,8 +1,11 @@
 import { FastifyInstance } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 
 export async function RootRouter(fastify: FastifyInstance) {
-  fastify.get(
+  const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
+
+  typedFastify.get(
     '/',
     { preHandler: fastify.circuitBreaker() },
     async function (request, reply) {
@@ -10,7 +13,7 @@ export async function RootRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.post(
+  typedFastify.post(
     '/',
     {
       preHandler: fastify.circuitBreaker(),
@@ -21,6 +24,7 @@ export async function RootRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
+      // request.body is now automatically typed based on the schema
       return reply.send({ message: 'Hello API', echo: request.body });
     }
   );

@@ -51,7 +51,17 @@ export class CategoriesService {
     return this._repository.remove(category);
   }
 
-  update(id: string, category: Category) {
-    return this._repository.update(id, category);
+  async update(name: string, category: Category) {
+    const existingCategory = await this._repository.findOneBy({ name });
+
+    if (!existingCategory) {
+      throw new HttpErrors.NotFound(`Category with name "${name}" not found.`);
+    }
+
+    // Update the category
+    await this._repository.update({ name }, category);
+
+    // Return the updated category
+    return this.get(name);
   }
 }

@@ -49,7 +49,17 @@ export class MediumsService {
     return this._repository.remove(Medium);
   }
 
-  update(id: string, medium: Medium) {
-    return this._repository.update(id, medium);
+  async update(name: string, medium: Medium) {
+    const existingMedium = await this._repository.findOneBy({ name });
+
+    if (!existingMedium) {
+      throw new HttpErrors.NotFound(`Medium with name "${name}" not found.`);
+    }
+
+    // Update the medium
+    await this._repository.update({ name }, medium);
+
+    // Return the updated medium
+    return this.get(name);
   }
 }

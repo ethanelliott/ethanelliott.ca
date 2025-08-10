@@ -15,6 +15,7 @@ import {
 } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
+import { Router } from '@angular/router';
 import { startAuthentication } from '@simplewebauthn/browser';
 import { firstValueFrom } from 'rxjs';
 
@@ -89,6 +90,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class UserLogin {
   private _http = inject(HttpClient);
+  private _router = inject(Router);
 
   username = signal('');
   isLoggingIn = signal(false);
@@ -99,7 +101,7 @@ export class UserLogin {
     try {
       // Step 1: Start passkey authentication
       const authResponse: any = await firstValueFrom(
-        this._http.post('http://localhost:8080/users/passkey/login/start', {
+        this._http.post('http://localhost:8080/users/login', {
           username: this.username() || undefined,
         })
       );
@@ -113,17 +115,25 @@ export class UserLogin {
 
       // Step 3: Complete authentication
       const completeResponse: any = await firstValueFrom(
-        this._http.post('http://localhost:8080/users/passkey/login/complete', {
+        this._http.post('http://localhost:8080/users/login/complete', {
           sessionId: authResponse.sessionId,
           credential: passkeyAssertion,
         })
       );
 
       console.log('Authentication completed:', completeResponse);
+
+      // Store tokens for future API calls
+      localStorage.setItem('accessToken', completeResponse.accessToken);
+      localStorage.setItem('refreshToken', completeResponse.refreshToken);
+
       alert('🚀 Welcome back! Logged in successfully.');
 
-      // Redirect to main app or dashboard
-      window.location.href = '/';
+      // Test the profile endpoint with the new token
+      const profile = await firstValueFrom(
+        this._http.get('http://localhost:8080/users/profile')
+      );
+      console.log(profile);
     } catch (error: any) {
       console.error('Login failed:', error);
       alert(

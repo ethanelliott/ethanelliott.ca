@@ -1,5 +1,6 @@
 import { inject } from '@ee/di';
 import { FastifyInstance } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
   TransactionIn,
@@ -10,9 +11,10 @@ import { TransactionsService } from './transactions.service';
 import HttpErrors from 'http-errors';
 
 export async function TransactionsRouter(fastify: FastifyInstance) {
+  const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
   const _transactionsService = inject(TransactionsService);
 
-  fastify.get(
+  typedFastify.get(
     '/',
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
@@ -30,7 +32,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.post(
+  typedFastify.post(
     '/',
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
@@ -42,13 +44,14 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const transaction = request.body as TransactionIn;
+      // request.body is now automatically typed based on TransactionInSchema
+      const transaction = request.body;
       const newTransaction = await _transactionsService.new(transaction);
       return reply.send(newTransaction);
     }
   );
 
-  fastify.get(
+  typedFastify.get(
     '/:id',
     {
       preHandler: fastify.circuitBreaker(),
@@ -64,7 +67,8 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const { id } = request.params as { id: string };
+      // request.params is now automatically typed
+      const { id } = request.params;
       const transaction = await _transactionsService.findById(id);
 
       if (!transaction) {
@@ -75,7 +79,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.put(
+  typedFastify.put(
     '/:id',
     {
       preHandler: fastify.circuitBreaker(),
@@ -92,8 +96,9 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const { id } = request.params as { id: string };
-      const transaction = request.body as TransactionIn;
+      // Both request.params and request.body are automatically typed
+      const { id } = request.params;
+      const transaction = request.body;
 
       const updatedTransaction = await _transactionsService.update(
         id,
@@ -108,7 +113,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.delete(
+  typedFastify.delete(
     '/:id',
     {
       preHandler: fastify.circuitBreaker(),
@@ -124,7 +129,8 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const { id } = request.params as { id: string };
+      // request.params is now automatically typed
+      const { id } = request.params;
       const deleted = await _transactionsService.deleteById(id);
 
       if (!deleted) {
@@ -135,7 +141,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.delete(
+  typedFastify.delete(
     '/',
     {
       preHandler: fastify.circuitBreaker(),

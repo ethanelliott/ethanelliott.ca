@@ -1,6 +1,6 @@
 import { inject } from '@ee/di';
 import { Database } from '../data-source';
-import { AuthService } from './auth.service';
+import { AuthService } from './auth/auth.service';
 import { User } from './user';
 
 export class UsersService {

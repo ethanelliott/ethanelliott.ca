@@ -1,13 +1,15 @@
 import { inject } from '@ee/di';
 import { FastifyInstance } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { CategoriesService } from './categories.service';
 import { Category, FullCategorySchema, SimpleCategorySchema } from './category';
 
 export async function CategoriesRouter(fastify: FastifyInstance) {
+  const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
   const _categoriesService = inject(CategoriesService);
 
-  fastify.get(
+  typedFastify.get(
     '/',
     {
       preHandler: fastify.circuitBreaker(),
@@ -22,7 +24,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.post(
+  typedFastify.post(
     '/',
     {
       preHandler: fastify.circuitBreaker(),
@@ -33,13 +35,13 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const Category = request.body as Category;
+      const Category = request.body;
       const newCategory = await _categoriesService.new(Category);
       return reply.send(newCategory);
     }
   );
 
-  fastify.delete(
+  typedFastify.delete(
     '/',
     {
       preHandler: fastify.circuitBreaker(),
@@ -53,23 +55,26 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.get(
+  typedFastify.get(
     '/:name',
     {
       preHandler: fastify.circuitBreaker(),
       schema: {
         tags: ['Categories'],
+        params: z.object({
+          name: z.string(),
+        }),
         response: { 200: FullCategorySchema },
       },
     },
     async function (request, reply) {
-      const { name } = request.params as Record<string, string>;
+      const { name } = request.params;
       const category = await _categoriesService.get(name);
       return reply.send(category);
     }
   );
 
-  fastify.put(
+  typedFastify.put(
     '/:name',
     {
       preHandler: fastify.circuitBreaker(),
@@ -83,16 +88,13 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const { name } = request.params as Record<string, string>;
-      const category = await _categoriesService.update(
-        name,
-        request.body as Category
-      );
+      const { name } = request.params;
+      const category = await _categoriesService.update(name, request.body);
       return reply.send(category);
     }
   );
 
-  fastify.delete(
+  typedFastify.delete(
     '/:name',
     {
       preHandler: fastify.circuitBreaker(),
@@ -104,7 +106,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const { name } = request.params as Record<string, string>;
+      const { name } = request.params;
       const deleted = await _categoriesService.delete(name);
       return reply.send(deleted);
     }

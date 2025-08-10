@@ -1,13 +1,15 @@
 import { inject } from '@ee/di';
 import { FastifyInstance } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { TagsService } from './tags.service';
 import { Tag, FullTag, FullTagSchema, SimpleTagSchema } from './tag';
 
 export async function TagsRouter(fastify: FastifyInstance) {
+  const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
   const _tagsService = inject(TagsService);
 
-  fastify.get(
+  typedFastify.get(
     '/',
     {
       preHandler: fastify.circuitBreaker(),
@@ -22,7 +24,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
     }
   );
 
-  fastify.post(
+  typedFastify.post(
     '/',
     {
       preHandler: fastify.circuitBreaker(),
@@ -33,13 +35,13 @@ export async function TagsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const tag = request.body as Tag;
+      const tag = request.body;
       const newTag = await _tagsService.new(tag);
       return reply.send(newTag);
     }
   );
 
-  fastify.get(
+  typedFastify.get(
     '/:name',
     {
       preHandler: fastify.circuitBreaker(),
@@ -52,13 +54,14 @@ export async function TagsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const { name } = request.params as Record<string, string>;
+      // request.params is now automatically typed
+      const { name } = request.params;
       const tag = await _tagsService.get(name);
       return reply.send(tag);
     }
   );
 
-  fastify.put(
+  typedFastify.put(
     '/:name',
     {
       preHandler: fastify.circuitBreaker(),
@@ -68,16 +71,17 @@ export async function TagsRouter(fastify: FastifyInstance) {
           name: z.string(),
         }),
         body: FullTagSchema,
+        response: { 200: FullTagSchema },
       },
     },
     async function (request, reply) {
-      const { name } = request.params as Record<string, string>;
-      const tag = await _tagsService.update(name, request.body as Tag);
+      const { name } = request.params;
+      const tag = await _tagsService.update(name, request.body);
       return reply.send(tag);
     }
   );
 
-  fastify.delete(
+  typedFastify.delete(
     '/:name',
     {
       preHandler: fastify.circuitBreaker(),
@@ -89,7 +93,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const { name } = request.params as Record<string, string>;
+      const { name } = request.params;
       const deleted = await _tagsService.delete(name);
       return reply.send(deleted);
     }

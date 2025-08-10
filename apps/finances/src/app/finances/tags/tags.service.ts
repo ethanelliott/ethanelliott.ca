@@ -45,7 +45,17 @@ export class TagsService {
     return this._repository.remove(tag);
   }
 
-  update(id: string, Tag: Tag) {
-    return this._repository.update(id, Tag);
+  async update(name: string, tag: Tag) {
+    const existingTag = await this._repository.findOneBy({ name });
+
+    if (!existingTag) {
+      throw new HttpErrors.NotFound(`Tag with name "${name}" not found.`);
+    }
+
+    // Update the tag
+    await this._repository.update({ name }, tag);
+
+    // Return the updated tag
+    return this.get(name);
   }
 }

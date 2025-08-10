@@ -22,7 +22,6 @@
     "@angular/router": "20.1.4",
     "@fastify/autoload": "~6.0.3",
     "@fastify/circuit-breaker": "^4.0.2",
-    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.1",
     "@fastify/helmet": "^13.0.1",
     "@fastify/jwt": "^9.1.0",

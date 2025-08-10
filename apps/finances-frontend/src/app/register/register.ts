@@ -135,6 +135,11 @@ export class UserRegister {
       );
 
       console.log('Registration completed:', completeResponse);
+
+      // Store tokens for future API calls
+      localStorage.setItem('accessToken', completeResponse.accessToken);
+      localStorage.setItem('refreshToken', completeResponse.refreshToken);
+
       alert('🎉 Account created successfully! You are now logged in.');
 
       // Redirect to main app or dashboard

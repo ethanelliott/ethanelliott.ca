@@ -28,7 +28,7 @@ export async function starter<T extends FastifyPluginAsync>(
   await server.register(MainPlugin);
   await server.register(Application);
 
-  server.listen({ port: 8080 }, (err) => {
+  server.listen({ host: '0.0.0.0', port: 8080 }, (err) => {
     if (err) {
       server.log.error(err);
       process.exit(1);
