@@ -75,7 +75,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-spinner diameter="20"></mat-spinner>
               Add Tag } @else {
               <ng-container>
-                <mat-icon>add</mat-icon>
+                <mat-icon fontIcon="fa-plus"></mat-icon>
                 Add Tag
               </ng-container>
               }
@@ -100,7 +100,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
           </div>
           } @else if (financeStore.tags().length === 0) {
           <div class="empty-state">
-            <mat-icon>local_offer</mat-icon>
+            <mat-icon fontIcon="fa-tag"></mat-icon>
             <h3>No tags yet</h3>
             <p>
               Add your first tag above to start organizing your transactions
@@ -111,7 +111,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
             @for (tag of financeStore.tags(); track tag) {
             <div class="tag-chip-container">
               <mat-chip class="tag-chip" [disabled]="deleting().has(tag)">
-                <mat-icon matChipAvatar>local_offer</mat-icon>
+                <mat-icon matChipAvatar fontIcon="fa-tag"></mat-icon>
                 {{ tag }}
                 <button
                   matChipRemove
@@ -122,7 +122,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                   @if (deleting().has(tag)) {
                   <mat-spinner diameter="16"></mat-spinner>
                   } @else {
-                  <mat-icon>cancel</mat-icon>
+                  <mat-icon fontIcon="fa-times"></mat-icon>
                   }
                 </button>
               </mat-chip>
@@ -151,7 +151,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               "
               class="suggestion-chip"
             >
-              <mat-icon matChipAvatar>add</mat-icon>
+              <mat-icon matChipAvatar fontIcon="fa-plus"></mat-icon>
               {{ suggestion }}
             </mat-chip>
             }
@@ -174,7 +174,6 @@ import { injectFinanceStore } from '../../store/finance.provider';
     .page-title {
       font-size: 2rem;
       font-weight: 400;
-      margin: 0;
       color: var(--mat-sys-primary);
     }
 

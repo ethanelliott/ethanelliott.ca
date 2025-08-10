@@ -45,7 +45,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
           (click)="openTransactionDialog()"
           class="add-button"
         >
-          <mat-icon>add</mat-icon>
+          <mat-icon fontIcon="fa-plus"></mat-icon>
           Add Transaction
         </button>
       </div>
@@ -60,7 +60,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
           </div>
           } @else if (financeStore.transactionCount() === 0) {
           <div class="empty-state">
-            <mat-icon>receipt_long</mat-icon>
+            <mat-icon fontIcon="fa-receipt"></mat-icon>
             <h3>No transactions yet</h3>
             <p>Click "Add Transaction" to add your first transaction</p>
           </div>
@@ -94,7 +94,6 @@ import { TransactionsGridComponent } from './transactions-grid.component';
     .page-title {
       font-size: 2rem;
       font-weight: 400;
-      margin: 0 0 4px 0;
       color: var(--mat-sys-primary);
     }
 

@@ -77,7 +77,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-spinner diameter="20"></mat-spinner>
               Add Category } @else {
               <ng-container>
-                <mat-icon>add</mat-icon>
+                <mat-icon fontIcon="fa-plus"></mat-icon>
                 Add Category
               </ng-container>
               }
@@ -103,7 +103,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
           </div>
           } @else if (financeStore.categories().length === 0) {
           <div class="empty-state">
-            <mat-icon>category</mat-icon>
+            <mat-icon fontIcon="fa-layer-group"></mat-icon>
             <h3>No categories yet</h3>
             <p>
               Add your first category above to start organizing your
@@ -130,7 +130,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                   @if (deleting().has(category)) {
                   <mat-spinner diameter="16"></mat-spinner>
                   } @else {
-                  <mat-icon>delete</mat-icon>
+                  <mat-icon fontIcon="fa-trash"></mat-icon>
                   }
                 </button>
               </div>
@@ -183,7 +183,6 @@ import { injectFinanceStore } from '../../store/finance.provider';
     .page-title {
       font-size: 2rem;
       font-weight: 400;
-      margin: 0;
       color: var(--mat-sys-primary);
     }
 

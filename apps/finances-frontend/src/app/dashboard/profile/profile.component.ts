@@ -59,7 +59,7 @@ import { injectUserStore } from '../../store';
       <mat-card class="profile-info-card">
         <mat-card-header>
           <div mat-card-avatar class="profile-avatar">
-            <mat-icon>account_circle</mat-icon>
+            <mat-icon fontIcon="fa-user-circle"></mat-icon>
           </div>
           <mat-card-title>{{ userStore.displayName() }}</mat-card-title>
           <mat-card-subtitle>@{{ userStore.username() }}</mat-card-subtitle>
@@ -67,7 +67,7 @@ import { injectUserStore } from '../../store';
         <mat-card-content>
           <div class="profile-stats">
             <div class="stat-item">
-              <mat-icon>event</mat-icon>
+              <mat-icon fontIcon="fa-calendar"></mat-icon>
               <div class="stat-info">
                 <span class="stat-label">Member Since</span>
                 <span class="stat-value">{{
@@ -76,7 +76,7 @@ import { injectUserStore } from '../../store';
               </div>
             </div>
             <div class="stat-item">
-              <mat-icon>login</mat-icon>
+              <mat-icon fontIcon="fa-right-to-bracket"></mat-icon>
               <div class="stat-info">
                 <span class="stat-label">Last Login</span>
                 <span class="stat-value">{{
@@ -85,7 +85,7 @@ import { injectUserStore } from '../../store';
               </div>
             </div>
             <div class="stat-item">
-              <mat-icon>verified</mat-icon>
+              <mat-icon fontIcon="fa-shield-check"></mat-icon>
               <div class="stat-info">
                 <span class="stat-label">Account Status</span>
                 <span
@@ -110,7 +110,7 @@ import { injectUserStore } from '../../store';
           <div class="security-section">
             <div class="security-item">
               <div class="security-info">
-                <mat-icon>security</mat-icon>
+                <mat-icon fontIcon="fa-shield-halved"></mat-icon>
                 <div class="security-text">
                   <h4>Passkey Authentication</h4>
                   <p>
@@ -119,7 +119,10 @@ import { injectUserStore } from '../../store';
                   </p>
                 </div>
               </div>
-              <mat-icon class="security-status">check_circle</mat-icon>
+              <mat-icon
+                class="security-status"
+                fontIcon="fa-circle-check"
+              ></mat-icon>
             </div>
 
             <mat-divider></mat-divider>
@@ -131,7 +134,7 @@ import { injectUserStore } from '../../store';
                 (click)="logout()"
                 class="logout-button"
               >
-                <mat-icon>logout</mat-icon>
+                <mat-icon fontIcon="fa-right-from-bracket"></mat-icon>
                 Sign Out
               </button>
             </div>
@@ -165,7 +168,7 @@ import { injectUserStore } from '../../store';
                 <mat-spinner diameter="20"></mat-spinner>
                 Deleting... } @else {
                 <ng-container>
-                  <mat-icon>delete_forever</mat-icon>
+                  <mat-icon fontIcon="fa-trash"></mat-icon>
                   Delete Account
                 </ng-container>
                 }
@@ -191,7 +194,6 @@ import { injectUserStore } from '../../store';
     .page-title {
       font-size: 2rem;
       font-weight: 400;
-      margin: 0;
       color: var(--mat-sys-primary);
     }
 

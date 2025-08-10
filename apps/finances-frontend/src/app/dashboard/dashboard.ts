@@ -40,7 +40,7 @@ import { FinanceApiService } from '../services/finance-api.service';
           <div class="sidenav-wrapper">
             <div class="sidenav-header">
               <div class="logo-container">
-                <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
+                <mat-icon class="logo-icon" fontIcon="fa-wallet"></mat-icon>
                 <span class="logo-text">Finances</span>
               </div>
             </div>
@@ -51,7 +51,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/overview"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon>dashboard</mat-icon>
+                  <mat-icon matListItemIcon fontIcon="fa-chart-line"></mat-icon>
                   <span matListItemTitle>Overview</span>
                 </a>
 
@@ -60,7 +60,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/transactions"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon>receipt_long</mat-icon>
+                  <mat-icon matListItemIcon fontIcon="fa-receipt"></mat-icon>
                   <span matListItemTitle>Transactions</span>
                 </a>
 
@@ -71,7 +71,10 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/categories"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon>category</mat-icon>
+                  <mat-icon
+                    matListItemIcon
+                    fontIcon="fa-layer-group"
+                  ></mat-icon>
                   <span matListItemTitle>Categories</span>
                 </a>
 
@@ -80,7 +83,10 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/mediums"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon>payment</mat-icon>
+                  <mat-icon
+                    matListItemIcon
+                    fontIcon="fa-credit-card"
+                  ></mat-icon>
                   <span matListItemTitle>Payment Methods</span>
                 </a>
 
@@ -89,7 +95,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/tags"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon>local_offer</mat-icon>
+                  <mat-icon matListItemIcon fontIcon="fa-tag"></mat-icon>
                   <span matListItemTitle>Tags</span>
                 </a>
               </mat-nav-list>
@@ -102,12 +108,15 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/profile"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon>person</mat-icon>
+                  <mat-icon matListItemIcon fontIcon="fa-user"></mat-icon>
                   <span matListItemTitle>Profile</span>
                 </a>
 
                 <a mat-list-item (click)="logout()" class="logout-item">
-                  <mat-icon matListItemIcon>logout</mat-icon>
+                  <mat-icon
+                    matListItemIcon
+                    fontIcon="fa-right-from-bracket"
+                  ></mat-icon>
                   <span matListItemTitle>Logout</span>
                 </a>
               </mat-nav-list>
@@ -124,7 +133,7 @@ import { FinanceApiService } from '../services/finance-api.service';
               (click)="drawer.toggle()"
               class="menu-button"
             >
-              <mat-icon>menu</mat-icon>
+              <mat-icon fontIcon="fa-bars"></mat-icon>
             </button>
 
             <span class="toolbar-title">{{ currentPageTitle() }}</span>
@@ -241,7 +250,6 @@ import { FinanceApiService } from '../services/finance-api.service';
     }
 
     .content-container {
-      padding: 24px;
       background: var(--mat-sys-surface);
       min-height: calc(100vh - 64px);
     }

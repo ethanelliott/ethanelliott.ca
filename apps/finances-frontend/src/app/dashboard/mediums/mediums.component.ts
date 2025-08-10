@@ -75,7 +75,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-spinner diameter="20"></mat-spinner>
               Add Method } @else {
               <ng-container>
-                <mat-icon>add</mat-icon>
+                <mat-icon fontIcon="fa-plus"></mat-icon>
                 Add Method
               </ng-container>
               }
@@ -101,7 +101,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
           </div>
           } @else if (financeStore.mediums().length === 0) {
           <div class="empty-state">
-            <mat-icon>payment</mat-icon>
+            <mat-icon fontIcon="fa-credit-card"></mat-icon>
             <h3>No payment methods yet</h3>
             <p>
               Add your first payment method above to start tracking transaction
@@ -113,9 +113,11 @@ import { injectFinanceStore } from '../../store/finance.provider';
             @for (medium of financeStore.mediums(); track medium) {
             <mat-list-item class="medium-item">
               <div matListItemTitle class="medium-info">
-                <mat-icon matListItemIcon class="medium-icon">{{
-                  getMediumIcon(medium)
-                }}</mat-icon>
+                <mat-icon
+                  matListItemIcon
+                  class="medium-icon"
+                  [fontIcon]="getMediumIcon(medium)"
+                ></mat-icon>
                 <span class="medium-name">{{ medium }}</span>
               </div>
               <div class="medium-actions">
@@ -128,7 +130,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                   @if (deleting().has(medium)) {
                   <mat-spinner diameter="16"></mat-spinner>
                   } @else {
-                  <mat-icon>delete</mat-icon>
+                  <mat-icon fontIcon="fa-trash"></mat-icon>
                   }
                 </button>
               </div>
@@ -159,7 +161,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               "
               class="suggestion-chip"
             >
-              <mat-icon>{{ getMediumIcon(suggestion) }}</mat-icon>
+              <mat-icon [fontIcon]="getMediumIcon(suggestion)"></mat-icon>
               {{ suggestion }}
             </button>
             }
@@ -182,7 +184,6 @@ import { injectFinanceStore } from '../../store/finance.provider';
     .page-title {
       font-size: 2rem;
       font-weight: 400;
-      margin: 0;
       color: var(--mat-sys-primary);
     }
 
@@ -394,19 +395,20 @@ export class MediumsComponent implements OnInit {
 
   getMediumIcon(mediumName: string): string {
     const name = mediumName.toLowerCase();
-    if (name.includes('cash')) return 'money';
-    if (name.includes('credit') || name.includes('card')) return 'credit_card';
-    if (name.includes('debit')) return 'credit_card';
+    if (name.includes('cash')) return 'fa-money-bill';
+    if (name.includes('credit') || name.includes('card'))
+      return 'fa-credit-card';
+    if (name.includes('debit')) return 'fa-credit-card';
     if (name.includes('bank') || name.includes('transfer'))
-      return 'account_balance';
-    if (name.includes('paypal')) return 'payment';
-    if (name.includes('venmo')) return 'payment';
-    if (name.includes('apple')) return 'smartphone';
-    if (name.includes('google')) return 'smartphone';
-    if (name.includes('check')) return 'receipt';
-    if (name.includes('gift')) return 'card_giftcard';
-    if (name.includes('crypto')) return 'currency_bitcoin';
-    if (name.includes('mobile')) return 'smartphone';
-    return 'payment';
+      return 'fa-building-columns';
+    if (name.includes('paypal')) return 'fa-paypal';
+    if (name.includes('venmo')) return 'fa-money-bill-transfer';
+    if (name.includes('apple')) return 'fa-mobile-screen';
+    if (name.includes('google')) return 'fa-mobile-screen';
+    if (name.includes('check')) return 'fa-receipt';
+    if (name.includes('gift')) return 'fa-gift';
+    if (name.includes('crypto')) return 'fa-bitcoin';
+    if (name.includes('mobile')) return 'fa-mobile-screen';
+    return 'fa-credit-card';
   }
 }

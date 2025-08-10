@@ -22,7 +22,7 @@ export interface ActionsCellRendererParams extends ICellRendererParams {
         [attr.aria-label]="'Edit transaction'"
         title="Edit"
       >
-        <mat-icon>edit</mat-icon>
+        <mat-icon fontIcon="fa-pen"></mat-icon>
       </button>
       <button
         mat-icon-button
@@ -31,7 +31,7 @@ export interface ActionsCellRendererParams extends ICellRendererParams {
         [attr.aria-label]="'Delete transaction'"
         title="Delete"
       >
-        <mat-icon>delete</mat-icon>
+        <mat-icon fontIcon="fa-trash"></mat-icon>
       </button>
     </div>
   `,

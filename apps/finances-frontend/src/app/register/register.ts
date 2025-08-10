@@ -38,7 +38,7 @@ import { Router, RouterModule } from '@angular/router';
         <div class="register-container">
           <div class="brand-section">
             <div class="logo">
-              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
+              <mat-icon class="logo-icon" fontIcon="fa-wallet"></mat-icon>
             </div>
             <h1 class="brand-title">Finances</h1>
           </div>
@@ -76,17 +76,19 @@ import { Router, RouterModule } from '@angular/router';
                   />
                 </mat-form-field>
 
-                <div class="passkey-info">
-                  <mat-icon class="security-icon">security</mat-icon>
+                <div class="security-section">
+                  <mat-icon
+                    class="security-icon"
+                    fontIcon="fa-shield-halved"
+                  ></mat-icon>
                   <div class="security-text">
-                    <h4>Passkey Security</h4>
+                    <h4>Your data is secure</h4>
                     <p>
-                      We'll create a secure passkey using your device's
-                      biometric authentication.
+                      We use industry-standard encryption to protect your
+                      financial information
                     </p>
                   </div>
                 </div>
-
                 <button
                   mat-raised-button
                   color="primary"
@@ -94,7 +96,7 @@ import { Router, RouterModule } from '@angular/router';
                   [disabled]="!name() || !username() || isRegistering()"
                   class="register-button"
                 >
-                  <mat-icon>fingerprint</mat-icon>
+                  <mat-icon fontIcon="fa-fingerprint"></mat-icon>
                   Create Account with Passkey
                 </button>
               </div>

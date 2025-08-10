@@ -31,6 +31,7 @@
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/under-pressure": "^9.0.3",
     "@fortawesome/angular-fontawesome": "^3.0.0",
+    "@fortawesome/fontawesome-free": "^7.0.0",
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
     "@fortawesome/free-brands-svg-icons": "^7.0.0",
     "@fortawesome/free-regular-svg-icons": "^7.0.0",

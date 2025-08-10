@@ -3,11 +3,8 @@ mat-card-header + mat-card-content {
 }
 
 .dashboard-container {
-  width: 100%;
-  max-width: none;
   padding: 16px 24px;
   background: var(--mat-sys-surface);
-  min-height: 100vh;
 }
 
 .loading-container {
@@ -258,21 +255,11 @@ mat-card-header + mat-card-content {
   border-radius: 16px;
 }
 
-.trends-chart {
-  height: 450px;
-}
-
-.category-chart {
-  height: 280px;
-}
-
 .chart-container {
-  height: 380px;
   position: relative;
 }
 
 .chart-container-small {
-  height: 200px;
   position: relative;
 }
 

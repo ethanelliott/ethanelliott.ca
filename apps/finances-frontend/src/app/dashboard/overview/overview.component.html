@@ -39,7 +39,7 @@
         <mat-card-content>
           <div class="quick-stat-content">
             <div class="quick-stat-icon income-icon">
-              <mat-icon>trending_up</mat-icon>
+              <mat-icon fontIcon="fa-arrow-trend-up"></mat-icon>
             </div>
             <div class="quick-stat-info">
               <div class="quick-stat-label">Month Income</div>
@@ -63,7 +63,7 @@
         <mat-card-content>
           <div class="quick-stat-content">
             <div class="quick-stat-icon expense-icon">
-              <mat-icon>trending_down</mat-icon>
+              <mat-icon fontIcon="fa-arrow-trend-down"></mat-icon>
             </div>
             <div class="quick-stat-info">
               <div class="quick-stat-label">Month Expenses</div>
@@ -87,11 +87,13 @@
         <mat-card-content>
           <div class="quick-stat-content">
             <div class="quick-stat-icon net-worth-icon">
-              <mat-icon>{{
-                financeStore.currentMonthNet() >= 0
-                  ? 'account_balance'
-                  : 'warning'
-              }}</mat-icon>
+              <mat-icon
+                [fontIcon]="
+                  financeStore.currentMonthNet() >= 0
+                    ? 'fa-building-columns'
+                    : 'fa-triangle-exclamation'
+                "
+              ></mat-icon>
             </div>
             <div class="quick-stat-info">
               <div class="quick-stat-label">Month Net</div>
@@ -116,7 +118,7 @@
         <mat-card-content>
           <div class="quick-stat-content">
             <div class="quick-stat-icon transaction-icon">
-              <mat-icon>account_balance</mat-icon>
+              <mat-icon fontIcon="fa-building-columns"></mat-icon>
             </div>
             <div class="quick-stat-info">
               <div class="quick-stat-label">Net Worth</div>
@@ -181,7 +183,7 @@
           </div>
           } @else {
           <div class="empty-chart-small">
-            <mat-icon>pie_chart</mat-icon>
+            <mat-icon fontIcon="fa-chart-pie"></mat-icon>
             <p>No spending data</p>
           </div>
           }
@@ -327,7 +329,7 @@
         <mat-card-content>
           @if (recentTransactions().length === 0) {
           <div class="empty-state">
-            <mat-icon>receipt_long</mat-icon>
+            <mat-icon fontIcon="fa-receipt"></mat-icon>
             <p>
               No transactions yet.
               <a (click)="navigateToTransactions()"
@@ -371,7 +373,7 @@
               (click)="navigateToTransactions()"
             >
               View All Transactions
-              <mat-icon>arrow_forward</mat-icon>
+              <mat-icon fontIcon="fa-arrow-right"></mat-icon>
             </button>
           </div>
           }
