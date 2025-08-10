@@ -2,8 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  OnInit,
-  signal,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -11,10 +10,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
-import {
-  FinanceApiService,
-  Transaction,
-} from '../../services/finance-api.service';
+import { Transaction } from '../../services/finance-api.service';
+import { TransactionsService } from '../../services/transactions.service';
 
 interface OverviewStats {
   totalIncome: number;
@@ -537,49 +534,15 @@ interface OverviewStats {
     }
   `,
 })
-export class OverviewComponent implements OnInit {
-  private readonly apiService = inject(FinanceApiService);
+export class OverviewComponent {
+  readonly transactionsService = inject(TransactionsService);
   private readonly router = inject(Router);
 
-  loading = signal(true);
-  transactions = signal<Transaction[]>([]);
-  stats = signal<OverviewStats>({
-    totalIncome: 0,
-    totalExpenses: 0,
-    netWorth: 0,
-    transactionCount: 0,
-    topCategory: '',
-    topMedium: '',
-  });
-  recentTransactions = signal<Transaction[]>([]);
-
-  ngOnInit() {
-    this.loadData();
-  }
-
-  private loadData() {
-    this.apiService.getAllTransactions().subscribe({
-      next: (transactions) => {
-        this.transactions.set(transactions);
-        this.calculateStats(transactions);
-        this.setRecentTransactions(transactions);
-        this.loading.set(false);
-      },
-      error: (error) => {
-        console.error('Error loading transactions:', error);
-        this.loading.set(false);
-      },
-    });
-  }
-
-  private calculateStats(transactions: Transaction[]) {
-    const income = transactions
-      .filter((t) => t.type === 'INCOME')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const expenses = transactions
-      .filter((t) => t.type === 'EXPENSE')
-      .reduce((sum, t) => sum + t.amount, 0);
+  // Computed values based on the transactions service
+  readonly stats = computed(() => {
+    const transactions = this.transactionsService.transactions();
+    const income = this.transactionsService.totalIncome();
+    const expenses = this.transactionsService.totalExpenses();
 
     // Find most common category and medium
     const categoryCount = new Map<string, number>();
@@ -599,22 +562,24 @@ export class OverviewComponent implements OnInit {
     const topMedium =
       [...mediumCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
 
-    this.stats.set({
+    return {
       totalIncome: income,
       totalExpenses: expenses,
-      netWorth: income - expenses,
-      transactionCount: transactions.length,
+      netWorth: this.transactionsService.netAmount(),
+      transactionCount: this.transactionsService.transactionCount(),
       topCategory,
       topMedium,
-    });
-  }
+    };
+  });
 
-  private setRecentTransactions(transactions: Transaction[]) {
-    const recent = transactions
+  readonly recentTransactions = computed(() => {
+    return this.transactionsService
+      .transactions()
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
-    this.recentTransactions.set(recent);
-  }
+  });
+
+  readonly loading = computed(() => this.transactionsService.loading());
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {

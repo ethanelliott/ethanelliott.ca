@@ -5,6 +5,8 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const http = inject(HttpClient);
+
   // Don't add token to auth endpoints
   if (
     req.url.includes('/register') ||
@@ -27,7 +29,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         if (error.status === 401) {
           const refreshToken = localStorage.getItem('refreshToken');
           if (refreshToken) {
-            const http = inject(HttpClient);
             return http
               .post<any>('http://localhost:8080/users/token/refresh', {
                 refreshToken,

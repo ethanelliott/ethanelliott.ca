@@ -41,18 +41,18 @@ export interface User {
   providedIn: 'root',
 })
 export class FinanceApiService {
-  private readonly http = inject(HttpClient);
+  private readonly _http = inject(HttpClient);
   private readonly baseUrl = 'http://localhost:8080';
 
   // Transactions
   getAllTransactions(): Observable<Transaction[]> {
-    return this.http.get<Transaction[]>(
+    return this._http.get<Transaction[]>(
       `${this.baseUrl}/finances/transactions`
     );
   }
 
   getTransaction(id: string): Observable<Transaction> {
-    return this.http.get<Transaction>(
+    return this._http.get<Transaction>(
       `${this.baseUrl}/finances/transactions/${id}`
     );
   }
@@ -60,7 +60,7 @@ export class FinanceApiService {
   createTransaction(
     transaction: Omit<Transaction, 'id' | 'timestamp' | 'updatedAt'>
   ): Observable<Transaction> {
-    return this.http.post<Transaction>(
+    return this._http.post<Transaction>(
       `${this.baseUrl}/finances/transactions`,
       transaction
     );
@@ -70,71 +70,71 @@ export class FinanceApiService {
     id: string,
     transaction: Omit<Transaction, 'id' | 'timestamp' | 'updatedAt'>
   ): Observable<Transaction> {
-    return this.http.put<Transaction>(
+    return this._http.put<Transaction>(
       `${this.baseUrl}/finances/transactions/${id}`,
       transaction
     );
   }
 
   deleteTransaction(id: string): Observable<{ success: boolean }> {
-    return this.http.delete<{ success: boolean }>(
+    return this._http.delete<{ success: boolean }>(
       `${this.baseUrl}/finances/transactions/${id}`
     );
   }
 
   // Categories
   getAllCategories(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.baseUrl}/finances/categories`);
+    return this._http.get<string[]>(`${this.baseUrl}/finances/categories`);
   }
 
   createCategory(category: Category): Observable<Category> {
-    return this.http.post<Category>(
+    return this._http.post<Category>(
       `${this.baseUrl}/finances/categories`,
       category
     );
   }
 
   deleteCategory(name: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/finances/categories/${name}`);
+    return this._http.delete(`${this.baseUrl}/finances/categories/${name}`);
   }
 
   // Mediums
   getAllMediums(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.baseUrl}/finances/mediums`);
+    return this._http.get<string[]>(`${this.baseUrl}/finances/mediums`);
   }
 
   createMedium(medium: Medium): Observable<Medium> {
-    return this.http.post<Medium>(`${this.baseUrl}/finances/mediums`, medium);
+    return this._http.post<Medium>(`${this.baseUrl}/finances/mediums`, medium);
   }
 
   deleteMedium(name: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/finances/mediums/${name}`);
+    return this._http.delete(`${this.baseUrl}/finances/mediums/${name}`);
   }
 
   // Tags
   getAllTags(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.baseUrl}/finances/tags`);
+    return this._http.get<string[]>(`${this.baseUrl}/finances/tags`);
   }
 
   createTag(tag: Tag): Observable<Tag> {
-    return this.http.post<Tag>(`${this.baseUrl}/finances/tags`, tag);
+    return this._http.post<Tag>(`${this.baseUrl}/finances/tags`, tag);
   }
 
   deleteTag(name: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/finances/tags/${name}`);
+    return this._http.delete(`${this.baseUrl}/finances/tags/${name}`);
   }
 
   // User Profile
   getProfile(): Observable<User> {
-    return this.http.get<User>(`${this.baseUrl}/users/profile`);
+    return this._http.get<User>(`${this.baseUrl}/users/profile`);
   }
 
   updateProfile(updates: { name?: string }): Observable<User> {
-    return this.http.put<User>(`${this.baseUrl}/users/profile`, updates);
+    return this._http.put<User>(`${this.baseUrl}/users/profile`, updates);
   }
 
   deleteAccount(): Observable<{ success: boolean; message: string }> {
-    return this.http.delete<{ success: boolean; message: string }>(
+    return this._http.delete<{ success: boolean; message: string }>(
       `${this.baseUrl}/users/profile`
     );
   }
@@ -143,7 +143,7 @@ export class FinanceApiService {
   logout(
     refreshToken?: string
   ): Observable<{ success: boolean; message: string }> {
-    return this.http.post<{ success: boolean; message: string }>(
+    return this._http.post<{ success: boolean; message: string }>(
       `${this.baseUrl}/users/logout`,
       { refreshToken }
     );

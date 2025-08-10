@@ -107,12 +107,17 @@ export class TransactionsService {
       name: transaction.category,
     });
 
-    await this._repository.update(id, {
-      ...transaction,
-      medium,
-      category,
-      tags: tags,
-    });
+    // Update the existing entity properties
+    existing.type = transaction.type;
+    existing.amount = transaction.amount;
+    existing.date = transaction.date;
+    existing.description = transaction.description;
+    existing.medium = medium;
+    existing.category = category;
+    existing.tags = tags;
+
+    // Save the updated entity (this handles many-to-many relationships correctly)
+    await this._repository.save(existing);
 
     return this.findById(id);
   }
