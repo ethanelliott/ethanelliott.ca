@@ -1,29 +1,21 @@
 import { inject } from '@ee/di';
+import {
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
+  type AuthenticationResponseJSON,
+  type AuthenticatorTransportFuture,
+  type PublicKeyCredentialCreationOptionsJSON,
+  type PublicKeyCredentialRequestOptionsJSON,
+  type RegistrationResponseJSON,
+  type VerifiedAuthenticationResponse,
+  type VerifiedRegistrationResponse,
+} from '@simplewebauthn/server';
 import { randomBytes } from 'crypto';
 import HttpErrors from 'http-errors';
-import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-  type VerifiedRegistrationResponse,
-  type VerifiedAuthenticationResponse,
-} from '@simplewebauthn/server';
-import type {
-  RegistrationResponseJSON,
-  AuthenticationResponseJSON,
-  PublicKeyCredentialCreationOptionsJSON,
-  PublicKeyCredentialRequestOptionsJSON,
-  AuthenticatorTransportFuture,
-} from '@simplewebauthn/server';
 import { Database } from '../../data-source';
-import {
-  User,
-  UserCredential,
-  RefreshToken,
-  UserRegistration,
-  UserLogin,
-} from '../user';
+import { RefreshToken, User, UserCredential, UserRegistration } from '../user';
 
 export interface JWTPayload {
   userId: string;
@@ -64,7 +56,7 @@ export class AuthService {
   private readonly RP_NAME = 'Finance App';
   private readonly RP_ID = 'localhost'; // Change to your domain in production
   private readonly ORIGIN = 'https://localhost:4200'; // Change to your frontend URL
-  private readonly ACCESS_TOKEN_EXPIRY = '15m';
+  private readonly ACCESS_TOKEN_EXPIRY = 15 * 60;
   private readonly REFRESH_TOKEN_EXPIRY = 30; // days
 
   /**
@@ -348,8 +340,6 @@ export class AuthService {
   async getUserProfile(userId: string): Promise<{
     user: User;
     credentials: UserCredential[];
-    hasPassword: boolean;
-    securityScore: number;
   }> {
     const user = await this._userRepository.findOne({
       where: { id: userId },
@@ -360,19 +350,9 @@ export class AuthService {
       throw new HttpErrors.NotFound('User not found');
     }
 
-    const hasPassword = false; // No more passwords! Passkeys only for maximum security
-    const passkeyCount = user.credentials.length;
-
-    // Calculate security score (0-100) - Passkeys provide superior security
-    let securityScore = 0;
-    if (passkeyCount > 0) securityScore += 80; // Passkeys are the gold standard!
-    if (passkeyCount > 1) securityScore += 20; // Multiple passkeys for redundancy
-
     return {
       user,
       credentials: user.credentials,
-      hasPassword,
-      securityScore,
     };
   }
 
@@ -425,7 +405,7 @@ export class AuthService {
       userId: user.id,
       username: user.username,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 15 * 60, // 15 minutes
+      exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY, // 15 minutes
     };
 
     // For now, we'll use a simple token - this will be properly signed by the JWT plugin

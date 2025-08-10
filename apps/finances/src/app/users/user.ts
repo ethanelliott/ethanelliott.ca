@@ -4,7 +4,10 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -26,7 +29,7 @@ export class UserCredential {
   @Column('integer')
   counter!: number;
 
-  @Column('text')
+  @ManyToOne(() => User, (c) => c.id)
   userId!: string;
 
   @Column('text', { nullable: true })
@@ -54,7 +57,7 @@ export class RefreshToken {
   @Column('text')
   token!: string;
 
-  @Column('text')
+  @ManyToOne(() => User, (c) => c.id)
   userId!: string;
 
   @Column('datetime')
@@ -88,19 +91,11 @@ export class User {
   @Column('text', { unique: true })
   username!: string;
 
-  // Optional password hash - passkeys are preferred!
-  @Column('text', { nullable: true })
-  passwordHash?: string;
-
-  // WebAuthn user handle (should be unique and persistent)
   @Column('text', { unique: true })
   webAuthnUserId!: string;
 
   @Column('boolean', { default: true })
   isActive!: boolean;
-
-  @Column('boolean', { default: false })
-  requireMFA!: boolean;
 
   @Column('datetime', { nullable: true })
   lastLoginAt?: Date;
@@ -114,11 +109,10 @@ export class User {
   @Column('datetime', { nullable: true })
   lockedUntil?: Date;
 
-  // Relations
-  @OneToMany(() => UserCredential, 'userId')
+  @OneToMany(() => UserCredential, (cred) => cred.userId)
   credentials!: UserCredential[];
 
-  @OneToMany(() => RefreshToken, 'userId')
+  @OneToMany(() => RefreshToken, (cred) => cred.userId)
   refreshTokens!: RefreshToken[];
 }
 
@@ -153,12 +147,6 @@ export const UserRegistrationSchema = z.object({
     .min(3)
     .max(50)
     .regex(/^[a-zA-Z0-9_]+$/),
-  // Removed password field - passkeys only!
-});
-
-export const UserLoginSchema = z.object({
-  username: z.string(),
-  // Removed password field - passkeys only!
 });
 
 export const FullUserSchema = z.object({
@@ -166,7 +154,6 @@ export const FullUserSchema = z.object({
   name: z.string(),
   username: z.string(),
   isActive: z.boolean(),
-  requireMFA: z.boolean(),
   lastLoginAt: z.date().nullable(),
   timestamp: z.date(),
   updatedAt: z.date(),
@@ -178,13 +165,11 @@ export const SafeUserSchema = FullUserSchema.omit({
 
 export const UserWithCredentialsSchema = FullUserSchema.extend({
   credentials: z.array(UserCredentialSchema),
-  hasPassword: z.boolean(),
 });
 
 export type UserCredentialType = z.infer<typeof UserCredentialSchema>;
 export type RefreshTokenType = z.infer<typeof RefreshTokenSchema>;
 export type UserRegistration = z.infer<typeof UserRegistrationSchema>;
-export type UserLogin = z.infer<typeof UserLoginSchema>;
 export type FullUser = z.infer<typeof FullUserSchema>;
 export type SafeUser = z.infer<typeof SafeUserSchema>;
 export type UserWithCredentials = z.infer<typeof UserWithCredentialsSchema>;

@@ -21,8 +21,6 @@ export const ProfileResponseSchema = z.object({
   success: z.boolean(),
   user: SafeUserSchema,
   credentials: z.array(ProfileCredentialSchema),
-  hasPassword: z.boolean(),
-  securityScore: z.number(),
 });
 
 /**

@@ -26,7 +26,6 @@ export class RegistrationService {
         name: user.name,
         username: user.username,
         isActive: user.isActive,
-        requireMFA: user.requireMFA,
         lastLoginAt: user.lastLoginAt || null,
         timestamp: user.timestamp,
         updatedAt: user.updatedAt,

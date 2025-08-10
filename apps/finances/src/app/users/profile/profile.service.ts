@@ -22,7 +22,6 @@ export class ProfileService {
         name: profile.user.name,
         username: profile.user.username,
         isActive: profile.user.isActive,
-        requireMFA: profile.user.requireMFA,
         lastLoginAt: profile.user.lastLoginAt || null,
         timestamp: profile.user.timestamp,
         updatedAt: profile.user.updatedAt,
@@ -34,8 +33,6 @@ export class ProfileService {
         createdAt: cred.createdAt,
         lastUsed: cred.lastUsed,
       })),
-      hasPassword: profile.hasPassword,
-      securityScore: profile.securityScore,
     };
   }
 
@@ -55,7 +52,6 @@ export class ProfileService {
         name: profile.user.name,
         username: profile.user.username,
         isActive: profile.user.isActive,
-        requireMFA: profile.user.requireMFA,
         lastLoginAt: profile.user.lastLoginAt || null,
         timestamp: profile.user.timestamp,
         updatedAt: profile.user.updatedAt,
