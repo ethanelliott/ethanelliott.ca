@@ -1,19 +1,29 @@
-<div class="monthly-habits-container">
+<div class="dashboard-container">
   @if (loading()) {
   <div class="loading-container">
-    <mat-spinner></mat-spinner>
-    <p>Loading your financial data...</p>
+    <mat-spinner diameter="64"></mat-spinner>
+    <h3>Loading monthly insights...</h3>
+    <p>
+      Analyzing
+      {{ monthlyStats().transactionCount.toLocaleString() }} transactions for
+      {{ getSelectedMonthName() }} {{ selectedYear() }}
+    </p>
   </div>
   } @else {
 
-  <!-- Header with Month/Year Selection -->
-  <div class="header-section">
-    <div class="header-content">
+  <!-- Header with KPIs -->
+  <section class="header">
+    <div class="header-row">
       <div class="title-section">
-        <h1>Monthly Habits</h1>
-        <p>Analyze your spending patterns and habits for a specific month</p>
+        <h1 class="page-title">Monthly Analysis</h1>
+        <p class="page-subtitle">
+          {{ monthlyStats().transactionCount.toLocaleString() }} transactions •
+          {{ getSelectedMonthName() }} {{ selectedYear() }} •
+          {{ formatPercentage(getSavingsRate()) }} savings rate
+        </p>
       </div>
 
+      <!-- Month/Year Selection Controls -->
       <div class="controls-section">
         <mat-form-field appearance="outline">
           <mat-label>Month</mat-label>
@@ -38,358 +48,535 @@
             }
           </mat-select>
         </mat-form-field>
-
-        <button
-          mat-raised-button
-          color="primary"
-          (click)="navigateToOverview()"
-        >
-          <mat-icon fontIcon="fa-chart-line"></mat-icon>
-          All-Time Overview
-        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Quick Stats for Selected Month -->
-  <div class="month-stats-section">
-    <h2>{{ getSelectedMonthName() }} {{ selectedYear() }} Summary</h2>
-
-    <div class="quick-stats-grid">
-      <mat-card class="stat-card income">
-        <mat-card-content>
-          <div class="stat-content">
-            <div class="stat-icon">
-              <mat-icon fontIcon="fa-arrow-trend-up"></mat-icon>
+    <!-- KPI Grid -->
+    <div class="kpis">
+      <div class="kpi-row">
+        <div
+          class="kpi-item wealth"
+          [class.positive]="monthlyStats().netAmount >= 0"
+          [class.negative]="monthlyStats().netAmount < 0"
+        >
+          <div class="kpi-icon">
+            <mat-icon
+              [fontIcon]="
+                monthlyStats().netAmount >= 0
+                  ? 'fa-trending-up'
+                  : 'fa-trending-down'
+              "
+            ></mat-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Net Amount</div>
+            <div class="kpi-value">
+              {{ formatCurrency(monthlyStats().netAmount) }}
             </div>
-            <div class="stat-info">
-              <div class="stat-label">Income</div>
-              <div class="stat-value">
-                {{ formatCurrency(monthlyStats().totalIncome) }}
-              </div>
+            <div class="kpi-detail">
+              {{ formatPercentage(getSavingsRate()) }} savings rate
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
+        </div>
 
-      <mat-card class="stat-card expense">
-        <mat-card-content>
-          <div class="stat-content">
-            <div class="stat-icon">
-              <mat-icon fontIcon="fa-arrow-trend-down"></mat-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-label">Expenses</div>
-              <div class="stat-value">
-                {{ formatCurrency(monthlyStats().totalExpenses) }}
-              </div>
-            </div>
+        <div class="kpi-item income">
+          <div class="kpi-icon">
+            <mat-icon fontIcon="fa-coins"></mat-icon>
           </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card
-        class="stat-card net"
-        [class.positive]="monthlyStats().netAmount >= 0"
-        [class.negative]="monthlyStats().netAmount < 0"
-      >
-        <mat-card-content>
-          <div class="stat-content">
-            <div class="stat-icon">
-              <mat-icon
-                [fontIcon]="
-                  monthlyStats().netAmount >= 0 ? 'fa-plus' : 'fa-minus'
-                "
-              ></mat-icon>
+          <div class="kpi-content">
+            <div class="kpi-label">Total Income</div>
+            <div class="kpi-value">
+              {{ formatCurrency(monthlyStats().totalIncome) }}
             </div>
-            <div class="stat-info">
-              <div class="stat-label">Net</div>
-              <div class="stat-value">
-                {{ formatCurrency(monthlyStats().netAmount) }}
-              </div>
+            <div class="kpi-detail">
+              @if (getBiggestIncomeTransaction()) { Largest:
+              {{ formatCurrency(getBiggestIncomeTransaction()!.amount) }}
+              } @else { No income data }
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
+        </div>
 
-      <mat-card class="stat-card transactions">
-        <mat-card-content>
-          <div class="stat-content">
-            <div class="stat-icon">
-              <mat-icon fontIcon="fa-receipt"></mat-icon>
+        <div class="kpi-item expense">
+          <div class="kpi-icon">
+            <mat-icon fontIcon="fa-receipt"></mat-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Total Expenses</div>
+            <div class="kpi-value">
+              {{ formatCurrency(monthlyStats().totalExpenses) }}
             </div>
-            <div class="stat-info">
-              <div class="stat-label">Transactions</div>
-              <div class="stat-value">
-                {{ monthlyStats().transactionCount }}
-              </div>
+            <div class="kpi-detail">
+              {{ formatCurrency(getDailyAverageSpending()) }}/day avg
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  </div>
+        </div>
 
-  <!-- Habits Analysis -->
-  <div class="habits-section">
-    <h2>Spending Habits</h2>
-
-    <div class="habits-grid">
-      <!-- Category Breakdown Chart -->
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Category Breakdown</mat-card-title>
-          <mat-card-subtitle>Where your money went</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          @if (categoryBreakdown().length > 0) {
-          <div class="chart-container">
-            <canvas
-              baseChart
-              [data]="categoryChartData()"
-              [options]="pieChartOptions"
-              [type]="'doughnut'"
-            >
-            </canvas>
-          </div>
-          } @else {
-          <div class="empty-chart">
-            <mat-icon fontIcon="fa-chart-pie"></mat-icon>
-            <p>No spending data for this month</p>
-          </div>
-          }
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Weekly Spending Pattern -->
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Weekly Pattern</mat-card-title>
-          <mat-card-subtitle>Spending throughout the month</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          @if (filteredTransactions().length > 0) {
-          <div class="chart-container">
-            <canvas
-              baseChart
-              [data]="weeklySpendingPattern()"
-              [options]="chartOptions"
-              [type]="'bar'"
-            >
-            </canvas>
-          </div>
-          } @else {
-          <div class="empty-chart">
+        <div class="kpi-item activity">
+          <div class="kpi-icon">
             <mat-icon fontIcon="fa-chart-bar"></mat-icon>
-            <p>No transactions for this month</p>
           </div>
-          }
-        </mat-card-content>
-      </mat-card>
+          <div class="kpi-content">
+            <div class="kpi-label">Transactions</div>
+            <div class="kpi-value">
+              {{ monthlyStats().transactionCount.toLocaleString() }}
+            </div>
+            <div class="kpi-detail">
+              {{ formatCurrency(monthlyStats().avgTransactionAmount) }} avg
+            </div>
+          </div>
+        </div>
 
-      <!-- Habit Insights -->
-      <mat-card class="insights-card">
-        <mat-card-header>
-          <mat-card-title>Habit Insights</mat-card-title>
-          <mat-card-subtitle>Your patterns this month</mat-card-subtitle>
+        <div class="kpi-item highlight">
+          <div class="kpi-icon">
+            <mat-icon fontIcon="fa-calendar-day"></mat-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Most Active Day</div>
+            <div class="kpi-value">
+              {{ monthlyStats().mostActiveDay || 'N/A' }}
+            </div>
+            <div class="kpi-detail">
+              @if (getHighestSpendingDay()) { Day
+              {{ getHighestSpendingDay()!.day }}:
+              {{ formatCurrency(getHighestSpendingDay()!.amount) }}
+              } @else { No spending data }
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-item info">
+          <div class="kpi-icon">
+            <mat-icon fontIcon="fa-tags"></mat-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Top Category</div>
+            <div class="kpi-value">
+              {{ monthlyStats().topCategory || 'N/A' }}
+            </div>
+            <div class="kpi-detail">
+              {{ getCategoryDiversity() }} categories used
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Analytics Dashboard -->
+  <section class="analytics">
+    <!-- Main Charts Row -->
+    <div class="charts-row">
+      <!-- Daily Spending Pattern -->
+      <div class="chart-section trends">
+        <mat-card class="chart-card">
+          <mat-card-header class="header">
+            <mat-card-title>
+              <mat-icon fontIcon="fa-chart-line"></mat-icon>
+              Daily Spending Pattern
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (hasExpenseTransactions()) {
+            <div class="chart-container">
+              <canvas
+                baseChart
+                [data]="dailySpendingPattern()"
+                [options]="chartOptions"
+                [type]="'line'"
+              >
+              </canvas>
+            </div>
+            } @else {
+            <div class="empty-chart">
+              <mat-icon fontIcon="fa-chart-line"></mat-icon>
+              <p>No expense data for this month</p>
+            </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="chart-section breakdown">
+        <mat-card class="chart-card">
+          <mat-card-header class="header">
+            <mat-card-title>
+              <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+              Spending by Category
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (hasExpenseTransactions()) {
+            <div class="pie-container">
+              <canvas
+                baseChart
+                [data]="categoryChartData()"
+                [options]="pieChartOptions"
+                [type]="'doughnut'"
+              >
+              </canvas>
+            </div>
+            } @else {
+            <div class="empty-chart">
+              <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+              <p>No expense data</p>
+            </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Monthly Insights Panel -->
+      <div class="insights-section">
+        <mat-card class="insights-card">
+          <mat-card-header class="header">
+            <mat-card-title>
+              <mat-icon fontIcon="fa-lightbulb"></mat-icon>
+              Monthly Insights
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="insights-grid">
+              <!-- Budget Status -->
+              <div class="insight-item">
+                <div class="insight-icon budget" [class]="getBudgetStatus()">
+                  <mat-icon
+                    [fontIcon]="
+                      getBudgetStatus() === 'over'
+                        ? 'fa-triangle-exclamation'
+                        : getBudgetStatus() === 'on-track'
+                        ? 'fa-bullseye'
+                        : 'fa-check-circle'
+                    "
+                  ></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Budget Status</div>
+                  <div class="insight-value">
+                    {{ formatPercentage(getBudgetProgress(), 0) }}
+                  </div>
+                  <div class="insight-detail">of $2,000 budget used</div>
+                </div>
+              </div>
+
+              <!-- Spending Velocity -->
+              <div class="insight-item">
+                <div
+                  class="insight-icon velocity"
+                  [class]="getSpendingVelocity()"
+                >
+                  <mat-icon
+                    [fontIcon]="
+                      getSpendingVelocity() === 'high'
+                        ? 'fa-gauge-high'
+                        : getSpendingVelocity() === 'medium'
+                        ? 'fa-gauge'
+                        : 'fa-gauge-low'
+                    "
+                  ></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Spending Pace</div>
+                  <div class="insight-value">
+                    {{ getSpendingVelocity() | titlecase }}
+                  </div>
+                  <div class="insight-detail">
+                    {{ formatCurrency(getDailyAverageSpending()) }}/day
+                  </div>
+                </div>
+              </div>
+
+              <!-- Most Expensive Transaction -->
+              @if (getMostExpensiveTransaction()) {
+              <div class="insight-item">
+                <div class="insight-icon expense">
+                  <mat-icon fontIcon="fa-receipt"></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Biggest Expense</div>
+                  <div class="insight-value">
+                    {{ formatCurrency(getMostExpensiveTransaction()!.amount) }}
+                  </div>
+                  <div class="insight-detail">
+                    {{
+                      getMostExpensiveTransaction()!.description
+                        | slice : 0 : 20
+                    }}...
+                  </div>
+                </div>
+              </div>
+              }
+
+              <!-- Income vs Expenses -->
+              <div class="insight-item">
+                <div
+                  class="insight-icon balance"
+                  [class.positive]="monthlyStats().netAmount >= 0"
+                  [class.negative]="monthlyStats().netAmount < 0"
+                >
+                  <mat-icon
+                    [fontIcon]="
+                      monthlyStats().netAmount >= 0
+                        ? 'fa-balance-scale'
+                        : 'fa-scale-unbalanced'
+                    "
+                  ></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Income/Expense Ratio</div>
+                  <div class="insight-value">
+                    @if (monthlyStats().totalExpenses > 0) {
+                    {{
+                      (
+                        monthlyStats().totalIncome /
+                        monthlyStats().totalExpenses
+                      ).toFixed(1)
+                    }}:1 } @else { ∞:1 }
+                  </div>
+                  <div class="insight-detail">
+                    {{ formatPercentage(getSavingsRate()) }} savings rate
+                  </div>
+                </div>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Secondary Charts Row -->
+    <div class="charts-row secondary">
+      <!-- Weekly Spending Pattern -->
+      <div class="chart-section">
+        <mat-card class="chart-card">
+          <mat-card-header class="header">
+            <mat-card-title>
+              <mat-icon fontIcon="fa-calendar-week"></mat-icon>
+              Weekly Spending Pattern
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (hasExpenseTransactions()) {
+            <div class="chart-container">
+              <canvas
+                baseChart
+                [data]="weeklySpendingPattern()"
+                [options]="chartOptions"
+                [type]="'line'"
+              >
+              </canvas>
+            </div>
+            } @else {
+            <div class="empty-chart">
+              <mat-icon fontIcon="fa-calendar-week"></mat-icon>
+              <p>No expense data</p>
+            </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Income vs Expenses Comparison -->
+      <div class="chart-section">
+        <mat-card class="chart-card">
+          <mat-card-header class="header">
+            <mat-card-title>
+              <mat-icon fontIcon="fa-chart-simple"></mat-icon>
+              Income vs Expenses
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (hasTransactions()) {
+            <div class="pie-container">
+              <canvas
+                baseChart
+                [data]="incomeVsExpensesChart()"
+                [options]="pieChartOptions"
+                [type]="'doughnut'"
+              >
+              </canvas>
+            </div>
+            } @else {
+            <div class="empty-chart">
+              <mat-icon fontIcon="fa-chart-simple"></mat-icon>
+              <p>No transaction data</p>
+            </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Analytics Grid -->
+    <div class="analytics-grid">
+      <!-- Transaction Highlights -->
+      <mat-card class="analytics-card">
+        <mat-card-header class="header">
+          <mat-card-title>
+            <mat-icon fontIcon="fa-star"></mat-icon>
+            Transaction Highlights
+          </mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <div class="insights-list">
-            <div class="insight-item">
-              <div class="insight-icon">
-                <mat-icon fontIcon="fa-layer-group"></mat-icon>
+          <div class="highlights-list">
+            @if (getMostExpensiveTransaction()) {
+            <div class="highlight-item expense">
+              <div class="highlight-icon">
+                <mat-icon fontIcon="fa-arrow-up"></mat-icon>
               </div>
-              <div class="insight-content">
-                <div class="insight-label">Top Category</div>
-                <div class="insight-value">
-                  {{ monthlyStats().topCategory || 'No data' }}
+              <div class="highlight-content">
+                <div class="highlight-label">Largest Expense</div>
+                <div class="highlight-value">
+                  {{ formatCurrency(getMostExpensiveTransaction()!.amount) }}
+                </div>
+                <div class="highlight-detail">
+                  {{ getMostExpensiveTransaction()!.description }}
+                </div>
+                <div class="highlight-date">
+                  {{ formatDateShort(getMostExpensiveTransaction()!.date) }}
                 </div>
               </div>
             </div>
-
-            <div class="insight-item">
-              <div class="insight-icon">
-                <mat-icon fontIcon="fa-credit-card"></mat-icon>
+            } @if (getBiggestIncomeTransaction()) {
+            <div class="highlight-item income">
+              <div class="highlight-icon">
+                <mat-icon fontIcon="fa-arrow-down"></mat-icon>
               </div>
-              <div class="insight-content">
-                <div class="insight-label">Preferred Payment</div>
-                <div class="insight-value">
-                  {{ monthlyStats().topMedium || 'No data' }}
+              <div class="highlight-content">
+                <div class="highlight-label">Largest Income</div>
+                <div class="highlight-value">
+                  {{ formatCurrency(getBiggestIncomeTransaction()!.amount) }}
+                </div>
+                <div class="highlight-detail">
+                  {{ getBiggestIncomeTransaction()!.description }}
+                </div>
+                <div class="highlight-date">
+                  {{ formatDateShort(getBiggestIncomeTransaction()!.date) }}
                 </div>
               </div>
             </div>
+            }
 
-            <div class="insight-item">
-              <div class="insight-icon">
-                <mat-icon fontIcon="fa-calendar"></mat-icon>
-              </div>
-              <div class="insight-content">
-                <div class="insight-label">Most Active Day</div>
-                <div class="insight-value">
-                  {{ monthlyStats().mostActiveDay || 'No data' }}
-                </div>
-              </div>
-            </div>
-
-            <div class="insight-item">
-              <div class="insight-icon">
+            <div class="highlight-item info">
+              <div class="highlight-icon">
                 <mat-icon fontIcon="fa-calculator"></mat-icon>
               </div>
-              <div class="insight-content">
-                <div class="insight-label">Avg Transaction</div>
-                <div class="insight-value">
-                  {{ formatCurrency(monthlyStats().avgTransactionAmount) }}
+              <div class="highlight-content">
+                <div class="highlight-label">Daily Average</div>
+                <div class="highlight-value">
+                  {{ formatCurrency(getDailyAverageSpending()) }}
                 </div>
-              </div>
-            </div>
-
-            <div class="insight-item">
-              <div class="insight-icon">
-                <mat-icon fontIcon="fa-chart-line"></mat-icon>
-              </div>
-              <div class="insight-content">
-                <div class="insight-label">Daily Average</div>
-                <div class="insight-value">{{ getSpendingTrend() }}</div>
+                <div class="highlight-detail">Average daily spending</div>
+                <div class="highlight-date">
+                  {{ getSpendingTrend() }}
+                </div>
               </div>
             </div>
           </div>
         </mat-card-content>
       </mat-card>
-    </div>
-  </div>
 
-  <!-- Detailed Breakdowns -->
-  <div class="details-section">
-    <h2>Detailed Analysis</h2>
-
-    <div class="details-grid">
-      <!-- Top Categories -->
-      <mat-card class="breakdown-card">
-        <mat-card-header>
-          <mat-card-title>Category Spending</mat-card-title>
-          <mat-card-subtitle>Top categories this month</mat-card-subtitle>
+      <!-- Spending Insights -->
+      <mat-card class="analytics-card">
+        <mat-card-header class="header">
+          <mat-card-title>
+            <mat-icon fontIcon="fa-chart-column"></mat-icon>
+            Top Spending Days
+          </mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          @if (categoryBreakdown().length > 0) {
-          <div class="breakdown-list">
-            @for (category of categoryBreakdown(); track category.category) {
-            <div class="breakdown-item">
-              <div class="breakdown-info">
-                <div class="breakdown-name">{{ category.category }}</div>
-                <div class="breakdown-percentage">
+          <div class="top-days-list">
+            @for (day of getTopSpendingDays(); track day.day) {
+            <div class="day-item">
+              <div class="day-info">
+                <div class="day-label">Day {{ day.day }}</div>
+                <div class="day-date">{{ formatDateShort(day.date) }}</div>
+              </div>
+              <div class="day-amount">
+                {{ formatCurrency(day.amount) }}
+              </div>
+            </div>
+            } @if (getTopSpendingDays().length === 0) {
+            <div class="empty-state">
+              <mat-icon fontIcon="fa-calendar-xmark"></mat-icon>
+              <p>No spending data available</p>
+            </div>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Category Analysis -->
+      <mat-card class="analytics-card">
+        <mat-card-header class="header">
+          <mat-card-title>
+            <mat-icon fontIcon="fa-tags"></mat-icon>
+            Category Analysis
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="category-list">
+            @for (category of categoryBreakdown().slice(0, 5); track
+            category.category) {
+            <div class="category-item">
+              <div class="category-info">
+                <div class="category-name">{{ category.category }}</div>
+                <div class="category-percentage">
                   {{
-                    (
-                      (category.amount / monthlyStats().totalExpenses) *
-                      100
-                    ).toFixed(1)
-                  }}%
+                    formatPercentage(
+                      (category.amount / monthlyStats().totalExpenses) * 100
+                    )
+                  }}
                 </div>
               </div>
-              <div class="breakdown-amount">
+              <div class="category-amount">
                 {{ formatCurrency(category.amount) }}
               </div>
-              <div class="breakdown-bar">
-                <mat-progress-bar
-                  mode="determinate"
-                  [value]="
-                    (category.amount / monthlyStats().totalExpenses) * 100
-                  "
-                >
-                </mat-progress-bar>
-              </div>
+            </div>
+            } @if (categoryBreakdown().length === 0) {
+            <div class="empty-state">
+              <mat-icon fontIcon="fa-tags"></mat-icon>
+              <p>No categories available</p>
             </div>
             }
           </div>
-          } @else {
-          <div class="empty-state">
-            <mat-icon fontIcon="fa-layer-group"></mat-icon>
-            <p>No spending categories for this month</p>
-          </div>
-          }
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Payment Methods -->
-      <mat-card class="breakdown-card">
-        <mat-card-header>
-          <mat-card-title>Payment Methods</mat-card-title>
-          <mat-card-subtitle>Usage breakdown</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          @if (mediumBreakdown().length > 0) {
-          <div class="breakdown-list">
-            @for (medium of mediumBreakdown(); track medium.medium) {
-            <div class="breakdown-item">
-              <div class="breakdown-info">
-                <div class="breakdown-name">{{ medium.medium }}</div>
-                <div class="breakdown-count">
-                  {{ medium.count }} transactions
-                </div>
-              </div>
-              <div class="breakdown-amounts">
-                <div class="amount-detail income">
-                  +{{ formatCurrency(medium.income) }}
-                </div>
-                <div class="amount-detail expense">
-                  -{{ formatCurrency(medium.expenses) }}
-                </div>
-              </div>
-            </div>
-            }
-          </div>
-          } @else {
-          <div class="empty-state">
-            <mat-icon fontIcon="fa-credit-card"></mat-icon>
-            <p>No payment methods used this month</p>
-          </div>
-          }
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Top Spending Days -->
-      <mat-card class="breakdown-card">
-        <mat-card-header>
-          <mat-card-title>Top Spending Days</mat-card-title>
-          <mat-card-subtitle>When you spent the most</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          @if (getTopSpendingDays().length > 0) {
-          <div class="breakdown-list">
-            @for (dayData of getTopSpendingDays(); track dayData.day) {
-            <div class="breakdown-item">
-              <div class="breakdown-info">
-                <div class="breakdown-name">
-                  {{ getSelectedMonthName() }} {{ dayData.day }}
-                </div>
-              </div>
-              <div class="breakdown-amount">
-                {{ formatCurrency(dayData.amount) }}
-              </div>
-            </div>
-            }
-          </div>
-          } @else {
-          <div class="empty-state">
-            <mat-icon fontIcon="fa-calendar"></mat-icon>
-            <p>No spending data for this month</p>
-          </div>
-          }
         </mat-card-content>
       </mat-card>
     </div>
-  </div>
 
-  <!-- Action Buttons -->
-  <div class="actions-section">
-    <button
-      mat-raised-button
-      color="primary"
-      (click)="navigateToTransactions()"
-    >
-      <mat-icon fontIcon="fa-receipt"></mat-icon>
-      View All Transactions
-    </button>
-  </div>
+    <!-- Quick Actions -->
+    <div class="actions-row">
+      <mat-card class="actions-card">
+        <mat-card-content>
+          <div class="actions-grid">
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="navigateToTransactions()"
+            >
+              <mat-icon fontIcon="fa-list"></mat-icon>
+              View All Transactions
+            </button>
+
+            <button mat-raised-button (click)="navigateToCategories()">
+              <mat-icon fontIcon="fa-tags"></mat-icon>
+              Manage Categories
+            </button>
+
+            <button mat-raised-button (click)="navigateToMediums()">
+              <mat-icon fontIcon="fa-credit-card"></mat-icon>
+              Payment Methods
+            </button>
+
+            <button mat-raised-button (click)="navigateToOverview()">
+              <mat-icon fontIcon="fa-chart-line"></mat-icon>
+              All-Time Overview
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </section>
 
   }
 </div>

@@ -74,9 +74,9 @@ export class AllTimeOverviewComponent implements OnInit {
         position: 'top',
         labels: {
           usePointStyle: true,
-          padding: 20,
+          padding: 12,
           font: {
-            size: 12,
+            size: 10,
             weight: 'bold',
           },
         },
@@ -84,14 +84,14 @@ export class AllTimeOverviewComponent implements OnInit {
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         titleFont: {
-          size: 14,
+          size: 12,
           weight: 'bold',
         },
         bodyFont: {
-          size: 13,
+          size: 11,
         },
-        padding: 12,
-        cornerRadius: 8,
+        padding: 8,
+        cornerRadius: 6,
         displayColors: true,
         callbacks: {
           label: (context) => {
@@ -109,9 +109,10 @@ export class AllTimeOverviewComponent implements OnInit {
         },
         ticks: {
           font: {
-            size: 11,
+            size: 9,
             weight: 'normal',
           },
+          maxTicksLimit: 8,
         },
       },
       y: {
@@ -121,9 +122,10 @@ export class AllTimeOverviewComponent implements OnInit {
         },
         ticks: {
           font: {
-            size: 11,
+            size: 9,
             weight: 'normal',
           },
+          maxTicksLimit: 6,
           callback: function (value) {
             return '$' + Number(value).toLocaleString();
           },
@@ -133,12 +135,12 @@ export class AllTimeOverviewComponent implements OnInit {
     elements: {
       line: {
         tension: 0.4,
-        borderWidth: 3,
+        borderWidth: 2,
       },
       point: {
-        radius: 4,
-        hoverRadius: 6,
-        borderWidth: 2,
+        radius: 3,
+        hoverRadius: 5,
+        borderWidth: 1,
       },
     },
   };
@@ -151,9 +153,9 @@ export class AllTimeOverviewComponent implements OnInit {
         position: 'right',
         labels: {
           usePointStyle: true,
-          padding: 15,
+          padding: 8,
           font: {
-            size: 12,
+            size: 10,
             weight: 'normal',
           },
           generateLabels: (chart: any) => {
@@ -173,6 +175,7 @@ export class AllTimeOverviewComponent implements OnInit {
                   text: `${label} (${percentage}%)`,
                   fillStyle: colors?.[i] || '#000',
                   strokeStyle: colors?.[i] || '#000',
+                  fontColor: '#ffffff',
                   lineWidth: 0,
                   pointStyle: 'circle',
                   index: i,
@@ -186,14 +189,14 @@ export class AllTimeOverviewComponent implements OnInit {
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         titleFont: {
-          size: 14,
+          size: 12,
           weight: 'bold',
         },
         bodyFont: {
-          size: 13,
+          size: 11,
         },
-        padding: 12,
-        cornerRadius: 8,
+        padding: 8,
+        cornerRadius: 6,
         callbacks: {
           label: (context: any) => {
             const label = context.label || '';

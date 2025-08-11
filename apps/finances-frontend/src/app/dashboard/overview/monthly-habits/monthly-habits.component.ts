@@ -68,35 +68,157 @@ export class MonthlyHabitsComponent implements OnInit {
     }
   }
 
-  // Chart options
+  // Enhanced chart options with modern styling - matching all-time overview
   readonly chartOptions: ChartConfiguration['options'] = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: 'index',
+    },
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 12,
+          font: {
+            size: 10,
+            weight: 'bold',
+          },
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleFont: {
+          size: 12,
+          weight: 'bold',
+        },
+        bodyFont: {
+          size: 11,
+        },
+        padding: 8,
+        cornerRadius: 6,
+        displayColors: true,
+        callbacks: {
+          label: (context) => {
+            const label = context.dataset.label || '';
+            const value = context.parsed.y;
+            return `${label}: ${this.formatCurrency(value)}`;
+          },
+        },
       },
     },
     scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            size: 9,
+            weight: 'normal',
+          },
+          maxTicksLimit: 8,
+        },
+      },
       y: {
         beginAtZero: true,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)',
+        },
         ticks: {
+          font: {
+            size: 9,
+            weight: 'normal',
+          },
+          maxTicksLimit: 6,
           callback: function (value) {
             return '$' + Number(value).toLocaleString();
           },
         },
       },
     },
+    elements: {
+      line: {
+        tension: 0.4,
+        borderWidth: 2,
+      },
+      point: {
+        radius: 3,
+        hoverRadius: 5,
+        borderWidth: 1,
+      },
+    },
   };
 
-  readonly pieChartOptions: ChartConfiguration['options'] = {
+  readonly pieChartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'right',
+        labels: {
+          usePointStyle: true,
+          padding: 8,
+          font: {
+            size: 10,
+            weight: 'normal',
+          },
+          generateLabels: (chart: any) => {
+            const data = chart.data;
+            if (data.labels?.length && data.datasets.length) {
+              return data.labels.map((label: string, i: number) => {
+                const dataset = data.datasets[0];
+                const value = dataset.data[i] as number;
+                const total = (dataset.data as number[]).reduce(
+                  (a: number, b: number) => a + b,
+                  0
+                );
+                const percentage = ((value / total) * 100).toFixed(1);
+                const colors = dataset.backgroundColor as string[];
+
+                return {
+                  text: `${label} (${percentage}%)`,
+                  fillStyle: colors?.[i] || '#000',
+                  strokeStyle: colors?.[i] || '#000',
+                  fontColor: '#ffffff',
+                  lineWidth: 0,
+                  pointStyle: 'circle',
+                  index: i,
+                };
+              });
+            }
+            return [];
+          },
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleFont: {
+          size: 12,
+          weight: 'bold',
+        },
+        bodyFont: {
+          size: 11,
+        },
+        padding: 8,
+        cornerRadius: 6,
+        callbacks: {
+          label: (context: any) => {
+            const label = context.label || '';
+            const value = context.parsed;
+            const total = (context.dataset.data as number[]).reduce(
+              (a: number, b: number) => a + b,
+              0
+            );
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${label}: ${this.formatCurrency(value)} (${percentage}%)`;
+          },
+        },
       },
     },
+    cutout: '60%',
   };
 
   // Computed values for selected month
@@ -224,9 +346,16 @@ export class MonthlyHabitsComponent implements OnInit {
         {
           label: 'Weekly Spending',
           data: labels.map((label) => weekPattern.get(label) || 0),
-          backgroundColor: 'rgba(239, 68, 68, 0.5)',
-          borderColor: 'rgb(239, 68, 68)',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderColor: '#ef4444',
           borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#ef4444',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
         },
       ],
     };
@@ -235,23 +364,94 @@ export class MonthlyHabitsComponent implements OnInit {
   readonly categoryChartData = computed(() => {
     const breakdown = this.categoryBreakdown();
 
+    // Modern, accessible color palette - matching all-time overview
+    const colors = [
+      '#3b82f6', // Blue
+      '#10b981', // Emerald
+      '#f59e0b', // Amber
+      '#ef4444', // Red
+      '#8b5cf6', // Violet
+      '#06b6d4', // Cyan
+      '#84cc16', // Lime
+      '#f97316', // Orange
+      '#ec4899', // Pink
+      '#6366f1', // Indigo
+    ];
+
     return {
       labels: breakdown.map((c) => c.category),
       datasets: [
         {
           data: breakdown.map((c) => c.amount),
-          backgroundColor: [
-            '#FF6384',
-            '#36A2EB',
-            '#FFCE56',
-            '#4BC0C0',
-            '#9966FF',
-            '#FF9F40',
-            '#FF6384',
-            '#C9CBCF',
-            '#4BC0C0',
-            '#FF6384',
-          ],
+          backgroundColor: colors.slice(0, breakdown.length),
+          borderWidth: 0,
+          hoverBorderWidth: 2,
+          hoverBorderColor: '#ffffff',
+        },
+      ],
+    };
+  });
+
+  // Enhanced daily spending pattern chart
+  readonly dailySpendingPattern = computed(() => {
+    const transactions = this.filteredTransactions().filter(
+      (t) => t.type === 'EXPENSE'
+    );
+    const daysInMonth = new Date(
+      this.selectedYear(),
+      this.selectedMonth() + 1,
+      0
+    ).getDate();
+
+    const dailySpending = new Map<number, number>();
+
+    // Initialize all days with 0
+    for (let day = 1; day <= daysInMonth; day++) {
+      dailySpending.set(day, 0);
+    }
+
+    transactions.forEach((t) => {
+      const day = new Date(t.date).getDate();
+      dailySpending.set(day, (dailySpending.get(day) || 0) + t.amount);
+    });
+
+    const labels = Array.from({ length: daysInMonth }, (_, i) =>
+      (i + 1).toString()
+    );
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Daily Spending',
+          data: labels.map((day) => dailySpending.get(parseInt(day)) || 0),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#3b82f6',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 1,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+        },
+      ],
+    };
+  });
+
+  // Income vs Expenses comparison chart
+  readonly incomeVsExpensesChart = computed(() => {
+    const stats = this.monthlyStats();
+
+    return {
+      labels: ['Income', 'Expenses'],
+      datasets: [
+        {
+          data: [stats.totalIncome, stats.totalExpenses],
+          backgroundColor: ['#22c55e', '#ef4444'],
+          borderWidth: 0,
+          hoverBorderWidth: 2,
+          hoverBorderColor: '#ffffff',
         },
       ],
     };
@@ -304,6 +504,17 @@ export class MonthlyHabitsComponent implements OnInit {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  formatCurrencyDetailed(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   }
 
@@ -315,9 +526,149 @@ export class MonthlyHabitsComponent implements OnInit {
     }).format(new Date(date));
   }
 
+  formatDateShort(date: string): string {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(date));
+  }
+
+  formatPercentage(value: number, decimals: number = 1): string {
+    return `${value.toFixed(decimals)}%`;
+  }
+
   getSelectedMonthName(): string {
     return this.availableMonths[this.selectedMonth()].label;
   }
+
+  // Enhanced analytics methods
+  getSavingsRate(): number {
+    const stats = this.monthlyStats();
+    if (stats.totalIncome === 0) return 0;
+    return (
+      ((stats.totalIncome - stats.totalExpenses) / stats.totalIncome) * 100
+    );
+  }
+
+  getMostExpensiveTransaction(): {
+    description: string;
+    amount: number;
+    date: string;
+  } | null {
+    const expenses = this.filteredTransactions().filter(
+      (t) => t.type === 'EXPENSE'
+    );
+    if (expenses.length === 0) return null;
+
+    const mostExpensive = expenses.reduce((max, t) =>
+      t.amount > max.amount ? t : max
+    );
+    return {
+      description: mostExpensive.description,
+      amount: mostExpensive.amount,
+      date: mostExpensive.date,
+    };
+  }
+
+  getBiggestIncomeTransaction(): {
+    description: string;
+    amount: number;
+    date: string;
+  } | null {
+    const incomes = this.filteredTransactions().filter(
+      (t) => t.type === 'INCOME'
+    );
+    if (incomes.length === 0) return null;
+
+    const biggest = incomes.reduce((max, t) =>
+      t.amount > max.amount ? t : max
+    );
+    return {
+      description: biggest.description,
+      amount: biggest.amount,
+      date: biggest.date,
+    };
+  }
+
+  getDailyAverageSpending(): number {
+    const stats = this.monthlyStats();
+    const daysInMonth = new Date(
+      this.selectedYear(),
+      this.selectedMonth() + 1,
+      0
+    ).getDate();
+    return stats.totalExpenses / daysInMonth;
+  }
+
+  getWeeklyAverageSpending(): number {
+    const stats = this.monthlyStats();
+    const daysInMonth = new Date(
+      this.selectedYear(),
+      this.selectedMonth() + 1,
+      0
+    ).getDate();
+    const weeksInMonth = Math.ceil(daysInMonth / 7);
+    return stats.totalExpenses / weeksInMonth;
+  }
+
+  getBudgetProgress(): number {
+    // For now, assume a budget of $2000/month - this could be made configurable
+    const monthlyBudget = 2000;
+    const stats = this.monthlyStats();
+    return (stats.totalExpenses / monthlyBudget) * 100;
+  }
+
+  getBudgetStatus(): 'under' | 'over' | 'on-track' {
+    const progress = this.getBudgetProgress();
+    if (progress < 90) return 'under';
+    if (progress > 110) return 'over';
+    return 'on-track';
+  }
+
+  getHighestSpendingDay(): { day: number; amount: number } | null {
+    const transactions = this.filteredTransactions().filter(
+      (t) => t.type === 'EXPENSE'
+    );
+    if (transactions.length === 0) return null;
+
+    const dailySpending = new Map<number, number>();
+
+    transactions.forEach((t) => {
+      const day = new Date(t.date).getDate();
+      dailySpending.set(day, (dailySpending.get(day) || 0) + t.amount);
+    });
+
+    const highest = [...dailySpending.entries()].reduce((max, current) =>
+      current[1] > max[1] ? current : max
+    );
+
+    return { day: highest[0], amount: highest[1] };
+  }
+
+  getSpendingVelocity(): 'high' | 'medium' | 'low' {
+    const dailyAvg = this.getDailyAverageSpending();
+    if (dailyAvg > 100) return 'high';
+    if (dailyAvg > 50) return 'medium';
+    return 'low';
+  }
+
+  getCategoryDiversity(): number {
+    const breakdown = this.categoryBreakdown();
+    return breakdown.length;
+  }
+
+  // Helper computed properties for template
+  readonly hasTransactions = computed(() => {
+    return this.filteredTransactions().length > 0;
+  });
+
+  readonly hasExpenseTransactions = computed(() =>
+    this.filteredTransactions().some((t) => t.type === 'EXPENSE')
+  );
+
+  readonly hasIncomeTransactions = computed(() =>
+    this.filteredTransactions().some((t) => t.type === 'INCOME')
+  );
 
   navigateToTransactions() {
     this.router.navigate(['/dashboard/transactions']);
@@ -327,31 +678,51 @@ export class MonthlyHabitsComponent implements OnInit {
     this.router.navigate(['/dashboard/all-time']);
   }
 
+  navigateToCategories() {
+    this.router.navigate(['/dashboard/categories']);
+  }
+
+  navigateToMediums() {
+    this.router.navigate(['/dashboard/mediums']);
+  }
+
+  navigateToTags() {
+    this.router.navigate(['/dashboard/tags']);
+  }
+
   getSpendingTrend(): string {
     const breakdown = this.categoryBreakdown();
     if (breakdown.length === 0) return 'No spending data';
 
     const totalSpending = breakdown.reduce((sum, cat) => sum + cat.amount, 0);
-    const avgDaily =
-      totalSpending /
-      new Date(this.selectedYear(), this.selectedMonth() + 1, 0).getDate();
+    const daysInMonth = new Date(
+      this.selectedYear(),
+      this.selectedMonth() + 1,
+      0
+    ).getDate();
+    const avgDaily = totalSpending / daysInMonth;
 
-    return `$${avgDaily.toFixed(2)} avg/day`;
+    return `${this.formatCurrency(avgDaily)} avg/day`;
   }
 
-  getTopSpendingDays(): { day: string; amount: number }[] {
+  getTopSpendingDays(): { day: string; amount: number; date: string }[] {
     const transactions = this.filteredTransactions().filter(
       (t) => t.type === 'EXPENSE'
     );
-    const dailySpending = new Map<string, number>();
+    const dailySpending = new Map<string, { amount: number; date: string }>();
 
     transactions.forEach((t) => {
-      const date = new Date(t.date).getDate().toString();
-      dailySpending.set(date, (dailySpending.get(date) || 0) + t.amount);
+      const day = new Date(t.date).getDate().toString();
+      const date = new Date(t.date).toISOString().split('T')[0];
+      const current = dailySpending.get(day) || { amount: 0, date };
+      dailySpending.set(day, {
+        amount: current.amount + t.amount,
+        date,
+      });
     });
 
     return Array.from(dailySpending.entries())
-      .map(([day, amount]) => ({ day, amount }))
+      .map(([day, data]) => ({ day, amount: data.amount, date: data.date }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3);
   }
