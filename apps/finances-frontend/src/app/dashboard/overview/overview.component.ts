@@ -2,318 +2,156 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  computed,
   OnInit,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router } from '@angular/router';
-import { BaseChartDirective } from 'ng2-charts';
-import { Chart, ChartConfiguration, ChartType, registerables } from 'chart.js';
-import { Transaction } from '../../services/finance-api.service';
-import { injectFinanceStore } from '../../store/finance.provider';
-
-// Register Chart.js components
-Chart.register(...registerables);
-
-interface OverviewStats {
-  totalIncome: number;
-  totalExpenses: number;
-  netWorth: number;
-  transactionCount: number;
-  topCategory: string;
-  topMedium: string;
-}
-
-interface MonthComparison {
-  current: number;
-  previous: number;
-  change: number;
-  changePercent: number;
-}
+import { AllTimeOverviewComponent } from './all-time-overview.component';
+import { MonthlyHabitsComponent } from './monthly-habits/monthly-habits.component';
 
 @Component({
   selector: 'app-overview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './overview.component.html',
-  styleUrl: './overview.component.scss',
+  template: `
+    <div class="overview-container">
+      <div class="header-section">
+        <div class="header-content">
+          <div class="title-section">
+            <h1>Financial Overview</h1>
+            <p>Choose your view to analyze your financial data</p>
+          </div>
+        </div>
+      </div>
+
+      <mat-tab-group
+        [selectedIndex]="selectedTab()"
+        (selectedIndexChange)="onTabChange($event)"
+        class="overview-tabs"
+      >
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon fontIcon="fa-chart-line"></mat-icon>
+            All-Time Overview
+          </ng-template>
+          <app-all-time-overview></app-all-time-overview>
+        </mat-tab>
+
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon fontIcon="fa-calendar-days"></mat-icon>
+            Monthly Habits
+          </ng-template>
+          <app-monthly-habits></app-monthly-habits>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
+  `,
+  styles: `
+    .overview-container {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-section {
+      padding: 24px 24px 0 24px;
+      background: var(--mat-sys-surface);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .title-section h1 {
+      margin: 0 0 8px 0;
+      color: var(--mat-sys-on-surface);
+      font-weight: 600;
+      font-size: 2rem;
+    }
+
+    .title-section p {
+      margin: 0;
+      color: var(--mat-sys-on-surface-variant);
+      font-size: 1rem;
+    }
+
+    .overview-tabs {
+      flex: 1;
+      margin: 24px;
+      background: var(--mat-sys-surface-container-low);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .overview-tabs ::ng-deep .mat-mdc-tab-header {
+      background: var(--mat-sys-surface-container-high);
+    }
+
+    .overview-tabs ::ng-deep .mat-mdc-tab-body-wrapper {
+      flex: 1;
+      overflow: auto;
+    }
+
+    .overview-tabs ::ng-deep .mat-mdc-tab-body-content {
+      height: 100%;
+      overflow: auto;
+    }
+
+    .overview-tabs ::ng-deep .mat-mdc-tab .mdc-tab__text-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .header-section {
+        padding: 16px 16px 0 16px;
+      }
+
+      .overview-tabs {
+        margin: 16px;
+      }
+
+      .title-section h1 {
+        font-size: 1.5rem;
+      }
+
+      .overview-tabs ::ng-deep .mat-mdc-tab .mdc-tab__text-label mat-icon {
+        display: none;
+      }
+    }
+  `,
   imports: [
     CommonModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule,
-    MatChipsModule,
-    MatProgressBarModule,
-    BaseChartDirective,
+    MatTabsModule,
+    AllTimeOverviewComponent,
+    MonthlyHabitsComponent,
   ],
 })
 export class OverviewComponent implements OnInit {
-  readonly financeStore = injectFinanceStore();
   private readonly router = inject(Router);
 
+  readonly selectedTab = signal(0);
+
   ngOnInit() {
-    // Load all data when component initializes
-    if (!this.financeStore.initialLoadComplete()) {
-      this.financeStore.loadAllData();
+    // Check if there's a specific tab requested in the URL or local storage
+    const savedTab = localStorage.getItem('overview-selected-tab');
+    if (savedTab) {
+      this.selectedTab.set(parseInt(savedTab, 10));
     }
   }
 
-  // Chart options
-  readonly chartOptions: ChartConfiguration['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: function (value) {
-            return '$' + Number(value).toLocaleString();
-          },
-        },
-      },
-    },
-  };
-
-  readonly pieChartOptions: ChartConfiguration['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'right',
-      },
-    },
-  };
-
-  // Computed values based on the store
-  readonly stats = computed(() => {
-    const transactions = this.financeStore.transactions();
-    const income = this.financeStore.totalIncome();
-    const expenses = this.financeStore.totalExpenses();
-
-    // Find most common category and medium
-    const categoryCount = new Map<string, number>();
-    const mediumCount = new Map<string, number>();
-
-    transactions.forEach((t) => {
-      if (t.type === 'EXPENSE') {
-        // Only count expense categories for "top category"
-        categoryCount.set(t.category, (categoryCount.get(t.category) || 0) + 1);
-      }
-      mediumCount.set(t.medium, (mediumCount.get(t.medium) || 0) + 1);
-    });
-
-    const topCategory =
-      [...categoryCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-
-    const topMedium =
-      [...mediumCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-
-    return {
-      totalIncome: income,
-      totalExpenses: expenses,
-      netWorth: this.financeStore.netAmount(),
-      transactionCount: this.financeStore.transactionCount(),
-      topCategory,
-      topMedium,
-    };
-  });
-
-  readonly recentTransactions = computed(() => {
-    return this.financeStore.recentTransactions();
-  });
-
-  readonly loading = computed(() => this.financeStore.loading());
-
-  // Monthly comparisons
-  readonly monthlyIncomeComparison = computed(() => {
-    const current = this.financeStore.currentMonthIncome();
-    const previous = this.financeStore
-      .previousMonthTransactions()
-      .filter((t) => t.type === 'INCOME')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    return this.calculateComparison(current, previous);
-  });
-
-  readonly monthlyExpenseComparison = computed(() => {
-    const current = this.financeStore.currentMonthExpenses();
-    const previous = this.financeStore.previousMonthExpenses();
-
-    return this.calculateComparison(current, previous);
-  });
-
-  // Chart data
-  readonly monthlyTrendsChartData = computed(() => {
-    const trends = this.financeStore.monthlyTrends();
-
-    return {
-      labels: trends.map((t) => t.month),
-      datasets: [
-        {
-          label: 'Income',
-          data: trends.map((t) => t.income),
-          borderColor: 'rgb(34, 197, 94)',
-          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-          tension: 0.4,
-        },
-        {
-          label: 'Expenses',
-          data: trends.map((t) => t.expenses),
-          borderColor: 'rgb(239, 68, 68)',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          tension: 0.4,
-        },
-        {
-          label: 'Net',
-          data: trends.map((t) => t.net),
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          tension: 0.4,
-        },
-      ],
-    };
-  });
-
-  readonly categoryChartData = computed(() => {
-    const breakdown = this.financeStore.currentMonthCategoryBreakdown();
-
-    return {
-      labels: breakdown.map((c) => c.category),
-      datasets: [
-        {
-          data: breakdown.map((c) => c.amount),
-          backgroundColor: [
-            '#FF6384',
-            '#36A2EB',
-            '#FFCE56',
-            '#4BC0C0',
-            '#9966FF',
-            '#FF9F40',
-            '#FF6384',
-            '#C9CBCF',
-            '#4BC0C0',
-            '#FF6384',
-          ],
-        },
-      ],
-    };
-  });
-
-  private calculateComparison(
-    current: number,
-    previous: number
-  ): MonthComparison {
-    const change = current - previous;
-    const changePercent = previous === 0 ? 0 : (change / previous) * 100;
-
-    return {
-      current,
-      previous,
-      change,
-      changePercent,
-    };
-  }
-
-  formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  }
-
-  formatDate(date: string): string {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(new Date(date));
-  }
-
-  getHealthScoreClass(): string {
-    const score = this.financeStore.financialHealthScore();
-    if (score >= 80) return 'excellent';
-    if (score >= 60) return 'good';
-    if (score >= 40) return 'fair';
-    return 'poor';
-  }
-
-  getHealthScoreDescription(): string {
-    const score = this.financeStore.financialHealthScore();
-    if (score >= 80) return 'Excellent financial health!';
-    if (score >= 60) return 'Good financial position';
-    if (score >= 40) return 'Room for improvement';
-    return 'Needs attention';
-  }
-
-  getChangeClass(changePercent: number): string {
-    if (changePercent > 0) return 'positive-change';
-    if (changePercent < 0) return 'negative-change';
-    return 'no-change';
-  }
-
-  getChangeText(comparison: MonthComparison): string {
-    if (comparison.changePercent === 0) return 'No change';
-    const direction = comparison.changePercent > 0 ? '+' : '';
-    return `${direction}${comparison.changePercent.toFixed(1)}% vs last month`;
-  }
-
-  getAverageMonthlySpending(): number {
-    const trends = this.financeStore.monthlyTrends();
-    if (trends.length === 0) return 0;
-
-    return (
-      trends.reduce((sum, month) => sum + month.expenses, 0) / trends.length
-    );
-  }
-
-  getAverageTransactionAmount(): number {
-    const transactions = this.financeStore.transactions();
-    if (transactions.length === 0) return 0;
-
-    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
-    return totalAmount / transactions.length;
-  }
-
-  getMostActiveDay(): string {
-    const transactions = this.financeStore.transactions();
-    const dayCount = new Map<string, number>();
-
-    transactions.forEach((t) => {
-      const day = new Date(t.date).toLocaleDateString('en-US', {
-        weekday: 'long',
-      });
-      dayCount.set(day, (dayCount.get(day) || 0) + 1);
-    });
-
-    const mostActive = [...dayCount.entries()].sort((a, b) => b[1] - a[1])[0];
-    return mostActive ? mostActive[0] : 'No data';
-  }
-
-  navigateToTransactions() {
-    this.router.navigate(['/dashboard/transactions']);
-  }
-
-  navigateToCategories() {
-    this.router.navigate(['/dashboard/categories']);
-  }
-
-  navigateToMediums() {
-    this.router.navigate(['/dashboard/mediums']);
-  }
-
-  navigateToTags() {
-    this.router.navigate(['/dashboard/tags']);
+  onTabChange(index: number) {
+    this.selectedTab.set(index);
+    localStorage.setItem('overview-selected-tab', index.toString());
   }
 }

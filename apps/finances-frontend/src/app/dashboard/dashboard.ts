@@ -48,11 +48,23 @@ import { FinanceApiService } from '../services/finance-api.service';
               <mat-nav-list class="nav-list">
                 <a
                   mat-list-item
-                  routerLink="/dashboard/overview"
+                  routerLink="/dashboard/all-time"
                   routerLinkActive="active-link"
                 >
                   <mat-icon matListItemIcon fontIcon="fa-chart-line"></mat-icon>
-                  <span matListItemTitle>Overview</span>
+                  <span matListItemTitle>All-Time Overview</span>
+                </a>
+
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/monthly-habits"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon
+                    matListItemIcon
+                    fontIcon="fa-calendar-days"
+                  ></mat-icon>
+                  <span matListItemTitle>Monthly Habits</span>
                 </a>
 
                 <a
@@ -280,8 +292,10 @@ export class Dashboard implements OnInit {
 
   private updatePageTitle() {
     const url = this.router.url;
-    if (url.includes('/overview')) {
-      this.currentPageTitle.set('Overview');
+    if (url.includes('/all-time')) {
+      this.currentPageTitle.set('All-Time Overview');
+    } else if (url.includes('/monthly-habits')) {
+      this.currentPageTitle.set('Monthly Habits');
     } else if (url.includes('/transactions')) {
       this.currentPageTitle.set('Transactions');
     } else if (url.includes('/categories')) {

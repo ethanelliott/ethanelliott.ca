@@ -23,15 +23,27 @@ export const appRoutes: Route[] = [
     children: [
       {
         path: '',
-        redirectTo: 'overview',
+        redirectTo: 'all-time',
         pathMatch: 'full',
       },
       {
         path: 'overview',
+        redirectTo: 'all-time',
+        pathMatch: 'full',
+      },
+      {
+        path: 'all-time',
         loadComponent: () =>
-          import('./dashboard/overview/overview.component').then(
-            (m) => m.OverviewComponent
+          import('./dashboard/overview/all-time-overview.component').then(
+            (m) => m.AllTimeOverviewComponent
           ),
+      },
+      {
+        path: 'monthly-habits',
+        loadComponent: () =>
+          import(
+            './dashboard/overview/monthly-habits/monthly-habits.component'
+          ).then((m) => m.MonthlyHabitsComponent),
       },
       {
         path: 'transactions',

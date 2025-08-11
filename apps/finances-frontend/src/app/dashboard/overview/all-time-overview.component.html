@@ -1,0 +1,508 @@
+<div class="dashboard-container">
+  @if (loading()) {
+  <div class="loading-container">
+    <mat-spinner diameter="64"></mat-spinner>
+    <h3>Loading your financial universe...</h3>
+    <p>
+      Analyzing
+      {{ allTimeStats().transactionCount.toLocaleString() }} transactions across
+      {{ allTimeStats().totalTimespan }}
+    </p>
+  </div>
+  } @else {
+
+  <!-- Hero Section with Key Metrics -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="hero-header">
+        <div class="hero-title-area">
+          <h1 class="hero-title">Your Financial Universe</h1>
+          <p class="hero-subtitle">
+            Complete analysis of
+            {{ allTimeStats().transactionCount.toLocaleString() }} transactions
+            across {{ allTimeStats().totalTimespan }}
+          </p>
+          <div class="hero-meta">
+            @if (allTimeStats().firstTransactionDate) {
+            <span class="journey-start">
+              <mat-icon fontIcon="fa-flag-checkered"></mat-icon>
+              Journey started
+              {{ formatDate(allTimeStats().firstTransactionDate!) }}
+            </span>
+            }
+          </div>
+        </div>
+
+        <!-- Financial Health Score - Redesigned as a focal point -->
+        <div class="health-score-showcase">
+          <div class="score-ring">
+            <div class="score-center">
+              <div class="score-value" [class]="getHealthScoreClass()">
+                {{ financeStore.financialHealthScore() }}
+              </div>
+              <div class="score-label">Health Score</div>
+            </div>
+            <svg class="score-circle" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" class="score-track"></circle>
+              <circle
+                cx="60"
+                cy="60"
+                r="52"
+                class="score-progress"
+                [class]="getHealthScoreClass()"
+                [style.stroke-dasharray]="326.72"
+                [style.stroke-dashoffset]="
+                  326.72 - (326.72 * financeStore.financialHealthScore()) / 100
+                "
+              ></circle>
+            </svg>
+          </div>
+          <div class="score-description" [class]="getHealthScoreClass()">
+            {{ getHealthScoreDescription() }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary KPI Cards -->
+      <div class="primary-kpis">
+        <div
+          class="kpi-card wealth-card"
+          [class.positive]="allTimeStats().netWorth >= 0"
+          [class.negative]="allTimeStats().netWorth < 0"
+        >
+          <div class="kpi-header">
+            <mat-icon
+              [fontIcon]="
+                allTimeStats().netWorth >= 0
+                  ? 'fa-chart-line'
+                  : 'fa-chart-line-down'
+              "
+            ></mat-icon>
+            <span class="kpi-label">Net Worth</span>
+          </div>
+          <div class="kpi-value">
+            {{ formatCurrency(allTimeStats().netWorth) }}
+          </div>
+          <div class="kpi-detail">
+            <span
+              class="savings-rate"
+              [class.positive]="getSavingsRate() >= 0"
+              [class.negative]="getSavingsRate() < 0"
+            >
+              {{ getSavingsRate() >= 0 ? '+' : ''
+              }}{{ getSavingsRate().toFixed(1) }}% savings rate
+            </span>
+          </div>
+        </div>
+
+        <div class="kpi-card income-card">
+          <div class="kpi-header">
+            <mat-icon fontIcon="fa-coins"></mat-icon>
+            <span class="kpi-label">Total Income</span>
+          </div>
+          <div class="kpi-value income">
+            {{ formatCurrency(allTimeStats().totalIncome) }}
+          </div>
+          <div class="kpi-detail">
+            {{ formatCurrency(allTimeStats().averageMonthlyIncome) }}/month
+            average
+          </div>
+        </div>
+
+        <div class="kpi-card expense-card">
+          <div class="kpi-header">
+            <mat-icon fontIcon="fa-receipt"></mat-icon>
+            <span class="kpi-label">Total Expenses</span>
+          </div>
+          <div class="kpi-value expense">
+            {{ formatCurrency(allTimeStats().totalExpenses) }}
+          </div>
+          <div class="kpi-detail">
+            {{ formatCurrency(allTimeStats().averageMonthlyExpenses) }}/month
+            average
+          </div>
+        </div>
+
+        <div class="kpi-card activity-card">
+          <div class="kpi-header">
+            <mat-icon fontIcon="fa-activity"></mat-icon>
+            <span class="kpi-label">Transaction Volume</span>
+          </div>
+          <div class="kpi-value">
+            {{ allTimeStats().transactionCount.toLocaleString() }}
+          </div>
+          <div class="kpi-detail">
+            {{ getAverageTransactionsPerMonth().toFixed(1) }} transactions/month
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Analytics Dashboard -->
+  <section class="analytics-dashboard">
+    <!-- Trends & Insights Row -->
+    <div class="analytics-row">
+      <!-- Historical Trends Chart - Takes more space -->
+      <div class="trends-panel">
+        <mat-card class="chart-card trends-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon fontIcon="fa-chart-line"></mat-icon>
+              Financial Journey Timeline
+            </mat-card-title>
+            <mat-card-subtitle
+              >Income, expenses, and net worth progression over
+              time</mat-card-subtitle
+            >
+          </mat-card-header>
+          <mat-card-content>
+            <div class="chart-container-large">
+              <canvas
+                baseChart
+                [data]="historicalTrendsChartData()"
+                [options]="chartOptions"
+                [type]="'line'"
+              >
+              </canvas>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Financial Insights Panel -->
+      <div class="insights-panel">
+        <mat-card class="insights-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon fontIcon="fa-lightbulb"></mat-icon>
+              Key Insights
+            </mat-card-title>
+            <mat-card-subtitle
+              >Important patterns in your finances</mat-card-subtitle
+            >
+          </mat-card-header>
+          <mat-card-content>
+            <div class="insights-grid">
+              <div class="insight-item highlight">
+                <div class="insight-icon income">
+                  <mat-icon fontIcon="fa-trophy"></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Best Month</div>
+                  @if (getBiggestIncomeTransaction(); as biggestIncome) {
+                  <div class="insight-value">
+                    {{ formatCurrency(biggestIncome.amount) }}
+                  </div>
+                  <div class="insight-description">
+                    {{ biggestIncome.description }}
+                  </div>
+                  } @else {
+                  <div class="insight-value">No data</div>
+                  }
+                </div>
+              </div>
+
+              <div class="insight-item">
+                <div class="insight-icon expense">
+                  <mat-icon fontIcon="fa-shopping-cart"></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Top Category</div>
+                  <div class="insight-value">
+                    {{ allTimeStats().topExpenseCategory || 'None' }}
+                  </div>
+                  <div class="insight-description">Primary spending focus</div>
+                </div>
+              </div>
+
+              <div class="insight-item">
+                <div class="insight-icon neutral">
+                  <mat-icon fontIcon="fa-calendar-days"></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Most Active Day</div>
+                  <div class="insight-value">{{ getMostActiveDay() }}</div>
+                  <div class="insight-description">
+                    Your busiest transaction day
+                  </div>
+                </div>
+              </div>
+
+              <div class="insight-item">
+                <div class="insight-icon primary">
+                  <mat-icon fontIcon="fa-credit-card"></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Preferred Payment</div>
+                  <div class="insight-value">
+                    {{ allTimeStats().topMedium || 'None' }}
+                  </div>
+                  <div class="insight-description">
+                    Most used payment method
+                  </div>
+                </div>
+              </div>
+
+              <div class="insight-item">
+                <div class="insight-icon success">
+                  <mat-icon fontIcon="fa-calculator"></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Avg Transaction</div>
+                  <div class="insight-value">
+                    {{
+                      formatCurrency(allTimeStats().averageTransactionAmount)
+                    }}
+                  </div>
+                  <div class="insight-description">Typical spending amount</div>
+                </div>
+              </div>
+
+              @if (getMostExpensiveTransaction(); as mostExpensive) {
+              <div class="insight-item warning">
+                <div class="insight-icon expense">
+                  <mat-icon fontIcon="fa-exclamation-triangle"></mat-icon>
+                </div>
+                <div class="insight-content">
+                  <div class="insight-label">Largest Expense</div>
+                  <div class="insight-value">
+                    {{ formatCurrency(mostExpensive.amount) }}
+                  </div>
+                  <div class="insight-description">
+                    {{ mostExpensive.description }}
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Categories & Spending Patterns Row -->
+    <div class="analytics-row">
+      <!-- Category Breakdown -->
+      <div class="category-panel">
+        <mat-card class="chart-card category-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+              Spending Distribution
+            </mat-card-title>
+            <mat-card-subtitle
+              >Where your money goes - lifetime breakdown</mat-card-subtitle
+            >
+          </mat-card-header>
+          <mat-card-content>
+            @if (hasExpenseTransactions()) {
+            <div class="chart-container-medium">
+              <canvas
+                baseChart
+                [data]="allTimeCategoryChartData()"
+                [options]="pieChartOptions"
+                [type]="'doughnut'"
+              >
+              </canvas>
+            </div>
+            } @else {
+            <div class="empty-chart">
+              <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+              <h3>No expense data yet</h3>
+              <p>Start tracking expenses to see your spending patterns</p>
+            </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Merchants & Payment Methods -->
+      <div class="patterns-panel">
+        <div class="patterns-grid">
+          <!-- Top Merchants -->
+          <mat-card class="analytics-card merchants-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon fontIcon="fa-store"></mat-icon>
+                Top Merchants
+              </mat-card-title>
+              <mat-card-subtitle>Where you shop most</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="merchants-list">
+                @for (merchant of financeStore.topMerchants().slice(0, 6); track
+                merchant.description) {
+                <div class="merchant-item">
+                  <div class="merchant-rank">{{ $index + 1 }}</div>
+                  <div class="merchant-info">
+                    <div class="merchant-name">{{ merchant.description }}</div>
+                    <div class="merchant-stats">
+                      {{ merchant.count }} transactions
+                    </div>
+                  </div>
+                  <div class="merchant-amount">
+                    {{ formatCurrency(merchant.amount) }}
+                  </div>
+                </div>
+                } @empty {
+                <div class="empty-state-small">
+                  <mat-icon fontIcon="fa-store"></mat-icon>
+                  <p>No merchant data yet</p>
+                </div>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Payment Methods -->
+          <mat-card class="analytics-card payment-methods-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon fontIcon="fa-credit-card"></mat-icon>
+                Payment Methods
+              </mat-card-title>
+              <mat-card-subtitle>Usage patterns</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="payment-methods-list">
+                @for (medium of financeStore.mediumBreakdown().slice(0, 6);
+                track medium.medium) {
+                <div class="payment-method-item">
+                  <div class="payment-method-info">
+                    <div class="payment-method-name">{{ medium.medium }}</div>
+                    <div class="payment-method-stats">
+                      {{ medium.count }} transactions
+                    </div>
+                  </div>
+                  <div class="payment-method-visual">
+                    <div class="payment-method-amount">
+                      {{ formatCurrency(medium.income + medium.expenses) }}
+                    </div>
+                    <div class="payment-method-bar">
+                      <div
+                        class="bar-segment income"
+                        [style.width.%]="
+                          (medium.income / (medium.income + medium.expenses)) *
+                          100
+                        "
+                        [title]="'Income: ' + formatCurrency(medium.income)"
+                      ></div>
+                      <div
+                        class="bar-segment expense"
+                        [style.width.%]="
+                          (medium.expenses /
+                            (medium.income + medium.expenses)) *
+                          100
+                        "
+                        [title]="'Expenses: ' + formatCurrency(medium.expenses)"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                } @empty {
+                <div class="empty-state-small">
+                  <mat-icon fontIcon="fa-credit-card"></mat-icon>
+                  <p>No payment data yet</p>
+                </div>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="analytics-row">
+      <div class="activity-panel full-width">
+        <mat-card class="recent-transactions-card">
+          <mat-card-header>
+            <div class="card-header-content">
+              <div class="card-title-section">
+                <mat-card-title>
+                  <mat-icon fontIcon="fa-clock"></mat-icon>
+                  Recent Activity
+                </mat-card-title>
+                <mat-card-subtitle
+                  >Latest financial movements</mat-card-subtitle
+                >
+              </div>
+              <button
+                mat-stroked-button
+                color="primary"
+                (click)="navigateToTransactions()"
+                class="view-all-button"
+              >
+                View All
+                <mat-icon fontIcon="fa-arrow-right"></mat-icon>
+              </button>
+            </div>
+          </mat-card-header>
+          <mat-card-content>
+            @if (recentTransactions().length === 0) {
+            <div class="empty-state">
+              <mat-icon fontIcon="fa-receipt"></mat-icon>
+              <h3>No transactions yet</h3>
+              <p>
+                Start your financial journey by
+                <a (click)="navigateToTransactions()" class="link-action"
+                  >adding your first transaction</a
+                >
+              </p>
+            </div>
+            } @else {
+            <div class="transactions-grid">
+              @for (transaction of recentTransactions().slice(0, 8); track
+              transaction.id) {
+              <div
+                class="transaction-card"
+                [class]="transaction.type.toLowerCase()"
+              >
+                <div class="transaction-header">
+                  <div
+                    class="transaction-type-indicator"
+                    [class]="transaction.type.toLowerCase()"
+                  >
+                    <mat-icon
+                      [fontIcon]="
+                        transaction.type === 'INCOME'
+                          ? 'fa-arrow-up'
+                          : 'fa-arrow-down'
+                      "
+                    ></mat-icon>
+                  </div>
+                  <div
+                    class="transaction-amount"
+                    [class]="transaction.type.toLowerCase()"
+                  >
+                    {{ transaction.type === 'INCOME' ? '+' : '-'
+                    }}{{ formatCurrency(transaction.amount) }}
+                  </div>
+                </div>
+                <div class="transaction-details">
+                  <div class="transaction-description">
+                    {{ transaction.description }}
+                  </div>
+                  <div class="transaction-meta">
+                    <mat-chip-set>
+                      <mat-chip>{{ transaction.category }}</mat-chip>
+                      <mat-chip>{{ transaction.medium }}</mat-chip>
+                    </mat-chip-set>
+                  </div>
+                  <div class="transaction-date">
+                    {{ formatDate(transaction.date) }}
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+  </section>
+
+  }
+</div>

@@ -72,7 +72,6 @@ export const UserStore = signalStore(
           switchMap(() =>
             apiService.getProfile().pipe(
               tap((user) => {
-                console.log(user);
                 patchState(store, {
                   user: user.user,
                   originalName: user.user.name,
