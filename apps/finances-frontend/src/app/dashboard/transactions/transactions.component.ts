@@ -29,139 +29,72 @@ import { TransactionsGridComponent } from './transactions-grid.component';
     MatDialogModule,
     TransactionsGridComponent,
   ],
+  styleUrl: './transactions.component.scss',
   template: `
     <div class="transactions-container">
       <!-- Header -->
-      <div class="page-header">
-        <div class="header-content">
-          <h1 class="page-title">Transactions</h1>
-          <p class="page-subtitle">
-            {{ financeStore.transactionCount() }} transactions total
-          </p>
+      <div class="header">
+        <div class="header-row">
+          <div class="title-section">
+            <h1 class="page-title">Transactions</h1>
+            <p class="page-subtitle">
+              {{ financeStore.transactionCount() }} transactions total
+            </p>
+          </div>
+          <div class="controls-section">
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="openTransactionDialog()"
+              class="add-button"
+            >
+              <mat-icon fontIcon="fa-plus"></mat-icon>
+              Add Transaction
+            </button>
+          </div>
         </div>
-        <button
-          mat-raised-button
-          color="primary"
-          (click)="openTransactionDialog()"
-          class="add-button"
-        >
-          <mat-icon fontIcon="fa-plus"></mat-icon>
-          Add Transaction
-        </button>
       </div>
 
       <!-- Transactions Grid -->
-      <mat-card class="grid-card">
+      <mat-card class="transactions-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon fontIcon="fa-list"></mat-icon>
+            All Transactions
+          </mat-card-title>
+        </mat-card-header>
         <mat-card-content>
           @if (financeStore.loading()) {
           <div class="loading-container">
             <mat-spinner></mat-spinner>
-            <p>Loading transactions...</p>
+            <h3>Loading transactions...</h3>
+            <p>Please wait while we fetch your transaction data</p>
           </div>
           } @else if (financeStore.transactionCount() === 0) {
           <div class="empty-state">
             <mat-icon fontIcon="fa-receipt"></mat-icon>
             <h3>No transactions yet</h3>
-            <p>Click "Add Transaction" to add your first transaction</p>
+            <p>Start tracking your finances by adding your first transaction</p>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="openTransactionDialog()"
+              class="get-started-button"
+            >
+              <mat-icon fontIcon="fa-plus"></mat-icon>
+              Add Your First Transaction
+            </button>
           </div>
           } @else {
-          <app-transactions-grid
-            (editTransaction)="openTransactionDialog($event)"
-          ></app-transactions-grid>
+          <div class="transactions-grid-container">
+            <app-transactions-grid
+              (editTransaction)="openTransactionDialog($event)"
+            ></app-transactions-grid>
+          </div>
           }
         </mat-card-content>
       </mat-card>
     </div>
-  `,
-  styles: `
-    .transactions-container {
-      max-width: 1800px;
-      margin: 0 auto;
-      padding: 0 16px;
-    }
-
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
-    .header-content {
-      flex: 1;
-    }
-
-    .page-title {
-      font-size: 2rem;
-      font-weight: 400;
-      color: var(--mat-sys-primary);
-    }
-
-    .page-subtitle {
-      color: var(--mat-sys-on-surface-variant);
-      margin: 0;
-      font-size: 0.875rem;
-    }
-
-    .add-button {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-left: 16px;
-    }
-
-    .grid-card {
-      margin-bottom: 24px;
-    }
-
-    .grid-card mat-card-content {
-      padding: 0;
-    }
-
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px;
-      gap: 16px;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 64px 32px;
-      color: var(--mat-sys-on-surface-variant);
-    }
-
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .empty-state h3 {
-      margin: 16px 0 8px 0;
-      color: var(--mat-primary-text-color);
-    }
-
-    @media (max-width: 768px) {
-      .transactions-container {
-        padding: 0 8px;
-      }
-
-      .page-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 16px;
-      }
-
-      .add-button {
-        margin-left: 0;
-        align-self: flex-end;
-      }
-    }
   `,
 })
 export class TransactionsComponent implements OnInit {

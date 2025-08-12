@@ -1,0 +1,199 @@
+// ===== CATEGORIES COMPONENT STYLES =====
+// Categories management page using shared mixins
+
+@import '../../../styles/mixins';
+
+// ===== MAIN CONTAINER =====
+.categories-container {
+  @include dashboard-container;
+  @include content-container;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+// ===== PAGE HEADER =====
+.page-header {
+  @include page-header;
+
+  .header-content {
+    .page-title {
+      font-size: 2rem;
+      font-weight: 400;
+      color: var(--mat-sys-primary);
+      margin: 0;
+    }
+
+    .page-subtitle {
+      color: var(--mat-sys-on-surface-variant);
+      margin: var(--spacing-xs) 0 0 0;
+      font-size: 0.9rem;
+    }
+  }
+}
+
+// ===== ADD CATEGORY CARD =====
+.add-category-card {
+  @include base-card;
+  margin-bottom: var(--spacing-lg);
+  border: 2px solid var(--mat-sys-primary);
+
+  .category-form {
+    @include form-container;
+    gap: var(--spacing-md);
+
+    .form-row {
+      display: flex;
+      gap: var(--spacing-md);
+      align-items: flex-end;
+
+      @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+      }
+    }
+
+    .category-name-field {
+      flex: 1;
+    }
+
+    .add-button {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      min-width: 140px;
+      white-space: nowrap;
+
+      @media (max-width: 768px) {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// ===== CATEGORIES LIST CARD =====
+.categories-list-card {
+  @include base-card;
+  margin-bottom: var(--spacing-lg);
+
+  .loading-container {
+    @include loading-container;
+    min-height: 200px;
+    padding: var(--spacing-2xl);
+  }
+
+  .empty-state {
+    @include empty-state;
+    padding: var(--spacing-3xl) var(--spacing-xl);
+
+    mat-icon {
+      font-size: 4rem;
+      width: 4rem;
+      height: 4rem;
+      margin-bottom: var(--spacing-md);
+      opacity: 0.5;
+    }
+
+    h3 {
+      margin: var(--spacing-md) 0 var(--spacing-sm) 0;
+      color: var(--mat-sys-on-surface);
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+  }
+
+  .categories-list {
+    padding: 0;
+
+    .category-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-md) 0;
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: var(--mat-sys-surface-container-low);
+      }
+
+      .category-info {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        flex: 1;
+
+        .category-icon {
+          color: var(--mat-sys-primary);
+          background: var(--mat-sys-primary-container);
+          border-radius: 50%;
+          padding: var(--spacing-sm);
+        }
+
+        .category-name {
+          font-size: 1rem;
+          font-weight: 500;
+          color: var(--mat-sys-on-surface);
+        }
+      }
+
+      .category-actions {
+        display: flex;
+        gap: var(--spacing-sm);
+
+        .delete-button {
+          color: var(--error-color);
+          transition: var(--transition-fast);
+
+          &:hover {
+            background: var(--error-light);
+          }
+
+          &:disabled {
+            opacity: 0.6;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ===== SUGGESTIONS CARD =====
+.suggestions-card {
+  @include base-card;
+
+  .suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--spacing-sm);
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+
+    .suggestion-chip {
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 0.85rem;
+      border-radius: var(--border-radius-2xl);
+      transition: var(--transition-fast);
+
+      &:hover:not(:disabled) {
+        background: var(--mat-sys-primary-container);
+        color: var(--mat-sys-on-primary-container);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+// ===== RESPONSIVE DESIGN =====
+@include mobile-responsive;

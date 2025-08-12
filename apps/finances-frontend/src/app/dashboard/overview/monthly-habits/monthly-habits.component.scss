@@ -1,34 +1,314 @@
 // ===== MONTHLY HABITS COMPONENT STYLES =====
-// Modern, comprehensive financial dashboard design matching all-time overview
+// Modern, comprehensive financial dashboard design using shared mixins
 
-// ===== CSS CUSTOM PROPERTIES =====
-:host {
-  --surface-elevation-2: 0 4px 16px rgba(0, 0, 0, 0.08);
-
-  --border-radius-sm: 8px;
-  --border-radius-md: 12px;
-  --border-radius-lg: 16px;
-
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-
-  --transition-fast: 0.15s ease;
-}
+@import '../../../../styles/mixins';
 
 // ===== MAIN CONTAINER =====
 .dashboard-container {
-  padding: var(--spacing-lg);
-  background: linear-gradient(
-    135deg,
-    var(--mat-sys-surface) 0%,
-    var(--mat-sys-surface-container-low) 100%
-  );
-  min-height: 100vh;
-  width: 100%;
-  box-sizing: border-box;
+  @include dashboard-container;
 }
+
+// ===== LOADING STATE =====
+.loading-container {
+  @include loading-container;
+}
+
+// ===== HEADER SECTION =====
+.header {
+  @include page-header;
+}
+
+// ===== KPI GRID =====
+.kpis {
+  @include kpi-grid;
+}
+
+// ===== ANALYTICS SECTION =====
+.analytics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+
+  .charts-row {
+    @include analytics-grid;
+    grid-template-columns: 2fr 1fr 1fr;
+
+    &.secondary {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .analytics-grid {
+    @include analytics-grid;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .actions-row {
+    @include analytics-grid;
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card,
+  .insights-card,
+  .analytics-card,
+  .actions-card {
+    @include dashboard-card;
+  }
+
+  .chart-container {
+    @include chart-container;
+  }
+
+  .pie-container {
+    @include chart-container;
+  }
+
+  .empty-chart {
+    @include empty-chart;
+  }
+}
+
+// ===== INSIGHTS & HIGHLIGHTS =====
+.insights-grid {
+  @include data-list;
+}
+
+.insight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  background: var(--mat-sys-surface-container-low);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--mat-sys-surface-container);
+    transform: translateY(-1px);
+  }
+
+  .insight-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    mat-icon {
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    &.budget {
+      &.under {
+        background: var(--success-light);
+        color: var(--success-color);
+      }
+      &.over {
+        background: var(--error-light);
+        color: var(--error-color);
+      }
+      &.on-track {
+        background: var(--info-light);
+        color: var(--info-color);
+      }
+    }
+
+    &.velocity {
+      &.high {
+        background: var(--error-light);
+        color: var(--error-color);
+      }
+      &.medium {
+        background: var(--warning-light);
+        color: var(--warning-color);
+      }
+      &.low {
+        background: var(--success-light);
+        color: var(--success-color);
+      }
+    }
+
+    &.expense {
+      background: var(--error-light);
+      color: var(--error-color);
+    }
+
+    &.balance {
+      &.positive {
+        background: var(--success-light);
+        color: var(--success-color);
+      }
+      &.negative {
+        background: var(--error-light);
+        color: var(--error-color);
+      }
+    }
+  }
+
+  .insight-content {
+    flex: 1;
+    min-width: 0;
+
+    .insight-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--mat-sys-on-surface-variant);
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .insight-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--mat-sys-on-surface);
+      margin-bottom: 2px;
+      line-height: 1.2;
+    }
+
+    .insight-detail {
+      font-size: 0.8rem;
+      color: var(--mat-sys-on-surface-variant);
+      opacity: 0.8;
+    }
+  }
+}
+
+.highlights-list {
+  @include data-list;
+}
+
+.highlight-item {
+  @extend .list-item;
+
+  .highlight-icon {
+    @extend .item-icon;
+
+    mat-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  .highlight-content {
+    @extend .item-content;
+
+    .highlight-label {
+      @extend .item-label;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .highlight-value {
+      @extend .item-name;
+      font-size: 0.9rem;
+    }
+
+    .highlight-detail {
+      font-size: 0.8rem;
+      color: var(--mat-sys-on-surface);
+      margin-bottom: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .highlight-date {
+      font-size: 0.7rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+}
+
+// ===== TOP SPENDING DAYS =====
+.top-days-list {
+  @include data-list;
+}
+
+.day-item {
+  @extend .list-item;
+
+  .day-info {
+    @extend .item-content;
+
+    .day-label {
+      @extend .item-name;
+      font-size: 0.85rem;
+    }
+
+    .day-date {
+      @extend .item-detail;
+      font-size: 0.75rem;
+    }
+  }
+
+  .day-amount {
+    @extend .item-amount;
+    font-size: 0.9rem;
+  }
+}
+
+// ===== CATEGORY ANALYSIS =====
+.category-list {
+  @include data-list;
+}
+
+.category-item {
+  @extend .list-item;
+
+  .category-info {
+    @extend .item-content;
+
+    .category-name {
+      @extend .item-name;
+      font-size: 0.85rem;
+    }
+
+    .category-percentage {
+      @extend .item-detail;
+      font-size: 0.75rem;
+    }
+  }
+
+  .category-amount {
+    @extend .item-amount;
+    font-size: 0.9rem;
+  }
+}
+
+// ===== ACTIONS GRID =====
+.actions-grid {
+  @include analytics-grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    font-weight: 600;
+
+    mat-icon {
+      font-size: 1.1rem;
+      width: 1.1rem;
+      height: 1.1rem;
+    }
+  }
+}
+
+// ===== EMPTY STATES =====
+.empty-state {
+  @include empty-state;
+}
+
+// ===== RESPONSIVE DESIGN =====
+@include mobile-responsive;
 
 // ===== LOADING STATE =====
 .loading-container {

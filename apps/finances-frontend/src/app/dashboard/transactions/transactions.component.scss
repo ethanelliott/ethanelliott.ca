@@ -1,0 +1,182 @@
+// ===== TRANSACTIONS COMPONENT STYLES =====
+// Transactions management page using shared mixins
+
+@import '../../../styles/mixins';
+
+// ===== MAIN CONTAINER =====
+.transactions-container {
+  @include dashboard-container;
+  @include content-container;
+}
+
+// ===== PAGE HEADER =====
+.header {
+  @include page-header;
+
+  .controls-section {
+    .add-button {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-radius: var(--border-radius-2xl);
+      font-weight: 600;
+
+      mat-icon {
+        font-size: 1.1rem;
+        width: 1.1rem;
+        height: 1.1rem;
+      }
+    }
+  }
+}
+
+// ===== TRANSACTIONS CARD =====
+.transactions-card {
+  @include base-card;
+
+  .loading-container {
+    @include loading-container;
+    min-height: 400px;
+  }
+
+  .empty-state {
+    @include empty-state;
+    padding: var(--spacing-3xl) var(--spacing-xl);
+
+    mat-icon {
+      font-size: 4rem;
+      width: 4rem;
+      height: 4rem;
+    }
+
+    h3 {
+      font-size: 1.5rem;
+      margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+    }
+
+    p {
+      font-size: 1rem;
+      line-height: 1.6;
+      max-width: 400px;
+      margin: 0 auto var(--spacing-lg) auto;
+    }
+
+    .get-started-button {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-xl);
+      border-radius: var(--border-radius-2xl);
+      font-size: 1rem;
+      font-weight: 600;
+
+      mat-icon {
+        font-size: 1.1rem;
+        width: 1.1rem;
+        height: 1.1rem;
+      }
+    }
+  }
+}
+
+// ===== TRANSACTIONS GRID =====
+.transactions-grid-container {
+  width: 100%;
+  height: 600px;
+  overflow: hidden;
+  border-radius: var(--border-radius-sm);
+
+  @media (max-width: 768px) {
+    height: 500px;
+  }
+
+  // Custom styling for AG Grid to match our design system
+  :ng-deep {
+    .ag-theme-material {
+      --ag-background-color: var(--mat-sys-surface);
+      --ag-foreground-color: var(--mat-sys-on-surface);
+      --ag-border-color: var(--mat-sys-outline-variant);
+      --ag-header-background-color: var(--mat-sys-surface-container);
+      --ag-header-foreground-color: var(--mat-sys-on-surface);
+      --ag-row-hover-color: var(--mat-sys-surface-container-low);
+      --ag-selected-row-background-color: var(--mat-sys-primary-container);
+      --ag-font-family: Roboto, 'Helvetica Neue', sans-serif;
+      --ag-font-size: 0.875rem;
+      --ag-header-height: 56px;
+      --ag-row-height: 48px;
+
+      .ag-header {
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .ag-cell {
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid var(--mat-sys-outline-variant);
+      }
+
+      .ag-row:hover {
+        background-color: var(--mat-sys-surface-container-low);
+      }
+
+      .ag-paging-panel {
+        background-color: var(--mat-sys-surface-container);
+        border-top: 1px solid var(--mat-sys-outline-variant);
+        padding: var(--spacing-md);
+      }
+    }
+  }
+}
+
+// ===== SUMMARY STATS =====
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+
+  .stat-card {
+    @include base-card;
+    padding: var(--spacing-lg);
+    text-align: center;
+    border-left: 4px solid var(--mat-sys-primary);
+
+    &.income {
+      border-left-color: var(--success-color);
+    }
+
+    &.expense {
+      border-left-color: var(--error-color);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--mat-sys-on-surface);
+      margin-bottom: var(--spacing-xs);
+
+      &.income {
+        color: var(--success-color);
+      }
+
+      &.expense {
+        color: var(--error-color);
+      }
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--mat-sys-on-surface-variant);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+}
+
+// ===== RESPONSIVE DESIGN =====
+@include mobile-responsive;

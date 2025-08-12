@@ -1,0 +1,189 @@
+// ===== REGISTER COMPONENT STYLES =====
+// Registration page design using shared mixins
+
+@import '../../styles/mixins';
+
+// ===== BACKGROUND & WRAPPER =====
+.gradient-background {
+  @include auth-background;
+}
+
+.wrapper {
+  @include auth-wrapper;
+}
+
+// ===== REGISTER CONTAINER =====
+.register-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+  max-width: 420px;
+}
+
+// ===== BRAND SECTION =====
+.brand-section {
+  @include auth-header;
+
+  .logo {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .logo-icon {
+    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    color: var(--mat-sys-primary);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+
+    @media (max-width: 768px) {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+  }
+
+  .brand-title {
+    font-size: 2.5rem;
+    font-weight: 300;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    @media (max-width: 768px) {
+      font-size: 2rem;
+    }
+  }
+
+  .brand-subtitle {
+    font-size: 1.1rem;
+    margin: var(--spacing-sm) 0 0 0;
+    opacity: 0.9;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// ===== REGISTER CARD =====
+.register-card {
+  @include auth-card;
+
+  .register-subtitle {
+    color: var(--mat-sys-on-surface-variant);
+    margin: var(--spacing-sm) 0 0 0;
+    font-size: 0.9rem;
+  }
+
+  .loading-state {
+    @include loading-state-auth;
+    padding: var(--spacing-2xl) var(--spacing-xl);
+
+    p {
+      margin: var(--spacing-md) 0 var(--spacing-sm) 0;
+      color: var(--mat-sys-on-surface-variant);
+      font-weight: 500;
+    }
+
+    small {
+      color: var(--mat-sys-on-surface-variant);
+      opacity: 0.7;
+    }
+  }
+
+  .register-form {
+    @include form-container;
+    padding: var(--spacing-md) 0;
+    gap: var(--spacing-lg);
+
+    .security-section {
+      display: flex;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md);
+      background: var(--mat-sys-surface-container);
+      border-radius: var(--border-radius-sm);
+      border-left: 4px solid var(--mat-sys-primary);
+
+      @media (max-width: 768px) {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--spacing-sm);
+      }
+
+      .security-icon {
+        font-size: 1.5rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        color: var(--mat-sys-primary);
+        flex-shrink: 0;
+        margin-top: 2px;
+
+        @media (max-width: 768px) {
+          margin-top: 0;
+        }
+      }
+
+      .security-text {
+        h4 {
+          font-size: 1rem;
+          font-weight: 500;
+          margin: 0 0 var(--spacing-xs) 0;
+          color: var(--mat-sys-on-surface);
+        }
+
+        p {
+          font-size: 0.875rem;
+          color: var(--mat-sys-on-surface-variant);
+          margin: 0;
+          line-height: 1.4;
+        }
+      }
+    }
+
+    .register-button {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      font-size: 1rem;
+      border-radius: var(--border-radius-2xl);
+      margin-top: var(--spacing-sm);
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+// ===== FOOTER LINKS =====
+.footer-links {
+  text-align: center;
+  color: white;
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  a {
+    color: var(--mat-sys-primary);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid transparent;
+    transition: var(--transition-fast);
+
+    &:hover {
+      border-bottom-color: var(--mat-sys-primary);
+    }
+  }
+}
+
+// ===== RESPONSIVE DESIGN =====
+@media (max-width: 768px) {
+  .register-container {
+    max-width: 100%;
+    padding: 0 var(--spacing-md);
+    gap: var(--spacing-lg);
+  }
+
+  .wrapper {
+    padding: var(--spacing-lg);
+  }
+}

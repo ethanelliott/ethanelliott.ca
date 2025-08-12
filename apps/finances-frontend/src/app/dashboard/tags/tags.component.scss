@@ -1,0 +1,163 @@
+// ===== TAGS COMPONENT STYLES =====
+// Tags management page using shared mixins
+
+@import '../../../styles/mixins';
+
+// ===== MAIN CONTAINER =====
+.tags-container {
+  @include dashboard-container;
+  @include content-container;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+// ===== PAGE HEADER =====
+.header {
+  @include page-header;
+}
+
+// ===== ADD TAG CARD =====
+.add-tag-card {
+  @include base-card;
+  margin-bottom: var(--spacing-lg);
+  border: 2px solid var(--mat-sys-tertiary);
+
+  .tag-form {
+    @include form-container;
+
+    .form-row {
+      display: flex;
+      gap: var(--spacing-md);
+      align-items: flex-end;
+
+      @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+      }
+    }
+
+    .tag-name-field {
+      flex: 1;
+    }
+
+    .add-button {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      min-width: 120px;
+      white-space: nowrap;
+
+      @media (max-width: 768px) {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// ===== TAGS LIST CARD =====
+.tags-list-card {
+  @include base-card;
+  margin-bottom: var(--spacing-lg);
+
+  .loading-container {
+    @include loading-container;
+    min-height: 200px;
+  }
+
+  .empty-state {
+    @include empty-state;
+    padding: var(--spacing-3xl) var(--spacing-xl);
+
+    mat-icon {
+      font-size: 4rem;
+      width: 4rem;
+      height: 4rem;
+    }
+  }
+
+  .tags-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-sm);
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .tag-chip {
+      @extend .list-item;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-sm);
+      border-radius: var(--border-radius-2xl);
+      border: 2px solid var(--mat-sys-outline-variant);
+      transition: var(--transition-fast);
+
+      &:hover {
+        border-color: var(--mat-sys-tertiary);
+        transform: translateY(-1px);
+      }
+
+      .tag-name {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--mat-sys-on-surface);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .tag-actions {
+        display: flex;
+        gap: var(--spacing-xs);
+
+        .delete-button {
+          color: var(--error-color);
+          transition: var(--transition-fast);
+
+          &:hover {
+            background: var(--error-light);
+          }
+
+          &:disabled {
+            opacity: 0.6;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ===== SUGGESTIONS CARD =====
+.suggestions-card {
+  @include base-card;
+
+  .suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-sm);
+
+    .suggestion-chip {
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 0.85rem;
+      border-radius: var(--border-radius-2xl);
+      transition: var(--transition-fast);
+
+      &:hover:not(:disabled) {
+        background: var(--mat-sys-tertiary-container);
+        color: var(--mat-sys-on-tertiary-container);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+// ===== RESPONSIVE DESIGN =====
+@include mobile-responsive;

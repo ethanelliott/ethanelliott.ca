@@ -36,6 +36,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
     MatProgressSpinnerModule,
     MatChipsModule,
   ],
+  styleUrl: './tags.component.scss',
   template: `
     <div class="tags-container">
       <!-- Header -->

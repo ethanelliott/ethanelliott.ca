@@ -1,0 +1,143 @@
+// ===== LOGIN COMPONENT STYLES =====
+// Authentication page design using shared mixins
+
+@import '../../styles/mixins';
+
+// ===== BACKGROUND & WRAPPER =====
+.gradient-background {
+  @include auth-background;
+}
+
+.wrapper {
+  @include auth-wrapper;
+}
+
+// ===== LOGIN CONTAINER =====
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+  max-width: 400px;
+}
+
+// ===== BRAND SECTION =====
+.brand-section {
+  @include auth-header;
+
+  .logo {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .logo-icon {
+    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    color: var(--mat-sys-primary);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+
+    @media (max-width: 768px) {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+  }
+
+  .brand-title {
+    font-size: 2.5rem;
+    font-weight: 300;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    @media (max-width: 768px) {
+      font-size: 2rem;
+    }
+  }
+}
+
+// ===== LOGIN CARD =====
+.login-card {
+  @include auth-card;
+
+  .login-content {
+    padding: var(--spacing-md) 0;
+  }
+
+  .loading-state {
+    @include loading-state-auth;
+  }
+
+  .passkey-info {
+    text-align: center;
+    padding: var(--spacing-md);
+
+    .security-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      color: var(--mat-sys-primary);
+      margin-bottom: var(--spacing-md);
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin: 0 0 var(--spacing-sm) 0;
+      color: var(--mat-sys-on-surface);
+    }
+
+    p {
+      color: var(--mat-sys-on-surface-variant);
+      margin: 0 0 var(--spacing-lg) 0;
+      line-height: 1.5;
+    }
+
+    .login-button {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      font-size: 1rem;
+      border-radius: var(--border-radius-2xl);
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+// ===== FOOTER LINKS =====
+.footer-links {
+  text-align: center;
+  color: white;
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  a {
+    color: var(--mat-sys-primary);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid transparent;
+    transition: var(--transition-fast);
+
+    &:hover {
+      border-bottom-color: var(--mat-sys-primary);
+    }
+  }
+}
+
+// ===== RESPONSIVE DESIGN =====
+@media (max-width: 768px) {
+  .login-container {
+    max-width: 100%;
+    padding: 0 var(--spacing-md);
+    gap: var(--spacing-lg);
+  }
+
+  .wrapper {
+    padding: var(--spacing-lg);
+  }
+}
