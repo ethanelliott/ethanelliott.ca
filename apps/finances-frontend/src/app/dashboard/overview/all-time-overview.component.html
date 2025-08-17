@@ -45,13 +45,10 @@
           [class.negative]="allTimeStats().netWorth < 0"
         >
           <div class="kpi-icon">
-            <mat-icon
-              [fontIcon]="
-                allTimeStats().netWorth >= 0
-                  ? 'fa-trending-up'
-                  : 'fa-trending-down'
-              "
-            ></mat-icon>
+            <mat-icon>
+              @if (allTimeStats().netWorth >= 0) { trending_up } @else {
+              trending_down }
+            </mat-icon>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Net Worth</div>
@@ -66,7 +63,7 @@
 
         <div class="kpi-item income">
           <div class="kpi-icon">
-            <mat-icon fontIcon="fa-coins"></mat-icon>
+            <mat-icon>paid</mat-icon>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Total Income</div>
@@ -81,7 +78,7 @@
 
         <div class="kpi-item expense">
           <div class="kpi-icon">
-            <mat-icon fontIcon="fa-receipt"></mat-icon>
+            <mat-icon>receipt</mat-icon>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Total Expenses</div>
@@ -96,7 +93,7 @@
 
         <div class="kpi-item activity">
           <div class="kpi-icon">
-            <mat-icon fontIcon="fa-chart-bar"></mat-icon>
+            <mat-icon>bar_chart</mat-icon>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Transactions</div>
@@ -111,7 +108,7 @@
 
         <div class="kpi-item highlight">
           <div class="kpi-icon">
-            <mat-icon fontIcon="fa-calendar"></mat-icon>
+            <mat-icon>event</mat-icon>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Best Month</div>
@@ -124,7 +121,7 @@
 
         <div class="kpi-item info">
           <div class="kpi-icon">
-            <mat-icon fontIcon="fa-calculator"></mat-icon>
+            <mat-icon>calculate</mat-icon>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Avg Transaction</div>
@@ -147,7 +144,7 @@
         <mat-card class="chart-card">
           <mat-card-header class="header">
             <mat-card-title>
-              <mat-icon fontIcon="fa-chart-line"></mat-icon>
+              <mat-icon>show_chart</mat-icon>
               Financial Trends
             </mat-card-title>
           </mat-card-header>
@@ -170,7 +167,7 @@
         <mat-card class="chart-card">
           <mat-card-header class="header">
             <mat-card-title>
-              <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+              <mat-icon>pie_chart</mat-icon>
               Spending by Category
             </mat-card-title>
           </mat-card-header>
@@ -187,7 +184,7 @@
             </div>
             } @else {
             <div class="empty-chart">
-              <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+              <mat-icon>pie_chart</mat-icon>
               <p>No expense data</p>
             </div>
             }
@@ -200,17 +197,14 @@
         <mat-card class="insights-card">
           <mat-card-header class="header">
             <mat-card-title>
-              <mat-icon fontIcon="fa-lightbulb"></mat-icon>
+              <mat-icon>lightbulb</mat-icon>
               Quick Insights
             </mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <div class="insights-grid">
               <div class="insight">
-                <mat-icon
-                  fontIcon="fa-shopping-cart"
-                  class="insight-icon expense"
-                ></mat-icon>
+                <mat-icon class="insight-icon expense">shopping_cart</mat-icon>
                 <div class="insight-text">
                   <div class="insight-label">Top Category</div>
                   <div class="insight-value">
@@ -220,10 +214,7 @@
               </div>
 
               <div class="insight">
-                <mat-icon
-                  fontIcon="fa-credit-card"
-                  class="insight-icon primary"
-                ></mat-icon>
+                <mat-icon class="insight-icon primary">credit_card</mat-icon>
                 <div class="insight-text">
                   <div class="insight-label">Top Payment</div>
                   <div class="insight-value">
@@ -233,10 +224,7 @@
               </div>
 
               <div class="insight">
-                <mat-icon
-                  fontIcon="fa-calendar-days"
-                  class="insight-icon neutral"
-                ></mat-icon>
+                <mat-icon class="insight-icon neutral">calendar_month</mat-icon>
                 <div class="insight-text">
                   <div class="insight-label">Most Active</div>
                   <div class="insight-value">
@@ -247,10 +235,7 @@
 
               @if (getMostExpensiveTransaction(); as mostExpensive) {
               <div class="insight">
-                <mat-icon
-                  fontIcon="fa-exclamation-triangle"
-                  class="insight-icon warning"
-                ></mat-icon>
+                <mat-icon class="insight-icon warning">warning</mat-icon>
                 <div class="insight-text">
                   <div class="insight-label">Largest Expense</div>
                   <div class="insight-value">
@@ -260,10 +245,7 @@
               </div>
               } @if (getBiggestIncomeTransaction(); as biggestIncome) {
               <div class="insight">
-                <mat-icon
-                  fontIcon="fa-trophy"
-                  class="insight-icon income"
-                ></mat-icon>
+                <mat-icon class="insight-icon income">emoji_events</mat-icon>
                 <div class="insight-text">
                   <div class="insight-label">Biggest Income</div>
                   <div class="insight-value">
@@ -274,10 +256,7 @@
               }
 
               <div class="insight">
-                <mat-icon
-                  fontIcon="fa-chart-line"
-                  class="insight-icon info"
-                ></mat-icon>
+                <mat-icon class="insight-icon info">trending_up</mat-icon>
                 <div class="insight-text">
                   <div class="insight-label">Spending Trend</div>
                   <div class="insight-value">
@@ -298,7 +277,7 @@
         <mat-card class="list-card">
           <mat-card-header class="header">
             <mat-card-title>
-              <mat-icon fontIcon="fa-store"></mat-icon>
+              <mat-icon>store</mat-icon>
               Top Merchants
             </mat-card-title>
             <button
@@ -306,7 +285,7 @@
               (click)="navigateToTransactions()"
               class="nav-button"
             >
-              <mat-icon fontIcon="fa-arrow-right"></mat-icon>
+              <mat-icon>arrow_forward</mat-icon>
             </button>
           </mat-card-header>
           <mat-card-content>
@@ -327,7 +306,7 @@
               </div>
               } @empty {
               <div class="empty-state-mini">
-                <mat-icon fontIcon="fa-store"></mat-icon>
+                <mat-icon>store</mat-icon>
                 <span>No merchant data</span>
               </div>
               }
@@ -341,7 +320,7 @@
         <mat-card class="list-card">
           <mat-card-header class="header">
             <mat-card-title>
-              <mat-icon fontIcon="fa-credit-card"></mat-icon>
+              <mat-icon>credit_card</mat-icon>
               Payment Methods
             </mat-card-title>
             <button
@@ -349,7 +328,7 @@
               (click)="navigateToMediums()"
               class="nav-button"
             >
-              <mat-icon fontIcon="fa-arrow-right"></mat-icon>
+              <mat-icon>arrow_forward</mat-icon>
             </button>
           </mat-card-header>
           <mat-card-content>
@@ -382,7 +361,7 @@
               </div>
               } @empty {
               <div class="empty-state-mini">
-                <mat-icon fontIcon="fa-credit-card"></mat-icon>
+                <mat-icon>credit_card</mat-icon>
                 <span>No payment data</span>
               </div>
               }
@@ -396,7 +375,7 @@
         <mat-card class="list-card">
           <mat-card-header class="header">
             <mat-card-title>
-              <mat-icon fontIcon="fa-clock"></mat-icon>
+              <mat-icon>schedule</mat-icon>
               Recent Activity
             </mat-card-title>
             <button
@@ -404,13 +383,13 @@
               (click)="navigateToTransactions()"
               class="nav-button"
             >
-              <mat-icon fontIcon="fa-arrow-right"></mat-icon>
+              <mat-icon>arrow_forward</mat-icon>
             </button>
           </mat-card-header>
           <mat-card-content>
             @if (recentTransactions().length === 0) {
             <div class="empty-state-mini">
-              <mat-icon fontIcon="fa-receipt"></mat-icon>
+              <mat-icon>receipt</mat-icon>
               <span>No transactions yet</span>
             </div>
             } @else {
@@ -422,11 +401,9 @@
                   class="transaction-type-icon"
                   [class]="transaction.type.toLowerCase()"
                 >
-                  <mat-icon
-                    [fontIcon]="
-                      transaction.type === 'INCOME' ? 'fa-plus' : 'fa-minus'
-                    "
-                  ></mat-icon>
+                  <mat-icon>
+                    @if (transaction.type === 'INCOME') { add } @else { remove }
+                  </mat-icon>
                 </div>
                 <div class="transaction-info">
                   <div class="transaction-desc">

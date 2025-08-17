@@ -17,7 +17,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
         description: 'Get all categories',
@@ -34,7 +34,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
         description: 'Create new category',
@@ -53,7 +53,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
         description: 'Delete all categories',
@@ -74,7 +74,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/:name',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
         description: 'Get category by name',
@@ -105,7 +105,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.put(
     '/:name',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
         description: 'Update category',
@@ -141,7 +141,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/:name',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
         description: 'Delete category',

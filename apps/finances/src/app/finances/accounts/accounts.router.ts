@@ -12,7 +12,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Accounts'],
         description: 'Get all accounts',
@@ -29,7 +29,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Accounts'],
         description: 'Create new account',
@@ -48,7 +48,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Accounts'],
         description: 'Delete all accounts',
@@ -64,7 +64,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/summary',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Accounts'],
         description: 'Get account summary',
@@ -87,7 +87,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/:id',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Accounts'],
         description: 'Get account by ID',
@@ -118,7 +118,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
   typedFastify.put(
     '/:id',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Accounts'],
         description: 'Update account',
@@ -156,7 +156,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/:id',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Accounts'],
         description: 'Delete account',

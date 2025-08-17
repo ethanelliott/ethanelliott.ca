@@ -157,7 +157,6 @@
       font-weight: 600;
 
       mat-icon {
-        font-size: 1.1rem;
         color: var(--mat-sys-primary);
       }
     }
@@ -393,10 +392,6 @@
   padding: var(--spacing-md);
   min-height: 200px;
 
-  mat-icon {
-    font-size: 1.5rem;
-  }
-
   p {
     font-size: 0.8rem;
   }
@@ -418,20 +413,6 @@
     align-items: center;
     gap: var(--spacing-sm);
     font-size: 1rem;
-
-    mat-icon {
-      font-size: 1.1rem;
-      width: 1.1rem;
-      height: 1.1rem;
-    }
-  }
-
-  .primary-action {
-    flex: 1;
-  }
-
-  .secondary-action {
-    flex: 1;
   }
 }
 

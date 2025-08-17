@@ -35,7 +35,7 @@ import { firstValueFrom } from 'rxjs';
         <div class="login-container">
           <div class="brand-section">
             <div class="logo">
-              <mat-icon class="logo-icon" fontIcon="fa-wallet"></mat-icon>
+              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
             </div>
             <h1 class="brand-title">Finances</h1>
           </div>
@@ -53,10 +53,7 @@ import { firstValueFrom } from 'rxjs';
                 </div>
                 } @else {
                 <div class="passkey-info">
-                  <mat-icon
-                    class="security-icon"
-                    fontIcon="fa-shield-halved"
-                  ></mat-icon>
+                  <mat-icon class="security-icon">security ></mat-icon>
                   <h3>Passwordless Authentication</h3>
                   <p>Sign in securely using your passkey.</p>
                   <button
@@ -65,7 +62,7 @@ import { firstValueFrom } from 'rxjs';
                     (click)="loginWithPasskey()"
                     class="login-button"
                   >
-                    <mat-icon fontIcon="fa-fingerprint"></mat-icon>
+                    <mat-icon>fingerprint</mat-icon>
                     Sign In with Passkey
                   </button>
                 </div>

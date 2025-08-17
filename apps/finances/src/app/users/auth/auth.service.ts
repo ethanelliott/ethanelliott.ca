@@ -341,14 +341,21 @@ export class AuthService {
     user: User;
     credentials: UserCredential[];
   }> {
+    console.log('Fetching profile for userId:', userId);
     const user = await this._userRepository.findOne({
       where: { id: userId },
-      relations: ['credentials'],
+      relations: {
+        credentials: true,
+      },
     });
+
+    console.log('User found:', user);
 
     if (!user) {
       throw new HttpErrors.NotFound('User not found');
     }
+
+    console.log('User credentials:', user.credentials);
 
     return {
       user,

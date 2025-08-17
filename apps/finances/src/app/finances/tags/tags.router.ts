@@ -12,7 +12,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Tags'],
         description: 'Get all tags',
@@ -29,7 +29,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Tags'],
         description: 'Create new tag',
@@ -48,7 +48,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Tags'],
         description: 'Delete all tags',
@@ -69,7 +69,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/:name',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Tags'],
         description: 'Get tag by name',
@@ -100,7 +100,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
   typedFastify.put(
     '/:name',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Tags'],
         description: 'Update tag',
@@ -132,7 +132,7 @@ export async function TagsRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/:name',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Tags'],
         description: 'Delete tag',

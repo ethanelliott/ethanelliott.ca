@@ -18,7 +18,7 @@ export async function SecurityRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/passkey/:credentialId',
     {
-      preHandler: [(fastify as any).authenticate],
+      preHandler: [fastify.authenticate()],
       schema: {
         tags: ['Security'],
         description: 'Delete a specific passkey',
@@ -44,7 +44,7 @@ export async function SecurityRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/revoke-all',
     {
-      preHandler: [(fastify as any).authenticate],
+      preHandler: [fastify.authenticate()],
       schema: {
         tags: ['Security'],
         description: 'Revoke all active sessions (except current)',

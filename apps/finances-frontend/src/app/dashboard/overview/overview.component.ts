@@ -35,7 +35,7 @@ import { MonthlyHabitsComponent } from './monthly-habits/monthly-habits.componen
       >
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon fontIcon="fa-chart-line"></mat-icon>
+            <mat-icon>trending_up</mat-icon>
             All-Time Overview
           </ng-template>
           <app-all-time-overview></app-all-time-overview>
@@ -43,7 +43,7 @@ import { MonthlyHabitsComponent } from './monthly-habits/monthly-habits.componen
 
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon fontIcon="fa-calendar-days"></mat-icon>
+            <mat-icon>calendar_month</mat-icon>
             Monthly Habits
           </ng-template>
           <app-monthly-habits></app-monthly-habits>

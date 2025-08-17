@@ -23,6 +23,8 @@ import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { injectFinanceStore } from '../../store/finance.provider';
+import { DialogService } from '../../shared/dialogs';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-mediums',
@@ -48,7 +50,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <div class="header-row">
           <div class="title-section">
             <h1 class="page-title">
-              <mat-icon fontIcon="fa-credit-card"></mat-icon>
+              <mat-icon>credit_card</mat-icon>
               Payment Methods
             </h1>
             <p class="page-subtitle">
@@ -58,11 +60,11 @@ import { injectFinanceStore } from '../../store/finance.provider';
           <div class="controls-section">
             <div class="header-stats">
               <div class="stat-chip">
-                <mat-icon fontIcon="fa-list"></mat-icon>
+                <mat-icon>list</mat-icon>
                 <span>{{ financeStore.mediums().length }} Methods</span>
               </div>
               <div class="stat-chip">
-                <mat-icon fontIcon="fa-chart-line"></mat-icon>
+                <mat-icon>trending_up</mat-icon>
                 <span>{{ getMostUsedMedium() }}</span>
               </div>
             </div>
@@ -82,7 +84,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
       <mat-card class="quick-add-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon fontIcon="fa-plus-circle"></mat-icon>
+            <mat-icon>add_circle</mat-icon>
             Add Payment Method
           </mat-card-title>
           <mat-card-subtitle
@@ -100,7 +102,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                 required
                 placeholder="e.g., Chase Credit Card, Cash, Venmo"
               />
-              <mat-icon matSuffix fontIcon="fa-credit-card"></mat-icon>
+              <mat-icon matSuffix>credit_card</mat-icon>
             </mat-form-field>
             <button
               mat-raised-button
@@ -113,7 +115,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-spinner diameter="20"></mat-spinner>
               Adding... } @else {
               <ng-container>
-                <mat-icon fontIcon="fa-plus"></mat-icon>
+                <mat-icon>add</mat-icon>
                 Add Method
               </ng-container>
               }
@@ -128,7 +130,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <mat-card class="overview-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+              <mat-icon>pie_chart</mat-icon>
               Payment Methods Overview
             </mat-card-title>
             <mat-card-subtitle
@@ -138,14 +140,14 @@ import { injectFinanceStore } from '../../store/finance.provider';
           <mat-card-content>
             @if (financeStore.mediums().length === 0) {
             <div class="empty-analytics">
-              <mat-icon fontIcon="fa-credit-card"></mat-icon>
+              <mat-icon>credit_card</mat-icon>
               <p>No payment methods yet. Add your first method above!</p>
             </div>
             } @else {
             <div class="analytics-stats">
               <div class="stat-item">
                 <div class="stat-icon">
-                  <mat-icon fontIcon="fa-credit-card"></mat-icon>
+                  <mat-icon>credit_card</mat-icon>
                 </div>
                 <div class="stat-content">
                   <div class="stat-label">Total Methods</div>
@@ -157,7 +159,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               </div>
               <div class="stat-item">
                 <div class="stat-icon">
-                  <mat-icon fontIcon="fa-star"></mat-icon>
+                  <mat-icon>star</mat-icon>
                 </div>
                 <div class="stat-content">
                   <div class="stat-label">Most Used</div>
@@ -167,7 +169,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               </div>
               <div class="stat-item">
                 <div class="stat-icon">
-                  <mat-icon fontIcon="fa-chart-line"></mat-icon>
+                  <mat-icon>trending_up</mat-icon>
                 </div>
                 <div class="stat-content">
                   <div class="stat-label">Usage Distribution</div>
@@ -184,7 +186,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <mat-card class="suggestions-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon fontIcon="fa-lightbulb"></mat-icon>
+              <mat-icon>lightbulb</mat-icon>
               Common Methods
             </mat-card-title>
             <mat-card-subtitle
@@ -200,7 +202,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                 [disabled]="submitting()"
                 class="suggestion-chip"
               >
-                <mat-icon [fontIcon]="getMediumIcon(suggestion)"></mat-icon>
+                <mat-icon>{{ getMediumIcon(suggestion) }}</mat-icon>
                 {{ suggestion }}
               </button>
               }
@@ -213,7 +215,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
       <mat-card class="mediums-list-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon fontIcon="fa-list"></mat-icon>
+            <mat-icon>list</mat-icon>
             All Payment Methods
           </mat-card-title>
           <mat-card-subtitle
@@ -224,7 +226,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <mat-card-content>
           @if (financeStore.mediums().length === 0) {
           <div class="empty-state">
-            <mat-icon fontIcon="fa-credit-card"></mat-icon>
+            <mat-icon>credit_card</mat-icon>
             <h3>No Payment Methods Yet</h3>
             <p>
               Add your first payment method above to start tracking how you pay
@@ -236,7 +238,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
             @for (medium of financeStore.mediums(); track medium) {
             <div class="medium-card">
               <div class="medium-icon">
-                <mat-icon [fontIcon]="getMediumIcon(medium)"></mat-icon>
+                <mat-icon>{{ getMediumIcon(medium) }}</mat-icon>
               </div>
               <div class="medium-info">
                 <div class="medium-name">{{ medium }}</div>
@@ -260,7 +262,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                   @if (deleting().has(medium)) {
                   <mat-spinner diameter="16"></mat-spinner>
                   } @else {
-                  <mat-icon fontIcon="fa-trash"></mat-icon>
+                  <mat-icon>delete</mat-icon>
                   }
                 </button>
               </div>
@@ -279,6 +281,7 @@ export class MediumsComponent implements OnInit {
   readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialogService = inject(DialogService);
 
   loading = signal(true);
   submitting = signal(false);
@@ -328,15 +331,17 @@ export class MediumsComponent implements OnInit {
     this.submitting.set(false);
   }
 
-  deleteMedium(mediumName: string) {
-    if (
-      !confirm(
-        'Are you sure you want to delete the payment method "' +
-          mediumName +
-          '"?'
+  async deleteMedium(mediumName: string) {
+    const confirmed = await firstValueFrom(
+      this.dialogService.confirm(
+        `Are you sure you want to delete the payment method "${mediumName}"?`,
+        'Delete Payment Method',
+        'Delete',
+        'Cancel'
       )
-    )
-      return;
+    );
+
+    if (!confirmed) return;
 
     // Add to deleting set
     const newDeleting = new Set(this.deleting());
@@ -395,20 +400,19 @@ export class MediumsComponent implements OnInit {
 
   getMediumIcon(mediumName: string): string {
     const name = mediumName.toLowerCase();
-    if (name.includes('cash')) return 'fa-money-bill';
-    if (name.includes('credit') || name.includes('card'))
-      return 'fa-credit-card';
-    if (name.includes('debit')) return 'fa-credit-card';
+    if (name.includes('cash')) return 'payments';
+    if (name.includes('credit') || name.includes('card')) return 'credit_card';
+    if (name.includes('debit')) return 'credit_card';
     if (name.includes('bank') || name.includes('transfer'))
-      return 'fa-building-columns';
-    if (name.includes('paypal')) return 'fa-paypal';
-    if (name.includes('venmo')) return 'fa-money-bill-transfer';
-    if (name.includes('apple')) return 'fa-mobile-screen';
-    if (name.includes('google')) return 'fa-mobile-screen';
-    if (name.includes('check')) return 'fa-receipt';
-    if (name.includes('gift')) return 'fa-gift';
-    if (name.includes('crypto')) return 'fa-bitcoin';
-    if (name.includes('mobile')) return 'fa-mobile-screen';
-    return 'fa-credit-card';
+      return 'account_balance';
+    if (name.includes('paypal')) return 'payment';
+    if (name.includes('venmo')) return 'swap_horiz';
+    if (name.includes('apple')) return 'phone_android';
+    if (name.includes('google')) return 'phone_android';
+    if (name.includes('check')) return 'receipt';
+    if (name.includes('gift')) return 'card_giftcard';
+    if (name.includes('crypto')) return 'currency_bitcoin';
+    if (name.includes('mobile')) return 'phone_android';
+    return 'credit_card';
   }
 }

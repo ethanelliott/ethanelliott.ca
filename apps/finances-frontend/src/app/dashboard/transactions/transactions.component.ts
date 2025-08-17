@@ -48,7 +48,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
               (click)="openTransactionDialog()"
               class="add-button"
             >
-              <mat-icon fontIcon="fa-plus"></mat-icon>
+              <mat-icon>add</mat-icon>
               Add Transaction
             </button>
           </div>
@@ -59,7 +59,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
       <mat-card class="transactions-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon fontIcon="fa-list"></mat-icon>
+            <mat-icon>list</mat-icon>
             All Transactions
           </mat-card-title>
         </mat-card-header>
@@ -72,7 +72,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
           </div>
           } @else if (financeStore.transactionCount() === 0) {
           <div class="empty-state">
-            <mat-icon fontIcon="fa-receipt"></mat-icon>
+            <mat-icon>receipt</mat-icon>
             <h3>No transactions yet</h3>
             <p>Start tracking your finances by adding your first transaction</p>
             <button
@@ -81,7 +81,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
               (click)="openTransactionDialog()"
               class="get-started-button"
             >
-              <mat-icon fontIcon="fa-plus"></mat-icon>
+              <mat-icon>add</mat-icon>
               Add Your First Transaction
             </button>
           </div>

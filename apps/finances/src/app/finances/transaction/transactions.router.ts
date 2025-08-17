@@ -32,7 +32,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
         description: 'Create new transaction',

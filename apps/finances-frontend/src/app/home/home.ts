@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
         <div class="home-container">
           <div class="hero-section">
             <div class="logo">
-              <mat-icon class="logo-icon" fontIcon="fa-wallet" />
+              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
             </div>
             <h1 class="hero-title">Finances</h1>
           </div>
@@ -30,7 +30,7 @@ import { RouterLink } from '@angular/router';
                   color="primary"
                   class="primary-action"
                 >
-                  <mat-icon fontIcon="fa-user-plus" />
+                  <mat-icon>person_add</mat-icon>
                   Create Account
                 </button>
                 <button
@@ -39,7 +39,7 @@ import { RouterLink } from '@angular/router';
                   color="primary"
                   class="secondary-action"
                 >
-                  <mat-icon fontIcon="fa-right-to-bracket" />
+                  <mat-icon>login</mat-icon>
                   Sign In
                 </button>
               </div>

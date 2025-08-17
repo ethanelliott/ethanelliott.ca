@@ -13,8 +13,9 @@ export class ProfileService {
   private readonly _usersService = inject(UsersService);
 
   async getProfile(userId: string): Promise<ProfileResponse> {
+    console.log('get profile for:', userId);
     const profile = await this._authService.getUserProfile(userId);
-
+    console.log('Profile fetched:', profile);
     return {
       success: true,
       user: {

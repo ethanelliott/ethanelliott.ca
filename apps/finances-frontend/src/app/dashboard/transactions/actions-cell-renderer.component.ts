@@ -6,7 +6,7 @@ import { ICellRendererParams } from 'ag-grid-community';
 
 export interface ActionsCellRendererParams extends ICellRendererParams {
   onEdit: (data: any) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
 }
 
 @Component({
@@ -22,7 +22,7 @@ export interface ActionsCellRendererParams extends ICellRendererParams {
         [attr.aria-label]="'Edit transaction'"
         title="Edit"
       >
-        <mat-icon fontIcon="fa-pen"></mat-icon>
+        <mat-icon>edit</mat-icon>
       </button>
       <button
         mat-icon-button
@@ -31,7 +31,7 @@ export interface ActionsCellRendererParams extends ICellRendererParams {
         [attr.aria-label]="'Delete transaction'"
         title="Delete"
       >
-        <mat-icon fontIcon="fa-trash"></mat-icon>
+        <mat-icon>delete</mat-icon>
       </button>
     </div>
   `,

@@ -21,6 +21,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { injectUserStore } from '../../store';
+import { DialogService } from '../../shared/dialogs';
 
 @Component({
   selector: 'app-profile',
@@ -45,7 +46,7 @@ import { injectUserStore } from '../../store';
         <div class="header-row">
           <div class="title-section">
             <h1 class="page-title">
-              <mat-icon fontIcon="fa-user-circle"></mat-icon>
+              <mat-icon>account_circle</mat-icon>
               Profile
             </h1>
             <p class="page-subtitle">
@@ -57,11 +58,9 @@ import { injectUserStore } from '../../store';
               class="account-status"
               [class]="userStore.isActive() ? 'active' : 'inactive'"
             >
-              <mat-icon
-                [fontIcon]="
-                  userStore.isActive() ? 'fa-circle-check' : 'fa-circle-xmark'
-                "
-              ></mat-icon>
+              <mat-icon>{{
+                userStore.isActive() ? 'check_circle' : 'cancel'
+              }}</mat-icon>
               <span>{{
                 userStore.isActive() ? 'Active Account' : 'Inactive Account'
               }}</span>
@@ -84,7 +83,7 @@ import { injectUserStore } from '../../store';
         <mat-card class="profile-card">
           <mat-card-header>
             <div mat-card-avatar class="profile-avatar">
-              <mat-icon fontIcon="fa-user-circle"></mat-icon>
+              <mat-icon>account_circle</mat-icon>
             </div>
             <mat-card-title>{{ userStore.displayName() }}</mat-card-title>
             <mat-card-subtitle>@{{ userStore.username() }}</mat-card-subtitle>
@@ -93,21 +92,21 @@ import { injectUserStore } from '../../store';
             <div class="profile-details">
               <div class="detail-row">
                 <div class="detail-label">
-                  <mat-icon fontIcon="fa-user"></mat-icon>
+                  <mat-icon>person</mat-icon>
                   <span>Display Name</span>
                 </div>
                 <div class="detail-value">{{ userStore.displayName() }}</div>
               </div>
               <div class="detail-row">
                 <div class="detail-label">
-                  <mat-icon fontIcon="fa-at"></mat-icon>
+                  <mat-icon>alternate_email</mat-icon>
                   <span>Username</span>
                 </div>
                 <div class="detail-value">@{{ userStore.username() }}</div>
               </div>
               <div class="detail-row">
                 <div class="detail-label">
-                  <mat-icon fontIcon="fa-id-badge"></mat-icon>
+                  <mat-icon>badge</mat-icon>
                   <span>User ID</span>
                 </div>
                 <div class="detail-value user-id">
@@ -122,7 +121,7 @@ import { injectUserStore } from '../../store';
         <mat-card class="stats-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon fontIcon="fa-chart-line"></mat-icon>
+              <mat-icon>trending_up</mat-icon>
               Account Statistics
             </mat-card-title>
             <mat-card-subtitle
@@ -133,7 +132,7 @@ import { injectUserStore } from '../../store';
             <div class="stats-grid">
               <div class="stat-item">
                 <div class="stat-icon">
-                  <mat-icon fontIcon="fa-calendar-days"></mat-icon>
+                  <mat-icon>calendar_month</mat-icon>
                 </div>
                 <div class="stat-content">
                   <div class="stat-label">Member Since</div>
@@ -145,7 +144,7 @@ import { injectUserStore } from '../../store';
               </div>
               <div class="stat-item">
                 <div class="stat-icon">
-                  <mat-icon fontIcon="fa-clock"></mat-icon>
+                  <mat-icon>schedule</mat-icon>
                 </div>
                 <div class="stat-content">
                   <div class="stat-label">Last Active</div>
@@ -155,103 +154,17 @@ import { injectUserStore } from '../../store';
                   <div class="stat-meta">{{ getLastActiveTime() }}</div>
                 </div>
               </div>
-              <div class="stat-item">
-                <div class="stat-icon">
-                  <mat-icon fontIcon="fa-shield-check"></mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-label">Security Level</div>
-                  <div class="stat-value security-high">High</div>
-                  <div class="stat-meta">Passkey Enabled</div>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon">
-                  <mat-icon fontIcon="fa-database"></mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-label">Data Privacy</div>
-                  <div class="stat-value privacy-protected">Protected</div>
-                  <div class="stat-meta">End-to-End Encrypted</div>
-                </div>
-              </div>
             </div>
           </mat-card-content>
         </mat-card>
       </div>
-
-      <!-- Security Section -->
-      <mat-card class="security-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon fontIcon="fa-shield-halved"></mat-icon>
-            Security & Authentication
-          </mat-card-title>
-          <mat-card-subtitle
-            >Manage your account security and authentication
-            methods</mat-card-subtitle
-          >
-        </mat-card-header>
-        <mat-card-content>
-          <div class="security-grid">
-            <div class="security-feature">
-              <div class="feature-icon">
-                <mat-icon fontIcon="fa-key"></mat-icon>
-              </div>
-              <div class="feature-content">
-                <h4>Passkey Authentication</h4>
-                <p>
-                  Your account is secured with modern passkey authentication for
-                  passwordless security
-                </p>
-                <div class="feature-status enabled">
-                  <mat-icon fontIcon="fa-circle-check"></mat-icon>
-                  <span>Enabled & Active</span>
-                </div>
-              </div>
-            </div>
-            <div class="security-feature">
-              <div class="feature-icon">
-                <mat-icon fontIcon="fa-lock"></mat-icon>
-              </div>
-              <div class="feature-content">
-                <h4>Data Encryption</h4>
-                <p>
-                  All your financial data is encrypted at rest and in transit
-                  using industry standards
-                </p>
-                <div class="feature-status enabled">
-                  <mat-icon fontIcon="fa-circle-check"></mat-icon>
-                  <span>AES-256 Encryption</span>
-                </div>
-              </div>
-            </div>
-            <div class="security-feature">
-              <div class="feature-icon">
-                <mat-icon fontIcon="fa-user-shield"></mat-icon>
-              </div>
-              <div class="feature-content">
-                <h4>Privacy Controls</h4>
-                <p>
-                  You have full control over your data with granular privacy
-                  settings
-                </p>
-                <div class="feature-status enabled">
-                  <mat-icon fontIcon="fa-circle-check"></mat-icon>
-                  <span>Full Control</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
 
       <!-- Actions Section -->
       <div class="actions-grid">
         <mat-card class="action-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon fontIcon="fa-right-from-bracket"></mat-icon>
+              <mat-icon>logout</mat-icon>
               Session Management
             </mat-card-title>
             <mat-card-subtitle>Manage your current session</mat-card-subtitle>
@@ -268,7 +181,7 @@ import { injectUserStore } from '../../store';
                 (click)="logout()"
                 class="logout-button"
               >
-                <mat-icon fontIcon="fa-right-from-bracket"></mat-icon>
+                <mat-icon>logout</mat-icon>
                 Sign Out
               </button>
             </div>
@@ -279,7 +192,7 @@ import { injectUserStore } from '../../store';
         <mat-card class="danger-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon fontIcon="fa-triangle-exclamation"></mat-icon>
+              <mat-icon>warning</mat-icon>
               Danger Zone
             </mat-card-title>
             <mat-card-subtitle
@@ -289,7 +202,7 @@ import { injectUserStore } from '../../store';
           <mat-card-content>
             <div class="danger-content">
               <div class="danger-warning">
-                <mat-icon fontIcon="fa-exclamation-triangle"></mat-icon>
+                <mat-icon>warning</mat-icon>
                 <div class="warning-text">
                   <h4>Delete Account</h4>
                   <p>
@@ -309,7 +222,7 @@ import { injectUserStore } from '../../store';
                 <mat-spinner diameter="20"></mat-spinner>
                 Deleting Account... } @else {
                 <ng-container>
-                  <mat-icon fontIcon="fa-trash"></mat-icon>
+                  <mat-icon>delete</mat-icon>
                   Delete Account
                 </ng-container>
                 }
@@ -325,6 +238,7 @@ import { injectUserStore } from '../../store';
 export class ProfileComponent {
   protected readonly userStore = injectUserStore();
   private readonly fb = inject(FormBuilder);
+  private readonly dialogService = inject(DialogService);
 
   profileForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(1)]],
@@ -381,15 +295,19 @@ export class ProfileComponent {
   }
 
   deleteAccount() {
-    const confirmation = prompt(
-      'This will permanently delete your account and all data. Type "DELETE" to confirm:'
-    );
-
-    if (confirmation !== 'DELETE') {
-      return;
-    }
-
-    this.userStore.deleteAccount();
+    this.dialogService
+      .confirmDangerous(
+        'This will permanently delete your account and all data. This action cannot be undone.',
+        'DELETE',
+        'Delete Account',
+        'Delete Account',
+        'Cancel'
+      )
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.userStore.deleteAccount();
+        }
+      });
   }
 
   formatDate(date: Date | string | null): string {

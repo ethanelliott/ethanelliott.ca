@@ -62,7 +62,7 @@ export interface TransactionDialogData {
         {{ data.transaction ? 'Edit Transaction' : 'Add New Transaction' }}
       </h2>
       <button mat-icon-button mat-dialog-close>
-        <mat-icon fontIcon="fa-times"></mat-icon>
+        <mat-icon>close</mat-icon>
       </button>
     </div>
 
@@ -138,7 +138,7 @@ export interface TransactionDialogData {
               <mat-chip-row (removed)="removeTag(tag)">
                 {{ tag }}
                 <button matChipRemove>
-                  <mat-icon fontIcon="fa-ban"></mat-icon>
+                  <mat-icon>cancel</mat-icon>
                 </button>
               </mat-chip-row>
               }

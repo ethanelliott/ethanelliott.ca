@@ -16,6 +16,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -31,6 +32,7 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { injectFinanceStore } from '../../store/finance.provider';
+import { DialogService } from '../../shared/dialogs';
 
 interface TagData {
   name: string;
@@ -66,7 +68,7 @@ interface TagData {
         <div class="header-row">
           <div class="title-section">
             <h1 class="page-title">
-              <mat-icon fontIcon="fa-tags"></mat-icon>
+              <mat-icon>sell</mat-icon>
               Tags
             </h1>
             <p class="page-subtitle">
@@ -76,11 +78,11 @@ interface TagData {
           <div class="controls-section">
             <div class="header-stats">
               <div class="stat-chip">
-                <mat-icon fontIcon="fa-tags"></mat-icon>
+                <mat-icon>sell</mat-icon>
                 <span>{{ financeStore.tags().length }} Total</span>
               </div>
               <div class="stat-chip">
-                <mat-icon fontIcon="fa-filter"></mat-icon>
+                <mat-icon>filter_alt</mat-icon>
                 <span>{{ filteredTagsCount() }} Shown</span>
               </div>
             </div>
@@ -89,7 +91,7 @@ interface TagData {
               (click)="forceLoadData()"
               class="debug-button"
             >
-              <mat-icon fontIcon="fa-refresh"></mat-icon>
+              <mat-icon>refresh</mat-icon>
               Force Load Data
             </button>
           </div>
@@ -108,7 +110,7 @@ interface TagData {
                 placeholder="e.g., urgent, business, recurring"
                 (keydown.enter)="addTag()"
               />
-              <mat-icon matSuffix fontIcon="fa-tag"></mat-icon>
+              <mat-icon matSuffix>sell</mat-icon>
             </mat-form-field>
             <button
               mat-raised-button
@@ -121,7 +123,7 @@ interface TagData {
               <mat-spinner diameter="20"></mat-spinner>
               Add Tag } @else {
               <ng-container>
-                <mat-icon fontIcon="fa-plus"></mat-icon>
+                <mat-icon>add</mat-icon>
                 Add Tag
               </ng-container>
               }
@@ -141,10 +143,10 @@ interface TagData {
                 [formControl]="searchControl"
                 placeholder="Type to search..."
               />
-              <mat-icon matPrefix fontIcon="fa-search"></mat-icon>
+              <mat-icon matPrefix>search</mat-icon>
               @if (searchControl.value) {
               <button matSuffix mat-icon-button (click)="clearSearch()">
-                <mat-icon fontIcon="fa-times"></mat-icon>
+                <mat-icon>close</mat-icon>
               </button>
               }
             </mat-form-field>
@@ -155,16 +157,16 @@ interface TagData {
                 [disabled]="selectedTags().size === 0"
                 class="bulk-action-button"
               >
-                <mat-icon fontIcon="fa-ellipsis-v"></mat-icon>
+                <mat-icon>more_vert</mat-icon>
                 Bulk Actions ({{ selectedTags().size }})
               </button>
               <mat-menu #bulkMenu="matMenu">
                 <button mat-menu-item (click)="deleteSelectedTags()">
-                  <mat-icon fontIcon="fa-trash"></mat-icon>
+                  <mat-icon>delete</mat-icon>
                   Delete Selected
                 </button>
                 <button mat-menu-item (click)="clearSelection()">
-                  <mat-icon fontIcon="fa-square"></mat-icon>
+                  <mat-icon>check_box_outline_blank</mat-icon>
                   Clear Selection
                 </button>
               </mat-menu>
@@ -177,7 +179,7 @@ interface TagData {
       <mat-card class="tags-table-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon fontIcon="fa-list"></mat-icon>
+            <mat-icon>list</mat-icon>
             All Tags
           </mat-card-title>
         </mat-card-header>
@@ -190,7 +192,7 @@ interface TagData {
           </div>
           } @else if (financeStore.tags().length === 0) {
           <div class="empty-state">
-            <mat-icon fontIcon="fa-tag"></mat-icon>
+            <mat-icon>sell</mat-icon>
             <h3>No tags yet</h3>
             <p>
               Add your first tag above to start organizing your transactions
@@ -228,7 +230,7 @@ interface TagData {
                 </th>
                 <td mat-cell *matCellDef="let tag" class="tag-name-cell">
                   <div class="tag-display">
-                    <mat-icon fontIcon="fa-tag" class="tag-icon"></mat-icon>
+                    <mat-icon class="tag-icon">sell</mat-icon>
                     <span class="tag-text">{{ tag.name }}</span>
                   </div>
                 </td>
@@ -273,7 +275,7 @@ interface TagData {
                     @if (deleting().has(tag.name)) {
                     <mat-spinner diameter="20"></mat-spinner>
                     } @else {
-                    <mat-icon fontIcon="fa-trash"></mat-icon>
+                    <mat-icon>delete</mat-icon>
                     }
                   </button>
                 </td>
@@ -300,7 +302,7 @@ interface TagData {
       <mat-card class="suggestions-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon fontIcon="fa-lightbulb"></mat-icon>
+            <mat-icon>lightbulb</mat-icon>
             Common Tags
           </mat-card-title>
           <mat-card-subtitle>
@@ -315,7 +317,7 @@ interface TagData {
               [disabled]="submitting()"
               class="suggestion-chip"
             >
-              <mat-icon matChipAvatar fontIcon="fa-plus"></mat-icon>
+              <mat-icon matChipAvatar>add</mat-icon>
               {{ suggestion }}
             </mat-chip>
             }
@@ -329,6 +331,7 @@ export class TagsComponent implements OnInit, AfterViewInit {
   readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialogService = inject(DialogService);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -486,16 +489,22 @@ export class TagsComponent implements OnInit, AfterViewInit {
     const selected = this.selectedTags();
     if (selected.size === 0) return;
 
-    const confirmation = confirm(
-      `Are you sure you want to delete ${selected.size} selected tags?`
-    );
-    if (!confirmation) return;
+    this.dialogService
+      .confirm(
+        `Are you sure you want to delete ${selected.size} selected tags?`,
+        'Delete Selected Tags',
+        'Delete',
+        'Cancel'
+      )
+      .subscribe(async (confirmed) => {
+        if (!confirmed) return;
 
-    for (const tagName of selected) {
-      await this.deleteTag(tagName);
-    }
+        for (const tagName of selected) {
+          await this.deleteTag(tagName, true); // Skip individual confirmation
+        }
 
-    this.clearSelection();
+        this.clearSelection();
+      });
   }
 
   // Utility methods
@@ -526,9 +535,19 @@ export class TagsComponent implements OnInit, AfterViewInit {
     // updateDataSource() will be called automatically by the effect
   }
 
-  async deleteTag(tagName: string) {
-    if (!confirm(`Are you sure you want to delete the tag "${tagName}"?`))
-      return;
+  async deleteTag(tagName: string, skipConfirmation: boolean = false) {
+    if (!skipConfirmation) {
+      const confirmed = await firstValueFrom(
+        this.dialogService.confirm(
+          `Are you sure you want to delete the tag "${tagName}"?`,
+          'Delete Tag',
+          'Delete',
+          'Cancel'
+        )
+      );
+
+      if (!confirmed) return;
+    }
 
     // Add to deleting set
     const newDeleting = new Set(this.deleting());

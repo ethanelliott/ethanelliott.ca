@@ -17,6 +17,8 @@ import {
 } from 'ag-grid-community';
 import { Transaction } from '../../services/finance-api.service';
 import { injectFinanceStore } from '../../store/finance.provider';
+import { DialogService } from '../../shared/dialogs';
+import { firstValueFrom } from 'rxjs';
 import {
   ActionsCellRendererComponent,
   ActionsCellRendererParams,
@@ -56,6 +58,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 })
 export class TransactionsGridComponent {
   readonly financeStore = injectFinanceStore();
+  private readonly dialogService = inject(DialogService);
 
   // Only keep the edit transaction output since the store handles the rest
   editTransaction = output<Transaction>();
@@ -268,8 +271,17 @@ export class TransactionsGridComponent {
     this.editTransaction.emit(transaction);
   }
 
-  private onDeleteTransaction(id: string): void {
-    if (!confirm('Are you sure you want to delete this transaction?')) return;
+  private async onDeleteTransaction(id: string): Promise<void> {
+    const confirmed = await firstValueFrom(
+      this.dialogService.confirm(
+        'Are you sure you want to delete this transaction?',
+        'Delete Transaction',
+        'Delete',
+        'Cancel'
+      )
+    );
+
+    if (!confirmed) return;
 
     this.financeStore.deleteTransaction(id);
   }

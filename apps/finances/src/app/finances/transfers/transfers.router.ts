@@ -12,7 +12,7 @@ export async function TransfersRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transfers'],
         description: 'Get all transfers',
@@ -29,7 +29,7 @@ export async function TransfersRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transfers'],
         description: 'Create new transfer',
@@ -48,7 +48,7 @@ export async function TransfersRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transfers'],
         description: 'Delete all transfers',
@@ -69,7 +69,7 @@ export async function TransfersRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/account/:accountId',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transfers'],
         description: 'Get transfers for specific account',
@@ -93,7 +93,7 @@ export async function TransfersRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/:id',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transfers'],
         description: 'Get transfer by ID',
@@ -124,7 +124,7 @@ export async function TransfersRouter(fastify: FastifyInstance) {
   typedFastify.put(
     '/:id',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transfers'],
         description: 'Update transfer',
@@ -162,7 +162,7 @@ export async function TransfersRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/:id',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transfers'],
         description: 'Delete transfer',

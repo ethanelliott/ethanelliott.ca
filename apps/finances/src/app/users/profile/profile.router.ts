@@ -13,13 +13,10 @@ export async function ProfileRouter(fastify: FastifyInstance) {
   const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
   const _profileService = inject(ProfileService);
 
-  /**
-   * 📊 GET USER PROFILE
-   */
   typedFastify.get(
     '/',
     {
-      preHandler: [(fastify as any).authenticate],
+      preHandler: [fastify.authenticate()],
       schema: {
         tags: ['User Profile'],
         description: 'Get current user profile with security information',
@@ -35,13 +32,10 @@ export async function ProfileRouter(fastify: FastifyInstance) {
     }
   );
 
-  /**
-   * ✏️ UPDATE PROFILE
-   */
   typedFastify.put(
     '/',
     {
-      preHandler: [(fastify as any).authenticate],
+      preHandler: [fastify.authenticate()],
       schema: {
         tags: ['User Profile'],
         description: 'Update user profile information',
@@ -59,13 +53,10 @@ export async function ProfileRouter(fastify: FastifyInstance) {
     }
   );
 
-  /**
-   * ❌ DELETE ACCOUNT
-   */
   typedFastify.delete(
     '/',
     {
-      preHandler: [(fastify as any).authenticate],
+      preHandler: [fastify.authenticate()],
       schema: {
         tags: ['User Profile'],
         description: 'Delete user account (irreversible)',

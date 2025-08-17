@@ -15,6 +15,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { startRegistration } from '@simplewebauthn/browser';
 import { Router, RouterModule } from '@angular/router';
+import { DialogService } from '../shared/dialogs';
 
 @Component({
   selector: 'fin-register',
@@ -39,7 +40,7 @@ import { Router, RouterModule } from '@angular/router';
         <div class="register-container">
           <div class="brand-section">
             <div class="logo">
-              <mat-icon class="logo-icon" fontIcon="fa-wallet"></mat-icon>
+              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
             </div>
             <h1 class="brand-title">Finances</h1>
           </div>
@@ -77,19 +78,6 @@ import { Router, RouterModule } from '@angular/router';
                   />
                 </mat-form-field>
 
-                <div class="security-section">
-                  <mat-icon
-                    class="security-icon"
-                    fontIcon="fa-shield-halved"
-                  ></mat-icon>
-                  <div class="security-text">
-                    <h4>Your data is secure</h4>
-                    <p>
-                      We use industry-standard encryption to protect your
-                      financial information
-                    </p>
-                  </div>
-                </div>
                 <button
                   mat-raised-button
                   color="primary"
@@ -97,7 +85,7 @@ import { Router, RouterModule } from '@angular/router';
                   [disabled]="!name() || !username() || isRegistering()"
                   class="register-button"
                 >
-                  <mat-icon fontIcon="fa-fingerprint"></mat-icon>
+                  <mat-icon>fingerprint</mat-icon>
                   Create Account with Passkey
                 </button>
               </div>
@@ -118,6 +106,7 @@ import { Router, RouterModule } from '@angular/router';
 export class UserRegister {
   private _http = inject(HttpClient);
   private _router = inject(Router);
+  private _dialogService = inject(DialogService);
 
   name = signal('');
   username = signal('');
@@ -125,7 +114,10 @@ export class UserRegister {
 
   async registerWithPasskey() {
     if (!this.name() || !this.username()) {
-      alert('Please fill in all fields');
+      this._dialogService.error(
+        'Please fill in all fields',
+        'Missing Information'
+      );
       return;
     }
 
@@ -163,7 +155,10 @@ export class UserRegister {
       localStorage.setItem('accessToken', completeResponse.accessToken);
       localStorage.setItem('refreshToken', completeResponse.refreshToken);
 
-      alert('🎉 Account created successfully! You are now logged in.');
+      this._dialogService.success(
+        '🎉 Account created successfully! You are now logged in.',
+        'Welcome!'
+      );
 
       // Redirect to main app or dashboard
       this._router.navigate(['/dashboard']);

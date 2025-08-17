@@ -40,7 +40,7 @@ import { FinanceApiService } from '../services/finance-api.service';
           <div class="sidenav-wrapper">
             <div class="sidenav-header">
               <div class="logo-container">
-                <mat-icon class="logo-icon" fontIcon="fa-wallet"></mat-icon>
+                <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
                 <span class="logo-text">Finances</span>
               </div>
             </div>
@@ -51,7 +51,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/all-time"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon fontIcon="fa-chart-line"></mat-icon>
+                  <mat-icon matListItemIcon>trending_up</mat-icon>
                   <span matListItemTitle>All-Time Overview</span>
                 </a>
 
@@ -60,10 +60,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/monthly-habits"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon
-                    matListItemIcon
-                    fontIcon="fa-calendar-days"
-                  ></mat-icon>
+                  <mat-icon matListItemIcon>calendar_month ></mat-icon>
                   <span matListItemTitle>Monthly Habits</span>
                 </a>
 
@@ -72,7 +69,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/transactions"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon fontIcon="fa-receipt"></mat-icon>
+                  <mat-icon matListItemIcon>receipt</mat-icon>
                   <span matListItemTitle>Transactions</span>
                 </a>
 
@@ -83,10 +80,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/categories"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon
-                    matListItemIcon
-                    fontIcon="fa-layer-group"
-                  ></mat-icon>
+                  <mat-icon matListItemIcon>category ></mat-icon>
                   <span matListItemTitle>Categories</span>
                 </a>
 
@@ -95,10 +89,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/mediums"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon
-                    matListItemIcon
-                    fontIcon="fa-credit-card"
-                  ></mat-icon>
+                  <mat-icon matListItemIcon>credit_card ></mat-icon>
                   <span matListItemTitle>Payment Methods</span>
                 </a>
 
@@ -107,7 +98,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/tags"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon fontIcon="fa-tag"></mat-icon>
+                  <mat-icon matListItemIcon>sell</mat-icon>
                   <span matListItemTitle>Tags</span>
                 </a>
               </mat-nav-list>
@@ -120,15 +111,12 @@ import { FinanceApiService } from '../services/finance-api.service';
                   routerLink="/dashboard/profile"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon fontIcon="fa-user"></mat-icon>
+                  <mat-icon matListItemIcon>person</mat-icon>
                   <span matListItemTitle>Profile</span>
                 </a>
 
                 <a mat-list-item (click)="logout()" class="logout-item">
-                  <mat-icon
-                    matListItemIcon
-                    fontIcon="fa-right-from-bracket"
-                  ></mat-icon>
+                  <mat-icon matListItemIcon>logout ></mat-icon>
                   <span matListItemTitle>Logout</span>
                 </a>
               </mat-nav-list>
@@ -145,7 +133,7 @@ import { FinanceApiService } from '../services/finance-api.service';
               (click)="drawer.toggle()"
               class="menu-button"
             >
-              <mat-icon fontIcon="fa-bars"></mat-icon>
+              <mat-icon>menu</mat-icon>
             </button>
 
             <span class="toolbar-title">{{ currentPageTitle() }}</span>

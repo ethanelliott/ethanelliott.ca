@@ -27,6 +27,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { injectFinanceStore } from '../../store/finance.provider';
+import { DialogService } from '../../shared/dialogs';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-categories',
@@ -52,7 +54,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <div class="header-row">
           <div class="title-section">
             <h1 class="page-title">
-              <mat-icon fontIcon="fa-layer-group"></mat-icon>
+              <mat-icon>category</mat-icon>
               Categories
             </h1>
             <p class="page-subtitle">
@@ -63,11 +65,11 @@ import { injectFinanceStore } from '../../store/finance.provider';
           <div class="controls-section">
             <div class="header-stats">
               <div class="stat-chip">
-                <mat-icon fontIcon="fa-tags"></mat-icon>
+                <mat-icon>sell</mat-icon>
                 <span>{{ financeStore.categories().length }} Categories</span>
               </div>
               <div class="stat-chip">
-                <mat-icon fontIcon="fa-chart-pie"></mat-icon>
+                <mat-icon>pie_chart</mat-icon>
                 <span>{{ getCategorizedTransactions() }} Categorized</span>
               </div>
             </div>
@@ -88,7 +90,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                 placeholder="e.g., Food & Dining, Transportation"
                 (keydown.enter)="addCategory()"
               />
-              <mat-icon matSuffix fontIcon="fa-layer-group"></mat-icon>
+              <mat-icon matSuffix>category</mat-icon>
             </mat-form-field>
             <button
               mat-raised-button
@@ -101,7 +103,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-spinner diameter="20"></mat-spinner>
               Adding... } @else {
               <ng-container>
-                <mat-icon fontIcon="fa-plus"></mat-icon>
+                <mat-icon>add</mat-icon>
                 Add Category
               </ng-container>
               }
@@ -125,7 +127,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <mat-card class="analytics-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon fontIcon="fa-chart-bar"></mat-icon>
+              <mat-icon>bar_chart</mat-icon>
               Usage Analytics
             </mat-card-title>
           </mat-card-header>
@@ -158,7 +160,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
             </div>
             } @else {
             <div class="empty-analytics">
-              <mat-icon fontIcon="fa-chart-bar"></mat-icon>
+              <mat-icon>bar_chart</mat-icon>
               <p>No usage data available</p>
             </div>
             }
@@ -169,7 +171,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <mat-card class="suggestions-card">
           <mat-card-header>
             <mat-card-title>
-              <mat-icon fontIcon="fa-lightbulb"></mat-icon>
+              <mat-icon>lightbulb</mat-icon>
               Suggested Categories
             </mat-card-title>
             <mat-card-subtitle
@@ -189,7 +191,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                 "
                 class="suggestion-chip"
               >
-                <mat-icon [fontIcon]="suggestion.icon"></mat-icon>
+                <mat-icon>{{ suggestion.icon }}</mat-icon>
                 <span>{{ suggestion.name }}</span>
               </button>
               }
@@ -204,7 +206,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
         <mat-card-content>
           <div class="empty-state">
             <div class="empty-icon">
-              <mat-icon fontIcon="fa-layer-group"></mat-icon>
+              <mat-icon>category</mat-icon>
             </div>
             <h3>No Categories Yet</h3>
             <p>
@@ -218,7 +220,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                 (click)="focusInput()"
                 class="get-started-button"
               >
-                <mat-icon fontIcon="fa-rocket"></mat-icon>
+                <mat-icon>rocket_launch</mat-icon>
                 Get Started
               </button>
             </div>
@@ -229,7 +231,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
       <mat-card class="categories-list-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon fontIcon="fa-list"></mat-icon>
+            <mat-icon>list</mat-icon>
             All Categories
           </mat-card-title>
           <mat-card-subtitle>
@@ -242,7 +244,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
             <div class="category-item" [class]="getCategoryItemClass(category)">
               <div class="category-header">
                 <div class="category-icon">
-                  <mat-icon [fontIcon]="getCategoryIcon(category)"></mat-icon>
+                  <mat-icon>{{ getCategoryIcon(category) }}</mat-icon>
                 </div>
                 <div class="category-info">
                   <h4 class="category-name">{{ category }}</h4>
@@ -264,7 +266,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                     @if (deleting().has(category)) {
                     <mat-spinner diameter="20"></mat-spinner>
                     } @else {
-                    <mat-icon fontIcon="fa-trash"></mat-icon>
+                    <mat-icon>delete</mat-icon>
                     }
                   </button>
                 </div>
@@ -290,6 +292,7 @@ export class CategoriesComponent implements OnInit {
   readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialogService = inject(DialogService);
 
   loading = signal(true);
   submitting = signal(false);
@@ -375,13 +378,17 @@ export class CategoriesComponent implements OnInit {
     this.submitting.set(false);
   }
 
-  deleteCategory(categoryName: string) {
-    if (
-      !confirm(
-        `Are you sure you want to delete the category "${categoryName}"?`
+  async deleteCategory(categoryName: string) {
+    const confirmed = await firstValueFrom(
+      this.dialogService.confirm(
+        `Are you sure you want to delete the category "${categoryName}"?`,
+        'Delete Category',
+        'Delete',
+        'Cancel'
       )
-    )
-      return;
+    );
+
+    if (!confirmed) return;
 
     // Add to deleting set
     const newDeleting = new Set(this.deleting());
