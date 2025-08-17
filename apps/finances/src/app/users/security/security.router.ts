@@ -39,7 +39,7 @@ export async function SecurityRouter(fastify: FastifyInstance) {
   );
 
   /**
-   * 🔒 REVOKE ALL SESSIONS
+   * REVOKE ALL SESSIONS
    */
   typedFastify.post(
     '/revoke-all',

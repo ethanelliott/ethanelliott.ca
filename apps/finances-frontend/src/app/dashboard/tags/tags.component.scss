@@ -16,42 +16,317 @@
   @include page-header;
 }
 
-// ===== ADD TAG CARD =====
-.add-tag-card {
-  @include base-card;
-  margin-bottom: var(--spacing-lg);
-  border: 2px solid var(--mat-sys-tertiary);
+// ===== TAGS COMPONENT STYLES =====
+// Tags management page using shared mixins
 
-  .tag-form {
-    @include form-container;
+@import '../../../styles/mixins';
 
-    .form-row {
+// ===== MAIN CONTAINER =====
+.tags-container {
+  @include dashboard-container;
+  @include content-container;
+}
+
+// ===== PAGE HEADER =====
+.header {
+  @include page-header;
+
+  .controls-section {
+    .header-stats {
       display: flex;
-      gap: var(--spacing-md);
-      align-items: flex-end;
+      gap: var(--spacing-sm);
 
-      @media (max-width: 768px) {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--spacing-sm);
+      .stat-chip {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius-lg);
+        font-size: 0.875rem;
+        font-weight: 500;
+        background: var(--mat-sys-surface-variant);
+        border: 1px solid var(--mat-sys-outline-variant);
+
+        mat-icon {
+          color: var(--mat-sys-primary);
+          font-size: 1rem;
+        }
+
+        span {
+          font-weight: 600;
+          color: var(--mat-sys-on-surface);
+        }
       }
     }
+  }
+}
 
-    .tag-name-field {
+// ===== QUICK ADD FORM =====
+.quick-add-card {
+  @include base-card;
+  margin-bottom: var(--spacing-md);
+  background: var(--mat-sys-primary-container);
+  border: 1px solid var(--mat-sys-primary);
+
+  .quick-add-form {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+
+    .tag-input {
       flex: 1;
     }
 
     .add-button {
+      height: 56px;
+      min-width: 140px;
       display: flex;
       align-items: center;
       gap: var(--spacing-sm);
-      min-width: 120px;
-      white-space: nowrap;
+      border-radius: var(--border-radius-lg);
 
-      @media (max-width: 768px) {
-        width: 100%;
-        justify-content: center;
+      mat-icon {
+        font-size: 1.1rem;
+        width: 1.1rem;
+        height: 1.1rem;
       }
+    }
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      gap: var(--spacing-sm);
+
+      .add-button {
+        width: 100%;
+        height: 48px;
+      }
+    }
+  }
+}
+
+// ===== SEARCH AND FILTER CARD =====
+.search-filter-card {
+  @include base-card;
+  margin-bottom: var(--spacing-md);
+
+  .search-controls {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+
+    .search-field {
+      flex: 1;
+    }
+
+    .bulk-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+
+      .bulk-action-button {
+        min-width: 140px;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+      }
+    }
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      gap: var(--spacing-sm);
+
+      .bulk-actions {
+        width: 100%;
+
+        .bulk-action-button {
+          width: 100%;
+        }
+      }
+    }
+  }
+}
+
+// ===== TAGS TABLE CARD =====
+.tags-table-card {
+  @include base-card;
+  margin-bottom: var(--spacing-md);
+
+  .loading-container {
+    @include loading-container;
+    min-height: 400px;
+  }
+
+  .empty-state {
+    @include empty-state;
+    padding: var(--spacing-3xl) var(--spacing-xl);
+
+    mat-icon {
+      font-size: 4rem;
+      width: 4rem;
+      height: 4rem;
+    }
+
+    h3 {
+      font-size: 1.5rem;
+      margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+    }
+
+    p {
+      font-size: 1rem;
+      line-height: 1.6;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+  }
+
+  .table-container {
+    width: 100%;
+    overflow: auto;
+
+    .tags-table {
+      width: 100%;
+
+      // Header styling
+      .mat-mdc-header-cell {
+        font-weight: 600;
+        color: var(--mat-sys-on-surface);
+        background: var(--mat-sys-surface-container-high);
+
+        &.actions-header {
+          text-align: center;
+        }
+      }
+
+      // Row styling
+      .mat-mdc-row {
+        &:hover {
+          background: var(--mat-sys-surface-container-low);
+        }
+      }
+
+      // Cell styling
+      .mat-mdc-cell {
+        border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+        &.tag-name-cell {
+          .tag-display {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+
+            .tag-icon {
+              color: var(--mat-sys-primary);
+              font-size: 1rem;
+            }
+
+            .tag-text {
+              font-weight: 500;
+            }
+          }
+        }
+
+        &.usage-cell {
+          .usage-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+
+            .usage-count {
+              font-weight: 600;
+              color: var(--mat-sys-primary);
+            }
+
+            .usage-label {
+              font-size: 0.75rem;
+              color: var(--mat-sys-on-surface-variant);
+            }
+          }
+        }
+
+        &.date-cell {
+          color: var(--mat-sys-on-surface-variant);
+          font-size: 0.875rem;
+        }
+
+        &.actions-cell {
+          text-align: center;
+
+          .delete-button {
+            color: var(--mat-sys-error);
+
+            &:hover:not([disabled]) {
+              background: rgba(var(--mat-sys-error-rgb), 0.1);
+            }
+          }
+        }
+      }
+    }
+
+    .tags-paginator {
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface-container-low);
+    }
+  }
+}
+
+// ===== SUGGESTIONS CARD =====
+.suggestions-card {
+  @include base-card;
+
+  .suggestions-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+
+    .suggestion-chip {
+      cursor: pointer;
+      transition: var(--transition-fast);
+      background: var(--mat-sys-surface-variant);
+      border: 1px dashed var(--mat-sys-outline);
+      font-size: 0.85rem;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border-radius: var(--border-radius-md);
+
+      &:not([disabled]):hover {
+        background: var(--mat-sys-primary-container);
+        color: var(--mat-sys-on-primary-container);
+        border-color: var(--mat-sys-primary);
+        transform: translateY(-1px);
+      }
+
+      &[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      mat-icon {
+        font-size: 0.85rem;
+        width: 0.85rem;
+        height: 0.85rem;
+      }
+    }
+  }
+}
+
+// ===== RESPONSIVE DESIGN =====
+@media (max-width: 768px) {
+  .suggestions-grid {
+    justify-content: center;
+  }
+
+  .tags-table {
+    // Hide less important columns on mobile
+    .mat-column-created,
+    .mat-column-usage {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .tags-table {
+    // On very small screens, show only essential columns
+    .mat-column-select {
+      display: none;
     }
   }
 }
@@ -87,11 +362,14 @@
     }
 
     .tag-chip {
-      @extend .list-item;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: var(--spacing-sm);
       padding: var(--spacing-sm);
+      border-radius: var(--border-radius-sm);
+      background: var(--mat-sys-surface-container-low);
+      transition: var(--transition-fast);
+      justify-content: space-between;
       border-radius: var(--border-radius-2xl);
       border: 2px solid var(--mat-sys-outline-variant);
       transition: var(--transition-fast);

@@ -14,7 +14,8 @@ import { User } from '../../users/user';
 
 @Entity()
 @Index(['user', 'name'], { unique: true })
-export class Tag {
+@Index(['user', 'accountType'])
+export class Account {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -27,35 +28,43 @@ export class Tag {
   @Column('text')
   name!: string;
 
+  @Column('text')
+  accountType!: string;
+
   @Column('text', { nullable: true })
   description?: string;
 
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  initialBalance!: number;
+
   @Column('text', { nullable: true })
-  color?: string;
+  currency?: string;
 
   @ManyToOne(() => User, (user) => user.id, { onDelete: 'CASCADE' })
   user!: User;
 }
 
-export const FullTagSchema = z.object({
+// Zod schemas
+export const AccountInSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
-  color: z.string().optional(),
-  isActive: z.boolean().optional().default(true),
+  isActive: z.boolean().default(true),
+  initialBalance: z.number().default(0),
+  currency: z.string().default('CAD'),
 });
 
-export type FullTag = z.infer<typeof FullTagSchema>;
+export type AccountIn = z.infer<typeof AccountInSchema>;
 
-export const TagOutSchema = FullTagSchema.extend({
+export const AccountOutSchema = AccountInSchema.extend({
   id: z.string().uuid(),
   timestamp: z.date(),
   updatedAt: z.date(),
 });
 
-export type TagOut = z.infer<typeof TagOutSchema>;
+export type AccountOut = z.infer<typeof AccountOutSchema>;
 
-export const SimpleTagSchema = z.string();
+export const SimpleAccountSchema = z.string().uuid();
 
-export type SimpleTag = z.infer<typeof SimpleTagSchema>;
+export type SimpleAccount = z.infer<typeof SimpleAccountSchema>;
 
-provide(ENTITIES, Tag);
+provide(ENTITIES, Account);

@@ -3,7 +3,12 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { CategoriesService } from './categories.service';
-import { Category, FullCategorySchema, SimpleCategorySchema } from './category';
+import {
+  Category,
+  FullCategorySchema,
+  SimpleCategorySchema,
+  CategoryOutSchema,
+} from './category';
 
 export async function CategoriesRouter(fastify: FastifyInstance) {
   const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
@@ -12,14 +17,16 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
+        description: 'Get all categories',
         response: { 200: z.array(SimpleCategorySchema) },
       },
     },
     async function (request, reply) {
-      const allCategories = await _categoriesService.all();
+      const userId = request.currentUser.id;
+      const allCategories = await _categoriesService.all(userId);
       return reply.send(allCategories);
     }
   );
@@ -27,16 +34,18 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
+        description: 'Create new category',
         body: FullCategorySchema,
-        response: { 200: FullCategorySchema },
+        response: { 200: CategoryOutSchema },
       },
     },
     async function (request, reply) {
-      const Category = request.body;
-      const newCategory = await _categoriesService.new(Category);
+      const userId = request.currentUser.id;
+      const category = request.body;
+      const newCategory = await _categoriesService.new(category, userId);
       return reply.send(newCategory);
     }
   );
@@ -44,13 +53,20 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
+        description: 'Delete all categories',
+        response: {
+          200: z.object({
+            deletedCount: z.number(),
+          }),
+        },
       },
     },
     async function (request, reply) {
-      const deleted = await _categoriesService.deleteAll();
+      const userId = request.currentUser.id;
+      const deleted = await _categoriesService.deleteAll(userId);
       return reply.send(deleted);
     }
   );
@@ -58,57 +74,98 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/:name',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
+        description: 'Get category by name',
         params: z.object({
           name: z.string(),
         }),
-        response: { 200: FullCategorySchema },
+        response: {
+          200: CategoryOutSchema,
+          404: z.object({ message: z.string() }),
+        },
       },
     },
     async function (request, reply) {
+      const userId = request.currentUser.id;
       const { name } = request.params;
-      const category = await _categoriesService.get(name);
-      return reply.send(category);
+      try {
+        const category = await _categoriesService.get(name, userId);
+        return reply.send(category);
+      } catch (error: any) {
+        if (error.statusCode === 404) {
+          return reply.status(404).send({ message: error.message });
+        }
+        throw error;
+      }
     }
   );
 
   typedFastify.put(
     '/:name',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
+        description: 'Update category',
         params: z.object({
           name: z.string(),
         }),
         body: FullCategorySchema,
-        response: { 200: FullCategorySchema },
+        response: {
+          200: CategoryOutSchema,
+          404: z.object({ message: z.string() }),
+        },
       },
     },
     async function (request, reply) {
+      const userId = request.currentUser.id;
       const { name } = request.params;
-      const category = await _categoriesService.update(name, request.body);
-      return reply.send(category);
+      try {
+        const category = await _categoriesService.update(
+          name,
+          request.body,
+          userId
+        );
+        return reply.send(category);
+      } catch (error: any) {
+        if (error.statusCode === 404) {
+          return reply.status(404).send({ message: error.message });
+        }
+        throw error;
+      }
     }
   );
 
   typedFastify.delete(
     '/:name',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Categories'],
+        description: 'Delete category',
         params: z.object({
           name: z.string(),
         }),
+        response: {
+          200: CategoryOutSchema,
+          404: z.object({ message: z.string() }),
+        },
       },
     },
     async function (request, reply) {
+      const userId = request.currentUser.id;
       const { name } = request.params;
-      const deleted = await _categoriesService.delete(name);
-      return reply.send(deleted);
+      try {
+        const deleted = await _categoriesService.delete(name, userId);
+        return reply.send(deleted);
+      } catch (error: any) {
+        if (error.statusCode === 404) {
+          return reply.status(404).send({ message: error.message });
+        }
+        throw error;
+      }
     }
   );
 }

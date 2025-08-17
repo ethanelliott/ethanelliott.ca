@@ -18,10 +18,6 @@ import { RouterLink } from '@angular/router';
               <mat-icon class="logo-icon" fontIcon="fa-wallet" />
             </div>
             <h1 class="hero-title">Finances</h1>
-            <p class="hero-subtitle">
-              Take control of your financial future with our comprehensive
-              tracking and analysis tools.
-            </p>
           </div>
 
           <mat-card class="action-card">
@@ -49,21 +45,6 @@ import { RouterLink } from '@angular/router';
               </div>
             </mat-card-content>
           </mat-card>
-
-          <div class="features">
-            <div class="feature">
-              <mat-icon fontIcon="fa-chart-line" />
-              <span>Track Expenses</span>
-            </div>
-            <div class="feature">
-              <mat-icon fontIcon="fa-shield-halved" />
-              <span>Secure & Private</span>
-            </div>
-            <div class="feature">
-              <mat-icon fontIcon="fa-lightbulb" />
-              <span>Smart Insights</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

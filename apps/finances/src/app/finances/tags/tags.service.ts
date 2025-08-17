@@ -6,15 +6,23 @@ import { Tag, FullTag } from './tag';
 export class TagsService {
   private readonly _repository = inject(Database).repositoryFor(Tag);
 
-  async all() {
-    const tags = await this._repository.find();
-    return tags.map((tag) => {
-      return tag.name;
+  async all(userId: string) {
+    const tags = await this._repository.find({
+      where: { user: { id: userId } },
+      order: { name: 'ASC' },
     });
+    return tags.map((tag) => tag.name);
   }
 
-  async get(name: string) {
-    const value = await this._repository.findOneBy({ name });
+  async deleteAll(userId: string) {
+    const result = await this._repository.delete({ user: { id: userId } });
+    return { deletedCount: result.affected || 0 };
+  }
+
+  async get(name: string, userId: string) {
+    const value = await this._repository.findOne({
+      where: { name, user: { id: userId } },
+    });
 
     if (!value) {
       throw new HttpErrors.NotFound(`Tag with name "${name}" not found.`);
@@ -23,20 +31,28 @@ export class TagsService {
     return value;
   }
 
-  async new(tag: Tag) {
-    const allTags = await this._repository.find();
+  async new(tag: FullTag, userId: string) {
+    // Check if tag already exists for this user
+    const existing = await this._repository.findOne({
+      where: { name: tag.name, user: { id: userId } },
+    });
 
-    const existingTag = allTags.find((c) => c.name === tag.name);
-
-    if (existingTag) {
-      return existingTag;
+    if (existing) {
+      return existing;
     }
 
-    return this._repository.save(tag);
+    const newTag = await this._repository.save({
+      ...tag,
+      userId,
+    });
+
+    return newTag;
   }
 
-  async delete(name: string) {
-    const tag = await this._repository.findOneBy({ name });
+  async delete(name: string, userId: string) {
+    const tag = await this._repository.findOne({
+      where: { name, user: { id: userId } },
+    });
 
     if (!tag) {
       throw new HttpErrors.NotFound(`Tag with name "${name}" not found.`);
@@ -45,17 +61,29 @@ export class TagsService {
     return this._repository.remove(tag);
   }
 
-  async update(name: string, tag: Tag) {
-    const existingTag = await this._repository.findOneBy({ name });
+  async update(name: string, tag: FullTag, userId: string) {
+    const existingTag = await this._repository.findOne({
+      where: { name, user: { id: userId } },
+    });
 
     if (!existingTag) {
       throw new HttpErrors.NotFound(`Tag with name "${name}" not found.`);
     }
 
-    // Update the tag
-    await this._repository.update({ name }, tag);
+    // Check if new name conflicts with another tag
+    if (tag.name !== existingTag.name) {
+      const nameConflict = await this._repository.findOne({
+        where: { name: tag.name, user: { id: userId } },
+      });
 
-    // Return the updated tag
-    return this.get(name);
+      if (nameConflict) {
+        throw new HttpErrors.Conflict(
+          `Tag with name "${tag.name}" already exists.`
+        );
+      }
+    }
+
+    Object.assign(existingTag, tag);
+    return this._repository.save(existingTag);
   }
 }

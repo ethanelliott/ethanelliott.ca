@@ -1,14 +1,10 @@
 import { inject } from '@ee/di';
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { z } from 'zod';
-import {
-  TransactionIn,
-  TransactionInSchema,
-  TransactionOutSchema,
-} from './transaction';
-import { TransactionsService } from './transactions.service';
 import HttpErrors from 'http-errors';
+import { z } from 'zod';
+import { TransactionInSchema, TransactionOutSchema } from './transaction';
+import { TransactionsService } from './transactions.service';
 
 export async function TransactionsRouter(fastify: FastifyInstance) {
   const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
@@ -17,17 +13,18 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/',
     {
-      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
-        description: '🔒 Get all transactions (requires authentication)',
+        description: 'Get all transactions',
         response: {
           200: z.array(TransactionOutSchema),
         },
       },
     },
     async function (request, reply) {
-      const allTransactions = await _transactionsService.all();
+      const userId = request.currentUser.id;
+      const allTransactions = await _transactionsService.all(userId);
       return reply.send(allTransactions);
     }
   );
@@ -38,15 +35,19 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
-        description: '🔒 Create new transaction (requires authentication)',
+        description: 'Create new transaction',
         body: TransactionInSchema,
         response: { 200: TransactionOutSchema },
       },
     },
     async function (request, reply) {
       // request.body is now automatically typed based on TransactionInSchema
+      const userId = request.currentUser.id;
       const transaction = request.body;
-      const newTransaction = await _transactionsService.new(transaction);
+      const newTransaction = await _transactionsService.new(
+        transaction,
+        userId
+      );
       return reply.send(newTransaction);
     }
   );
@@ -68,8 +69,9 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     },
     async function (request, reply) {
       // request.params is now automatically typed
+      const userId = request.currentUser.id;
       const { id } = request.params;
-      const transaction = await _transactionsService.findById(id);
+      const transaction = await _transactionsService.findById(id, userId);
 
       if (!transaction) {
         return reply.status(404).send({ message: 'Transaction not found' });
@@ -97,12 +99,14 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     },
     async function (request, reply) {
       // Both request.params and request.body are automatically typed
+      const userId = request.currentUser.id;
       const { id } = request.params;
       const transaction = request.body;
 
       const updatedTransaction = await _transactionsService.update(
         id,
-        transaction
+        transaction,
+        userId
       );
 
       if (!updatedTransaction) {
@@ -130,8 +134,9 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     },
     async function (request, reply) {
       // request.params is now automatically typed
+      const userId = request.currentUser.id;
       const { id } = request.params;
-      const deleted = await _transactionsService.deleteById(id);
+      const deleted = await _transactionsService.deleteById(id, userId);
 
       if (!deleted) {
         throw new HttpErrors.NotFound(`Transaction with id "${id}" not found.`);
@@ -156,8 +161,9 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
       },
     },
     async function (request, reply) {
-      const deletedCount = await _transactionsService.deleteAll();
-      return reply.send({ success: true, deletedCount });
+      const userId = request.currentUser.id;
+      const result = await _transactionsService.deleteAll(userId);
+      return reply.send(result);
     }
   );
 }

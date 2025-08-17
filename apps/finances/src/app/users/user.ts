@@ -4,15 +4,19 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  JoinColumn,
   ManyToOne,
   OneToMany,
-  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { z } from 'zod';
 import { ENTITIES } from '../data-source';
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    currentUser: User;
+  }
+}
 
 // Entity for storing user's passkey credentials
 @Entity()

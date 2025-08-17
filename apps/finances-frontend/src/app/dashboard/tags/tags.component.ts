@@ -1,26 +1,42 @@
+import { CommonModule } from '@angular/common';
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  computed,
+  effect,
   inject,
   OnInit,
   signal,
+  ViewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
-  FormGroup,
+  FormControl,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSort, MatSortModule } from '@angular/material/sort';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { injectFinanceStore } from '../../store/finance.provider';
+
+interface TagData {
+  name: string;
+  usageCount: number;
+  created: Date;
+}
 
 @Component({
   selector: 'app-tags',
@@ -35,41 +51,70 @@ import { injectFinanceStore } from '../../store/finance.provider';
     MatInputModule,
     MatProgressSpinnerModule,
     MatChipsModule,
+    MatTableModule,
+    MatPaginatorModule,
+    MatSortModule,
+    MatMenuModule,
+    MatTooltipModule,
+    MatCheckboxModule,
   ],
   styleUrl: './tags.component.scss',
   template: `
     <div class="tags-container">
       <!-- Header -->
-      <div class="page-header">
-        <div class="header-content">
-          <h1 class="page-title">Tags</h1>
-          <p class="page-subtitle">
-            Create custom tags to organize and filter your transactions
-          </p>
+      <div class="header">
+        <div class="header-row">
+          <div class="title-section">
+            <h1 class="page-title">
+              <mat-icon fontIcon="fa-tags"></mat-icon>
+              Tags
+            </h1>
+            <p class="page-subtitle">
+              Manage and organize your transaction tags efficiently
+            </p>
+          </div>
+          <div class="controls-section">
+            <div class="header-stats">
+              <div class="stat-chip">
+                <mat-icon fontIcon="fa-tags"></mat-icon>
+                <span>{{ financeStore.tags().length }} Total</span>
+              </div>
+              <div class="stat-chip">
+                <mat-icon fontIcon="fa-filter"></mat-icon>
+                <span>{{ filteredTagsCount() }} Shown</span>
+              </div>
+            </div>
+            <button
+              mat-raised-button
+              (click)="forceLoadData()"
+              class="debug-button"
+            >
+              <mat-icon fontIcon="fa-refresh"></mat-icon>
+              Force Load Data
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Add Tag Form -->
-      <mat-card class="add-tag-card">
-        <mat-card-header>
-          <mat-card-title>Add New Tag</mat-card-title>
-        </mat-card-header>
+      <!-- Quick Add Form -->
+      <mat-card class="quick-add-card">
         <mat-card-content>
-          <form [formGroup]="tagForm" class="tag-form">
-            <mat-form-field appearance="outline" class="tag-name-field">
-              <mat-label>Tag Name</mat-label>
+          <div class="quick-add-form">
+            <mat-form-field appearance="outline" class="tag-input">
+              <mat-label>Add New Tag</mat-label>
               <input
                 matInput
-                formControlName="name"
-                required
+                [formControl]="tagControl"
                 placeholder="e.g., urgent, business, recurring"
+                (keydown.enter)="addTag()"
               />
+              <mat-icon matSuffix fontIcon="fa-tag"></mat-icon>
             </mat-form-field>
             <button
               mat-raised-button
               color="primary"
               (click)="addTag()"
-              [disabled]="!tagForm.valid || submitting()"
+              [disabled]="!tagControl.valid || submitting()"
               class="add-button"
             >
               @if (submitting()) {
@@ -81,23 +126,67 @@ import { injectFinanceStore } from '../../store/finance.provider';
               </ng-container>
               }
             </button>
-          </form>
+          </div>
         </mat-card-content>
       </mat-card>
 
-      <!-- Tags Display -->
-      <mat-card class="tags-list-card">
+      <!-- Search and Filter -->
+      <mat-card class="search-filter-card">
+        <mat-card-content>
+          <div class="search-controls">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search tags</mat-label>
+              <input
+                matInput
+                [formControl]="searchControl"
+                placeholder="Type to search..."
+              />
+              <mat-icon matPrefix fontIcon="fa-search"></mat-icon>
+              @if (searchControl.value) {
+              <button matSuffix mat-icon-button (click)="clearSearch()">
+                <mat-icon fontIcon="fa-times"></mat-icon>
+              </button>
+              }
+            </mat-form-field>
+            <div class="bulk-actions">
+              <button
+                mat-stroked-button
+                [matMenuTriggerFor]="bulkMenu"
+                [disabled]="selectedTags().size === 0"
+                class="bulk-action-button"
+              >
+                <mat-icon fontIcon="fa-ellipsis-v"></mat-icon>
+                Bulk Actions ({{ selectedTags().size }})
+              </button>
+              <mat-menu #bulkMenu="matMenu">
+                <button mat-menu-item (click)="deleteSelectedTags()">
+                  <mat-icon fontIcon="fa-trash"></mat-icon>
+                  Delete Selected
+                </button>
+                <button mat-menu-item (click)="clearSelection()">
+                  <mat-icon fontIcon="fa-square"></mat-icon>
+                  Clear Selection
+                </button>
+              </mat-menu>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Tags Table -->
+      <mat-card class="tags-table-card">
         <mat-card-header>
-          <mat-card-title>All Tags</mat-card-title>
-          <mat-card-subtitle
-            >{{ financeStore.tags().length }} tags available</mat-card-subtitle
-          >
+          <mat-card-title>
+            <mat-icon fontIcon="fa-list"></mat-icon>
+            All Tags
+          </mat-card-title>
         </mat-card-header>
         <mat-card-content>
           @if (loading()) {
           <div class="loading-container">
             <mat-spinner></mat-spinner>
-            <p>Loading tags...</p>
+            <h3>Loading tags...</h3>
+            <p>Please wait while we fetch your tag data</p>
           </div>
           } @else if (financeStore.tags().length === 0) {
           <div class="empty-state">
@@ -108,27 +197,100 @@ import { injectFinanceStore } from '../../store/finance.provider';
             </p>
           </div>
           } @else {
-          <div class="tags-container-chips">
-            @for (tag of financeStore.tags(); track tag) {
-            <div class="tag-chip-container">
-              <mat-chip class="tag-chip" [disabled]="deleting().has(tag)">
-                <mat-icon matChipAvatar fontIcon="fa-tag"></mat-icon>
-                {{ tag }}
-                <button
-                  matChipRemove
-                  (click)="deleteTag(tag)"
-                  [disabled]="deleting().has(tag)"
-                  class="remove-button"
-                >
-                  @if (deleting().has(tag)) {
-                  <mat-spinner diameter="16"></mat-spinner>
-                  } @else {
-                  <mat-icon fontIcon="fa-times"></mat-icon>
-                  }
-                </button>
-              </mat-chip>
-            </div>
-            }
+          <div class="table-container">
+            <table
+              mat-table
+              [dataSource]="dataSource"
+              matSort
+              class="tags-table"
+            >
+              <!-- Select Column -->
+              <ng-container matColumnDef="select">
+                <th mat-header-cell *matHeaderCellDef>
+                  <mat-checkbox
+                    [checked]="isAllSelected()"
+                    [indeterminate]="isPartiallySelected()"
+                    (change)="toggleAllSelection()"
+                  ></mat-checkbox>
+                </th>
+                <td mat-cell *matCellDef="let tag">
+                  <mat-checkbox
+                    [checked]="selectedTags().has(tag.name)"
+                    (change)="toggleTagSelection(tag.name)"
+                  ></mat-checkbox>
+                </td>
+              </ng-container>
+
+              <!-- Tag Name Column -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Tag Name
+                </th>
+                <td mat-cell *matCellDef="let tag" class="tag-name-cell">
+                  <div class="tag-display">
+                    <mat-icon fontIcon="fa-tag" class="tag-icon"></mat-icon>
+                    <span class="tag-text">{{ tag.name }}</span>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Usage Count Column -->
+              <ng-container matColumnDef="usage">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Usage Count
+                </th>
+                <td mat-cell *matCellDef="let tag" class="usage-cell">
+                  <div class="usage-info">
+                    <span class="usage-count">{{ tag.usageCount || 0 }}</span>
+                    <span class="usage-label">transactions</span>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Created Date Column -->
+              <ng-container matColumnDef="created">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Created
+                </th>
+                <td mat-cell *matCellDef="let tag" class="date-cell">
+                  {{ formatDate(tag.created) }}
+                </td>
+              </ng-container>
+
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef class="actions-header">
+                  Actions
+                </th>
+                <td mat-cell *matCellDef="let tag" class="actions-cell">
+                  <button
+                    mat-icon-button
+                    [matTooltip]="'Delete ' + tag.name"
+                    (click)="deleteTag(tag.name)"
+                    [disabled]="deleting().has(tag.name)"
+                    class="delete-button"
+                  >
+                    @if (deleting().has(tag.name)) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                    } @else {
+                    <mat-icon fontIcon="fa-trash"></mat-icon>
+                    }
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            </table>
+
+            <!-- Paginator -->
+            <mat-paginator
+              #paginator
+              [pageSizeOptions]="[25, 50, 100, 200]"
+              [pageSize]="50"
+              showFirstLastButtons
+              class="tags-paginator"
+            ></mat-paginator>
           </div>
           }
         </mat-card-content>
@@ -137,19 +299,20 @@ import { injectFinanceStore } from '../../store/finance.provider';
       <!-- Quick Add Suggestions -->
       <mat-card class="suggestions-card">
         <mat-card-header>
-          <mat-card-title>Common Tags</mat-card-title>
-          <mat-card-subtitle
-            >Click to quickly add popular tags</mat-card-subtitle
-          >
+          <mat-card-title>
+            <mat-icon fontIcon="fa-lightbulb"></mat-icon>
+            Common Tags
+          </mat-card-title>
+          <mat-card-subtitle>
+            Click to quickly add popular tags
+          </mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <div class="suggestions-chips">
-            @for (suggestion of commonTags; track suggestion) {
+          <div class="suggestions-grid">
+            @for (suggestion of availableSuggestions(); track suggestion) {
             <mat-chip
               (click)="addSuggestedTag(suggestion)"
-              [disabled]="
-                financeStore.tags().includes(suggestion) || submitting()
-              "
+              [disabled]="submitting()"
               class="suggestion-chip"
             >
               <mat-icon matChipAvatar fontIcon="fa-plus"></mat-icon>
@@ -161,169 +324,43 @@ import { injectFinanceStore } from '../../store/finance.provider';
       </mat-card>
     </div>
   `,
-  styles: `
-    .tags-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 16px;
-    }
-
-    .page-header {
-      margin-bottom: 24px;
-    }
-
-    .page-title {
-      font-size: 2rem;
-      font-weight: 400;
-      color: var(--mat-sys-primary);
-    }
-
-    .page-subtitle {
-      color: var(--mat-sys-on-surface-variant);
-      margin: 4px 0 0 0;
-    }
-
-    .add-tag-card {
-      margin-bottom: 24px;
-      border: 2px solid var(--mat-sys-primary);
-    }
-
-    .tag-form {
-      display: flex;
-      gap: 16px;
-      align-items: flex-end;
-    }
-
-    .tag-name-field {
-      flex: 1;
-    }
-
-    .add-button {
-      gap: 8px;
-      min-width: 120px;
-    }
-
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px;
-      gap: 16px;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 64px 32px;
-      color: var(--mat-sys-on-surface-variant);
-    }
-
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .empty-state h3 {
-      margin: 16px 0 8px 0;
-      color: var(--mat-primary-text-color);
-    }
-
-    .tags-container-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin: 16px 0;
-    }
-
-    .tag-chip-container {
-      display: inline-block;
-    }
-
-    .tag-chip {
-      font-size: 0.9rem;
-      padding: 8px 12px;
-      border-radius: 16px;
-      background: var(--mat-primary-container-color);
-      color: var(--mat-on-primary-container-color);
-      border: 1px solid var(--mat-sys-primary);
-      transition: all 0.2s ease;
-    }
-
-    .tag-chip:not([disabled]):hover {
-      background: var(--mat-sys-primary);
-      color: var(--mat-on-primary-color);
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    .tag-chip[disabled] {
-      opacity: 0.6;
-    }
-
-    .remove-button {
-      margin-left: 8px;
-      color: inherit;
-    }
-
-    .suggestions-card {
-      margin-bottom: 24px;
-    }
-
-    .suggestions-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .suggestion-chip {
-      cursor: pointer;
-      transition: all 0.2s ease;
-      background: var(--mat-surface-variant-color);
-      border: 1px dashed var(--mat-outline-color);
-    }
-
-    .suggestion-chip:not([disabled]):hover {
-      background: var(--mat-primary-container-color);
-      color: var(--mat-on-primary-container-color);
-      border-color: var(--mat-sys-primary);
-      transform: translateY(-1px);
-    }
-
-    .suggestion-chip[disabled] {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 768px) {
-      .tag-form {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .add-button {
-        margin-top: 16px;
-      }
-
-      .tags-container-chips,
-      .suggestions-chips {
-        justify-content: center;
-      }
-    }
-  `,
 })
-export class TagsComponent implements OnInit {
+export class TagsComponent implements OnInit, AfterViewInit {
   readonly financeStore = injectFinanceStore();
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
 
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
+
   loading = signal(true);
   submitting = signal(false);
   deleting = signal(new Set<string>());
+  selectedTags = signal(new Set<string>());
 
-  tagForm: FormGroup = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(2)]],
+  tagControl = new FormControl('', [
+    Validators.required,
+    Validators.minLength(2),
+  ]);
+
+  searchControl = new FormControl('');
+
+  // Table configuration
+  displayedColumns: string[] = [
+    'select',
+    'name',
+    'usage',
+    'created',
+    'actions',
+  ];
+  dataSource = new MatTableDataSource<TagData>();
+
+  // Computed properties
+  filteredTagsCount = computed(() => this.dataSource.filteredData.length);
+
+  availableSuggestions = computed(() => {
+    const existingTags = new Set(this.financeStore.tags());
+    return this.commonTags.filter((tag) => !existingTags.has(tag));
   });
 
   commonTags = [
@@ -349,32 +386,147 @@ export class TagsComponent implements OnInit {
     'health',
   ];
 
+  constructor() {
+    // Watch for search changes
+    this.searchControl.valueChanges.subscribe((searchValue) => {
+      this.dataSource.filter = (searchValue || '').trim().toLowerCase();
+    });
+
+    // Watch for changes in the finance store tags and update the table
+    effect(() => {
+      const tags = this.financeStore.tags();
+      console.log('Finance store tags changed:', tags); // Debug log
+      this.updateDataSource();
+    });
+
+    // Also log the initial state
+    console.log('Initial financeStore state:', {
+      tags: this.financeStore.tags(),
+      loading: this.financeStore.loading(),
+      initialLoadComplete: this.financeStore.initialLoadComplete(),
+    });
+  }
+
   ngOnInit() {
     // Load data if not already loaded
     if (!this.financeStore.initialLoadComplete()) {
       this.financeStore.loadAllData();
     }
+
     this.loading.set(false);
   }
 
+  ngAfterViewInit() {
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+  }
+
+  private updateDataSource() {
+    const tags = this.financeStore.tags();
+    console.log('Updating data source with tags:', tags); // Debug log
+
+    const tagData: TagData[] = tags.map((tagName) => ({
+      name: tagName,
+      usageCount: this.getTagUsageCount(tagName),
+      created: new Date(), // TODO: Get actual creation date from store
+    }));
+
+    console.log('Tag data for table:', tagData); // Debug log
+    this.dataSource.data = tagData;
+  }
+
+  private getTagUsageCount(tagName: string): number {
+    // TODO: Calculate actual usage from transactions
+    return Math.floor(Math.random() * 50); // Placeholder
+  }
+
+  // Search and filter methods
+  clearSearch() {
+    this.searchControl.setValue('');
+  }
+
+  // Selection methods
+  isAllSelected(): boolean {
+    const numSelected = this.selectedTags().size;
+    const numRows = this.dataSource.data.length;
+    return numSelected === numRows && numRows > 0;
+  }
+
+  isPartiallySelected(): boolean {
+    const numSelected = this.selectedTags().size;
+    const numRows = this.dataSource.data.length;
+    return numSelected > 0 && numSelected < numRows;
+  }
+
+  toggleAllSelection() {
+    if (this.isAllSelected()) {
+      this.selectedTags.set(new Set());
+    } else {
+      const allTags = new Set(this.dataSource.data.map((tag) => tag.name));
+      this.selectedTags.set(allTags);
+    }
+  }
+
+  toggleTagSelection(tagName: string) {
+    const selected = new Set(this.selectedTags());
+    if (selected.has(tagName)) {
+      selected.delete(tagName);
+    } else {
+      selected.add(tagName);
+    }
+    this.selectedTags.set(selected);
+  }
+
+  clearSelection() {
+    this.selectedTags.set(new Set());
+  }
+
+  // Bulk operations
+  async deleteSelectedTags() {
+    const selected = this.selectedTags();
+    if (selected.size === 0) return;
+
+    const confirmation = confirm(
+      `Are you sure you want to delete ${selected.size} selected tags?`
+    );
+    if (!confirmation) return;
+
+    for (const tagName of selected) {
+      await this.deleteTag(tagName);
+    }
+
+    this.clearSelection();
+  }
+
+  // Utility methods
+  formatDate(date: Date): string {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
+  }
+
   addTag() {
-    if (!this.tagForm.valid) return;
+    if (!this.tagControl.valid || !this.tagControl.value) return;
 
     this.submitting.set(true);
-    const tagName = this.tagForm.value.name.trim().toLowerCase();
+    const tagName = this.tagControl.value.trim().toLowerCase();
 
     this.financeStore.createTag(tagName);
     this.submitting.set(false);
-    this.tagForm.reset();
+    this.tagControl.reset();
+    // updateDataSource() will be called automatically by the effect
   }
 
   addSuggestedTag(tagName: string) {
     this.submitting.set(true);
     this.financeStore.createTag(tagName);
     this.submitting.set(false);
+    // updateDataSource() will be called automatically by the effect
   }
 
-  deleteTag(tagName: string) {
+  async deleteTag(tagName: string) {
     if (!confirm(`Are you sure you want to delete the tag "${tagName}"?`))
       return;
 
@@ -383,11 +535,25 @@ export class TagsComponent implements OnInit {
     newDeleting.add(tagName);
     this.deleting.set(newDeleting);
 
-    this.financeStore.deleteTag(tagName);
+    try {
+      await this.financeStore.deleteTag(tagName);
+      // updateDataSource() will be called automatically by the effect
 
-    // Remove from deleting set
-    const updatedDeleting = new Set(this.deleting());
-    updatedDeleting.delete(tagName);
-    this.deleting.set(updatedDeleting);
+      // Remove from selected if it was selected
+      const selected = new Set(this.selectedTags());
+      selected.delete(tagName);
+      this.selectedTags.set(selected);
+    } finally {
+      // Remove from deleting set
+      const updatedDeleting = new Set(this.deleting());
+      updatedDeleting.delete(tagName);
+      this.deleting.set(updatedDeleting);
+    }
+  }
+
+  // Debug method
+  forceLoadData() {
+    console.log('Force loading data...');
+    this.financeStore.loadAllData();
   }
 }

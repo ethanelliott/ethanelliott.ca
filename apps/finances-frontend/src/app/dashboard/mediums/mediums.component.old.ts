@@ -21,7 +21,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { injectFinanceStore } from '../../store/finance.provider';
 
 @Component({
@@ -38,7 +37,6 @@ import { injectFinanceStore } from '../../store/finance.provider';
     MatProgressSpinnerModule,
     MatListModule,
     MatDividerModule,
-    MatTooltipModule,
   ],
   styleUrl: './mediums.component.scss',
   template: `
@@ -51,9 +49,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-icon fontIcon="fa-credit-card"></mat-icon>
               Payment Methods
             </h1>
-            <p class="page-subtitle">
-              Manage how you pay for transactions and track spending patterns
-            </p>
+            <p class="page-subtitle">Manage how you pay for transactions and track spending patterns</p>
           </div>
           <div class="controls-section">
             <div class="header-stats">
@@ -85,10 +81,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
             <mat-icon fontIcon="fa-plus-circle"></mat-icon>
             Add Payment Method
           </mat-card-title>
-          <mat-card-subtitle
-            >Quickly add a new payment method to track your
-            transactions</mat-card-subtitle
-          >
+          <mat-card-subtitle>Quickly add a new payment method to track your transactions</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="mediumForm" class="quick-add-form">
@@ -111,11 +104,10 @@ import { injectFinanceStore } from '../../store/finance.provider';
             >
               @if (submitting()) {
               <mat-spinner diameter="20"></mat-spinner>
-              Adding... } @else {
-              <ng-container>
-                <mat-icon fontIcon="fa-plus"></mat-icon>
-                Add Method
-              </ng-container>
+              Adding...
+              } @else {
+              <mat-icon fontIcon="fa-plus"></mat-icon>
+              Add Method
               }
             </button>
           </form>
@@ -131,9 +123,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-icon fontIcon="fa-chart-pie"></mat-icon>
               Payment Methods Overview
             </mat-card-title>
-            <mat-card-subtitle
-              >Your payment method usage and statistics</mat-card-subtitle
-            >
+            <mat-card-subtitle>Your payment method usage and statistics</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             @if (financeStore.mediums().length === 0) {
@@ -149,9 +139,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
                 </div>
                 <div class="stat-content">
                   <div class="stat-label">Total Methods</div>
-                  <div class="stat-value">
-                    {{ financeStore.mediums().length }}
-                  </div>
+                  <div class="stat-value">{{ financeStore.mediums().length }}</div>
                   <div class="stat-meta">Active payment options</div>
                 </div>
               </div>
@@ -187,9 +175,7 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <mat-icon fontIcon="fa-lightbulb"></mat-icon>
               Common Methods
             </mat-card-title>
-            <mat-card-subtitle
-              >Click to quickly add popular payment methods</mat-card-subtitle
-            >
+            <mat-card-subtitle>Click to quickly add popular payment methods</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="suggestions-grid">
@@ -216,20 +202,14 @@ import { injectFinanceStore } from '../../store/finance.provider';
             <mat-icon fontIcon="fa-list"></mat-icon>
             All Payment Methods
           </mat-card-title>
-          <mat-card-subtitle
-            >Manage your {{ financeStore.mediums().length }} payment
-            methods</mat-card-subtitle
-          >
+          <mat-card-subtitle>Manage your {{ financeStore.mediums().length }} payment methods</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           @if (financeStore.mediums().length === 0) {
           <div class="empty-state">
             <mat-icon fontIcon="fa-credit-card"></mat-icon>
             <h3>No Payment Methods Yet</h3>
-            <p>
-              Add your first payment method above to start tracking how you pay
-              for transactions
-            </p>
+            <p>Add your first payment method above to start tracking how you pay for transactions</p>
           </div>
           } @else {
           <div class="mediums-grid">
@@ -241,12 +221,8 @@ import { injectFinanceStore } from '../../store/finance.provider';
               <div class="medium-info">
                 <div class="medium-name">{{ medium }}</div>
                 <div class="medium-meta">
-                  <span class="usage-count"
-                    >{{ getMediumUsageCount(medium) }} transactions</span
-                  >
-                  <span class="usage-amount">{{
-                    getMediumUsageAmount(medium)
-                  }}</span>
+                  <span class="usage-count">{{ getMediumUsageCount(medium) }} transactions</span>
+                  <span class="usage-amount">{{ getMediumUsageAmount(medium) }}</span>
                 </div>
               </div>
               <div class="medium-actions">
@@ -273,7 +249,6 @@ import { injectFinanceStore } from '../../store/finance.provider';
 
       }
     </div>
-  `,
 })
 export class MediumsComponent implements OnInit {
   readonly financeStore = injectFinanceStore();
@@ -331,9 +306,7 @@ export class MediumsComponent implements OnInit {
   deleteMedium(mediumName: string) {
     if (
       !confirm(
-        'Are you sure you want to delete the payment method "' +
-          mediumName +
-          '"?'
+        `Are you sure you want to delete the payment method "${mediumName}"?`
       )
     )
       return;
@@ -367,20 +340,18 @@ export class MediumsComponent implements OnInit {
 
   getFilteredSuggestions(): string[] {
     const existingMediums = this.financeStore.mediums();
-    return this.commonMediums.filter(
-      (medium) => !existingMediums.includes(medium)
-    );
+    return this.commonMediums.filter(medium => !existingMediums.includes(medium));
   }
 
   getMediumUsageCount(mediumName: string): number {
     const mediumBreakdown = this.financeStore.mediumBreakdown();
-    const breakdown = mediumBreakdown.find((m) => m.medium === mediumName);
+    const breakdown = mediumBreakdown.find(m => m.medium === mediumName);
     return breakdown ? breakdown.count : 0;
   }
 
   getMediumUsageAmount(mediumName: string): string {
     const mediumBreakdown = this.financeStore.mediumBreakdown();
-    const breakdown = mediumBreakdown.find((m) => m.medium === mediumName);
+    const breakdown = mediumBreakdown.find(m => m.medium === mediumName);
     if (!breakdown) return '$0';
     const total = breakdown.income + breakdown.expenses;
     return this.formatCurrency(total);

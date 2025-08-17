@@ -2,27 +2,27 @@ import { inject } from '@ee/di';
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { FullTagSchema, SimpleTagSchema, TagOutSchema } from './tag';
-import { TagsService } from './tags.service';
+import { AccountInSchema, AccountOutSchema } from './account';
+import { AccountsService } from './accounts.service';
 
-export async function TagsRouter(fastify: FastifyInstance) {
+export async function AccountsRouter(fastify: FastifyInstance) {
   const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
-  const _tagsService = inject(TagsService);
+  const _accountsService = inject(AccountsService);
 
   typedFastify.get(
     '/',
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
-        tags: ['Tags'],
-        description: 'Get all tags',
-        response: { 200: z.array(SimpleTagSchema) },
+        tags: ['Accounts'],
+        description: 'Get all accounts',
+        response: { 200: z.array(AccountOutSchema) },
       },
     },
     async function (request, reply) {
       const userId = request.currentUser.id;
-      const allTags = await _tagsService.all(userId);
-      return reply.send(allTags);
+      const allAccounts = await _accountsService.all(userId);
+      return reply.send(allAccounts);
     }
   );
 
@@ -31,17 +31,17 @@ export async function TagsRouter(fastify: FastifyInstance) {
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
-        tags: ['Tags'],
-        description: 'Create new tag',
-        body: FullTagSchema,
-        response: { 200: TagOutSchema },
+        tags: ['Accounts'],
+        description: 'Create new account',
+        body: AccountInSchema,
+        response: { 200: AccountOutSchema },
       },
     },
     async function (request, reply) {
       const userId = request.currentUser.id;
-      const tag = request.body;
-      const newTag = await _tagsService.new(tag, userId);
-      return reply.send(newTag);
+      const account = request.body;
+      const newAccount = await _accountsService.new(account, userId);
+      return reply.send(newAccount);
     }
   );
 
@@ -50,44 +50,62 @@ export async function TagsRouter(fastify: FastifyInstance) {
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
-        tags: ['Tags'],
-        description: 'Delete all tags',
+        tags: ['Accounts'],
+        description: 'Delete all accounts',
+      },
+    },
+    async function (request, reply) {
+      const userId = request.currentUser.id;
+      const deleted = await _accountsService.deleteAll(userId);
+      return reply.send(deleted);
+    }
+  );
+
+  typedFastify.get(
+    '/summary',
+    {
+      preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
+      schema: {
+        tags: ['Accounts'],
+        description: 'Get account summary',
         response: {
           200: z.object({
-            deletedCount: z.number(),
+            totalAccounts: z.number(),
+            totalBalance: z.number(),
+            accountsByType: z.record(z.number()),
           }),
         },
       },
     },
     async function (request, reply) {
       const userId = request.currentUser.id;
-      const deleted = await _tagsService.deleteAll(userId);
-      return reply.send(deleted);
+      const summary = await _accountsService.getUserAccountSummary(userId);
+      return reply.send(summary);
     }
   );
 
   typedFastify.get(
-    '/:name',
+    '/:id',
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
-        tags: ['Tags'],
-        description: 'Get tag by name',
+        tags: ['Accounts'],
+        description: 'Get account by ID',
         params: z.object({
-          name: z.string(),
+          id: z.string().uuid(),
         }),
         response: {
-          200: TagOutSchema,
+          200: AccountOutSchema,
           404: z.object({ message: z.string() }),
         },
       },
     },
     async function (request, reply) {
       const userId = request.currentUser.id;
-      const { name } = request.params;
+      const { id } = request.params;
       try {
-        const tag = await _tagsService.get(name, userId);
-        return reply.send(tag);
+        const account = await _accountsService.get(id, userId);
+        return reply.send(account);
       } catch (error: any) {
         if (error.statusCode === 404) {
           return reply.status(404).send({ message: error.message });
@@ -98,28 +116,34 @@ export async function TagsRouter(fastify: FastifyInstance) {
   );
 
   typedFastify.put(
-    '/:name',
+    '/:id',
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
-        tags: ['Tags'],
-        description: 'Update tag',
+        tags: ['Accounts'],
+        description: 'Update account',
         params: z.object({
-          name: z.string(),
+          id: z.string().uuid(),
         }),
-        body: FullTagSchema,
+        body: AccountInSchema,
         response: {
-          200: TagOutSchema,
+          200: AccountOutSchema,
           404: z.object({ message: z.string() }),
         },
       },
     },
     async function (request, reply) {
       const userId = request.currentUser.id;
-      const { name } = request.params;
+      const { id } = request.params;
+      const account = request.body;
+
       try {
-        const tag = await _tagsService.update(name, request.body, userId);
-        return reply.send(tag);
+        const updatedAccount = await _accountsService.update(
+          id,
+          account,
+          userId
+        );
+        return reply.send(updatedAccount);
       } catch (error: any) {
         if (error.statusCode === 404) {
           return reply.status(404).send({ message: error.message });
@@ -130,27 +154,28 @@ export async function TagsRouter(fastify: FastifyInstance) {
   );
 
   typedFastify.delete(
-    '/:name',
+    '/:id',
     {
       preHandler: [(fastify as any).authenticate, fastify.circuitBreaker()],
       schema: {
-        tags: ['Tags'],
-        description: 'Delete tag',
+        tags: ['Accounts'],
+        description: 'Delete account',
         params: z.object({
-          name: z.string(),
+          id: z.string().uuid(),
         }),
         response: {
-          200: TagOutSchema,
+          200: z.object({ success: z.boolean() }),
           404: z.object({ message: z.string() }),
         },
       },
     },
     async function (request, reply) {
       const userId = request.currentUser.id;
-      const { name } = request.params;
+      const { id } = request.params;
+
       try {
-        const deleted = await _tagsService.delete(name, userId);
-        return reply.send(deleted);
+        const result = await _accountsService.delete(id, userId);
+        return reply.send(result);
       } catch (error: any) {
         if (error.statusCode === 404) {
           return reply.status(404).send({ message: error.message });

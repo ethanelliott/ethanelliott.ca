@@ -1,6 +1,25 @@
-import { FastifyInstance } from 'fastify';
+import {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  HookHandlerDoneFunction,
+} from 'fastify';
 import fp from 'fastify-plugin';
 import jwt from '@fastify/jwt';
+
+export interface BeforeHandler {
+  (
+    req: FastifyRequest,
+    reply: FastifyReply,
+    next: HookHandlerDoneFunction
+  ): Promise<unknown> | void;
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate(): BeforeHandler;
+  }
+}
 
 export const JWTPlugin = fp(async function (fastify: FastifyInstance) {
   // Register JWT plugin
@@ -17,26 +36,30 @@ export const JWTPlugin = fp(async function (fastify: FastifyInstance) {
   });
 
   // Add JWT verification decorator
-  fastify.decorate('authenticate', async function (request: any, reply: any) {
-    try {
-      // Only check for Bearer token in Authorization header
-      const authHeader = request.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        const decoded = fastify.jwt.verify(token);
-        request.user = decoded;
-        return;
-      }
+  fastify.decorate(
+    'authenticate',
+    () =>
+      async function (request: any, reply: any) {
+        try {
+          // Only check for Bearer token in Authorization header
+          const authHeader = request.headers.authorization;
+          if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            const decoded = fastify.jwt.verify(token);
+            request.user = decoded;
+            return;
+          }
 
-      throw new Error('No valid token found');
-    } catch (err) {
-      console.error('JWT authentication failed:', err);
-      reply.code(401).send({
-        error: 'Unauthorized',
-        message: 'Invalid or missing authentication token',
-      });
-    }
-  });
+          throw new Error('No valid token found');
+        } catch (err) {
+          console.error('JWT authentication failed:', err);
+          reply.code(401).send({
+            error: 'Unauthorized',
+            message: 'Invalid or missing authentication token',
+          });
+        }
+      }
+  );
 
   // Add optional JWT verification decorator
   fastify.decorate(

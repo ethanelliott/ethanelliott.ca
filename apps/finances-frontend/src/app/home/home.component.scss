@@ -59,57 +59,6 @@
   }
 }
 
-// ===== FEATURES SECTION =====
-.features {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2xl);
-  margin-top: var(--spacing-lg);
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: var(--spacing-lg);
-  }
-
-  .feature {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-sm);
-    color: white;
-    text-align: center;
-
-    @media (max-width: 768px) {
-      flex-direction: row;
-      justify-content: center;
-      gap: var(--spacing-md);
-    }
-
-    mat-icon {
-      font-size: 2rem;
-      width: 2rem;
-      height: 2rem;
-      color: var(--mat-sys-primary);
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-      padding: var(--spacing-md);
-
-      @media (max-width: 768px) {
-        font-size: 1.5rem;
-        width: 1.5rem;
-        height: 1.5rem;
-        padding: var(--spacing-sm);
-      }
-    }
-
-    span {
-      font-size: 0.9rem;
-      font-weight: 500;
-      opacity: 0.9;
-    }
-  }
-}
-
 // ===== RESPONSIVE DESIGN =====
 @media (max-width: 768px) {
   .home-container {
