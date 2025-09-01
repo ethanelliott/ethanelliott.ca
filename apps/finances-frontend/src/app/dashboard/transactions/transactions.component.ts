@@ -4,6 +4,7 @@ import {
   Component,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -11,10 +12,14 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Transaction } from '../../services/finance-api.service';
-import { injectFinanceStore } from '../../store/finance.provider';
+import {
+  FinanceApiService,
+  Transaction,
+  Account,
+} from '../../services/finance-api.service';
 import { TransactionDialogComponent } from './transaction-dialog.component';
 import { TransactionsGridComponent } from './transactions-grid.component';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-transactions',
@@ -38,7 +43,7 @@ import { TransactionsGridComponent } from './transactions-grid.component';
           <div class="title-section">
             <h1 class="page-title">Transactions</h1>
             <p class="page-subtitle">
-              {{ financeStore.transactionCount() }} transactions total
+              {{ transactions().length }} transactions total
             </p>
           </div>
           <div class="controls-section">
@@ -64,13 +69,13 @@ import { TransactionsGridComponent } from './transactions-grid.component';
           </mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          @if (financeStore.loading()) {
+          @if (loading()) {
           <div class="loading-container">
             <mat-spinner></mat-spinner>
             <h3>Loading transactions...</h3>
             <p>Please wait while we fetch your transaction data</p>
           </div>
-          } @else if (financeStore.transactionCount() === 0) {
+          } @else if (transactions().length === 0) {
           <div class="empty-state">
             <mat-icon>receipt</mat-icon>
             <h3>No transactions yet</h3>
@@ -88,7 +93,9 @@ import { TransactionsGridComponent } from './transactions-grid.component';
           } @else {
           <div class="transactions-grid-container">
             <app-transactions-grid
+              [transactions]="transactions()"
               (editTransaction)="openTransactionDialog($event)"
+              (deleteTransaction)="deleteTransaction($event)"
             ></app-transactions-grid>
           </div>
           }
@@ -98,13 +105,36 @@ import { TransactionsGridComponent } from './transactions-grid.component';
   `,
 })
 export class TransactionsComponent implements OnInit {
-  readonly financeStore = injectFinanceStore();
+  private readonly apiService = inject(FinanceApiService);
   private readonly dialog = inject(MatDialog);
 
+  loading = signal(true);
+  transactions = signal<Transaction[]>([]);
+  accounts = signal<Account[]>([]);
+  categories = signal<string[]>([]);
+  tags = signal<string[]>([]);
+
   ngOnInit() {
-    // Load all data when component initializes
-    if (!this.financeStore.initialLoadComplete()) {
-      this.financeStore.loadAllData();
+    this.loadData();
+  }
+
+  private async loadData() {
+    try {
+      this.loading.set(true);
+      const [transactions, accounts, categories, tags] = await Promise.all([
+        firstValueFrom(this.apiService.getAllTransactions()),
+        firstValueFrom(this.apiService.getAllAccounts()),
+        firstValueFrom(this.apiService.getAllCategories()),
+        firstValueFrom(this.apiService.getAllTags()),
+      ]);
+      this.transactions.set(transactions);
+      this.accounts.set(accounts);
+      this.categories.set(categories);
+      this.tags.set(tags);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      this.loading.set(false);
     }
   }
 
@@ -114,17 +144,29 @@ export class TransactionsComponent implements OnInit {
       maxWidth: '90vw',
       data: {
         transaction,
-        categories: this.financeStore.categories(),
-        mediums: this.financeStore.mediums(),
-        tags: this.financeStore.tags(),
+        categories: this.categories(),
+        accounts: this.accounts(),
+        tags: this.tags(),
       },
     });
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result && !result.error) {
-        // The store handles the success notifications, just refresh data if needed
-        this.financeStore.refreshTransactions();
+        // Reload transactions after successful create/update
+        this.loadData();
       }
     });
+  }
+
+  async deleteTransaction(transaction: Transaction) {
+    try {
+      await firstValueFrom(this.apiService.deleteTransaction(transaction.id));
+      // Remove from local state
+      this.transactions.update((transactions) =>
+        transactions.filter((t) => t.id !== transaction.id)
+      );
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+    }
   }
 }

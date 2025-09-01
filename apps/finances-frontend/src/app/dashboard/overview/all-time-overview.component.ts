@@ -26,7 +26,6 @@ interface AllTimeStats {
   netWorth: number;
   transactionCount: number;
   topExpenseCategory: string;
-  topMedium: string;
   averageTransactionAmount: number;
   averageMonthlyIncome: number;
   averageMonthlyExpenses: number;
@@ -221,10 +220,9 @@ export class AllTimeOverviewComponent implements OnInit {
     const expenses = this.financeStore.totalExpenses();
     const monthlyTrends = this.financeStore.monthlyTrends();
 
-    // Find most common category and medium for expenses
+    // Find most common category for expenses
     const categoryCount = new Map<string, number>();
     const categoryAmounts = new Map<string, number>();
-    const mediumCount = new Map<string, number>();
 
     transactions.forEach((t) => {
       if (t.type === 'EXPENSE') {
@@ -234,14 +232,10 @@ export class AllTimeOverviewComponent implements OnInit {
           (categoryAmounts.get(t.category) || 0) + t.amount
         );
       }
-      mediumCount.set(t.medium, (mediumCount.get(t.medium) || 0) + 1);
     });
 
     const topExpenseCategory =
       [...categoryAmounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-
-    const topMedium =
-      [...mediumCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
 
     // Calculate averages
     const averageTransactionAmount =
@@ -291,7 +285,6 @@ export class AllTimeOverviewComponent implements OnInit {
       netWorth: this.financeStore.netAmount(),
       transactionCount: this.financeStore.transactionCount(),
       topExpenseCategory,
-      topMedium,
       averageTransactionAmount,
       averageMonthlyIncome,
       averageMonthlyExpenses,
@@ -584,10 +577,6 @@ export class AllTimeOverviewComponent implements OnInit {
 
   navigateToCategories() {
     this.router.navigate(['/dashboard/categories']);
-  }
-
-  navigateToMediums() {
-    this.router.navigate(['/dashboard/mediums']);
   }
 
   navigateToTags() {

@@ -21,6 +21,7 @@ import {
 import {
   FinanceApiService,
   Transaction,
+  TransactionInput,
 } from '../services/finance-api.service';
 import {
   format,
@@ -41,13 +42,11 @@ interface FinanceState {
   // Data
   transactions: Transaction[];
   categories: string[];
-  mediums: string[];
   tags: string[];
 
   // Filter/Search state
   searchTerm: string;
   selectedCategory: string | null;
-  selectedMedium: string | null;
   selectedTags: string[];
   dateFrom: string | null;
   dateTo: string | null;
@@ -68,11 +67,9 @@ const initialState: FinanceState = {
   submitting: false,
   transactions: [],
   categories: [],
-  mediums: [],
   tags: [],
   searchTerm: '',
   selectedCategory: null,
-  selectedMedium: null,
   selectedTags: [],
   dateFrom: null,
   dateTo: null,
@@ -96,14 +93,6 @@ interface MonthlyTrend {
 interface CategoryBreakdown {
   category: string;
   amount: number;
-}
-
-// Medium breakdown interface
-interface MediumBreakdown {
-  medium: string;
-  income: number;
-  expenses: number;
-  count: number;
 }
 
 // Store definition
@@ -160,13 +149,6 @@ export const FinanceStore = signalStore(
           );
         }
 
-        // Filter by medium
-        if (state.selectedMedium()) {
-          filtered = filtered.filter(
-            (t) => t.medium === state.selectedMedium()
-          );
-        }
-
         // Filter by tags
         if (state.selectedTags().length > 0) {
           filtered = filtered.filter((t) =>
@@ -189,7 +171,6 @@ export const FinanceStore = signalStore(
             (t) =>
               t.description.toLowerCase().includes(searchLower) ||
               t.category.toLowerCase().includes(searchLower) ||
-              t.medium.toLowerCase().includes(searchLower) ||
               t.tags.some((tag) => tag.toLowerCase().includes(searchLower))
           );
         }
@@ -203,14 +184,12 @@ export const FinanceStore = signalStore(
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
 
-        return state
-          .transactions()
-          .filter((t) =>
-            isWithinInterval(new Date(t.date), {
-              start: monthStart,
-              end: monthEnd,
-            })
-          );
+        return state.transactions().filter((t) =>
+          isWithinInterval(new Date(t.date), {
+            start: monthStart,
+            end: monthEnd,
+          })
+        );
       }),
 
       // Current month income/expenses
@@ -292,14 +271,12 @@ export const FinanceStore = signalStore(
         const monthStart = startOfMonth(lastMonth);
         const monthEnd = endOfMonth(lastMonth);
 
-        return state
-          .transactions()
-          .filter((t) =>
-            isWithinInterval(new Date(t.date), {
-              start: monthStart,
-              end: monthEnd,
-            })
-          );
+        return state.transactions().filter((t) =>
+          isWithinInterval(new Date(t.date), {
+            start: monthStart,
+            end: monthEnd,
+          })
+        );
       }),
 
       previousMonthExpenses: computed(() =>
@@ -329,14 +306,12 @@ export const FinanceStore = signalStore(
         return months.map((month) => {
           const monthStart = startOfMonth(month);
           const monthEnd = endOfMonth(month);
-          const monthTransactions = state
-            .transactions()
-            .filter((t) =>
-              isWithinInterval(new Date(t.date), {
-                start: monthStart,
-                end: monthEnd,
-              })
-            );
+          const monthTransactions = state.transactions().filter((t) =>
+            isWithinInterval(new Date(t.date), {
+              start: monthStart,
+              end: monthEnd,
+            })
+          );
 
           const income = monthTransactions
             .filter((t) => t.type === 'INCOME')
@@ -363,16 +338,14 @@ export const FinanceStore = signalStore(
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
 
-        const transactions = state
-          .transactions()
-          .filter(
-            (t) =>
-              t.type === 'EXPENSE' &&
-              isWithinInterval(new Date(t.date), {
-                start: monthStart,
-                end: monthEnd,
-              })
-          );
+        const transactions = state.transactions().filter(
+          (t) =>
+            t.type === 'EXPENSE' &&
+            isWithinInterval(new Date(t.date), {
+              start: monthStart,
+              end: monthEnd,
+            })
+        );
 
         const categoryMap = new Map<string, number>();
 
@@ -386,34 +359,6 @@ export const FinanceStore = signalStore(
         return Array.from(categoryMap.entries())
           .map(([category, amount]) => ({ category, amount }))
           .sort((a, b) => b.amount - a.amount);
-      }),
-
-      // Medium breakdown
-      mediumBreakdown: computed((): MediumBreakdown[] => {
-        const transactions = state.transactions();
-        const mediumMap = new Map<
-          string,
-          { income: number; expenses: number; count: number }
-        >();
-
-        transactions.forEach((t) => {
-          const current = mediumMap.get(t.medium) || {
-            income: 0,
-            expenses: 0,
-            count: 0,
-          };
-          if (t.type === 'INCOME') {
-            current.income += t.amount;
-          } else {
-            current.expenses += t.amount;
-          }
-          current.count++;
-          mediumMap.set(t.medium, current);
-        });
-
-        return Array.from(mediumMap.entries())
-          .map(([medium, data]) => ({ medium, ...data }))
-          .sort((a, b) => b.income + b.expenses - (a.income + a.expenses));
       }),
 
       // Financial health score (0-100)
@@ -537,10 +482,6 @@ export const FinanceStore = signalStore(
         patchState(store, { selectedCategory: category });
       },
 
-      setSelectedMedium: (medium: string | null) => {
-        patchState(store, { selectedMedium: medium });
-      },
-
       setSelectedTags: (tags: string[]) => {
         patchState(store, { selectedTags: tags });
       },
@@ -557,7 +498,6 @@ export const FinanceStore = signalStore(
         patchState(store, {
           searchTerm: '',
           selectedCategory: null,
-          selectedMedium: null,
           selectedTags: [],
           dateFrom: null,
           dateTo: null,
@@ -603,13 +543,6 @@ export const FinanceStore = signalStore(
                   return of([]);
                 })
               ),
-              mediums: apiService.getAllMediums().pipe(
-                catchError((error) => {
-                  console.error('Error loading mediums:', error);
-                  showError('Error loading mediums');
-                  return of([]);
-                })
-              ),
               tags: apiService.getAllTags().pipe(
                 catchError((error) => {
                   console.error('Error loading tags:', error);
@@ -623,7 +556,6 @@ export const FinanceStore = signalStore(
             patchState(store, {
               transactions: data.transactions,
               categories: data.categories,
-              mediums: data.mediums,
               tags: data.tags,
               loading: false,
               initialLoadComplete: true,
@@ -664,8 +596,18 @@ export const FinanceStore = signalStore(
       >(
         pipe(
           tap(() => patchState(store, { submitting: true, error: null })),
-          switchMap((transaction) =>
-            apiService.createTransaction(transaction).pipe(
+          switchMap((transaction) => {
+            // Transform to TransactionInput format
+            const transactionInput: TransactionInput = {
+              type: transaction.type,
+              account: transaction.account.id, // Convert account object to ID string
+              date: transaction.date,
+              amount: transaction.amount,
+              category: transaction.category,
+              tags: transaction.tags,
+              description: transaction.description,
+            };
+            return apiService.createTransaction(transactionInput).pipe(
               tap((newTransaction) => {
                 patchState(store, {
                   transactions: [...store.transactions(), newTransaction],
@@ -681,8 +623,8 @@ export const FinanceStore = signalStore(
                 showError('Error creating transaction');
                 return EMPTY;
               })
-            )
-          )
+            );
+          })
         )
       ),
 
@@ -692,8 +634,18 @@ export const FinanceStore = signalStore(
       }>(
         pipe(
           tap(() => patchState(store, { submitting: true, error: null })),
-          switchMap(({ id, transaction }) =>
-            apiService.updateTransaction(id, transaction).pipe(
+          switchMap(({ id, transaction }) => {
+            // Transform to TransactionInput format
+            const transactionInput: TransactionInput = {
+              type: transaction.type,
+              account: transaction.account.id, // Convert account object to ID string
+              date: transaction.date,
+              amount: transaction.amount,
+              category: transaction.category,
+              tags: transaction.tags,
+              description: transaction.description,
+            };
+            return apiService.updateTransaction(id, transactionInput).pipe(
               tap((updatedTransaction) => {
                 patchState(store, {
                   transactions: store
@@ -711,8 +663,8 @@ export const FinanceStore = signalStore(
                 showError('Error updating transaction');
                 return EMPTY;
               })
-            )
-          )
+            );
+          })
         )
       ),
 
@@ -770,47 +722,6 @@ export const FinanceStore = signalStore(
               catchError((error) => {
                 console.error('Error deleting category:', error);
                 showError('Error deleting category');
-                return EMPTY;
-              })
-            )
-          )
-        )
-      ),
-
-      // Medium operations
-      createMedium: rxMethod<string>(
-        pipe(
-          switchMap((name) =>
-            apiService.createMedium({ name }).pipe(
-              tap(() => {
-                patchState(store, {
-                  mediums: [...store.mediums(), name],
-                });
-                showSuccess('Payment method created successfully');
-              }),
-              catchError((error) => {
-                console.error('Error creating medium:', error);
-                showError('Error creating payment method');
-                return EMPTY;
-              })
-            )
-          )
-        )
-      ),
-
-      deleteMedium: rxMethod<string>(
-        pipe(
-          switchMap((name) =>
-            apiService.deleteMedium(name).pipe(
-              tap(() => {
-                patchState(store, {
-                  mediums: store.mediums().filter((m) => m !== name),
-                });
-                showSuccess('Payment method deleted successfully');
-              }),
-              catchError((error) => {
-                console.error('Error deleting medium:', error);
-                showError('Error deleting payment method');
                 return EMPTY;
               })
             )
@@ -877,9 +788,6 @@ export const FinanceStore = signalStore(
             return false;
           }
           if (criteria.category && transaction.category !== criteria.category) {
-            return false;
-          }
-          if (criteria.medium && transaction.medium !== criteria.medium) {
             return false;
           }
           if (criteria.tags && criteria.tags.length > 0) {

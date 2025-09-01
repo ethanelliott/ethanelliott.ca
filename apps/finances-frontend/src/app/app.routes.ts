@@ -53,17 +53,24 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'transfers',
+        loadComponent: () =>
+          import('./dashboard/transfers/transfers.component').then(
+            (m) => m.TransfersComponent
+          ),
+      },
+      {
+        path: 'accounts',
+        loadComponent: () =>
+          import('./dashboard/accounts/accounts.component').then(
+            (m) => m.AccountsComponent
+          ),
+      },
+      {
         path: 'categories',
         loadComponent: () =>
           import('./dashboard/categories/categories.component').then(
             (m) => m.CategoriesComponent
-          ),
-      },
-      {
-        path: 'mediums',
-        loadComponent: () =>
-          import('./dashboard/mediums/mediums.component').then(
-            (m) => m.MediumsComponent
           ),
       },
       {

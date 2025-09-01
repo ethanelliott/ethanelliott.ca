@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, output, effect, inject } from '@angular/core';
+import { Component, output, effect, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { AgGridAngular } from 'ag-grid-angular';
@@ -16,7 +16,6 @@ import {
   colorSchemeDark,
 } from 'ag-grid-community';
 import { Transaction } from '../../services/finance-api.service';
-import { injectFinanceStore } from '../../store/finance.provider';
 import { DialogService } from '../../shared/dialogs';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -35,7 +34,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   template: `
     <ag-grid-angular
       class="transactions-grid"
-      [rowData]="financeStore.transactions()"
+      [rowData]="transactions()"
       [columnDefs]="columnDefs"
       [gridOptions]="gridOptions"
       [domLayout]="'autoHeight'"
@@ -57,18 +56,21 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   `,
 })
 export class TransactionsGridComponent {
-  readonly financeStore = injectFinanceStore();
   private readonly dialogService = inject(DialogService);
 
-  // Only keep the edit transaction output since the store handles the rest
+  // Inputs
+  transactions = input.required<Transaction[]>();
+
+  // Outputs
   editTransaction = output<Transaction>();
+  deleteTransaction = output<Transaction>();
 
   private gridApi!: GridApi;
 
   constructor() {
     // Use effect to watch for changes in transactions
     effect(() => {
-      const currentTransactions = this.financeStore.transactions();
+      const currentTransactions = this.transactions();
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', currentTransactions);
       }
@@ -154,21 +156,17 @@ export class TransactionsGridComponent {
       filter: 'agTextColumnFilter',
       editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({
-        values: this.financeStore.categories(),
-      }),
+      cellEditorParams: {
+        values: [], // Categories will need to be passed as input if editing is needed
+      },
     },
     {
-      headerName: 'Payment Method',
-      field: 'medium',
+      headerName: 'Account',
+      field: 'account.name',
       width: 140,
       sortable: true,
       filter: 'agTextColumnFilter',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({
-        values: this.financeStore.mediums(),
-      }),
+      editable: false, // Account changes require selecting from dropdown
     },
     {
       headerName: 'Tags',
@@ -244,27 +242,9 @@ export class TransactionsGridComponent {
 
   onCellEditingStopped(event: CellEditingStoppedEvent): void {
     if (event.valueChanged) {
-      this.updateTransaction(event.data);
+      // For now, just emit the edit event so parent can handle updates
+      this.editTransaction.emit(event.data);
     }
-  }
-
-  private updateTransaction(transaction: Transaction): void {
-    if (!transaction.id) {
-      return;
-    }
-
-    this.financeStore.updateTransaction({
-      id: transaction.id,
-      transaction: {
-        type: transaction.type,
-        amount: transaction.amount,
-        category: transaction.category,
-        medium: transaction.medium,
-        date: transaction.date,
-        tags: transaction.tags,
-        description: transaction.description,
-      },
-    });
   }
 
   private onEditTransaction(transaction: Transaction): void {
@@ -283,7 +263,10 @@ export class TransactionsGridComponent {
 
     if (!confirmed) return;
 
-    this.financeStore.deleteTransaction(id);
+    const transaction = this.transactions().find((t) => t.id === id);
+    if (transaction) {
+      this.deleteTransaction.emit(transaction);
+    }
   }
 
   private formatCurrency(amount: number): string {

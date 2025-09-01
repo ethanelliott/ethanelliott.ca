@@ -30,13 +30,15 @@ import { Observable } from 'rxjs';
 import {
   FinanceApiService,
   Transaction,
+  TransactionInput,
+  Account,
 } from '../../services/finance-api.service';
-import { injectFinanceStore } from '../../store/finance.provider';
+import { firstValueFrom } from 'rxjs';
 
 export interface TransactionDialogData {
   transaction?: Transaction;
   categories: string[];
-  mediums: string[];
+  accounts: Account[];
   tags: string[];
 }
 
@@ -108,20 +110,13 @@ export interface TransactionDialogData {
             </mat-autocomplete>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="medium-field">
-            <mat-label>Payment Method</mat-label>
-            <input
-              matInput
-              formControlName="medium"
-              [matAutocomplete]="mediumAuto"
-              required
-              placeholder="Enter or select payment method"
-            />
-            <mat-autocomplete #mediumAuto="matAutocomplete">
-              @for (medium of filteredMediums | async; track medium) {
-              <mat-option [value]="medium">{{ medium }}</mat-option>
+          <mat-form-field appearance="outline" class="account-field">
+            <mat-label>Account</mat-label>
+            <mat-select formControlName="account" required>
+              @for (account of data.accounts; track account.id) {
+              <mat-option [value]="account.id">{{ account.name }}</mat-option>
               }
-            </mat-autocomplete>
+            </mat-select>
           </mat-form-field>
         </div>
 
@@ -264,7 +259,7 @@ export interface TransactionDialogData {
   `,
 })
 export class TransactionDialogComponent implements OnInit {
-  private readonly financeStore = injectFinanceStore();
+  private readonly apiService = inject(FinanceApiService);
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<TransactionDialogComponent>);
 
@@ -274,14 +269,13 @@ export class TransactionDialogComponent implements OnInit {
 
   // Filtered observables for autocomplete
   filteredCategories!: Observable<string[]>;
-  filteredMediums!: Observable<string[]>;
   filteredTags!: Observable<string[]>;
 
   transactionForm: FormGroup = this.fb.group({
     type: ['EXPENSE', Validators.required],
     amount: ['', [Validators.required, Validators.min(0.01)]],
     category: ['', Validators.required],
-    medium: ['', Validators.required],
+    account: ['', Validators.required],
     date: [new Date().toISOString().split('T')[0], Validators.required],
     tagInput: [''],
     description: ['', Validators.required],
@@ -294,13 +288,6 @@ export class TransactionDialogComponent implements OnInit {
       .valueChanges.pipe(
         startWith(''),
         map((value) => this._filterOptions(value || '', this.data.categories))
-      );
-
-    this.filteredMediums = this.transactionForm
-      .get('medium')!
-      .valueChanges.pipe(
-        startWith(''),
-        map((value) => this._filterOptions(value || '', this.data.mediums))
       );
 
     this.filteredTags = this.transactionForm.get('tagInput')!.valueChanges.pipe(
@@ -317,7 +304,7 @@ export class TransactionDialogComponent implements OnInit {
         type: transaction.type,
         amount: transaction.amount,
         category: transaction.category,
-        medium: transaction.medium,
+        account: transaction.account.id,
         date: transaction.date,
         description: transaction.description,
       });
@@ -357,35 +344,44 @@ export class TransactionDialogComponent implements OnInit {
     this.selectedTags.update((tags) => tags.filter((t) => t !== tag));
   }
 
-  saveTransaction() {
+  async saveTransaction() {
     if (!this.transactionForm.valid) return;
 
     this.submitting.set(true);
     const formValue = this.transactionForm.value;
 
-    const transaction = {
+    const transactionData: TransactionInput = {
       type: formValue.type,
       amount: parseFloat(formValue.amount),
       category: formValue.category,
-      medium: formValue.medium,
+      account: formValue.account,
       date: formValue.date,
       tags: this.selectedTags(),
       description: formValue.description,
     };
 
-    if (this.data.transaction) {
-      // Update existing transaction
-      this.financeStore.updateTransaction({
-        id: this.data.transaction.id!,
-        transaction,
-      });
-    } else {
-      // Create new transaction
-      this.financeStore.createTransaction(transaction);
-    }
+    try {
+      if (this.data.transaction) {
+        // Update existing transaction
+        await firstValueFrom(
+          this.apiService.updateTransaction(
+            this.data.transaction.id,
+            transactionData
+          )
+        );
+      } else {
+        // Create new transaction
+        await firstValueFrom(
+          this.apiService.createTransaction(transactionData)
+        );
+      }
 
-    // Close dialog immediately - the store handles the operation
-    this.submitting.set(false);
-    this.dialogRef.close({ success: true });
+      this.dialogRef.close({ success: true });
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+      this.dialogRef.close({ error: true });
+    } finally {
+      this.submitting.set(false);
+    }
   }
 }

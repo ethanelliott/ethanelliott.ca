@@ -2,29 +2,119 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+export interface Account {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  initialBalance: number;
+  currency: string;
+  timestamp: Date;
+  updatedAt: Date;
+}
+
+export interface AccountInput {
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  initialBalance?: number;
+  currency?: string;
+}
+
+export interface AccountSummary {
+  totalAccounts: number;
+  totalBalance: number;
+  accountsByType: Record<string, number>;
+}
+
 export interface Transaction {
-  id?: string;
+  id: string;
+  userId: string;
   type: 'INCOME' | 'EXPENSE';
-  medium: string;
+  account: {
+    id: string;
+    name: string;
+    accountType: string;
+  };
   date: string;
   amount: number;
   category: string;
   tags: string[];
   description: string;
-  timestamp?: Date;
-  updatedAt?: Date;
+  timestamp: Date;
+  updatedAt: Date;
+}
+
+export interface TransactionInput {
+  type: 'INCOME' | 'EXPENSE';
+  account: string; // UUID
+  date: string;
+  amount: number;
+  category: string; // Category name
+  tags: string[]; // Tag names
+  description: string;
+}
+
+export interface Transfer {
+  id: string;
+  transferType: string;
+  date: string;
+  amount: number;
+  description: string;
+  timestamp: Date;
+  updatedAt: Date;
+  fromAccount: {
+    id: string;
+    name: string;
+    accountType: string;
+  };
+  toAccount: {
+    id: string;
+    name: string;
+    accountType: string;
+  };
+  category?: string;
+}
+
+export interface TransferInput {
+  transferType: string;
+  fromAccountId: string;
+  toAccountId: string;
+  date: string;
+  amount: number;
+  description: string;
 }
 
 export interface Category {
+  id: string;
   name: string;
+  description?: string;
+  color?: string;
+  timestamp: Date;
+  updatedAt: Date;
 }
 
-export interface Medium {
+export interface CategoryInput {
   name: string;
+  description?: string;
+  color?: string;
 }
 
 export interface Tag {
+  id: string;
   name: string;
+  description?: string;
+  color?: string;
+  isActive?: boolean;
+  timestamp: Date;
+  updatedAt: Date;
+}
+
+export interface TagInput {
+  name: string;
+  description?: string;
+  color?: string;
+  isActive?: boolean;
 }
 
 export interface User {
@@ -44,6 +134,45 @@ export class FinanceApiService {
   private readonly _http = inject(HttpClient);
   private readonly baseUrl = 'http://localhost:8080';
 
+  // Accounts
+  getAllAccounts(): Observable<Account[]> {
+    return this._http.get<Account[]>(`${this.baseUrl}/finances/accounts`);
+  }
+
+  getAccount(id: string): Observable<Account> {
+    return this._http.get<Account>(`${this.baseUrl}/finances/accounts/${id}`);
+  }
+
+  getAccountSummary(): Observable<AccountSummary> {
+    return this._http.get<AccountSummary>(
+      `${this.baseUrl}/finances/accounts/summary`
+    );
+  }
+
+  createAccount(account: AccountInput): Observable<Account> {
+    return this._http.post<Account>(
+      `${this.baseUrl}/finances/accounts`,
+      account
+    );
+  }
+
+  updateAccount(id: string, account: AccountInput): Observable<Account> {
+    return this._http.put<Account>(
+      `${this.baseUrl}/finances/accounts/${id}`,
+      account
+    );
+  }
+
+  deleteAccount(id: string): Observable<{ success: boolean }> {
+    return this._http.delete<{ success: boolean }>(
+      `${this.baseUrl}/finances/accounts/${id}`
+    );
+  }
+
+  deleteAllAccounts(): Observable<any> {
+    return this._http.delete(`${this.baseUrl}/finances/accounts`);
+  }
+
   // Transactions
   getAllTransactions(): Observable<Transaction[]> {
     return this._http.get<Transaction[]>(
@@ -57,9 +186,7 @@ export class FinanceApiService {
     );
   }
 
-  createTransaction(
-    transaction: Omit<Transaction, 'id' | 'timestamp' | 'updatedAt'>
-  ): Observable<Transaction> {
+  createTransaction(transaction: TransactionInput): Observable<Transaction> {
     return this._http.post<Transaction>(
       `${this.baseUrl}/finances/transactions`,
       transaction
@@ -68,7 +195,7 @@ export class FinanceApiService {
 
   updateTransaction(
     id: string,
-    transaction: Omit<Transaction, 'id' | 'timestamp' | 'updatedAt'>
+    transaction: TransactionInput
   ): Observable<Transaction> {
     return this._http.put<Transaction>(
       `${this.baseUrl}/finances/transactions/${id}`,
@@ -82,33 +209,85 @@ export class FinanceApiService {
     );
   }
 
+  deleteAllTransactions(): Observable<{
+    success: boolean;
+    deletedCount: number;
+  }> {
+    return this._http.delete<{ success: boolean; deletedCount: number }>(
+      `${this.baseUrl}/finances/transactions`
+    );
+  }
+
+  // Transfers
+  getAllTransfers(): Observable<Transfer[]> {
+    return this._http.get<Transfer[]>(`${this.baseUrl}/finances/transfers`);
+  }
+
+  getTransfer(id: string): Observable<Transfer> {
+    return this._http.get<Transfer>(`${this.baseUrl}/finances/transfers/${id}`);
+  }
+
+  createTransfer(transfer: TransferInput): Observable<Transfer> {
+    return this._http.post<Transfer>(
+      `${this.baseUrl}/finances/transfers`,
+      transfer
+    );
+  }
+
+  updateTransfer(id: string, transfer: TransferInput): Observable<Transfer> {
+    return this._http.put<Transfer>(
+      `${this.baseUrl}/finances/transfers/${id}`,
+      transfer
+    );
+  }
+
+  deleteTransfer(id: string): Observable<{ success: boolean }> {
+    return this._http.delete<{ success: boolean }>(
+      `${this.baseUrl}/finances/transfers/${id}`
+    );
+  }
+
+  deleteAllTransfers(): Observable<{ success: boolean; deletedCount: number }> {
+    return this._http.delete<{ success: boolean; deletedCount: number }>(
+      `${this.baseUrl}/finances/transfers`
+    );
+  }
+
   // Categories
   getAllCategories(): Observable<string[]> {
     return this._http.get<string[]>(`${this.baseUrl}/finances/categories`);
   }
 
-  createCategory(category: Category): Observable<Category> {
+  getCategory(name: string): Observable<Category> {
+    return this._http.get<Category>(
+      `${this.baseUrl}/finances/categories/${name}`
+    );
+  }
+
+  createCategory(category: CategoryInput): Observable<Category> {
     return this._http.post<Category>(
       `${this.baseUrl}/finances/categories`,
       category
     );
   }
 
-  deleteCategory(name: string): Observable<any> {
-    return this._http.delete(`${this.baseUrl}/finances/categories/${name}`);
+  updateCategory(name: string, category: CategoryInput): Observable<Category> {
+    return this._http.put<Category>(
+      `${this.baseUrl}/finances/categories/${name}`,
+      category
+    );
   }
 
-  // Mediums
-  getAllMediums(): Observable<string[]> {
-    return this._http.get<string[]>(`${this.baseUrl}/finances/mediums`);
+  deleteCategory(name: string): Observable<Category> {
+    return this._http.delete<Category>(
+      `${this.baseUrl}/finances/categories/${name}`
+    );
   }
 
-  createMedium(medium: Medium): Observable<Medium> {
-    return this._http.post<Medium>(`${this.baseUrl}/finances/mediums`, medium);
-  }
-
-  deleteMedium(name: string): Observable<any> {
-    return this._http.delete(`${this.baseUrl}/finances/mediums/${name}`);
+  deleteAllCategories(): Observable<{ deletedCount: number }> {
+    return this._http.delete<{ deletedCount: number }>(
+      `${this.baseUrl}/finances/categories`
+    );
   }
 
   // Tags
@@ -116,12 +295,26 @@ export class FinanceApiService {
     return this._http.get<string[]>(`${this.baseUrl}/finances/tags`);
   }
 
-  createTag(tag: Tag): Observable<Tag> {
+  getTag(name: string): Observable<Tag> {
+    return this._http.get<Tag>(`${this.baseUrl}/finances/tags/${name}`);
+  }
+
+  createTag(tag: TagInput): Observable<Tag> {
     return this._http.post<Tag>(`${this.baseUrl}/finances/tags`, tag);
   }
 
-  deleteTag(name: string): Observable<any> {
-    return this._http.delete(`${this.baseUrl}/finances/tags/${name}`);
+  updateTag(name: string, tag: TagInput): Observable<Tag> {
+    return this._http.put<Tag>(`${this.baseUrl}/finances/tags/${name}`, tag);
+  }
+
+  deleteTag(name: string): Observable<Tag> {
+    return this._http.delete<Tag>(`${this.baseUrl}/finances/tags/${name}`);
+  }
+
+  deleteAllTags(): Observable<{ deletedCount: number }> {
+    return this._http.delete<{ deletedCount: number }>(
+      `${this.baseUrl}/finances/tags`
+    );
   }
 
   // User Profile
@@ -137,7 +330,7 @@ export class FinanceApiService {
     return this._http.put<User>(`${this.baseUrl}/users/profile`, updates);
   }
 
-  deleteAccount(): Observable<{ success: boolean; message: string }> {
+  deleteUserAccount(): Observable<{ success: boolean; message: string }> {
     return this._http.delete<{ success: boolean; message: string }>(
       `${this.baseUrl}/users/profile`
     );

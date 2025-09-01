@@ -73,24 +73,33 @@ import { FinanceApiService } from '../services/finance-api.service';
                   <span matListItemTitle>Transactions</span>
                 </a>
 
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/transfers"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>swap_horiz</mat-icon>
+                  <span matListItemTitle>Transfers</span>
+                </a>
+
                 <div class="nav-section-title">Manage</div>
+
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/accounts"
+                  routerLinkActive="active-link"
+                >
+                  <mat-icon matListItemIcon>account_balance_wallet</mat-icon>
+                  <span matListItemTitle>Accounts</span>
+                </a>
 
                 <a
                   mat-list-item
                   routerLink="/dashboard/categories"
                   routerLinkActive="active-link"
                 >
-                  <mat-icon matListItemIcon>category ></mat-icon>
+                  <mat-icon matListItemIcon>category</mat-icon>
                   <span matListItemTitle>Categories</span>
-                </a>
-
-                <a
-                  mat-list-item
-                  routerLink="/dashboard/mediums"
-                  routerLinkActive="active-link"
-                >
-                  <mat-icon matListItemIcon>credit_card ></mat-icon>
-                  <span matListItemTitle>Payment Methods</span>
                 </a>
 
                 <a
@@ -286,10 +295,12 @@ export class Dashboard implements OnInit {
       this.currentPageTitle.set('Monthly Habits');
     } else if (url.includes('/transactions')) {
       this.currentPageTitle.set('Transactions');
+    } else if (url.includes('/transfers')) {
+      this.currentPageTitle.set('Transfers');
+    } else if (url.includes('/accounts')) {
+      this.currentPageTitle.set('Accounts');
     } else if (url.includes('/categories')) {
       this.currentPageTitle.set('Categories');
-    } else if (url.includes('/mediums')) {
-      this.currentPageTitle.set('Payment Methods');
     } else if (url.includes('/tags')) {
       this.currentPageTitle.set('Tags');
     } else if (url.includes('/profile')) {

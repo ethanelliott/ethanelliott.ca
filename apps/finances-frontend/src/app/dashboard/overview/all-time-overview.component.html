@@ -214,11 +214,11 @@
               </div>
 
               <div class="insight">
-                <mat-icon class="insight-icon primary">credit_card</mat-icon>
+                <mat-icon class="insight-icon primary">category</mat-icon>
                 <div class="insight-text">
-                  <div class="insight-label">Top Payment</div>
+                  <div class="insight-label">Top Category</div>
                   <div class="insight-value">
-                    {{ allTimeStats().topMedium || 'None' }}
+                    {{ allTimeStats().topExpenseCategory || 'None' }}
                   </div>
                 </div>
               </div>
@@ -308,61 +308,6 @@
               <div class="empty-state-mini">
                 <mat-icon>store</mat-icon>
                 <span>No merchant data</span>
-              </div>
-              }
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-      <!-- Payment Methods -->
-      <div class="payments-section">
-        <mat-card class="list-card">
-          <mat-card-header class="header">
-            <mat-card-title>
-              <mat-icon>credit_card</mat-icon>
-              Payment Methods
-            </mat-card-title>
-            <button
-              mat-icon-button
-              (click)="navigateToMediums()"
-              class="nav-button"
-            >
-              <mat-icon>arrow_forward</mat-icon>
-            </button>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="list">
-              @for (medium of financeStore.mediumBreakdown().slice(0, 5); track
-              medium.medium) {
-              <div class="list-item">
-                <div class="item-content">
-                  <div class="item-name">{{ medium.medium }}</div>
-                  <div class="item-detail">{{ medium.count }} uses</div>
-                </div>
-                <div class="item-amount">
-                  {{ formatCurrency(medium.income + medium.expenses) }}
-                </div>
-                <div class="item-bar">
-                  <div
-                    class="bar-income"
-                    [style.width.%]="
-                      (medium.income / (medium.income + medium.expenses)) * 100
-                    "
-                  ></div>
-                  <div
-                    class="bar-expense"
-                    [style.width.%]="
-                      (medium.expenses / (medium.income + medium.expenses)) *
-                      100
-                    "
-                  ></div>
-                </div>
-              </div>
-              } @empty {
-              <div class="empty-state-mini">
-                <mat-icon>credit_card</mat-icon>
-                <span>No payment data</span>
               </div>
               }
             </div>

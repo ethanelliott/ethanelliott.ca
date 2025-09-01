@@ -30,7 +30,6 @@ interface MonthlyStats {
   netAmount: number;
   transactionCount: number;
   topCategory: string;
-  topMedium: string;
   avgTransactionAmount: number;
   mostActiveDay: string;
 }
@@ -242,16 +241,14 @@ export class MonthlyHabitsComponent implements OnInit {
       .filter((t) => t.type === 'EXPENSE')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    // Find most common category and medium
+    // Find most common category
     const categoryCount = new Map<string, number>();
-    const mediumCount = new Map<string, number>();
     const dayCount = new Map<string, number>();
 
     transactions.forEach((t) => {
       if (t.type === 'EXPENSE') {
         categoryCount.set(t.category, (categoryCount.get(t.category) || 0) + 1);
       }
-      mediumCount.set(t.medium, (mediumCount.get(t.medium) || 0) + 1);
 
       const day = new Date(t.date).toLocaleDateString('en-US', {
         weekday: 'long',
@@ -261,8 +258,6 @@ export class MonthlyHabitsComponent implements OnInit {
 
     const topCategory =
       [...categoryCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-    const topMedium =
-      [...mediumCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
     const mostActiveDay =
       [...dayCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
 
@@ -278,7 +273,6 @@ export class MonthlyHabitsComponent implements OnInit {
       netAmount: income - expenses,
       transactionCount: transactions.length,
       topCategory,
-      topMedium,
       avgTransactionAmount,
       mostActiveDay,
     };
@@ -297,33 +291,6 @@ export class MonthlyHabitsComponent implements OnInit {
     return Array.from(breakdown.entries())
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount);
-  });
-
-  readonly mediumBreakdown = computed(() => {
-    const transactions = this.filteredTransactions();
-    const breakdown = new Map<
-      string,
-      { income: number; expenses: number; count: number }
-    >();
-
-    transactions.forEach((t) => {
-      const current = breakdown.get(t.medium) || {
-        income: 0,
-        expenses: 0,
-        count: 0,
-      };
-      if (t.type === 'INCOME') {
-        current.income += t.amount;
-      } else {
-        current.expenses += t.amount;
-      }
-      current.count++;
-      breakdown.set(t.medium, current);
-    });
-
-    return Array.from(breakdown.entries())
-      .map(([medium, data]) => ({ medium, ...data }))
-      .sort((a, b) => b.income + b.expenses - (a.income + a.expenses));
   });
 
   readonly weeklySpendingPattern = computed(() => {
@@ -680,10 +647,6 @@ export class MonthlyHabitsComponent implements OnInit {
 
   navigateToCategories() {
     this.router.navigate(['/dashboard/categories']);
-  }
-
-  navigateToMediums() {
-    this.router.navigate(['/dashboard/mediums']);
   }
 
   navigateToTags() {

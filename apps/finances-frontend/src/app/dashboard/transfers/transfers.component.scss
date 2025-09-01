@@ -1,0 +1,381 @@
+.transfers-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  .header {
+    margin-bottom: 24px;
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+
+      .title-section {
+        flex: 1;
+
+        .page-title {
+          font-size: 2rem;
+          font-weight: 700;
+          margin: 0;
+          color: var(--mat-sys-primary);
+          line-height: 1.2;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          mat-icon {
+            color: var(--mat-sys-primary);
+            font-size: 1.8rem;
+          }
+        }
+
+        .page-subtitle {
+          font-size: 0.9rem;
+          color: var(--mat-sys-on-surface-variant);
+          margin: 8px 0 0 0;
+        }
+      }
+
+      .controls-section {
+        .header-stats {
+          display: flex;
+          gap: 12px;
+
+          .stat-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--mat-sys-surface-container);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--mat-sys-on-surface-variant);
+
+            mat-icon {
+              font-size: 1rem;
+              width: 1rem;
+              height: 1rem;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    text-align: center;
+
+    mat-spinner {
+      margin-bottom: 24px;
+    }
+
+    h3 {
+      margin: 0 0 12px 0;
+      color: var(--mat-sys-on-surface);
+    }
+
+    p {
+      margin: 0;
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  .quick-add-card {
+    margin-bottom: 24px;
+
+    .quick-add-form {
+      .form-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+
+        @media (max-width: 768px) {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .account-field {
+          flex: 1;
+        }
+
+        .amount-field {
+          flex: 1;
+          min-width: 150px;
+        }
+
+        .date-field {
+          flex: 1;
+          min-width: 180px;
+        }
+
+        .type-field {
+          flex: 1;
+          min-width: 180px;
+        }
+      }
+
+      .description-field {
+        width: 100%;
+        margin-bottom: 16px;
+      }
+
+      .add-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        mat-spinner {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+
+  .transfers-list-card {
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      text-align: center;
+
+      mat-icon {
+        font-size: 4rem;
+        width: 4rem;
+        height: 4rem;
+        color: var(--mat-sys-on-surface-variant);
+        margin-bottom: 24px;
+      }
+
+      h3 {
+        margin: 0 0 12px 0;
+        color: var(--mat-sys-on-surface);
+      }
+
+      p {
+        margin: 0;
+        color: var(--mat-sys-on-surface-variant);
+        max-width: 400px;
+      }
+    }
+
+    .transfers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+
+      .transfer-card {
+        border: 1px solid var(--mat-sys-outline-variant);
+        border-radius: 12px;
+        padding: 20px;
+        background: var(--mat-sys-surface);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+
+        &:hover {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          border-color: var(--mat-sys-outline);
+        }
+
+        .transfer-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          min-width: 80px;
+
+          .transfer-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            background: var(--mat-sys-secondary-container);
+            border-radius: 50%;
+
+            mat-icon {
+              color: var(--mat-sys-on-secondary-container);
+              font-size: 1.2rem;
+            }
+          }
+
+          .transfer-type {
+            .type-badge {
+              padding: 4px 8px;
+              border-radius: 12px;
+              font-size: 0.7rem;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+
+              &.type-internal {
+                background: var(--mat-sys-primary-container);
+                color: var(--mat-sys-on-primary-container);
+              }
+
+              &.type-external {
+                background: var(--mat-sys-secondary-container);
+                color: var(--mat-sys-on-secondary-container);
+              }
+
+              &.type-deposit {
+                background: var(--mat-sys-tertiary-container);
+                color: var(--mat-sys-on-tertiary-container);
+              }
+
+              &.type-withdrawal {
+                background: var(--mat-sys-error-container);
+                color: var(--mat-sys-on-error-container);
+              }
+            }
+          }
+        }
+
+        .transfer-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+
+          .transfer-flow {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+
+            .account-info {
+              flex: 1;
+              text-align: center;
+
+              .account-label {
+                font-size: 0.7rem;
+                color: var(--mat-sys-on-surface-variant);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 4px;
+              }
+
+              .account-name {
+                font-weight: 600;
+                color: var(--mat-sys-on-surface);
+              }
+            }
+
+            .flow-arrow {
+              color: var(--mat-sys-primary);
+
+              mat-icon {
+                font-size: 1.5rem;
+              }
+            }
+          }
+
+          .transfer-details {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+
+            .transfer-amount {
+              font-size: 1.2rem;
+              font-weight: 700;
+              color: var(--mat-sys-primary);
+            }
+
+            .transfer-date {
+              font-size: 0.85rem;
+              color: var(--mat-sys-on-surface-variant);
+            }
+
+            .transfer-description {
+              font-size: 0.9rem;
+              color: var(--mat-sys-on-surface);
+              flex: 1;
+              min-width: 200px;
+            }
+          }
+        }
+
+        .transfer-actions {
+          display: flex;
+          gap: 8px;
+
+          .edit-button {
+            color: var(--mat-sys-primary);
+
+            &:hover {
+              background: var(--mat-sys-primary-container);
+            }
+          }
+
+          .delete-button {
+            color: var(--mat-sys-error);
+
+            &:hover {
+              background: var(--mat-sys-error-container);
+            }
+
+            &:disabled {
+              color: var(--mat-sys-on-surface-variant);
+            }
+          }
+        }
+
+        @media (max-width: 768px) {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 16px;
+
+          .transfer-header {
+            flex-direction: row;
+            width: 100%;
+            justify-content: space-between;
+            min-width: unset;
+          }
+
+          .transfer-info {
+            width: 100%;
+
+            .transfer-flow {
+              flex-direction: column;
+              gap: 12px;
+
+              .account-info {
+                text-align: left;
+              }
+
+              .flow-arrow {
+                transform: rotate(90deg);
+              }
+            }
+
+            .transfer-details {
+              flex-direction: column;
+              align-items: flex-start;
+              gap: 8px;
+
+              .transfer-description {
+                min-width: unset;
+              }
+            }
+          }
+
+          .transfer-actions {
+            width: 100%;
+            justify-content: flex-end;
+          }
+        }
+      }
+    }
+  }
+}

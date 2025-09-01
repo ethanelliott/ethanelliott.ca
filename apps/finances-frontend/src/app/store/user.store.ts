@@ -131,7 +131,7 @@ export const UserStore = signalStore(
         pipe(
           tap(() => patchState(store, { deleting: true, error: null })),
           switchMap(() =>
-            apiService.deleteAccount().pipe(
+            apiService.deleteUserAccount().pipe(
               tap(() => {
                 patchState(store, {
                   deleting: false,
