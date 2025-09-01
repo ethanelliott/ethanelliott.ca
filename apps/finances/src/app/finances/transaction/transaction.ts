@@ -86,7 +86,6 @@ export const TransactionOutSchema = z.object({
   account: z.object({
     id: z.string().uuid(),
     name: z.string(),
-    accountType: z.string(),
   }),
   date: z.string().date(),
   amount: z.number().positive(),

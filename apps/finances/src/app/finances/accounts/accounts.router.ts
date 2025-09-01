@@ -72,7 +72,6 @@ export async function AccountsRouter(fastify: FastifyInstance) {
           200: z.object({
             totalAccounts: z.number(),
             totalBalance: z.number(),
-            accountsByType: z.record(z.number()),
           }),
         },
       },

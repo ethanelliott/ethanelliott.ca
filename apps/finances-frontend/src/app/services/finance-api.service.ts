@@ -6,7 +6,6 @@ export interface Account {
   id: string;
   name: string;
   description?: string;
-  isActive: boolean;
   initialBalance: number;
   currency: string;
   timestamp: Date;
@@ -16,7 +15,6 @@ export interface Account {
 export interface AccountInput {
   name: string;
   description?: string;
-  isActive?: boolean;
   initialBalance?: number;
   currency?: string;
 }
@@ -24,7 +22,6 @@ export interface AccountInput {
 export interface AccountSummary {
   totalAccounts: number;
   totalBalance: number;
-  accountsByType: Record<string, number>;
 }
 
 export interface Transaction {
@@ -34,7 +31,6 @@ export interface Transaction {
   account: {
     id: string;
     name: string;
-    accountType: string;
   };
   date: string;
   amount: number;
@@ -66,12 +62,10 @@ export interface Transfer {
   fromAccount: {
     id: string;
     name: string;
-    accountType: string;
   };
   toAccount: {
     id: string;
     name: string;
-    accountType: string;
   };
   category?: string;
 }

@@ -18,7 +18,7 @@ import { Database } from '../../data-source';
 import { RefreshToken, User, UserCredential, UserRegistration } from '../user';
 
 export interface JWTPayload {
-  userId: string;
+  id: string;
   username: string;
   iat: number;
   exp: number;
@@ -409,7 +409,7 @@ export class AuthService {
   // Private helper methods
   async _generateTokens(user: User): Promise<AuthTokens> {
     const payload: JWTPayload = {
-      userId: user.id,
+      id: user.id,
       username: user.username,
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY, // 15 minutes

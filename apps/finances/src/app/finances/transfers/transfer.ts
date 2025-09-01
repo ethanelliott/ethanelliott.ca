@@ -77,12 +77,10 @@ export const TransferOutSchema = z.object({
   fromAccount: z.object({
     id: z.string().uuid(),
     name: z.string(),
-    accountType: z.string(),
   }),
   toAccount: z.object({
     id: z.string().uuid(),
     name: z.string(),
-    accountType: z.string(),
   }),
   category: z.string().optional(),
 });

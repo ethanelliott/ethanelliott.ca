@@ -63,7 +63,7 @@ export class AccountsService {
 
     const newAccount = await this._repository.save({
       ...account,
-      userId,
+      user: { id: userId } as any,
     });
 
     return newAccount;
@@ -176,13 +176,7 @@ export class AccountsService {
         (sum, acc) => sum + (acc.currentBalance || 0),
         0
       ),
-      accountsByType: {} as Record<string, number>,
     };
-
-    accounts.forEach((account) => {
-      summary.accountsByType[account.accountType] =
-        (summary.accountsByType[account.accountType] || 0) + 1;
-    });
 
     return summary;
   }

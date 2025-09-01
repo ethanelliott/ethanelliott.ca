@@ -27,12 +27,10 @@ export class TransfersService {
         fromAccount: {
           id: transfer.fromAccount.id,
           name: transfer.fromAccount.name,
-          accountType: transfer.fromAccount.accountType,
         },
         toAccount: {
           id: transfer.toAccount.id,
           name: transfer.toAccount.name,
-          accountType: transfer.toAccount.accountType,
         },
         category: transfer.category?.name,
       };
@@ -63,12 +61,10 @@ export class TransfersService {
       fromAccount: {
         id: transfer.fromAccount.id,
         name: transfer.fromAccount.name,
-        accountType: transfer.fromAccount.accountType,
       },
       toAccount: {
         id: transfer.toAccount.id,
         name: transfer.toAccount.name,
-        accountType: transfer.toAccount.accountType,
       },
       category: transfer.category?.name,
     };
@@ -201,12 +197,10 @@ export class TransfersService {
         fromAccount: {
           id: transfer.fromAccount.id,
           name: transfer.fromAccount.name,
-          accountType: transfer.fromAccount.accountType,
         },
         toAccount: {
           id: transfer.toAccount.id,
           name: transfer.toAccount.name,
-          accountType: transfer.toAccount.accountType,
         },
         category: transfer.category?.name,
       };

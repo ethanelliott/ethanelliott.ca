@@ -112,25 +112,6 @@ import { firstValueFrom } from 'rxjs';
             </div>
           </mat-card-content>
         </mat-card>
-
-        <mat-card class="summary-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>category</mat-icon>
-              Account Types
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="account-types">
-              @for (type of getAccountTypes(); track type.type) {
-              <div class="type-item">
-                <span class="type-name">{{ type.type }}</span>
-                <span class="type-count">{{ type.count }}</span>
-              </div>
-              }
-            </div>
-          </mat-card-content>
-        </mat-card>
       </div>
       }
 
@@ -188,12 +169,6 @@ import { firstValueFrom } from 'rxjs';
                 />
                 <span matSuffix>{{ accountForm.value.currency || 'CAD' }}</span>
               </mat-form-field>
-
-              <div class="toggle-field">
-                <mat-slide-toggle formControlName="isActive">
-                  Active Account
-                </mat-slide-toggle>
-              </div>
             </div>
 
             <mat-form-field
@@ -250,19 +225,13 @@ import { firstValueFrom } from 'rxjs';
           } @else {
           <div class="accounts-grid">
             @for (account of accounts(); track account.id) {
-            <div class="account-card" [class.inactive]="!account.isActive">
+            <div class="account-card">
               <div class="account-header">
                 <div class="account-icon">
                   <mat-icon>account_balance</mat-icon>
                 </div>
                 <div class="account-status">
-                  @if (account.isActive) {
                   <mat-icon class="status-icon active">check_circle</mat-icon>
-                  } @else {
-                  <mat-icon class="status-icon inactive"
-                    >pause_circle_filled</mat-icon
-                  >
-                  }
                 </div>
               </div>
 
@@ -331,7 +300,6 @@ export class AccountsComponent implements OnInit {
   accountForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
     description: [''],
-    isActive: [true],
     initialBalance: [0, [Validators.min(0)]],
     currency: ['CAD', Validators.required],
   });
@@ -371,7 +339,6 @@ export class AccountsComponent implements OnInit {
 
       this.accounts.update((accounts) => [...accounts, newAccount]);
       this.accountForm.reset({
-        isActive: true,
         initialBalance: 0,
         currency: 'CAD',
       });
@@ -397,7 +364,6 @@ export class AccountsComponent implements OnInit {
     this.accountForm.patchValue({
       name: account.name,
       description: account.description,
-      isActive: account.isActive,
       initialBalance: account.initialBalance,
       currency: account.currency,
     });
@@ -446,17 +412,6 @@ export class AccountsComponent implements OnInit {
       updatedDeleting.delete(account.id);
       this.deleting.set(updatedDeleting);
     }
-  }
-
-  getAccountTypes(): { type: string; count: number }[] {
-    if (!this.accountSummary()) return [];
-
-    return Object.entries(this.accountSummary()!.accountsByType).map(
-      ([type, count]) => ({
-        type,
-        count,
-      })
-    );
   }
 
   formatCurrency(amount: number): string {

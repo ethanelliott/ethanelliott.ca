@@ -14,7 +14,6 @@ import { User } from '../../users/user';
 
 @Entity()
 @Index(['user', 'name'], { unique: true })
-@Index(['user', 'accountType'])
 export class Account {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -27,9 +26,6 @@ export class Account {
 
   @Column('text')
   name!: string;
-
-  @Column('text')
-  accountType!: string;
 
   @Column('text', { nullable: true })
   description?: string;
@@ -48,7 +44,6 @@ export class Account {
 export const AccountInSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
-  isActive: z.boolean().default(true),
   initialBalance: z.number().default(0),
   currency: z.string().default('CAD'),
 });

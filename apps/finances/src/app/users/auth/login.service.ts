@@ -37,7 +37,7 @@ export class LoginService {
     );
 
     const accessToken = fastify.signToken({
-      userId: tokens.user.id,
+      id: tokens.user.id,
       username: tokens.user.username,
     });
 
@@ -57,7 +57,7 @@ export class LoginService {
     const tokens = await this._authService.refreshTokens(refreshToken);
 
     const accessToken = fastify.signToken({
-      userId: tokens.user.id,
+      id: tokens.user.id,
       username: tokens.user.username,
     });
 

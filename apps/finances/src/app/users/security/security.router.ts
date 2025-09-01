@@ -29,7 +29,7 @@ export async function SecurityRouter(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.currentUser.id;
       // request.params is now automatically typed based on PasskeyCredentialIdParamSchema
       const { credentialId } = request.params;
 
@@ -54,7 +54,7 @@ export async function SecurityRouter(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.currentUser.id;
 
       const result = await _securityService.revokeAllSessions(userId);
       return reply.send(result);

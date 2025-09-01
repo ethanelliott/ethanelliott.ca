@@ -45,8 +45,9 @@ export const JWTPlugin = fp(async function (fastify: FastifyInstance) {
           const authHeader = request.headers.authorization;
           if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.substring(7);
-            const decoded = fastify.jwt.verify(token);
-            request.user = decoded;
+            const decoded = fastify.jwt.verify(token) as any;
+            console.log(decoded);
+            request.currentUser = decoded;
             return;
           }
 
@@ -70,8 +71,8 @@ export const JWTPlugin = fp(async function (fastify: FastifyInstance) {
         const authHeader = request.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
           const token = authHeader.substring(7);
-          const decoded = fastify.jwt.verify(token);
-          request.user = decoded;
+          const decoded = fastify.jwt.verify(token) as any;
+          request.currentUser = decoded;
           return;
         }
 

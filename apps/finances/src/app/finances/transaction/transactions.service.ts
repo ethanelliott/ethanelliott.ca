@@ -29,7 +29,6 @@ export class TransactionsService {
         account: {
           id: transaction.account.id,
           name: transaction.account.name,
-          accountType: transaction.account.accountType,
         },
         category: transaction.category.name,
         tags: transaction.tags.map((tag) => tag.name),
@@ -72,7 +71,6 @@ export class TransactionsService {
       account: {
         id: savedTransaction.account.id,
         name: savedTransaction.account.name,
-        accountType: savedTransaction.account.accountType,
       },
       category: savedTransaction.category.name,
       tags: savedTransaction.tags.map((tag) => tag.name),
@@ -98,7 +96,6 @@ export class TransactionsService {
       account: {
         id: transaction.account.id,
         name: transaction.account.name,
-        accountType: transaction.account.accountType,
       },
       category: transaction.category.name,
       tags: transaction.tags.map((tag) => tag.name),
