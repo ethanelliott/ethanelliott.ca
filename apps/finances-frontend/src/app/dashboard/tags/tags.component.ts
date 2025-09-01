@@ -36,7 +36,6 @@ import { DialogService } from '../../shared/dialogs';
 
 interface TagData {
   name: string;
-  usageCount: number;
   created: Date;
 }
 
@@ -236,19 +235,6 @@ interface TagData {
                 </td>
               </ng-container>
 
-              <!-- Usage Count Column -->
-              <ng-container matColumnDef="usage">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                  Usage Count
-                </th>
-                <td mat-cell *matCellDef="let tag" class="usage-cell">
-                  <div class="usage-info">
-                    <span class="usage-count">{{ tag.usageCount || 0 }}</span>
-                    <span class="usage-label">transactions</span>
-                  </div>
-                </td>
-              </ng-container>
-
               <!-- Created Date Column -->
               <ng-container matColumnDef="created">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>
@@ -349,21 +335,15 @@ export class TagsComponent implements OnInit, AfterViewInit {
   searchControl = new FormControl('');
 
   // Table configuration
-  displayedColumns: string[] = [
-    'select',
-    'name',
-    'usage',
-    'created',
-    'actions',
-  ];
+  displayedColumns: string[] = ['select', 'name', 'created', 'actions'];
   dataSource = new MatTableDataSource<TagData>();
 
   // Computed properties
   filteredTagsCount = computed(() => this.dataSource.filteredData.length);
 
   availableSuggestions = computed(() => {
-    const existingTags = new Set(this.financeStore.tags());
-    return this.commonTags.filter((tag) => !existingTags.has(tag));
+    const existingTagNames = new Set(this.financeStore.tags());
+    return this.commonTags.filter((tag) => !existingTagNames.has(tag));
   });
 
   commonTags = [
@@ -430,17 +410,11 @@ export class TagsComponent implements OnInit, AfterViewInit {
 
     const tagData: TagData[] = tags.map((tagName) => ({
       name: tagName,
-      usageCount: this.getTagUsageCount(tagName),
-      created: new Date(), // TODO: Get actual creation date from store
+      created: new Date(), // We'll just use current date since we don't have tag creation timestamps
     }));
 
     console.log('Tag data for table:', tagData); // Debug log
     this.dataSource.data = tagData;
-  }
-
-  private getTagUsageCount(tagName: string): number {
-    // TODO: Calculate actual usage from transactions
-    return Math.floor(Math.random() * 50); // Placeholder
   }
 
   // Search and filter methods

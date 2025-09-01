@@ -46,8 +46,12 @@ export const FullTagSchema = z.object({
 
 export type FullTag = z.infer<typeof FullTagSchema>;
 
-export const TagOutSchema = FullTagSchema.extend({
+export const TagOutSchema = z.object({
   id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
   timestamp: z.date(),
   updatedAt: z.date(),
 });
