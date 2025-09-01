@@ -122,12 +122,31 @@ export class AccountsService {
    * Calculate account balance from transactions and transfers
    */
   async getAccountBalance(accountId: string) {
+    // Get the account to access initial balance
+    const account = await this._repository.findOne({
+      where: { id: accountId },
+    });
+
+    if (!account) {
+      throw new HttpErrors.NotFound(
+        `Account with id "${accountId}" not found.`
+      );
+    }
+
     // Get balance from transactions
     const transactionBalance = await this.getTransactionBalance(accountId);
 
+    // Add initial balance to the calculations
+    const initialBalance = parseFloat(account.initialBalance.toString()) || 0;
+
     // TODO: Add transfer balance calculation once TransfersService is integrated
-    // For now, just return transaction balance
-    return transactionBalance;
+    // For now, just return transaction balance plus initial balance
+    return {
+      currentBalance: initialBalance + transactionBalance.currentBalance,
+      totalIncome: transactionBalance.totalIncome,
+      totalExpenses: transactionBalance.totalExpenses,
+      initialBalance,
+    };
   }
 
   /**

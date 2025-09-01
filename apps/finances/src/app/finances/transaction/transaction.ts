@@ -23,9 +23,9 @@ export const enum TransactionType {
 }
 
 @Entity()
-@Index(['userId', 'date', 'type'])
-@Index(['userId', 'account', 'date'])
-@Index(['userId', 'category', 'date'])
+@Index(['user', 'date', 'type'])
+@Index(['user', 'account', 'date'])
+@Index(['user', 'category', 'date'])
 @Index(['date', 'type'])
 @Index(['category', 'date'])
 export class Transaction {
@@ -60,9 +60,6 @@ export class Transaction {
   @Column('text')
   description!: string;
 
-  @Column('uuid')
-  userId!: string;
-
   @ManyToOne(() => User, (user) => user.id, { onDelete: 'CASCADE' })
   user!: User;
 }
@@ -81,7 +78,6 @@ export type TransactionIn = z.infer<typeof TransactionInSchema>;
 
 export const TransactionOutSchema = z.object({
   id: z.string().uuid(),
-  userId: z.string().uuid(),
   type: z.enum([TransactionType.INCOME, TransactionType.EXPENSE]),
   account: z.object({
     id: z.string().uuid(),

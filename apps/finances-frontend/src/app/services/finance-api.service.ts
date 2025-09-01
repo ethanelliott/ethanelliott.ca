@@ -26,7 +26,6 @@ export interface AccountSummary {
 
 export interface Transaction {
   id: string;
-  userId: string;
   type: 'INCOME' | 'EXPENSE';
   account: {
     id: string;

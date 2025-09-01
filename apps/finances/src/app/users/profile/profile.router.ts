@@ -26,7 +26,7 @@ export async function ProfileRouter(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.currentUser.id;
       const result = await _profileService.getProfile(userId);
       return reply.send(result);
     }
@@ -46,7 +46,7 @@ export async function ProfileRouter(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.currentUser.id;
       const updates = request.body;
       const result = await _profileService.updateProfile(userId, updates);
       return reply.send(result);
@@ -66,7 +66,7 @@ export async function ProfileRouter(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.currentUser.id;
 
       try {
         const result = await _profileService.deleteAccount(userId);

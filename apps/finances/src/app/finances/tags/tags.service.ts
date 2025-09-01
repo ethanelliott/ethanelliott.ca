@@ -43,7 +43,7 @@ export class TagsService {
 
     const newTag = await this._repository.save({
       ...tag,
-      userId,
+      user: { id: userId } as any,
     });
 
     return newTag;

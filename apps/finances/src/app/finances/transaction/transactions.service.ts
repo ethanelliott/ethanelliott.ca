@@ -14,7 +14,7 @@ export class TransactionsService {
 
   async all(userId: string) {
     const transactions = await this._repository.find({
-      where: { userId },
+      where: { user: { id: userId } },
       relations: {
         account: true,
         category: true,
@@ -60,7 +60,7 @@ export class TransactionsService {
 
     const savedTransaction = await this._repository.save({
       ...transaction,
-      userId,
+      user: { id: userId } as any,
       account,
       category,
       tags: tags,
@@ -79,7 +79,7 @@ export class TransactionsService {
 
   async findById(id: string, userId: string) {
     const transaction = await this._repository.findOne({
-      where: { id, userId },
+      where: { id, user: { id: userId } },
       relations: {
         account: true,
         category: true,
@@ -104,7 +104,7 @@ export class TransactionsService {
 
   async update(id: string, transaction: TransactionIn, userId: string) {
     const existing = await this._repository.findOne({
-      where: { id, userId },
+      where: { id, user: { id: userId } },
       relations: {
         account: true,
         category: true,
@@ -154,7 +154,7 @@ export class TransactionsService {
 
   async deleteById(id: string, userId: string) {
     const transaction = await this._repository.findOne({
-      where: { id, userId },
+      where: { id, user: { id: userId } },
     });
 
     if (!transaction) {
@@ -166,7 +166,7 @@ export class TransactionsService {
   }
 
   async deleteAll(userId: string) {
-    const result = await this._repository.delete({ userId });
+    const result = await this._repository.delete({ user: { id: userId } });
     return {
       success: true,
       deletedCount: result.affected || 0,
@@ -187,7 +187,7 @@ export class TransactionsService {
    */
   async getAccountTransactions(accountId: string, userId: string) {
     return this._repository.find({
-      where: { account: { id: accountId }, userId },
+      where: { account: { id: accountId }, user: { id: userId } },
       relations: {
         account: true,
         category: true,
@@ -204,8 +204,9 @@ export class TransactionsService {
     const queryBuilder = this._repository
       .createQueryBuilder('transaction')
       .leftJoin('transaction.account', 'account')
+      .leftJoin('transaction.user', 'user')
       .where('account.id = :accountId', { accountId })
-      .andWhere('transaction.userId = :userId', { userId });
+      .andWhere('user.id = :userId', { userId });
 
     const income = await queryBuilder
       .clone()
@@ -239,7 +240,8 @@ export class TransactionsService {
   ) {
     const queryBuilder = this._repository
       .createQueryBuilder('transaction')
-      .where('transaction.userId = :userId', { userId });
+      .leftJoin('transaction.user', 'user')
+      .where('user.id = :userId', { userId });
 
     if (startDate) {
       queryBuilder.andWhere('transaction.date >= :startDate', { startDate });

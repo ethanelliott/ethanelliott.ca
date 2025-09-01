@@ -30,6 +30,7 @@ export class Database {
         );
       })
       .catch((error) => {
+        console.error('❌ Database initialization failed:', error);
         process.exit(1);
       });
   }

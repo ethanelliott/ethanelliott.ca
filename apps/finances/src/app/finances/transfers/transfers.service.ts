@@ -98,7 +98,7 @@ export class TransfersService {
 
     const savedTransfer = await this._repository.save({
       ...transfer,
-      userId,
+      user: { id: userId } as any,
       fromAccount,
       toAccount,
     });
