@@ -408,16 +408,6 @@ export class AuthService {
 
   // Private helper methods
   async _generateTokens(user: User): Promise<AuthTokens> {
-    const payload: JWTPayload = {
-      id: user.id,
-      username: user.username,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY, // 15 minutes
-    };
-
-    // For now, we'll use a simple token - this will be properly signed by the JWT plugin
-    const accessToken = Buffer.from(JSON.stringify(payload)).toString('base64');
-
     // Generate refresh token
     const refreshTokenValue = randomBytes(32).toString('hex');
     const refreshToken = new RefreshToken();
@@ -430,7 +420,7 @@ export class AuthService {
     await this._refreshTokenRepository.save(refreshToken);
 
     return {
-      accessToken,
+      accessToken: '', // This will be properly signed by the service layer
       refreshToken: refreshTokenValue,
       user: {
         id: user.id,

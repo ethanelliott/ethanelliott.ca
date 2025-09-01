@@ -58,7 +58,8 @@ export class CategoriesService {
       throw new HttpErrors.NotFound(`Category with name "${name}" not found.`);
     }
 
-    return this._repository.remove(category);
+    await this._repository.remove(category);
+    return { message: `Category "${name}" deleted successfully.` };
   }
 
   async update(name: string, category: FullCategory, userId: string) {

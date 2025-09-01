@@ -8,6 +8,7 @@ import {
   FullCategorySchema,
   SimpleCategorySchema,
   CategoryOutSchema,
+  CategoryDeletedSchema,
 } from './category';
 
 export async function CategoriesRouter(fastify: FastifyInstance) {
@@ -149,7 +150,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
           name: z.string(),
         }),
         response: {
-          200: CategoryOutSchema,
+          200: CategoryDeletedSchema,
           404: z.object({ message: z.string() }),
         },
       },

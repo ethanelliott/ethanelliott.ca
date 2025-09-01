@@ -45,13 +45,22 @@ export const FullCategorySchema = z.object({
 
 export type FullCategory = z.infer<typeof FullCategorySchema>;
 
-export const CategoryOutSchema = FullCategorySchema.extend({
+export const CategoryOutSchema = z.object({
   id: z.string().uuid(),
   timestamp: z.date(),
   updatedAt: z.date(),
+  name: z.string().min(1).max(100),
+  description: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
 });
 
 export type CategoryOut = z.infer<typeof CategoryOutSchema>;
+
+export const CategoryDeletedSchema = z.object({
+  message: z.string(),
+});
+
+export type CategoryDeleted = z.infer<typeof CategoryDeletedSchema>;
 
 export const SimpleCategorySchema = z.string();
 
