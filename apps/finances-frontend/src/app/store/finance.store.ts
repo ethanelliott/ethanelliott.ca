@@ -22,6 +22,10 @@ import {
   FinanceApiService,
   Transaction,
   TransactionInput,
+  AllTimeOverview,
+  MonthlyHabitsOverview,
+  NetWorthData,
+  FinancialHealthScore,
 } from '../services/finance-api.service';
 import {
   format,
@@ -43,6 +47,12 @@ interface FinanceState {
   transactions: Transaction[];
   categories: string[];
   tags: string[];
+
+  // Overview data
+  allTimeOverview: AllTimeOverview | null;
+  currentMonthOverview: MonthlyHabitsOverview | null;
+  netWorthData: NetWorthData | null;
+  financialHealthScore: FinancialHealthScore | null;
 
   // Filter/Search state
   searchTerm: string;
@@ -68,6 +78,10 @@ const initialState: FinanceState = {
   transactions: [],
   categories: [],
   tags: [],
+  allTimeOverview: null,
+  currentMonthOverview: null,
+  netWorthData: null,
+  financialHealthScore: null,
   searchTerm: '',
   selectedCategory: null,
   selectedTags: [],
@@ -107,31 +121,90 @@ export const FinanceStore = signalStore(
       // Basic computed values
       transactionCount: computed(() => state.transactions().length),
 
-      totalIncome: computed(() =>
-        state
-          .transactions()
-          .filter((t) => t.type === 'INCOME')
-          .reduce((sum, t) => sum + t.amount, 0)
+      // Enhanced computed values using overview data when available
+      totalIncome: computed(
+        () =>
+          state.allTimeOverview()?.totalIncome ??
+          state
+            .transactions()
+            .filter((t) => t.type === 'INCOME')
+            .reduce((sum, t) => sum + t.amount, 0)
       ),
 
-      totalExpenses: computed(() =>
-        state
-          .transactions()
-          .filter((t) => t.type === 'EXPENSE')
-          .reduce((sum, t) => sum + t.amount, 0)
+      totalExpenses: computed(
+        () =>
+          state.allTimeOverview()?.totalExpenses ??
+          state
+            .transactions()
+            .filter((t) => t.type === 'EXPENSE')
+            .reduce((sum, t) => sum + t.amount, 0)
       ),
 
-      netAmount: computed(() => {
-        const income = state
-          .transactions()
-          .filter((t) => t.type === 'INCOME')
-          .reduce((sum, t) => sum + t.amount, 0);
-        const expenses = state
-          .transactions()
-          .filter((t) => t.type === 'EXPENSE')
-          .reduce((sum, t) => sum + t.amount, 0);
-        return income - expenses;
-      }),
+      netAmount: computed(
+        () =>
+          state.allTimeOverview()?.netCashFlow ??
+          (() => {
+            const income = state
+              .transactions()
+              .filter((t) => t.type === 'INCOME')
+              .reduce((sum, t) => sum + t.amount, 0);
+            const expenses = state
+              .transactions()
+              .filter((t) => t.type === 'EXPENSE')
+              .reduce((sum, t) => sum + t.amount, 0);
+            return income - expenses;
+          })()
+      ),
+
+      // New computed values from comprehensive overview
+      currentNetWorth: computed(
+        () => state.allTimeOverview()?.currentNetWorth ?? 0
+      ),
+
+      totalAccountBalance: computed(
+        () => state.allTimeOverview()?.totalAccountBalance ?? 0
+      ),
+
+      savingsRate: computed(() => state.allTimeOverview()?.savingsRate ?? 0),
+
+      expenseToIncomeRatio: computed(
+        () => state.allTimeOverview()?.expenseToIncomeRatio ?? 0
+      ),
+
+      accountBalances: computed(
+        () => state.allTimeOverview()?.accountBalances ?? []
+      ),
+
+      topExpenseCategories: computed(
+        () => state.allTimeOverview()?.topExpenseCategories ?? []
+      ),
+
+      healthScore: computed(
+        () => state.financialHealthScore()?.healthScore ?? 50
+      ),
+
+      financialRecommendations: computed(
+        () => state.financialHealthScore()?.recommendations ?? []
+      ),
+
+      // Monthly overview data
+      currentMonthData: computed(() => state.currentMonthOverview()),
+
+      monthlyDailyBreakdown: computed(
+        () => state.currentMonthOverview()?.dailyBreakdown ?? []
+      ),
+
+      monthlyWeeklyBreakdown: computed(
+        () => state.currentMonthOverview()?.weeklyBreakdown ?? []
+      ),
+
+      monthlyCategoryBreakdown: computed(
+        () => state.currentMonthOverview()?.categoryBreakdown ?? []
+      ),
+
+      monthlyAccountActivity: computed(
+        () => state.currentMonthOverview()?.accountActivity ?? []
+      ),
 
       // Filtered transactions based on current filters
       filteredTransactions: computed(() => {
@@ -297,8 +370,21 @@ export const FinanceStore = signalStore(
           .reduce((sum, t) => sum + t.amount, 0)
       ),
 
-      // Monthly trends (last 12 months)
-      monthlyTrends: computed((): MonthlyTrend[] => {
+      // Monthly trends (from overview data or fallback)
+      monthlyTrends: computed(() => {
+        const overviewData = state.allTimeOverview()?.monthlyBreakdowns;
+        if (overviewData) {
+          return overviewData.map((breakdown) => ({
+            month: breakdown.month,
+            date: new Date(breakdown.year, 0, 1), // Approximate date
+            income: breakdown.totalIncome,
+            expenses: breakdown.totalExpenses,
+            net: breakdown.netCashFlow,
+            transactionCount: breakdown.transactionCount,
+          }));
+        }
+
+        // Fallback to original calculation
         const now = new Date();
         const startDate = subMonths(now, 11);
         const months = eachMonthOfInterval({ start: startDate, end: now });
@@ -550,6 +636,32 @@ export const FinanceStore = signalStore(
                   return of([]);
                 })
               ),
+              allTimeOverview: apiService.getAllTimeOverview().pipe(
+                catchError((error) => {
+                  console.error('Error loading all-time overview:', error);
+                  // Don't show error for overview - it's supplementary data
+                  return of(null);
+                })
+              ),
+              currentMonthOverview: apiService.getCurrentMonthOverview().pipe(
+                catchError((error) => {
+                  console.error('Error loading current month overview:', error);
+                  // Don't show error for overview - it's supplementary data
+                  return of(null);
+                })
+              ),
+              netWorthData: apiService.getNetWorth().pipe(
+                catchError((error) => {
+                  console.error('Error loading net worth:', error);
+                  return of(null);
+                })
+              ),
+              financialHealthScore: apiService.getFinancialHealthScore().pipe(
+                catchError((error) => {
+                  console.error('Error loading financial health score:', error);
+                  return of(null);
+                })
+              ),
             })
           ),
           tap((data) => {
@@ -557,6 +669,10 @@ export const FinanceStore = signalStore(
               transactions: data.transactions,
               categories: data.categories,
               tags: data.tags,
+              allTimeOverview: data.allTimeOverview,
+              currentMonthOverview: data.currentMonthOverview,
+              netWorthData: data.netWorthData,
+              financialHealthScore: data.financialHealthScore,
               loading: false,
               initialLoadComplete: true,
               error: null,
@@ -570,6 +686,58 @@ export const FinanceStore = signalStore(
             });
             return EMPTY;
           })
+        )
+      ),
+
+      // Load overview data independently
+      loadOverviewData: rxMethod<void>(
+        pipe(
+          switchMap(() =>
+            forkJoin({
+              allTimeOverview: apiService.getAllTimeOverview(),
+              currentMonthOverview: apiService.getCurrentMonthOverview(),
+              netWorthData: apiService.getNetWorth(),
+              financialHealthScore: apiService.getFinancialHealthScore(),
+            }).pipe(
+              tap((data) => {
+                patchState(store, {
+                  allTimeOverview: data.allTimeOverview,
+                  currentMonthOverview: data.currentMonthOverview,
+                  netWorthData: data.netWorthData,
+                  financialHealthScore: data.financialHealthScore,
+                });
+              }),
+              catchError((error) => {
+                console.error('Error loading overview data:', error);
+                showError('Error loading overview data');
+                return EMPTY;
+              })
+            )
+          )
+        )
+      ),
+
+      // Load specific month overview
+      loadMonthlyHabitsOverview: rxMethod<{ year: number; month: number }>(
+        pipe(
+          switchMap(({ year, month }) =>
+            apiService.getMonthlyHabitsOverview(year, month).pipe(
+              tap((overview) => {
+                // If it's the current month, update the current month overview
+                const now = new Date();
+                if (year === now.getFullYear() && month === now.getMonth()) {
+                  patchState(store, { currentMonthOverview: overview });
+                }
+                // For other months, you might want to store it differently
+                // or emit it as a separate signal
+              }),
+              catchError((error) => {
+                console.error('Error loading monthly habits overview:', error);
+                showError('Error loading monthly habits overview');
+                return EMPTY;
+              })
+            )
+          )
         )
       ),
 

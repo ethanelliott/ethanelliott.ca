@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { AccountsRouter } from './accounts/accounts.router';
 import { CategoriesRouter } from './categories/categories.router';
+import { OverviewRouter } from './overview/overview.router';
 import { TagsRouter } from './tags/tags.router';
 import { TransactionsRouter } from './transaction/transactions.router';
 import { TransfersRouter } from './transfers/transfers.router';
@@ -10,6 +11,9 @@ export async function FinancesRouter(fastify: FastifyInstance) {
   fastify.register(AccountsRouter, { prefix: 'accounts' });
   fastify.register(TransactionsRouter, { prefix: 'transactions' });
   fastify.register(TransfersRouter, { prefix: 'transfers' });
+
+  // Analytics and overview
+  fastify.register(OverviewRouter, { prefix: 'overview' });
 
   // Supporting entities
   fastify.register(CategoriesRouter, { prefix: 'categories' });

@@ -28,9 +28,7 @@
       <!-- Health Score -->
       <div class="health-score">
         <div class="score-indicator" [class]="getHealthScoreClass()">
-          <span class="score-value">{{
-            financeStore.financialHealthScore()
-          }}</span>
+          <span class="score-value">{{ financeStore.healthScore() }}</span>
           <span class="score-label">Health</span>
         </div>
       </div>
@@ -56,7 +54,7 @@
               {{ formatCurrency(allTimeStats().netWorth) }}
             </div>
             <div class="kpi-detail">
-              {{ getSavingsRate().toFixed(1) }}% savings rate
+              {{ (financeStore.savingsRate() * 100).toFixed(1) }}% savings rate
             </div>
           </div>
         </div>

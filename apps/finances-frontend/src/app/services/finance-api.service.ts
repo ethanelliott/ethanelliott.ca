@@ -110,6 +110,134 @@ export interface TagInput {
   isActive?: boolean;
 }
 
+// Overview interfaces
+export interface AccountBalance {
+  accountId: string;
+  accountName: string;
+  initialBalance: number;
+  currentBalance: number;
+  totalIncome: number;
+  totalExpenses: number;
+  transfersIn: number;
+  transfersOut: number;
+}
+
+export interface CategoryInsight {
+  category: string;
+  totalSpent: number;
+  transactionCount: number;
+  averageTransaction: number;
+  monthlyTrend: 'increasing' | 'decreasing' | 'stable';
+  percentOfTotalExpenses: number;
+}
+
+export interface MonthlyBreakdown {
+  month: string;
+  year: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netCashFlow: number;
+  transferVolume: number;
+  transactionCount: number;
+  transferCount: number;
+  netWorthChange: number;
+}
+
+export interface AllTimeOverview {
+  currentNetWorth: number;
+  totalAccountBalance: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netCashFlow: number;
+  totalTransferVolume: number;
+  accountCount: number;
+  accountBalances: AccountBalance[];
+  transactionCount: number;
+  transferCount: number;
+  firstTransactionDate: string | null;
+  lastTransactionDate: string | null;
+  daysSinceFirstTransaction: number;
+  topExpenseCategories: CategoryInsight[];
+  monthlyBreakdowns: MonthlyBreakdown[];
+  averageMonthlyIncome: number;
+  averageMonthlyExpenses: number;
+  expenseToIncomeRatio: number;
+  savingsRate: number;
+}
+
+export interface DailyBreakdown {
+  day: number;
+  income: number;
+  expenses: number;
+  transfers: number;
+}
+
+export interface WeeklyBreakdown {
+  week: number;
+  income: number;
+  expenses: number;
+  transfers: number;
+}
+
+export interface CategoryBreakdown {
+  category: string;
+  amount: number;
+  transactionCount: number;
+  percentOfTotal: number;
+}
+
+export interface AccountActivity {
+  accountId: string;
+  accountName: string;
+  income: number;
+  expenses: number;
+  transfersIn: number;
+  transfersOut: number;
+  netChange: number;
+}
+
+export interface MonthlyComparison {
+  incomeChange: number;
+  expenseChange: number;
+  netCashFlowChange: number;
+  transactionCountChange: number;
+}
+
+export interface MonthlyHabitsOverview {
+  month: number;
+  year: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netCashFlow: number;
+  totalTransferVolume: number;
+  transfersIn: number;
+  transfersOut: number;
+  transactionCount: number;
+  transferCount: number;
+  averageTransactionSize: number;
+  dailyBreakdown: DailyBreakdown[];
+  weeklyBreakdown: WeeklyBreakdown[];
+  categoryBreakdown: CategoryBreakdown[];
+  accountActivity: AccountActivity[];
+  comparison: MonthlyComparison;
+}
+
+export interface NetWorthData {
+  currentNetWorth: number;
+  totalAccountBalance: number;
+  accountBalances: AccountBalance[];
+  lastUpdated: string;
+}
+
+export interface FinancialHealthScore {
+  healthScore: number;
+  savingsRate: number;
+  expenseToIncomeRatio: number;
+  averageMonthlyIncome: number;
+  averageMonthlyExpenses: number;
+  recommendations: string[];
+}
+
 export interface User {
   id: string;
   name: string;
@@ -336,6 +464,40 @@ export class FinanceApiService {
     return this._http.post<{ success: boolean; message: string }>(
       `${this.baseUrl}/users/logout`,
       { refreshToken }
+    );
+  }
+
+  // Overview APIs
+  getAllTimeOverview(): Observable<AllTimeOverview> {
+    return this._http.get<AllTimeOverview>(
+      `${this.baseUrl}/finances/overview/all-time`
+    );
+  }
+
+  getMonthlyHabitsOverview(
+    year: number,
+    month: number
+  ): Observable<MonthlyHabitsOverview> {
+    return this._http.get<MonthlyHabitsOverview>(
+      `${this.baseUrl}/finances/overview/monthly/${year}/${month + 1}` // Convert from 0-based to 1-based month
+    );
+  }
+
+  getCurrentMonthOverview(): Observable<MonthlyHabitsOverview> {
+    return this._http.get<MonthlyHabitsOverview>(
+      `${this.baseUrl}/finances/overview/monthly/current`
+    );
+  }
+
+  getNetWorth(): Observable<NetWorthData> {
+    return this._http.get<NetWorthData>(
+      `${this.baseUrl}/finances/overview/net-worth`
+    );
+  }
+
+  getFinancialHealthScore(): Observable<FinancialHealthScore> {
+    return this._http.get<FinancialHealthScore>(
+      `${this.baseUrl}/finances/overview/health-score`
     );
   }
 }

@@ -57,6 +57,9 @@ export class AllTimeOverviewComponent implements OnInit {
     // Load all data when component initializes
     if (!this.financeStore.initialLoadComplete()) {
       this.financeStore.loadAllData();
+    } else {
+      // If basic data is loaded, ensure overview data is fresh
+      this.financeStore.loadOverviewData();
     }
   }
 
@@ -234,35 +237,54 @@ export class AllTimeOverviewComponent implements OnInit {
       }
     });
 
-    const topExpenseCategory =
-      [...categoryAmounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    // Get data from comprehensive backend overview
+    const overview = this.financeStore.allTimeOverview();
 
-    // Calculate averages
+    const topExpenseCategory =
+      overview?.topExpenseCategories?.[0]?.category ??
+      ([...categoryAmounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ||
+        '');
+
+    // Calculate averages - use backend data if available, fallback to manual calculation
     const averageTransactionAmount =
       transactions.length > 0 ? (income + expenses) / transactions.length : 0;
 
     const averageMonthlyIncome =
-      monthlyTrends.length > 0
+      overview?.averageMonthlyIncome ??
+      (monthlyTrends.length > 0
         ? monthlyTrends.reduce((sum, m) => sum + m.income, 0) /
           monthlyTrends.length
-        : 0;
+        : 0);
 
     const averageMonthlyExpenses =
-      monthlyTrends.length > 0
+      overview?.averageMonthlyExpenses ??
+      (monthlyTrends.length > 0
         ? monthlyTrends.reduce((sum, m) => sum + m.expenses, 0) /
           monthlyTrends.length
-        : 0;
+        : 0);
 
-    // Find first transaction date
+    // Find first transaction date - use backend data if available
     const sortedTransactions = transactions.sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     const firstTransactionDate =
-      sortedTransactions.length > 0 ? sortedTransactions[0].date : null;
+      overview?.firstTransactionDate ??
+      (sortedTransactions.length > 0 ? sortedTransactions[0].date : null);
 
-    // Calculate total timespan
+    // Calculate total timespan - use backend data if available
     let totalTimespan = 'No transactions yet';
-    if (firstTransactionDate && transactions.length > 0) {
+    if (overview?.daysSinceFirstTransaction) {
+      const diffDays = overview.daysSinceFirstTransaction;
+      if (diffDays < 30) {
+        totalTimespan = `${diffDays} days`;
+      } else if (diffDays < 365) {
+        const months = Math.round(diffDays / 30);
+        totalTimespan = `${months} month${months !== 1 ? 's' : ''}`;
+      } else {
+        const years = Math.round(diffDays / 365);
+        totalTimespan = `${years} year${years !== 1 ? 's' : ''}`;
+      }
+    } else if (firstTransactionDate && transactions.length > 0) {
       const firstDate = new Date(firstTransactionDate);
       const lastDate = new Date();
       const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
@@ -280,10 +302,11 @@ export class AllTimeOverviewComponent implements OnInit {
     }
 
     return {
-      totalIncome: income,
-      totalExpenses: expenses,
-      netWorth: this.financeStore.netAmount(),
-      transactionCount: this.financeStore.transactionCount(),
+      totalIncome: overview?.totalIncome ?? income,
+      totalExpenses: overview?.totalExpenses ?? expenses,
+      netWorth: this.financeStore.currentNetWorth(),
+      transactionCount:
+        overview?.transactionCount ?? this.financeStore.transactionCount(),
       topExpenseCategory,
       averageTransactionAmount,
       averageMonthlyIncome,
@@ -425,7 +448,7 @@ export class AllTimeOverviewComponent implements OnInit {
   }
 
   getHealthScoreClass(): string {
-    const score = this.financeStore.financialHealthScore();
+    const score = this.financeStore.healthScore();
     if (score >= 80) return 'excellent';
     if (score >= 60) return 'good';
     if (score >= 40) return 'fair';
@@ -433,7 +456,7 @@ export class AllTimeOverviewComponent implements OnInit {
   }
 
   getHealthScoreDescription(): string {
-    const score = this.financeStore.financialHealthScore();
+    const score = this.financeStore.healthScore();
     if (score >= 80) return 'Exceptional financial management!';
     if (score >= 60) return 'Strong financial foundation';
     if (score >= 40) return 'Good progress, room to grow';

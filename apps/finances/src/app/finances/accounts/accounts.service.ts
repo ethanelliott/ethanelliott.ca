@@ -2,6 +2,7 @@ import { inject } from '@ee/di';
 import HttpErrors from 'http-errors';
 import { Database } from '../../data-source';
 import { Account, AccountIn } from './account';
+import { Transfer } from '../transfers/transfer';
 
 export class AccountsService {
   private readonly _repository = inject(Database).repositoryFor(Account);
@@ -136,16 +137,55 @@ export class AccountsService {
     // Get balance from transactions
     const transactionBalance = await this.getTransactionBalance(accountId);
 
+    // Get balance from transfers
+    const transferBalance = await this.getTransferBalance(accountId);
+
     // Add initial balance to the calculations
     const initialBalance = parseFloat(account.initialBalance.toString()) || 0;
 
-    // TODO: Add transfer balance calculation once TransfersService is integrated
-    // For now, just return transaction balance plus initial balance
     return {
-      currentBalance: initialBalance + transactionBalance.currentBalance,
+      currentBalance:
+        initialBalance +
+        transactionBalance.currentBalance +
+        transferBalance.netTransferAmount,
       totalIncome: transactionBalance.totalIncome,
       totalExpenses: transactionBalance.totalExpenses,
+      transfersIn: transferBalance.transfersIn,
+      transfersOut: transferBalance.transfersOut,
       initialBalance,
+    };
+  }
+
+  /**
+   * Calculate balance from transfers
+   */
+  private async getTransferBalance(accountId: string) {
+    const transferRepository = this._repository.manager.getRepository(Transfer);
+
+    // Get incoming transfers (to this account)
+    const incomingTransfers = await transferRepository.find({
+      where: { toAccount: { id: accountId } },
+    });
+
+    // Get outgoing transfers (from this account)
+    const outgoingTransfers = await transferRepository.find({
+      where: { fromAccount: { id: accountId } },
+    });
+
+    const transfersIn = incomingTransfers.reduce(
+      (sum, transfer) => sum + parseFloat(transfer.amount.toString()),
+      0
+    );
+
+    const transfersOut = outgoingTransfers.reduce(
+      (sum, transfer) => sum + parseFloat(transfer.amount.toString()),
+      0
+    );
+
+    return {
+      transfersIn,
+      transfersOut,
+      netTransferAmount: transfersIn - transfersOut,
     };
   }
 
