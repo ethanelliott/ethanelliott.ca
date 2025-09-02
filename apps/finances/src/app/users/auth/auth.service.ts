@@ -56,7 +56,7 @@ export class AuthService {
   private readonly RP_NAME = 'Finance App';
   private readonly RP_ID = 'localhost'; // Change to your domain in production
   private readonly ORIGIN = 'https://localhost:4200'; // Change to your frontend URL
-  private readonly ACCESS_TOKEN_EXPIRY = 30; // 30 seconds for testing - normally 15 * 60
+  private readonly ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes
   private readonly REFRESH_TOKEN_EXPIRY = 30; // days
 
   /**
@@ -309,22 +309,10 @@ export class AuthService {
    *  REFRESH TOKENS
    */
   async refreshTokens(refreshToken: string): Promise<AuthTokens> {
-    console.log(
-      '🔄 Attempting to refresh token:',
-      refreshToken.substring(0, 10) + '...'
-    );
-
     const tokenRecord = await this._refreshTokenRepository.findOneBy({
       token: refreshToken,
       revoked: false,
     });
-
-    console.log('🔍 Token record found:', !!tokenRecord);
-    if (tokenRecord) {
-      console.log('📅 Token expires at:', tokenRecord.expiresAt);
-      console.log('🕐 Current time:', new Date());
-      console.log('⏰ Is expired?', tokenRecord.expiresAt < new Date());
-    }
 
     if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
       throw new HttpErrors.Unauthorized('Invalid or expired refresh token');
@@ -353,7 +341,6 @@ export class AuthService {
     user: User;
     credentials: UserCredential[];
   }> {
-    console.log('Fetching profile for userId:', userId);
     const user = await this._userRepository.findOne({
       where: { id: userId },
       relations: {
@@ -361,13 +348,9 @@ export class AuthService {
       },
     });
 
-    console.log('User found:', user);
-
     if (!user) {
       throw new HttpErrors.NotFound('User not found');
     }
-
-    console.log('User credentials:', user.credentials);
 
     return {
       user,

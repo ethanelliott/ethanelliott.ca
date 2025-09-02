@@ -578,8 +578,9 @@ export class OverviewService {
         0
       );
 
-      // Calculate net worth change (approximation)
-      const netWorthChange = netCashFlow; // Simplified for now
+      // Calculate net worth change - cash flow affects net worth directly
+      // Transfers are zero-sum between accounts so don't change overall net worth
+      const netWorthChange = netCashFlow;
 
       breakdowns.push({
         month: monthStart.toLocaleDateString('en-US', { month: 'short' }),

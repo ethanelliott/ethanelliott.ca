@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SafeUserSchema, UserRegistrationSchema } from '../user';
+import { SafeUserSchema } from '../user';
 
 // Authentication-related schemas and types
 

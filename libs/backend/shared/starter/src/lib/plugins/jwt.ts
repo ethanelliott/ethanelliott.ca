@@ -28,7 +28,7 @@ export const JWTPlugin = fp(async function (fastify: FastifyInstance) {
       process.env.JWT_SECRET || 'super-secret-jwt-key-change-in-production',
     sign: {
       algorithm: 'HS256',
-      expiresIn: '30s', // Short-lived access tokens for testing - normally '15m'
+      expiresIn: '15m',
     },
     verify: {
       algorithms: ['HS256'],

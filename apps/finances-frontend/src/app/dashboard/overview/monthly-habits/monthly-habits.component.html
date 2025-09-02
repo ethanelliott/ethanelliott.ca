@@ -123,6 +123,21 @@
           </div>
         </div>
 
+        <div class="kpi-item transfer">
+          <div class="kpi-icon">
+            <mat-icon>swap_horiz</mat-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Transfers</div>
+            <div class="kpi-value">
+              {{ monthlyStats().transferCount.toLocaleString() }}
+            </div>
+            <div class="kpi-detail">
+              {{ formatCurrency(monthlyStats().totalTransferVolume) }} volume
+            </div>
+          </div>
+        </div>
+
         <div class="kpi-item highlight">
           <div class="kpi-icon">
             <mat-icon>today</mat-icon>

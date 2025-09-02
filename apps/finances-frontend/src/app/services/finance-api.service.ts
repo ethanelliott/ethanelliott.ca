@@ -7,6 +7,9 @@ export interface Account {
   name: string;
   description?: string;
   initialBalance: number;
+  currentBalance?: number;
+  totalIncome?: number;
+  totalExpenses?: number;
   currency: string;
   timestamp: Date;
   updatedAt: Date;

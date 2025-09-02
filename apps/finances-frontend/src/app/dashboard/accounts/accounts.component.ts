@@ -242,9 +242,36 @@ import { firstValueFrom } from 'rxjs';
                 }
                 <div class="account-meta">
                   <span class="account-balance"
-                    >{{ formatCurrency(account.initialBalance) }}
+                    >{{
+                      formatCurrency(
+                        account.currentBalance ?? account.initialBalance
+                      )
+                    }}
                     {{ account.currency }}</span
                   >
+                  @if (account.currentBalance !== undefined &&
+                  account.currentBalance !== account.initialBalance) {
+                  <span
+                    class="balance-change"
+                    [class.positive]="
+                      account.currentBalance > account.initialBalance
+                    "
+                    [class.negative]="
+                      account.currentBalance < account.initialBalance
+                    "
+                  >
+                    ({{
+                      account.currentBalance > account.initialBalance
+                        ? '+'
+                        : ''
+                    }}{{
+                      formatCurrency(
+                        account.currentBalance - account.initialBalance
+                      )
+                    }}
+                    change)
+                  </span>
+                  }
                   <span class="account-date"
                     >Created {{ formatDate(account.timestamp) }}</span
                   >
