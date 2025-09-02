@@ -12,6 +12,7 @@ import {
   startOfYear,
   endOfYear,
 } from 'date-fns';
+import { createAbsoluteDate } from '../utils/date-utils';
 
 @Injectable({
   providedIn: 'root',
@@ -61,7 +62,10 @@ export class TransactionsService {
     const monthEnd = endOfMonth(now);
 
     return this.transactions().filter((t) =>
-      isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
+      isWithinInterval(createAbsoluteDate(t.date), {
+        start: monthStart,
+        end: monthEnd,
+      })
     );
   });
 
@@ -88,7 +92,10 @@ export class TransactionsService {
     const monthEnd = endOfMonth(lastMonth);
 
     return this.transactions().filter((t) =>
-      isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
+      isWithinInterval(createAbsoluteDate(t.date), {
+        start: monthStart,
+        end: monthEnd,
+      })
     );
   });
 
@@ -108,7 +115,10 @@ export class TransactionsService {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       const monthTransactions = this.transactions().filter((t) =>
-        isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
+        isWithinInterval(createAbsoluteDate(t.date), {
+          start: monthStart,
+          end: monthEnd,
+        })
       );
 
       const income = monthTransactions

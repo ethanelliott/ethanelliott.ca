@@ -20,6 +20,14 @@ import { BaseChartDirective } from 'ng2-charts';
 import { Chart, ChartConfiguration, ChartType, registerables } from 'chart.js';
 import { Transaction } from '../../../services/finance-api.service';
 import { injectFinanceStore } from '../../../store/finance.provider';
+import {
+  isDateInMonth,
+  getDateDay,
+  getDateYear,
+  getDateMonth,
+  getWeekdayName,
+  formatAbsoluteDate,
+} from '../../../utils/date-utils';
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -227,11 +235,9 @@ export class MonthlyHabitsComponent implements OnInit {
     const year = this.selectedYear();
 
     return transactions.filter((t) => {
-      const date = new Date(t.date);
-      return date.getMonth() === month && date.getFullYear() === year;
+      return isDateInMonth(t.date, year, month);
     });
   });
-
   readonly monthlyStats = computed(() => {
     const transactions = this.filteredTransactions();
     const income = transactions
@@ -250,10 +256,9 @@ export class MonthlyHabitsComponent implements OnInit {
         categoryCount.set(t.category, (categoryCount.get(t.category) || 0) + 1);
       }
 
-      const day = new Date(t.date).toLocaleDateString('en-US', {
-        weekday: 'long',
-      });
-      dayCount.set(day, (dayCount.get(day) || 0) + 1);
+      // Use date utilities to get weekday name consistently
+      const weekday = getWeekdayName(t.date);
+      dayCount.set(weekday, (dayCount.get(weekday) || 0) + 1);
     });
 
     const topCategory =
@@ -300,8 +305,8 @@ export class MonthlyHabitsComponent implements OnInit {
     const weekPattern = new Map<string, number>();
 
     transactions.forEach((t) => {
-      const date = new Date(t.date);
-      const weekNumber = Math.floor(date.getDate() / 7) + 1;
+      const day = getDateDay(t.date);
+      const weekNumber = Math.floor((day - 1) / 7) + 1;
       const key = `Week ${weekNumber}`;
       weekPattern.set(key, (weekPattern.get(key) || 0) + t.amount);
     });
@@ -378,7 +383,7 @@ export class MonthlyHabitsComponent implements OnInit {
     }
 
     transactions.forEach((t) => {
-      const day = new Date(t.date).getDate();
+      const day = getDateDay(t.date);
       dailySpending.set(day, (dailySpending.get(day) || 0) + t.amount);
     });
 
@@ -447,7 +452,7 @@ export class MonthlyHabitsComponent implements OnInit {
     const years = new Set<number>();
 
     transactions.forEach((t) => {
-      years.add(new Date(t.date).getFullYear());
+      years.add(getDateYear(t.date));
     });
 
     // Add current year if no transactions exist
@@ -486,18 +491,18 @@ export class MonthlyHabitsComponent implements OnInit {
   }
 
   formatDate(date: string): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return formatAbsoluteDate(date, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    }).format(new Date(date));
+    });
   }
 
   formatDateShort(date: string): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return formatAbsoluteDate(date, {
       month: 'short',
       day: 'numeric',
-    }).format(new Date(date));
+    });
   }
 
   formatPercentage(value: number, decimals: number = 1): string {
@@ -601,7 +606,7 @@ export class MonthlyHabitsComponent implements OnInit {
     const dailySpending = new Map<number, number>();
 
     transactions.forEach((t) => {
-      const day = new Date(t.date).getDate();
+      const day = getDateDay(t.date);
       dailySpending.set(day, (dailySpending.get(day) || 0) + t.amount);
     });
 
@@ -675,8 +680,8 @@ export class MonthlyHabitsComponent implements OnInit {
     const dailySpending = new Map<string, { amount: number; date: string }>();
 
     transactions.forEach((t) => {
-      const day = new Date(t.date).getDate().toString();
-      const date = new Date(t.date).toISOString().split('T')[0];
+      const day = getDateDay(t.date).toString().padStart(2, '0'); // Keep as string for display
+      const date = t.date; // Use original date string
       const current = dailySpending.get(day) || { amount: 0, date };
       dailySpending.set(day, {
         amount: current.amount + t.amount,

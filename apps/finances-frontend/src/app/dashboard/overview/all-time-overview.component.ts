@@ -16,6 +16,12 @@ import { Router } from '@angular/router';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { injectFinanceStore } from '../../store/finance.provider';
+import {
+  createAbsoluteDate,
+  compareDates,
+  formatAbsoluteDate,
+  getWeekdayName,
+} from '../../utils/date-utils';
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -264,8 +270,8 @@ export class AllTimeOverviewComponent implements OnInit {
         : 0);
 
     // Find first transaction date - use backend data if available
-    const sortedTransactions = transactions.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    const sortedTransactions = transactions.sort((a, b) =>
+      compareDates(a.date, b.date)
     );
     const firstTransactionDate =
       overview?.firstTransactionDate ??
@@ -285,7 +291,7 @@ export class AllTimeOverviewComponent implements OnInit {
         totalTimespan = `${years} year${years !== 1 ? 's' : ''}`;
       }
     } else if (firstTransactionDate && transactions.length > 0) {
-      const firstDate = new Date(firstTransactionDate);
+      const firstDate = createAbsoluteDate(firstTransactionDate);
       const lastDate = new Date();
       const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -326,7 +332,7 @@ export class AllTimeOverviewComponent implements OnInit {
   readonly historicalTrendsChartData = computed(() => {
     const trends = this.financeStore.monthlyTrends();
 
-    return {
+    const chartData = {
       labels: trends.map((t) => t.month),
       datasets: [
         {
@@ -356,6 +362,8 @@ export class AllTimeOverviewComponent implements OnInit {
         },
       ],
     };
+
+    return chartData;
   });
 
   // Enhanced all-time category breakdown with modern color palette
@@ -410,6 +418,32 @@ export class AllTimeOverviewComponent implements OnInit {
     this.financeStore.transactions().some((t) => t.type === 'EXPENSE')
   );
 
+  readonly hasTrendData = computed(() => {
+    const transactions = this.financeStore.transactions();
+    const loading = this.financeStore.loading();
+    const trends = this.financeStore.monthlyTrends();
+
+    console.log('🔍 Has trend data check:');
+    console.log('  - Loading:', loading);
+    console.log('  - Transactions count:', transactions.length);
+    console.log('  - Trends count:', trends.length);
+    console.log(
+      '  - Has meaningful data:',
+      trends.some((t) => t.income > 0 || t.expenses > 0)
+    );
+
+    // Don't show "no data" while loading
+    if (loading) {
+      console.log('  - Result: true (loading)');
+      return true;
+    }
+
+    // Show chart if we have any transactions at all
+    const result = transactions.length > 0 && trends.length > 0;
+    console.log('  - Result:', result);
+    return result;
+  });
+
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -429,18 +463,18 @@ export class AllTimeOverviewComponent implements OnInit {
   }
 
   formatDate(date: string): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return formatAbsoluteDate(date, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    }).format(new Date(date));
+    });
   }
 
   formatDateShort(date: string): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return formatAbsoluteDate(date, {
       month: 'short',
       day: 'numeric',
-    }).format(new Date(date));
+    });
   }
 
   formatPercentage(value: number, decimals: number = 1): string {
@@ -471,9 +505,7 @@ export class AllTimeOverviewComponent implements OnInit {
     const dayCount = new Map<string, number>();
 
     transactions.forEach((t) => {
-      const day = new Date(t.date).toLocaleDateString('en-US', {
-        weekday: 'long',
-      });
+      const day = getWeekdayName(t.date);
       dayCount.set(day, (dayCount.get(day) || 0) + 1);
     });
 

@@ -58,7 +58,10 @@ export class TagsService {
       throw new HttpErrors.NotFound(`Tag with name "${name}" not found.`);
     }
 
-    return this._repository.remove(tag);
+    // Store the tag data before removal since remove() will set id to undefined
+    const tagData = { ...tag };
+    await this._repository.remove(tag);
+    return tagData;
   }
 
   async update(name: string, tag: FullTag, userId: string) {

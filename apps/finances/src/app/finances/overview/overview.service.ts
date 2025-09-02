@@ -541,13 +541,27 @@ export class OverviewService {
       const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
       const monthTransactions = transactions.filter((t: Transaction) => {
-        const tDate = new Date(t.date);
-        return tDate >= monthStart && tDate <= monthEnd;
+        // Parse date parts to avoid timezone issues
+        const dateParts = t.date.split('-');
+        const transactionYear = parseInt(dateParts[0]);
+        const transactionMonth = parseInt(dateParts[1]) - 1; // Convert to 0-indexed
+
+        const monthYear = monthStart.getFullYear();
+        const monthMonth = monthStart.getMonth();
+
+        return transactionYear === monthYear && transactionMonth === monthMonth;
       });
 
       const monthTransfers = transfers.filter((t: Transfer) => {
-        const tDate = new Date(t.date);
-        return tDate >= monthStart && tDate <= monthEnd;
+        // Parse date parts to avoid timezone issues
+        const dateParts = t.date.split('-');
+        const transferYear = parseInt(dateParts[0]);
+        const transferMonth = parseInt(dateParts[1]) - 1; // Convert to 0-indexed
+
+        const monthYear = monthStart.getFullYear();
+        const monthMonth = monthStart.getMonth();
+
+        return transferYear === monthYear && transferMonth === monthMonth;
       });
 
       const totalIncome = monthTransactions
@@ -606,8 +620,18 @@ export class OverviewService {
       })
       .then((transactions) =>
         transactions.filter((t) => {
-          const tDate = new Date(t.date);
-          return tDate >= start && tDate <= end;
+          // Parse date parts to avoid timezone issues with 'YYYY-MM-DD' format
+          const dateParts = t.date.split('-');
+          const transactionYear = parseInt(dateParts[0]);
+          const transactionMonth = parseInt(dateParts[1]) - 1; // Convert to 0-indexed
+          const transactionDay = parseInt(dateParts[2]);
+
+          const transactionDate = new Date(
+            transactionYear,
+            transactionMonth,
+            transactionDay
+          );
+          return transactionDate >= start && transactionDate <= end;
         })
       );
   }
@@ -635,8 +659,18 @@ export class OverviewService {
       })
       .then((transfers) =>
         transfers.filter((t) => {
-          const tDate = new Date(t.date);
-          return tDate >= start && tDate <= end;
+          // Parse date parts to avoid timezone issues with 'YYYY-MM-DD' format
+          const dateParts = t.date.split('-');
+          const transferYear = parseInt(dateParts[0]);
+          const transferMonth = parseInt(dateParts[1]) - 1; // Convert to 0-indexed
+          const transferDay = parseInt(dateParts[2]);
+
+          const transferDate = new Date(
+            transferYear,
+            transferMonth,
+            transferDay
+          );
+          return transferDate >= start && transferDate <= end;
         })
       );
   }
@@ -654,12 +688,16 @@ export class OverviewService {
     const dailyBreakdown = [];
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const dayTransactions = transactions.filter(
-        (t: Transaction) => new Date(t.date).getDate() === day
-      );
-      const dayTransfers = transfers.filter(
-        (t: Transfer) => new Date(t.date).getDate() === day
-      );
+      const dayTransactions = transactions.filter((t: Transaction) => {
+        const dateParts = t.date.split('-');
+        const transactionDay = parseInt(dateParts[2]);
+        return transactionDay === day;
+      });
+      const dayTransfers = transfers.filter((t: Transfer) => {
+        const dateParts = t.date.split('-');
+        const transferDay = parseInt(dateParts[2]);
+        return transferDay === day;
+      });
 
       const income = dayTransactions
         .filter((t: Transaction) => t.type === 'INCOME')
@@ -703,12 +741,14 @@ export class OverviewService {
       const weekEnd = Math.min(week * 7, daysInMonth);
 
       const weekTransactions = transactions.filter((t: Transaction) => {
-        const day = new Date(t.date).getDate();
+        const dateParts = t.date.split('-');
+        const day = parseInt(dateParts[2]);
         return day >= weekStart && day <= weekEnd;
       });
 
       const weekTransfers = transfers.filter((t: Transfer) => {
-        const day = new Date(t.date).getDate();
+        const dateParts = t.date.split('-');
+        const day = parseInt(dateParts[2]);
         return day >= weekStart && day <= weekEnd;
       });
 

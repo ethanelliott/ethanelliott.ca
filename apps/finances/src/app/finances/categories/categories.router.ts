@@ -152,6 +152,7 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
         response: {
           200: CategoryDeletedSchema,
           404: z.object({ message: z.string() }),
+          409: z.object({ message: z.string() }),
         },
       },
     },
@@ -164,6 +165,9 @@ export async function CategoriesRouter(fastify: FastifyInstance) {
       } catch (error: any) {
         if (error.statusCode === 404) {
           return reply.status(404).send({ message: error.message });
+        }
+        if (error.statusCode === 409) {
+          return reply.status(409).send({ message: error.message });
         }
         throw error;
       }

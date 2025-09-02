@@ -35,6 +35,15 @@ import {
   isWithinInterval,
   subMonths,
 } from 'date-fns';
+import {
+  parseAbsoluteDate,
+  createAbsoluteDate,
+  isDateInMonth,
+  isDateInRange,
+  getDateDay,
+  getDateYear,
+  compareDates,
+} from '../utils/date-utils';
 
 // State interface
 interface FinanceState {
@@ -257,12 +266,9 @@ export const FinanceStore = signalStore(
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
 
-        return state.transactions().filter((t) =>
-          isWithinInterval(new Date(t.date), {
-            start: monthStart,
-            end: monthEnd,
-          })
-        );
+        return state
+          .transactions()
+          .filter((t) => isDateInRange(t.date, monthStart, monthEnd));
       }),
 
       // Current month income/expenses
@@ -274,11 +280,7 @@ export const FinanceStore = signalStore(
             const monthStart = startOfMonth(now);
             const monthEnd = endOfMonth(now);
             return (
-              t.type === 'INCOME' &&
-              isWithinInterval(new Date(t.date), {
-                start: monthStart,
-                end: monthEnd,
-              })
+              t.type === 'INCOME' && isDateInRange(t.date, monthStart, monthEnd)
             );
           })
           .reduce((sum, t) => sum + t.amount, 0)
@@ -293,10 +295,7 @@ export const FinanceStore = signalStore(
             const monthEnd = endOfMonth(now);
             return (
               t.type === 'EXPENSE' &&
-              isWithinInterval(new Date(t.date), {
-                start: monthStart,
-                end: monthEnd,
-              })
+              isDateInRange(t.date, monthStart, monthEnd)
             );
           })
           .reduce((sum, t) => sum + t.amount, 0)
@@ -310,11 +309,7 @@ export const FinanceStore = signalStore(
             const monthStart = startOfMonth(now);
             const monthEnd = endOfMonth(now);
             return (
-              t.type === 'INCOME' &&
-              isWithinInterval(new Date(t.date), {
-                start: monthStart,
-                end: monthEnd,
-              })
+              t.type === 'INCOME' && isDateInRange(t.date, monthStart, monthEnd)
             );
           })
           .reduce((sum, t) => sum + t.amount, 0);
@@ -327,10 +322,7 @@ export const FinanceStore = signalStore(
             const monthEnd = endOfMonth(now);
             return (
               t.type === 'EXPENSE' &&
-              isWithinInterval(new Date(t.date), {
-                start: monthStart,
-                end: monthEnd,
-              })
+              isDateInRange(t.date, monthStart, monthEnd)
             );
           })
           .reduce((sum, t) => sum + t.amount, 0);
@@ -344,12 +336,9 @@ export const FinanceStore = signalStore(
         const monthStart = startOfMonth(lastMonth);
         const monthEnd = endOfMonth(lastMonth);
 
-        return state.transactions().filter((t) =>
-          isWithinInterval(new Date(t.date), {
-            start: monthStart,
-            end: monthEnd,
-          })
-        );
+        return state
+          .transactions()
+          .filter((t) => isDateInRange(t.date, monthStart, monthEnd));
       }),
 
       previousMonthExpenses: computed(() =>
@@ -361,10 +350,7 @@ export const FinanceStore = signalStore(
             const monthEnd = endOfMonth(lastMonth);
             return (
               t.type === 'EXPENSE' &&
-              isWithinInterval(new Date(t.date), {
-                start: monthStart,
-                end: monthEnd,
-              })
+              isDateInRange(t.date, monthStart, monthEnd)
             );
           })
           .reduce((sum, t) => sum + t.amount, 0)
@@ -373,31 +359,53 @@ export const FinanceStore = signalStore(
       // Monthly trends (from overview data or fallback)
       monthlyTrends: computed(() => {
         const overviewData = state.allTimeOverview()?.monthlyBreakdowns;
-        if (overviewData) {
-          return overviewData.map((breakdown) => ({
-            month: breakdown.month,
-            date: new Date(breakdown.year, 0, 1), // Approximate date
-            income: breakdown.totalIncome,
-            expenses: breakdown.totalExpenses,
-            net: breakdown.netCashFlow,
-            transactionCount: breakdown.transactionCount,
-          }));
+        const transactions = state.transactions();
+
+        if (overviewData && overviewData.length > 0) {
+          const result = overviewData.map((breakdown) => {
+            // Parse the month name to get the month index
+            const monthNames = [
+              'Jan',
+              'Feb',
+              'Mar',
+              'Apr',
+              'May',
+              'Jun',
+              'Jul',
+              'Aug',
+              'Sep',
+              'Oct',
+              'Nov',
+              'Dec',
+            ];
+            const monthIndex = monthNames.indexOf(breakdown.month);
+            const date = new Date(breakdown.year, monthIndex, 1);
+
+            return {
+              month: `${breakdown.month} ${breakdown.year}`,
+              date: date,
+              income: breakdown.totalIncome,
+              expenses: breakdown.totalExpenses,
+              net: breakdown.netCashFlow,
+              transactionCount: breakdown.transactionCount,
+            };
+          });
+
+          return result;
         }
 
-        // Fallback to original calculation
+        // Fallback: calculate from transactions if overview data is not available
         const now = new Date();
         const startDate = subMonths(now, 11);
         const months = eachMonthOfInterval({ start: startDate, end: now });
 
-        return months.map((month) => {
-          const monthStart = startOfMonth(month);
-          const monthEnd = endOfMonth(month);
-          const monthTransactions = state.transactions().filter((t) =>
-            isWithinInterval(new Date(t.date), {
-              start: monthStart,
-              end: monthEnd,
-            })
-          );
+        const result = months.map((month) => {
+          const monthYear = month.getFullYear();
+          const monthMonth = month.getMonth();
+
+          const monthTransactions = transactions.filter((t) => {
+            return isDateInMonth(t.date, monthYear, monthMonth);
+          });
 
           const income = monthTransactions
             .filter((t) => t.type === 'INCOME')
@@ -416,6 +424,8 @@ export const FinanceStore = signalStore(
             transactionCount: monthTransactions.length,
           };
         });
+
+        return result;
       }),
 
       // Category breakdown for current month
@@ -424,14 +434,13 @@ export const FinanceStore = signalStore(
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
 
-        const transactions = state.transactions().filter(
-          (t) =>
-            t.type === 'EXPENSE' &&
-            isWithinInterval(new Date(t.date), {
-              start: monthStart,
-              end: monthEnd,
-            })
-        );
+        const transactions = state
+          .transactions()
+          .filter(
+            (t) =>
+              t.type === 'EXPENSE' &&
+              isDateInRange(t.date, monthStart, monthEnd)
+          );
 
         const categoryMap = new Map<string, number>();
 
@@ -445,57 +454,6 @@ export const FinanceStore = signalStore(
         return Array.from(categoryMap.entries())
           .map(([category, amount]) => ({ category, amount }))
           .sort((a, b) => b.amount - a.amount);
-      }),
-
-      // Financial health score (0-100)
-      financialHealthScore: computed(() => {
-        const monthlyData = state.transactions();
-        const trends = eachMonthOfInterval({
-          start: subMonths(new Date(), 11),
-          end: new Date(),
-        }).map((month) => {
-          const monthStart = startOfMonth(month);
-          const monthEnd = endOfMonth(month);
-          const monthTransactions = monthlyData.filter((t) =>
-            isWithinInterval(new Date(t.date), {
-              start: monthStart,
-              end: monthEnd,
-            })
-          );
-
-          const income = monthTransactions
-            .filter((t) => t.type === 'INCOME')
-            .reduce((sum, t) => sum + t.amount, 0);
-          const expenses = monthTransactions
-            .filter((t) => t.type === 'EXPENSE')
-            .reduce((sum, t) => sum + t.amount, 0);
-
-          return { income, expenses, net: income - expenses };
-        });
-
-        if (trends.length < 3) return 50;
-
-        const recent3Months = trends.slice(-3);
-        const avgNet = recent3Months.reduce((sum, m) => sum + m.net, 0) / 3;
-        const avgExpenses =
-          recent3Months.reduce((sum, m) => sum + m.expenses, 0) / 3;
-
-        let score = 50;
-
-        // Net worth trend (+/- 30 points)
-        if (avgNet > 0) score += Math.min(30, (avgNet / 1000) * 5);
-        else score -= Math.min(30, (Math.abs(avgNet) / 1000) * 5);
-
-        // Spending consistency (+/- 20 points)
-        const expenseVariance =
-          recent3Months.reduce(
-            (sum, m) => sum + Math.pow(m.expenses - avgExpenses, 2),
-            0
-          ) / 3;
-        const consistency = Math.max(0, 20 - expenseVariance / 10000);
-        score += consistency;
-
-        return Math.max(0, Math.min(100, Math.round(score)));
       }),
 
       // Top merchants/descriptions
@@ -528,9 +486,7 @@ export const FinanceStore = signalStore(
       recentTransactions: computed(() =>
         state
           .transactions()
-          .sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          )
+          .sort((a, b) => compareDates(a.date, b.date))
           .slice(0, 10)
       ),
     };
@@ -889,7 +845,15 @@ export const FinanceStore = signalStore(
               }),
               catchError((error) => {
                 console.error('Error deleting category:', error);
-                showError('Error deleting category');
+                // Handle specific 409 conflict error
+                if (error.status === 409) {
+                  const message =
+                    error.error?.message ||
+                    'Cannot delete category because it is being used by transactions.';
+                  showError(message);
+                } else {
+                  showError('Error deleting category');
+                }
                 return EMPTY;
               })
             )

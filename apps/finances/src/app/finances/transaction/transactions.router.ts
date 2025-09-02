@@ -55,7 +55,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   typedFastify.get(
     '/:id',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
         params: z.object({
@@ -84,7 +84,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   typedFastify.put(
     '/:id',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
         params: z.object({
@@ -120,7 +120,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/:id',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
         params: z.object({
@@ -149,7 +149,7 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
   typedFastify.delete(
     '/',
     {
-      preHandler: fastify.circuitBreaker(),
+      preHandler: [fastify.authenticate(), fastify.circuitBreaker()],
       schema: {
         tags: ['Transactions'],
         response: {

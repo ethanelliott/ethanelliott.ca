@@ -33,6 +33,7 @@ import {
 } from '../../services/finance-api.service';
 import { DialogService } from '../../shared/dialogs';
 import { firstValueFrom } from 'rxjs';
+import { formatAbsoluteDate, createAbsoluteDate } from '../../utils/date-utils';
 
 @Component({
   selector: 'app-transfers',
@@ -383,7 +384,7 @@ export class TransfersComponent implements OnInit {
       transferType: transfer.transferType,
       fromAccountId: transfer.fromAccount.id,
       toAccountId: transfer.toAccount.id,
-      date: new Date(transfer.date),
+      date: createAbsoluteDate(transfer.date),
       amount: transfer.amount,
       description: transfer.description,
     });
@@ -462,11 +463,11 @@ export class TransfersComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    return new Intl.DateTimeFormat('en-CA', {
+    return formatAbsoluteDate(dateString, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-    }).format(new Date(dateString));
+    });
   }
 
   private formatDateForAPI(date: Date): string {

@@ -2,9 +2,12 @@ import { inject } from '@ee/di';
 import HttpErrors from 'http-errors';
 import { Database } from '../../data-source';
 import { Category, FullCategory } from './category';
+import { Transaction } from '../transaction/transaction';
 
 export class CategoriesService {
   private readonly _repository = inject(Database).repositoryFor(Category);
+  private readonly _transactionRepository =
+    inject(Database).repositoryFor(Transaction);
 
   async all(userId: string) {
     const categories = await this._repository.find({
@@ -56,6 +59,22 @@ export class CategoriesService {
 
     if (!category) {
       throw new HttpErrors.NotFound(`Category with name "${name}" not found.`);
+    }
+
+    // Check if there are any transactions using this category
+    const transactionCount = await this._transactionRepository.count({
+      where: {
+        category: { id: category.id },
+        user: { id: userId },
+      },
+    });
+
+    if (transactionCount > 0) {
+      throw new HttpErrors.Conflict(
+        `Cannot delete category "${name}" because it is being used by ${transactionCount} transaction${
+          transactionCount === 1 ? '' : 's'
+        }.`
+      );
     }
 
     await this._repository.remove(category);

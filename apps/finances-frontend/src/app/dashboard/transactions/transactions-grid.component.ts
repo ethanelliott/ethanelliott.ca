@@ -18,6 +18,7 @@ import {
 import { Transaction } from '../../services/finance-api.service';
 import { DialogService } from '../../shared/dialogs';
 import { firstValueFrom } from 'rxjs';
+import { formatAbsoluteDate } from '../../utils/date-utils';
 import {
   ActionsCellRendererComponent,
   ActionsCellRendererParams,
@@ -277,10 +278,10 @@ export class TransactionsGridComponent {
   }
 
   private formatDate(date: string): string {
-    return new Intl.DateTimeFormat('en-CA', {
+    return formatAbsoluteDate(date, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    }).format(new Date(date));
+    });
   }
 }
