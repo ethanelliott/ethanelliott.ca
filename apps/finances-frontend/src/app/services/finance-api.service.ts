@@ -10,6 +10,8 @@ export interface Account {
   currentBalance?: number;
   totalIncome?: number;
   totalExpenses?: number;
+  transfersIn?: number;
+  transfersOut?: number;
   currency: string;
   timestamp: Date;
   updatedAt: Date;

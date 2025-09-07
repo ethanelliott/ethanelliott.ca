@@ -202,6 +202,28 @@ import { DialogService } from '../../shared/dialogs';
           <mat-card-content>
             <div class="danger-content">
               <div class="danger-warning">
+                <mat-icon>clear_all</mat-icon>
+                <div class="warning-text">
+                  <h4>Delete All Transactions</h4>
+                  <p>
+                    Permanently delete all your financial transactions. This
+                    action cannot be undone and will remove all your transaction
+                    history while keeping your account and categories intact.
+                  </p>
+                </div>
+              </div>
+              <button
+                mat-flat-button
+                (click)="deleteAllTransactions()"
+                class="delete-button"
+              >
+                <mat-icon>clear_all</mat-icon>
+                Delete All Transactions
+              </button>
+
+              <mat-divider style="margin: 24px 0;"></mat-divider>
+
+              <div class="danger-warning">
                 <mat-icon>warning</mat-icon>
                 <div class="warning-text">
                   <h4>Delete Account</h4>
@@ -306,6 +328,22 @@ export class ProfileComponent {
       .subscribe((confirmed) => {
         if (confirmed) {
           this.userStore.deleteAccount();
+        }
+      });
+  }
+
+  deleteAllTransactions() {
+    this.dialogService
+      .confirmDangerous(
+        'This will permanently delete ALL your transactions. This action cannot be undone and will remove all your transaction history.',
+        'DELETE ALL',
+        'Delete All Transactions',
+        'Delete All Transactions',
+        'Cancel'
+      )
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.userStore.deleteAllTransactions();
         }
       });
   }

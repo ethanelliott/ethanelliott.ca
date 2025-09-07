@@ -22,6 +22,7 @@ export async function SecurityRouter(fastify: FastifyInstance) {
       schema: {
         tags: ['Security'],
         description: 'Delete a specific passkey',
+        security: [{ bearerAuth: [] }],
         params: PasskeyCredentialIdParamSchema,
         response: {
           200: DeletePasskeyResponseSchema,
@@ -48,6 +49,7 @@ export async function SecurityRouter(fastify: FastifyInstance) {
       schema: {
         tags: ['Security'],
         description: 'Revoke all active sessions (except current)',
+        security: [{ bearerAuth: [] }],
         response: {
           200: RevokeAllSessionsResponseSchema,
         },

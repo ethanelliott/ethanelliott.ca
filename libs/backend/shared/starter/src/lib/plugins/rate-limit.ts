@@ -5,7 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 export const RateLimitPlugin = fp(async function (fastify: FastifyInstance) {
   await fastify.register(rateLimit, {
     global: true,
-    max: 100,
+    max: 10000,
     timeWindow: 1000,
   });
 });

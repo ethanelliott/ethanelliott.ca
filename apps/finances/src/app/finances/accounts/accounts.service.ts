@@ -22,6 +22,8 @@ export class AccountsService {
           currentBalance: balance.currentBalance,
           totalIncome: balance.totalIncome,
           totalExpenses: balance.totalExpenses,
+          transfersIn: balance.transfersIn,
+          transfersOut: balance.transfersOut,
         };
       })
     );
@@ -49,6 +51,8 @@ export class AccountsService {
       currentBalance: balance.currentBalance,
       totalIncome: balance.totalIncome,
       totalExpenses: balance.totalExpenses,
+      transfersIn: balance.transfersIn,
+      transfersOut: balance.transfersOut,
     };
   }
 

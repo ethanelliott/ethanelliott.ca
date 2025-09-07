@@ -16,6 +16,7 @@ export async function AccountsRouter(fastify: FastifyInstance) {
       schema: {
         tags: ['Accounts'],
         description: 'Get all accounts',
+        security: [{ bearerAuth: [] }],
         response: { 200: z.array(AccountOutSchema) },
       },
     },

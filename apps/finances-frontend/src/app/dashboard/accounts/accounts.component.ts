@@ -241,40 +241,90 @@ import { firstValueFrom } from 'rxjs';
                 <div class="account-description">{{ account.description }}</div>
                 }
                 <div class="account-meta">
-                  <span class="account-balance"
-                    >{{
-                      formatCurrency(
-                        account.currentBalance ?? account.initialBalance
-                      )
-                    }}
-                    {{ account.currency }}</span
-                  >
+                  <div class="account-balance-summary">
+                    <div class="current-balance">
+                      <span class="balance-label">Current Balance:</span>
+                      <span class="account-balance"
+                        >{{
+                          formatCurrency(
+                            account.currentBalance ?? account.initialBalance
+                          )
+                        }}
+                        {{ account.currency }}</span
+                      >
+                    </div>
+
+                    @if (account.currentBalance !== undefined &&
+                    hasAccountActivity(account)) {
+                    <div class="balance-breakdown">
+                      <div class="breakdown-row">
+                        <span class="breakdown-label">Initial Balance:</span>
+                        <span class="breakdown-value">{{
+                          formatCurrency(account.initialBalance)
+                        }}</span>
+                      </div>
+                      @if (account.totalIncome && account.totalIncome > 0) {
+                      <div class="breakdown-row positive">
+                        <span class="breakdown-label">+ Income:</span>
+                        <span class="breakdown-value">{{
+                          formatCurrency(account.totalIncome)
+                        }}</span>
+                      </div>
+                      } @if (account.totalExpenses && account.totalExpenses > 0)
+                      {
+                      <div class="breakdown-row negative">
+                        <span class="breakdown-label">- Expenses:</span>
+                        <span class="breakdown-value">{{
+                          formatCurrency(account.totalExpenses)
+                        }}</span>
+                      </div>
+                      } @if (account.transfersIn && account.transfersIn > 0) {
+                      <div class="breakdown-row positive">
+                        <span class="breakdown-label">+ Transfers In:</span>
+                        <span class="breakdown-value">{{
+                          formatCurrency(account.transfersIn)
+                        }}</span>
+                      </div>
+                      } @if (account.transfersOut && account.transfersOut > 0) {
+                      <div class="breakdown-row negative">
+                        <span class="breakdown-label">- Transfers Out:</span>
+                        <span class="breakdown-value">{{
+                          formatCurrency(account.transfersOut)
+                        }}</span>
+                      </div>
+                      }
+                    </div>
+                    }
+                  </div>
+
                   @if (account.currentBalance !== undefined &&
                   account.currentBalance !== account.initialBalance) {
-                  <span
-                    class="balance-change"
-                    [class.positive]="
-                      account.currentBalance > account.initialBalance
-                    "
-                    [class.negative]="
-                      account.currentBalance < account.initialBalance
-                    "
-                  >
-                    ({{
-                      account.currentBalance > account.initialBalance
-                        ? '+'
-                        : ''
-                    }}{{
-                      formatCurrency(
-                        account.currentBalance - account.initialBalance
-                      )
-                    }}
-                    change)
-                  </span>
+                  <div class="net-change">
+                    <span
+                      class="balance-change"
+                      [class.positive]="
+                        account.currentBalance > account.initialBalance
+                      "
+                      [class.negative]="
+                        account.currentBalance < account.initialBalance
+                      "
+                    >
+                      Net Change:
+                      {{
+                        account.currentBalance > account.initialBalance
+                          ? '+'
+                          : ''
+                      }}{{
+                        formatCurrency(
+                          account.currentBalance - account.initialBalance
+                        )
+                      }}
+                    </span>
+                  </div>
                   }
-                  <span class="account-date"
-                    >Created {{ formatDate(account.timestamp) }}</span
-                  >
+                  <div class="account-date">
+                    Created {{ formatDate(account.timestamp) }}
+                  </div>
                 </div>
               </div>
 
@@ -454,5 +504,14 @@ export class AccountsComponent implements OnInit {
       month: 'short',
       day: 'numeric',
     }).format(new Date(date));
+  }
+
+  hasAccountActivity(account: Account): boolean {
+    return !!(
+      account.totalIncome ||
+      account.totalExpenses ||
+      account.transfersIn ||
+      account.transfersOut
+    );
   }
 }

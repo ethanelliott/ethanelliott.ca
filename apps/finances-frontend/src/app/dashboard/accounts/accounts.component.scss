@@ -221,8 +221,8 @@
 
     .accounts-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 20px;
 
       .account-card {
         border: 1px solid var(--mat-sys-outline-variant);
@@ -297,17 +297,87 @@
           .account-meta {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
 
-            .account-balance {
-              font-size: 1rem;
-              font-weight: 600;
-              color: var(--mat-sys-primary);
+            .account-balance-summary {
+              .current-balance {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+                .balance-label {
+                  font-size: 0.9rem;
+                  color: var(--mat-sys-on-surface-variant);
+                  font-weight: 500;
+                }
+
+                .account-balance {
+                  font-size: 1.1rem;
+                  font-weight: 700;
+                  color: var(--mat-sys-primary);
+                }
+              }
+
+              .balance-breakdown {
+                background: var(--mat-sys-surface-variant);
+                border-radius: 8px;
+                padding: 12px;
+                margin-top: 8px;
+
+                .breakdown-row {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  padding: 4px 0;
+                  font-size: 0.85rem;
+
+                  .breakdown-label {
+                    color: var(--mat-sys-on-surface-variant);
+                  }
+
+                  .breakdown-value {
+                    font-weight: 500;
+                    color: var(--mat-sys-on-surface);
+                  }
+
+                  &.positive .breakdown-value {
+                    color: var(--mat-sys-tertiary);
+                  }
+
+                  &.negative .breakdown-value {
+                    color: var(--mat-sys-error);
+                  }
+                }
+              }
+            }
+
+            .net-change {
+              padding: 8px 12px;
+              border-radius: 8px;
+              background: var(--mat-sys-surface-container);
+              text-align: center;
+
+              .balance-change {
+                font-weight: 600;
+                font-size: 0.9rem;
+
+                &.positive {
+                  color: var(--mat-sys-tertiary);
+                }
+
+                &.negative {
+                  color: var(--mat-sys-error);
+                }
+              }
             }
 
             .account-date {
               font-size: 0.75rem;
               color: var(--mat-sys-on-surface-variant);
+              text-align: center;
             }
           }
         }

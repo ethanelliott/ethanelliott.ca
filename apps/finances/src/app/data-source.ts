@@ -12,7 +12,7 @@ export class Database {
     type: 'better-sqlite3',
     database: 'finances.db',
     synchronize: true,
-    logging: true,
+    // logging: true,
     entities: this._entities,
     extra: {
       foreignKeys: true,

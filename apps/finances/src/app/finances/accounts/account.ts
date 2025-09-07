@@ -54,6 +54,11 @@ export const AccountOutSchema = AccountInSchema.extend({
   id: z.string().uuid(),
   timestamp: z.date(),
   updatedAt: z.date(),
+  currentBalance: z.number().optional(),
+  totalIncome: z.number().optional(),
+  totalExpenses: z.number().optional(),
+  transfersIn: z.number().optional(),
+  transfersOut: z.number().optional(),
 });
 
 export type AccountOut = z.infer<typeof AccountOutSchema>;
