@@ -4,7 +4,7 @@ metadata:
   name: apps
   namespace: ethanelliott
 spec:
-  project: default
+  project: home
   source:
     repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
     targetRevision: main
