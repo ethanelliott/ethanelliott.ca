@@ -17,6 +17,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: ethanelliott
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+    automated: {}
+  ignoreDifferences:
+    - group: '*'
+      kind: Application
+      jsonPointers:
+        - /spec/syncPolicy/automated
