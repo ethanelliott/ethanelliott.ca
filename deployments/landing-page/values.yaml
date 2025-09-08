@@ -1,9 +1,12 @@
 nginx:
   replicaCount: 2
+
+  service:
+    type: ClusterIP
+
   ingress:
     enabled: true
-    hosts:
-      - host: home.ee
-        paths:
-          - path: /
-            pathType: Prefix
+    className: 'nginx'
+    annotations:
+      kubernetes.io/ingress.class: 'nginx'
+    hostname: 'home.ee'
