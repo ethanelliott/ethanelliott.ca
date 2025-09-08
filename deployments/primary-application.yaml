@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apps
+  namespace: ethanelliott
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
+    targetRevision: main
+    path: deployments
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ethanelliott
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

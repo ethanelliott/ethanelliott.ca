@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: landing-page
+  namespace: ethanelliott
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: home
+  source:
+    repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
+    targetRevision: main
+    helm:
+      releaseName: landing-page
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ethanelliott
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
