@@ -9,6 +9,10 @@ spec:
     repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
     targetRevision: main
     path: deployments
+    directory:
+      recurse: true
+      exclude: 'primary-application.yaml'
+      include: '**/application.yaml'
   destination:
     server: https://kubernetes.default.svc
     namespace: ethanelliott
