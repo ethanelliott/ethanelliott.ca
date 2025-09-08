@@ -6,31 +6,21 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatListModule } from '@angular/material/list';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatChipsModule } from '@angular/material/chips';
 import {
   FinanceApiService,
   Account,
-  AccountInput,
   AccountSummary,
 } from '../../services/finance-api.service';
 import { DialogService } from '../../shared/dialogs';
+import { AccountDialogComponent } from './account-dialog.component';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -38,18 +28,13 @@ import { firstValueFrom } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatProgressSpinnerModule,
-    MatListModule,
-    MatDividerModule,
     MatTooltipModule,
-    MatSelectModule,
-    MatSlideToggleModule,
+    MatDialogModule,
+    MatChipsModule,
   ],
   styleUrl: './accounts.component.scss',
   template: `
@@ -81,6 +66,15 @@ import { firstValueFrom } from 'rxjs';
               </div>
               }
             </div>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="openAccountDialog()"
+              class="add-button"
+            >
+              <mat-icon>add</mat-icon>
+              Add Account
+            </button>
           </div>
         </div>
       </div>
@@ -96,290 +90,205 @@ import { firstValueFrom } from 'rxjs';
       <!-- Summary Cards -->
       @if (accountSummary()) {
       <div class="summary-grid">
-        <mat-card class="summary-card">
+        <mat-card class="summary-card total-balance">
           <mat-card-header>
-            <mat-card-title>
+            <div class="summary-icon">
               <mat-icon>account_balance</mat-icon>
-              Total Balance
-            </mat-card-title>
+            </div>
+            <div class="summary-info">
+              <mat-card-title>Total Balance</mat-card-title>
+              <mat-card-subtitle>
+                Across {{ accountSummary()!.totalAccounts }} accounts
+              </mat-card-subtitle>
+            </div>
           </mat-card-header>
           <mat-card-content>
             <div class="summary-value">
               {{ formatCurrency(accountSummary()!.totalBalance) }}
-            </div>
-            <div class="summary-meta">
-              Across {{ accountSummary()!.totalAccounts }} accounts
             </div>
           </mat-card-content>
         </mat-card>
       </div>
       }
 
-      <!-- Quick Add Form -->
-      <mat-card class="quick-add-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>add_circle</mat-icon>
-            Add Account
-          </mat-card-title>
-          <mat-card-subtitle
-            >Create a new financial account to track</mat-card-subtitle
-          >
-        </mat-card-header>
+      <!-- Accounts Grid -->
+      @if (accounts().length === 0) {
+      <mat-card class="empty-state-card">
         <mat-card-content>
-          <form [formGroup]="accountForm" class="quick-add-form">
-            <div class="form-row">
-              <mat-form-field appearance="outline" class="account-name-field">
-                <mat-label>Account Name</mat-label>
-                <input
-                  matInput
-                  formControlName="name"
-                  required
-                  placeholder="e.g., Chase Checking, Savings Account"
-                />
-                <mat-icon matSuffix>account_balance</mat-icon>
-              </mat-form-field>
-
-              <mat-form-field
-                appearance="outline"
-                class="account-currency-field"
-              >
-                <mat-label>Currency</mat-label>
-                <mat-select formControlName="currency">
-                  <mat-option value="CAD">CAD</mat-option>
-                  <mat-option value="USD">USD</mat-option>
-                  <mat-option value="EUR">EUR</mat-option>
-                  <mat-option value="GBP">GBP</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-
-            <div class="form-row">
-              <mat-form-field
-                appearance="outline"
-                class="account-balance-field"
-              >
-                <mat-label>Initial Balance</mat-label>
-                <input
-                  matInput
-                  formControlName="initialBalance"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-                <span matSuffix>{{ accountForm.value.currency || 'CAD' }}</span>
-              </mat-form-field>
-            </div>
-
-            <mat-form-field
-              appearance="outline"
-              class="account-description-field"
-            >
-              <mat-label>Description (Optional)</mat-label>
-              <textarea
-                matInput
-                formControlName="description"
-                rows="2"
-                placeholder="Additional details about this account"
-              ></textarea>
-            </mat-form-field>
-
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="addAccount()"
-              [disabled]="!accountForm.valid || submitting()"
-              class="add-button"
-            >
-              @if (submitting()) {
-              <mat-spinner diameter="20"></mat-spinner>
-              Adding... } @else {
-              <ng-container>
-                <mat-icon>add</mat-icon>
-                Add Account
-              </ng-container>
-              }
-            </button>
-          </form>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Accounts List -->
-      <mat-card class="accounts-list-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>list</mat-icon>
-            All Accounts
-          </mat-card-title>
-          <mat-card-subtitle
-            >Manage your {{ accounts().length }} accounts</mat-card-subtitle
-          >
-        </mat-card-header>
-        <mat-card-content>
-          @if (accounts().length === 0) {
           <div class="empty-state">
             <mat-icon>account_balance_wallet</mat-icon>
             <h3>No Accounts Yet</h3>
-            <p>Add your first account above to start tracking your finances</p>
+            <p>Add your first account to start tracking your finances</p>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="openAccountDialog()"
+              class="get-started-button"
+            >
+              <mat-icon>add</mat-icon>
+              Add Your First Account
+            </button>
           </div>
-          } @else {
-          <div class="accounts-grid">
-            @for (account of accounts(); track account.id) {
-            <div class="account-card">
-              <div class="account-header">
-                <div class="account-icon">
-                  <mat-icon>account_balance</mat-icon>
-                </div>
-                <div class="account-status">
-                  <mat-icon class="status-icon active">check_circle</mat-icon>
-                </div>
-              </div>
-
-              <div class="account-info">
-                <div class="account-name">{{ account.name }}</div>
-                @if (account.description) {
-                <div class="account-description">{{ account.description }}</div>
-                }
-                <div class="account-meta">
-                  <div class="account-balance-summary">
-                    <div class="current-balance">
-                      <span class="balance-label">Current Balance:</span>
-                      <span class="account-balance"
-                        >{{
-                          formatCurrency(
-                            account.currentBalance ?? account.initialBalance
-                          )
-                        }}
-                        {{ account.currency }}</span
-                      >
-                    </div>
-
-                    @if (account.currentBalance !== undefined &&
-                    hasAccountActivity(account)) {
-                    <div class="balance-breakdown">
-                      <div class="breakdown-row">
-                        <span class="breakdown-label">Initial Balance:</span>
-                        <span class="breakdown-value">{{
-                          formatCurrency(account.initialBalance)
-                        }}</span>
-                      </div>
-                      @if (account.totalIncome && account.totalIncome > 0) {
-                      <div class="breakdown-row positive">
-                        <span class="breakdown-label">+ Income:</span>
-                        <span class="breakdown-value">{{
-                          formatCurrency(account.totalIncome)
-                        }}</span>
-                      </div>
-                      } @if (account.totalExpenses && account.totalExpenses > 0)
-                      {
-                      <div class="breakdown-row negative">
-                        <span class="breakdown-label">- Expenses:</span>
-                        <span class="breakdown-value">{{
-                          formatCurrency(account.totalExpenses)
-                        }}</span>
-                      </div>
-                      } @if (account.transfersIn && account.transfersIn > 0) {
-                      <div class="breakdown-row positive">
-                        <span class="breakdown-label">+ Transfers In:</span>
-                        <span class="breakdown-value">{{
-                          formatCurrency(account.transfersIn)
-                        }}</span>
-                      </div>
-                      } @if (account.transfersOut && account.transfersOut > 0) {
-                      <div class="breakdown-row negative">
-                        <span class="breakdown-label">- Transfers Out:</span>
-                        <span class="breakdown-value">{{
-                          formatCurrency(account.transfersOut)
-                        }}</span>
-                      </div>
-                      }
-                    </div>
-                    }
-                  </div>
-
-                  @if (account.currentBalance !== undefined &&
-                  account.currentBalance !== account.initialBalance) {
-                  <div class="net-change">
-                    <span
-                      class="balance-change"
-                      [class.positive]="
-                        account.currentBalance > account.initialBalance
-                      "
-                      [class.negative]="
-                        account.currentBalance < account.initialBalance
-                      "
-                    >
-                      Net Change:
-                      {{
-                        account.currentBalance > account.initialBalance
-                          ? '+'
-                          : ''
-                      }}{{
-                        formatCurrency(
-                          account.currentBalance - account.initialBalance
-                        )
-                      }}
-                    </span>
-                  </div>
-                  }
-                  <div class="account-date">
-                    Created {{ formatDate(account.timestamp) }}
-                  </div>
-                </div>
-              </div>
-
-              <div class="account-actions">
-                <button
-                  mat-icon-button
-                  (click)="editAccount(account)"
-                  class="edit-button"
-                  matTooltip="Edit account"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  (click)="deleteAccount(account)"
-                  class="delete-button"
-                  [disabled]="deleting().has(account.id)"
-                  matTooltip="Delete account"
-                >
-                  @if (deleting().has(account.id)) {
-                  <mat-spinner diameter="16"></mat-spinner>
-                  } @else {
-                  <mat-icon>delete</mat-icon>
-                  }
-                </button>
-              </div>
-            </div>
-            }
-          </div>
-          }
         </mat-card-content>
       </mat-card>
+      } @else {
+      <div class="accounts-grid">
+        @for (account of accounts(); track account.id) {
+        <mat-card
+          class="account-card"
+          [class.has-activity]="hasAccountActivity(account)"
+        >
+          <mat-card-header>
+            <div class="account-avatar">
+              <mat-icon>account_balance</mat-icon>
+            </div>
+            <div class="account-header-content">
+              <mat-card-title class="account-name">{{
+                account.name
+              }}</mat-card-title>
+              <mat-card-subtitle class="account-currency">{{
+                account.currency
+              }}</mat-card-subtitle>
+            </div>
+            <div class="account-status">
+              <mat-icon class="status-icon active">check_circle</mat-icon>
+            </div>
+          </mat-card-header>
 
-      }
+          <mat-card-content>
+            @if (account.description) {
+            <div class="account-description">{{ account.description }}</div>
+            }
+
+            <div class="balance-section">
+              <div class="current-balance">
+                <span class="balance-label">Current Balance</span>
+                <span class="balance-amount">
+                  {{
+                    formatCurrency(
+                      account.currentBalance ?? account.initialBalance
+                    )
+                  }}
+                  <span class="currency">{{ account.currency }}</span>
+                </span>
+              </div>
+
+              @if (account.currentBalance !== undefined &&
+              hasAccountActivity(account)) {
+              <div class="balance-breakdown">
+                <div class="breakdown-item">
+                  <span class="breakdown-label">Initial:</span>
+                  <span class="breakdown-value">{{
+                    formatCurrency(account.initialBalance)
+                  }}</span>
+                </div>
+
+                @if (account.totalIncome && account.totalIncome > 0) {
+                <div class="breakdown-item positive">
+                  <span class="breakdown-label">+ Income:</span>
+                  <span class="breakdown-value">{{
+                    formatCurrency(account.totalIncome)
+                  }}</span>
+                </div>
+                } @if (account.totalExpenses && account.totalExpenses > 0) {
+                <div class="breakdown-item negative">
+                  <span class="breakdown-label">- Expenses:</span>
+                  <span class="breakdown-value">{{
+                    formatCurrency(account.totalExpenses)
+                  }}</span>
+                </div>
+                } @if (account.transfersIn && account.transfersIn > 0) {
+                <div class="breakdown-item positive">
+                  <span class="breakdown-label">+ Transfers In:</span>
+                  <span class="breakdown-value">{{
+                    formatCurrency(account.transfersIn)
+                  }}</span>
+                </div>
+                } @if (account.transfersOut && account.transfersOut > 0) {
+                <div class="breakdown-item negative">
+                  <span class="breakdown-label">- Transfers Out:</span>
+                  <span class="breakdown-value">{{
+                    formatCurrency(account.transfersOut)
+                  }}</span>
+                </div>
+                }
+              </div>
+
+              @if (account.currentBalance !== account.initialBalance) {
+              <div class="net-change">
+                <mat-chip
+                  class="change-chip"
+                  [class.positive]="
+                    account.currentBalance > account.initialBalance
+                  "
+                  [class.negative]="
+                    account.currentBalance < account.initialBalance
+                  "
+                >
+                  <mat-icon>{{
+                    account.currentBalance > account.initialBalance
+                      ? 'trending_up'
+                      : 'trending_down'
+                  }}</mat-icon>
+                  {{ account.currentBalance > account.initialBalance ? '+' : ''
+                  }}{{
+                    formatCurrency(
+                      account.currentBalance - account.initialBalance
+                    )
+                  }}
+                </mat-chip>
+              </div>
+              } }
+            </div>
+
+            <div class="account-meta">
+              <span class="account-date">
+                <mat-icon>schedule</mat-icon>
+                Created {{ formatDate(account.timestamp) }}
+              </span>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions class="account-actions">
+            <button
+              mat-icon-button
+              (click)="openAccountDialog(account)"
+              class="edit-button"
+              matTooltip="Edit account"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              (click)="deleteAccount(account)"
+              class="delete-button"
+              [disabled]="deleting().has(account.id)"
+              matTooltip="Delete account"
+            >
+              @if (deleting().has(account.id)) {
+              <mat-spinner diameter="16"></mat-spinner>
+              } @else {
+              <mat-icon>delete</mat-icon>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+        }
+      </div>
+      } }
     </div>
   `,
 })
 export class AccountsComponent implements OnInit {
   private readonly apiService = inject(FinanceApiService);
-  private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialogService = inject(DialogService);
+  private readonly dialog = inject(MatDialog);
 
   loading = signal(true);
-  submitting = signal(false);
   deleting = signal(new Set<string>());
   accounts = signal<Account[]>([]);
   accountSummary = signal<AccountSummary | null>(null);
-
-  accountForm: FormGroup = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(2)]],
-    description: [''],
-    initialBalance: [0, [Validators.min(0)]],
-    currency: ['CAD', Validators.required],
-  });
 
   ngOnInit() {
     this.loadAccounts();
@@ -404,48 +313,31 @@ export class AccountsComponent implements OnInit {
     }
   }
 
-  async addAccount() {
-    if (!this.accountForm.valid) return;
-
-    this.submitting.set(true);
-    try {
-      const accountData: AccountInput = this.accountForm.value;
-      const newAccount = await firstValueFrom(
-        this.apiService.createAccount(accountData)
-      );
-
-      this.accounts.update((accounts) => [...accounts, newAccount]);
-      this.accountForm.reset({
-        initialBalance: 0,
-        currency: 'CAD',
-      });
-      this.snackBar.open('Account created successfully', 'Close', {
-        duration: 3000,
-      });
-
-      // Reload summary
-      const summary = await firstValueFrom(this.apiService.getAccountSummary());
-      this.accountSummary.set(summary);
-    } catch (error) {
-      this.snackBar.open('Failed to create account', 'Close', {
-        duration: 3000,
-      });
-      console.error('Error creating account:', error);
-    } finally {
-      this.submitting.set(false);
-    }
-  }
-
-  async editAccount(account: Account) {
-    // For now, just populate the form - in a real app you might open a dialog
-    this.accountForm.patchValue({
-      name: account.name,
-      description: account.description,
-      initialBalance: account.initialBalance,
-      currency: account.currency,
+  openAccountDialog(account?: Account) {
+    const dialogRef = this.dialog.open(AccountDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      data: { account },
     });
-    this.snackBar.open('Account loaded for editing', 'Close', {
-      duration: 2000,
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result && !result.error) {
+        // Reload accounts after successful create/update
+        this.loadAccounts();
+        const message = account
+          ? 'Account updated successfully'
+          : 'Account created successfully';
+        this.snackBar.open(message, 'Close', {
+          duration: 3000,
+        });
+      } else if (result && result.error) {
+        const message = account
+          ? 'Failed to update account'
+          : 'Failed to create account';
+        this.snackBar.open(message, 'Close', {
+          duration: 3000,
+        });
+      }
     });
   }
 
