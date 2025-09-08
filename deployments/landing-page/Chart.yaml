@@ -9,5 +9,5 @@ appVersion: '0.0.1'
 dependencies:
   - name: nginx
     alias: landing-page
-    version: 15.1.1
-    repository: https://charts.bitnami.com/bitnami
+    version: '15.1.1'
+    repository: 'https://charts.bitnami.com/bitnami'
