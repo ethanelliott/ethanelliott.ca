@@ -16,6 +16,5 @@ spec:
         - values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: ethanelliott
   syncPolicy:
     automated: {}
