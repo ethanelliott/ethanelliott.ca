@@ -1,6 +1,6 @@
 apiVersion: v2
-name: landing-page
-description: My application chart
+name: test-server
+description: Test server application chart
 type: application
 
 version: 0.0.1
