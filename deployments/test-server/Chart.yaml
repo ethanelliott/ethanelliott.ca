@@ -1,0 +1,12 @@
+apiVersion: v2
+name: landing-page
+description: My application chart
+type: application
+
+version: 0.0.1
+appVersion: '0.0.1'
+
+dependencies:
+  - name: node
+    version: '16.18.0'
+    repository: 'https://charts.bitnami.com/bitnami'

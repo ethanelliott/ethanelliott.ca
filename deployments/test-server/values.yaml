@@ -1,0 +1,26 @@
+node:
+  replicaCount: 1
+
+  image:
+    repository: ethanelliottio/test-server
+    tag: latest
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  ingress:
+    enabled: true
+    className: 'nginx'
+    annotations:
+      kubernetes.io/ingress.class: 'nginx'
+    hostname: 'test.home.ee'
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 250m
+      memory: 128Mi

@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-server
+  namespace: default
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: home
+  source:
+    repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
+    path: deployments/test-server
+    targetRevision: main
+    helm:
+      releaseName: test-server
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated: {}
