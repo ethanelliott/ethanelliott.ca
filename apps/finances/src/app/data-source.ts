@@ -13,7 +13,10 @@ export class Database {
 
   dataSource = new DataSource({
     type: 'better-sqlite3',
-    database: 'finances.db',
+    database:
+      process.env.NODE_ENV === 'production'
+        ? '/app/data/finances.db'
+        : 'finances.db',
     synchronize: true,
     // logging: true,
     entities: this._entities,

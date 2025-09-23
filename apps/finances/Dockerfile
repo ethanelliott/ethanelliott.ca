@@ -14,6 +14,9 @@ RUN apk add --no-cache python3 make g++ libc6-compat
 RUN addgroup --system server && \
     adduser --system -G server server
 
+# Create data directory for database files
+RUN mkdir -p /app/data && chown server:server /app/data
+
 # Copy the pre-built application with correct ownership
 COPY --chown=server:server dist/apps/finances ./
 

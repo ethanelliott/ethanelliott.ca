@@ -38,3 +38,6 @@ env:
   PORT: '3000'
   RP_ID: 'finances-service.elliott.haus'
   ORIGIN: 'https://finances.elliott.haus'
+
+storage:
+  size: 10Gi

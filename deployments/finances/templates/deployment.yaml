@@ -41,3 +41,10 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+          volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: {{ include "finances.fullname" . }}-data
