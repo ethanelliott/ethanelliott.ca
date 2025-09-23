@@ -1,16 +1,19 @@
+{{- if .Values.configMap.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: finances-frontend-nginx-config
-  namespace: default
+  name: {{ .Values.configMap.name }}
+  namespace: {{ .Release.Namespace | default "default" }}
+  labels:
+    {{- include "finances-frontend.labels" . | nindent 4 }}
 data:
   nginx.conf: |
     server {
         listen 80;
-        server_name localhost finances.elliott.haus;
+        server_name localhost {{ .Values.ingress.hostname }};
         
         # Redirect HTTP to HTTPS in production
-        if ($host = "finances.elliott.haus") {
+        if ($host = "{{ .Values.ingress.hostname }}") {
             return 301 https://$host$request_uri;
         }
         
@@ -39,3 +42,4 @@ data:
             add_header Cache-Control "public, no-transform";
         }
     }
+{{- end }}

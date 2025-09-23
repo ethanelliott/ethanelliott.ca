@@ -21,9 +21,6 @@ FROM docker.io/nginx:alpine
 # Copy built app to nginx html directory
 COPY --from=build /app/dist/apps/finances-frontend/browser /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY apps/finances-frontend/nginx.conf /etc/nginx/conf.d/default.conf
-
 # Expose port 80
 EXPOSE 80
 
