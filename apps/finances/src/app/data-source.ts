@@ -1,5 +1,8 @@
 import { createToken, inject, Class } from '@ee/di';
 import { DataSource, ObjectLiteral } from 'typeorm';
+// Ensure native dependencies are included in the build
+import 'better-sqlite3';
+import 'bcrypt';
 
 export const ENTITIES = createToken<Class<any>>('entities', {
   multi: true,
