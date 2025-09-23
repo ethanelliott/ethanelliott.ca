@@ -21,4 +21,10 @@ RUN chown -R server:server .
 # The bundled output will include external dependencies.
 RUN npm --prefix server --omit=dev -f install
 
+# Expose the port that the application will run on
+EXPOSE 3000
+
+# Switch to non-root user for security
+USER server
+
 CMD [ "node", "server" ]

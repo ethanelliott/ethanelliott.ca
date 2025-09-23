@@ -46,13 +46,3 @@ export function provide<T>(providable: Provide<T>, value?: T) {
     globalInjector.provide(providable as any);
   }
 }
-
-export function autoFactory<T>(Class: new (...args: any[]) => T): () => T {
-  const deps = Reflect.getMetadata('design:paramtypes', Class) || [];
-  console.log(deps);
-
-  return () => {
-    const resolved = deps.map((dep: Injectable<T>) => inject(dep));
-    return new Class(...resolved);
-  };
-}

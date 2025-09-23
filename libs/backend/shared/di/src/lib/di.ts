@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 export type ResolveType<I> = I extends Token<infer T>
   ? T
   : I extends Class<infer T>

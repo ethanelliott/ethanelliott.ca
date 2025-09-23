@@ -18,20 +18,24 @@ export async function starter<T extends FastifyPluginAsync>(
   );
 
   const server = Fastify({
-    logger: {
-      transport: {
-        target: 'pino-pretty',
-      },
-    },
+    // logger: {
+    //   transport: {
+    //     target: 'pino-pretty',
+    //   },
+    // },
   });
 
   await server.register(MainPlugin);
   await server.register(Application);
 
-  server.listen({ host: '0.0.0.0', port: 8080 }, (err) => {
+  const port = parseInt(process.env.PORT || '3000', 10);
+  const host = process.env.HOST || '0.0.0.0';
+
+  server.listen({ host, port }, (err) => {
     if (err) {
       server.log.error(err);
       process.exit(1);
     }
+    console.log(`Server listening on ${host}:${port}`);
   });
 }

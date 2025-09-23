@@ -103,7 +103,6 @@
     "nx": "21.3.11",
     "postcss": "^8.5.3",
     "prettier": "^2.8.8",
-    "reflect-metadata": "^0.2.2",
     "ts-node": "10.9.1",
     "typescript": "5.8.3"
   },
