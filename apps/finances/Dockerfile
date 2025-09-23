@@ -1,53 +1,29 @@
-# Multi-stage build for Node.js backend with native dependencies
-FROM docker.io/node:lts-alpine as build
-
-WORKDIR /app
-
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 make g++
-
-# Copy package files for dependency installation
-COPY package*.json pnpm-lock.yaml ./
-COPY pnpm-workspace.yaml ./
-
-# Install pnpm and dependencies
-RUN npm install -g pnpm
-RUN pnpm install --frozen-lockfile
-
-# Copy source code and build
-COPY . .
-RUN pnpm nx build finances --prod
-
-# Production stage
+# Runtime-only Docker image for pre-built finances backend
 FROM docker.io/node:lts-alpine
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV CI=true
 
 WORKDIR /app
 
-# Install runtime dependencies for native modules
-RUN apk add --no-cache python3 make g++
+# Install only runtime dependencies for native modules
+RUN apk add --no-cache python3 make g++ libc6-compat
 
+# Create non-root user
 RUN addgroup --system server && \
-          adduser --system -G server server
+    adduser --system -G server server
 
-# Install pnpm in production image
-RUN npm install -g pnpm
+# Copy the pre-built application with correct ownership
+COPY --chown=server:server dist/apps/finances ./
 
-# Copy built application and install dependencies
-COPY --from=build /app/dist/apps/finances server/
-
-# Install production dependencies from the generated package.json
-RUN cd server && pnpm install --prod
-
-# Set ownership
-RUN chown -R server:server .
+# Install production dependencies using npm (better native module support)
+RUN npm install --production --omit=dev --legacy-peer-deps && \
+    chown -R server:server .
 
 # Switch to non-root user
 USER server
 
-# Expose port
 EXPOSE 3000
 
-CMD [ "node", "server" ]
+CMD ["node", "main.js"]

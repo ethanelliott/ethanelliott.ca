@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { Application } from './app/app';
 import { starter } from '@ee/starter';
 import { appConfig } from './app/app.config';

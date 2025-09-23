@@ -126,7 +126,7 @@ export class UserRegister {
     try {
       // Step 1: Start registration
       const registerResponse: any = await firstValueFrom(
-        this._http.post('http://localhost:8080/users/register', {
+        this._http.post('https://finances-service.home.ee/users/register', {
           name: this.name(),
           username: this.username(),
         })
@@ -143,10 +143,13 @@ export class UserRegister {
 
       // Step 3: Complete registration
       const completeResponse: any = await firstValueFrom(
-        this._http.post('http://localhost:8080/users/register/complete', {
-          sessionId: registerResponse.sessionId,
-          credential: passkeyCredential,
-        })
+        this._http.post(
+          'https://finances-service.home.ee/users/register/complete',
+          {
+            sessionId: registerResponse.sessionId,
+            credential: passkeyCredential,
+          }
+        )
       );
 
       console.log('Registration completed:', completeResponse);

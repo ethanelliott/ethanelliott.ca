@@ -76,7 +76,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
           return http
             .post<{ accessToken: string; refreshToken: string }>(
-              'http://localhost:8080/users/token/refresh',
+              'https://finances-service.home.ee/users/token/refresh',
               {
                 refreshToken,
               }
