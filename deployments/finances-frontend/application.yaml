@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finances-frontend
+  namespace: default
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: home
+  source:
+    repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
+    path: deployments/finances-frontend
+    targetRevision: main
+    helm:
+      releaseName: finances-frontend
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated: {}

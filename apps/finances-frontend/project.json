@@ -82,6 +82,14 @@
         "staticFilePath": "dist/apps/finances-frontend/browser",
         "spa": true
       }
+    },
+    "docker-build": {
+      "dependsOn": ["build"],
+      "command": "docker build -f apps/finances-frontend/Dockerfile . -t ethanelliottio/finances-frontend:latest"
+    },
+    "docker-push": {
+      "dependsOn": ["docker-build"],
+      "command": "docker push ethanelliottio/finances-frontend:latest"
     }
   }
 }
