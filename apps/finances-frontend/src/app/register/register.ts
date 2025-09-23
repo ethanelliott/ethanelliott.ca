@@ -126,10 +126,13 @@ export class UserRegister {
     try {
       // Step 1: Start registration
       const registerResponse: any = await firstValueFrom(
-        this._http.post('https://finances-service.home.ee/users/register', {
-          name: this.name(),
-          username: this.username(),
-        })
+        this._http.post(
+          'https://finances-service.elliott.haus/users/register',
+          {
+            name: this.name(),
+            username: this.username(),
+          }
+        )
       );
 
       console.log('Registration started:', registerResponse);
@@ -144,7 +147,7 @@ export class UserRegister {
       // Step 3: Complete registration
       const completeResponse: any = await firstValueFrom(
         this._http.post(
-          'https://finances-service.home.ee/users/register/complete',
+          'https://finances-service.elliott.haus/users/register/complete',
           {
             sessionId: registerResponse.sessionId,
             credential: passkeyCredential,

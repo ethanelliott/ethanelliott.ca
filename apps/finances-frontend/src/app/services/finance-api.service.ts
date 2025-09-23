@@ -258,7 +258,7 @@ export interface User {
 })
 export class FinanceApiService {
   private readonly _http = inject(HttpClient);
-  private readonly baseUrl = 'https://finances-service.home.ee';
+  private readonly baseUrl = 'https://finances-service.elliott.haus';
 
   // Accounts
   getAllAccounts(): Observable<Account[]> {

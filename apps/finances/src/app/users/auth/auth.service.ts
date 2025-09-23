@@ -54,8 +54,8 @@ export class AuthService {
 
   // Configuration - in production, these should come from environment variables
   private readonly RP_NAME = 'Finance App';
-  private readonly RP_ID = 'finances.home.ee'; // Change to your domain in production
-  private readonly ORIGIN = 'https://finances.home.ee'; // Change to your frontend URL
+  private readonly RP_ID = 'finances.elliott.haus'; // Change to your domain in production
+  private readonly ORIGIN = 'https://finances.elliott.haus'; // Change to your frontend URL
   private readonly ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes
   private readonly REFRESH_TOKEN_EXPIRY = 30; // days
 
