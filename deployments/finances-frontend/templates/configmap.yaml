@@ -12,11 +12,6 @@ data:
         listen 80;
         server_name localhost {{ .Values.ingress.hostname }};
         
-        # Redirect HTTP to HTTPS in production
-        if ($host = "{{ .Values.ingress.hostname }}") {
-            return 301 https://$host$request_uri;
-        }
-        
         root /usr/share/nginx/html;
         index index.html;
         
