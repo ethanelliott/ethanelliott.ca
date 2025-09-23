@@ -9,4 +9,7 @@ nginx:
     className: 'nginx'
     annotations:
       kubernetes.io/ingress.class: 'nginx'
-    hostname: 'home.ee'
+    hostname: 'elliott.haus'
+    tls:
+      enabled: true
+      secretName: 'elliott-haus-wildcard-tls'

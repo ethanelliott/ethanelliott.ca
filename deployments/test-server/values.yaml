@@ -14,7 +14,10 @@ ingress:
   className: 'nginx'
   annotations:
     kubernetes.io/ingress.class: 'nginx'
-  hostname: 'test.home.ee'
+  hostname: 'test.elliott.haus'
+  tls:
+    enabled: true
+    secretName: 'elliott-haus-wildcard-tls'
 
 resources:
   limits:
