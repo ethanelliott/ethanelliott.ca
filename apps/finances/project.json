@@ -62,7 +62,11 @@
     },
     "docker-build": {
       "dependsOn": ["build"],
-      "command": "docker build -f apps/finances/Dockerfile . -t finances"
+      "command": "docker build -f apps/finances/Dockerfile . -t ethanelliottio/finances:latest"
+    },
+    "docker-push": {
+      "dependsOn": ["docker-build"],
+      "command": "docker push ethanelliottio/finances:latest"
     }
   }
 }
