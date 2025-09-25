@@ -72,6 +72,9 @@ ingress:
 # Jaeger Configuration - Optimized for small cluster
 jaeger:
   enabled: true
+  # Storage configuration - use memory for small cluster
+  storage:
+    type: memory
   # Use all-in-one deployment for simplicity and resource efficiency
   allInOne:
     enabled: true
