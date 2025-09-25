@@ -1,0 +1,241 @@
+# OpenTelemetry Operator Configuration
+opentelemetry-operator:
+  enabled: true
+  manager:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 64Mi
+
+# OpenTelemetry Collector Configuration
+opentelemetryCollector:
+  enabled: true
+
+# Ingress Configuration for External Access
+ingress:
+  # Grafana Ingress
+  grafana:
+    enabled: true
+    className: 'nginx'
+    annotations:
+      kubernetes.io/ingress.class: 'nginx'
+      nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    hostname: 'grafana.elliott.haus'
+    tls:
+      enabled: true
+      secretName: 'elliott-haus-wildcard-tls'
+
+  # Jaeger Ingress
+  jaeger:
+    enabled: true
+    className: 'nginx'
+    annotations:
+      kubernetes.io/ingress.class: 'nginx'
+      nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    hostname: 'jaeger.elliott.haus'
+    tls:
+      enabled: true
+      secretName: 'elliott-haus-wildcard-tls'
+
+  # Prometheus Ingress (optional - usually accessed via Grafana)
+  prometheus:
+    enabled: true
+    className: 'nginx'
+    annotations:
+      kubernetes.io/ingress.class: 'nginx'
+      nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    hostname: 'prometheus.elliott.haus'
+    tls:
+      enabled: true
+      secretName: 'elliott-haus-wildcard-tls'
+
+  # OTEL Collector Ingress (for frontend applications)
+  otelCollector:
+    enabled: true
+    className: 'nginx'
+    annotations:
+      kubernetes.io/ingress.class: 'nginx'
+      nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+      # Enable CORS for browser requests
+      nginx.ingress.kubernetes.io/enable-cors: 'true'
+      nginx.ingress.kubernetes.io/cors-allow-origin: '*'
+      nginx.ingress.kubernetes.io/cors-allow-methods: 'POST, OPTIONS'
+      nginx.ingress.kubernetes.io/cors-allow-headers: 'Content-Type,Authorization'
+    hostname: 'otel.elliott.haus'
+    tls:
+      enabled: true
+      secretName: 'elliott-haus-wildcard-tls'
+
+# Jaeger Configuration - Optimized for small cluster
+jaeger:
+  enabled: true
+  # Use all-in-one deployment for simplicity and resource efficiency
+  allInOne:
+    enabled: true
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    # Store traces in memory with limited retention for resource efficiency
+    args:
+      - --memory.max-traces=10000
+      - --query.max-clock-skew-adjustment=0
+    # Enable OTLP receiver for OpenTelemetry integration
+    extraEnv:
+      - name: COLLECTOR_OTLP_ENABLED
+        value: 'true'
+    # Use ClusterIP since we'll use ingress
+    service:
+      type: ClusterIP
+  # Disable other components we don't need
+  agent:
+    enabled: false
+  collector:
+    enabled: false
+  query:
+    enabled: false
+
+# Prometheus Stack Configuration - Lightweight setup
+kube-prometheus-stack:
+  enabled: true
+  # Grafana configuration - our main dashboard
+  grafana:
+    enabled: true
+    # Resource limits for small cluster
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    # Use ClusterIP since we'll use ingress
+    service:
+      type: ClusterIP
+    # Pre-configure data sources
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+          - name: Prometheus
+            type: prometheus
+            url: http://monitoring-kube-prometheus-stack-prometheus:9090
+            access: proxy
+            isDefault: true
+          - name: Jaeger
+            type: jaeger
+            url: http://monitoring-jaeger-query:16686
+            access: proxy
+    # Enable dashboard discovery from ConfigMaps
+    sidecar:
+      dashboards:
+        enabled: true
+        searchNamespace: ALL
+        label: grafana_dashboard
+        labelValue: '1'
+    # Enable useful plugins
+    plugins:
+      - grafana-piechart-panel
+    # Short data retention
+    persistence:
+      enabled: false
+    adminPassword: admin123
+
+  # Prometheus configuration
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      # Resource limits for small cluster
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      # Short retention for storage savings (7 days)
+      retention: 7d
+      retentionSize: 5GB
+      # Storage configuration
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path # Adjust based on your storage class
+            accessModes: ['ReadWriteOnce']
+            resources:
+              requests:
+                storage: 10Gi
+      # Enable OpenTelemetry metrics reception
+      additionalScrapeConfigs:
+        - job_name: 'otel-collector'
+          static_configs:
+            - targets: ['otel-collector:8889']
+        - job_name: 'jaeger'
+          static_configs:
+            - targets: ['monitoring-jaeger:14269']
+
+  # AlertManager - simplified for home use
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      retention: 120h
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes: ['ReadWriteOnce']
+            resources:
+              requests:
+                storage: 2Gi
+
+  # Node Exporter - for host metrics
+  nodeExporter:
+    enabled: true
+
+  # kube-state-metrics - for k8s object metrics
+  kubeStateMetrics:
+    enabled: true
+
+# Fluent Bit Configuration - for log collection
+fluent-bit:
+  enabled: true
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  # Configure to send logs to OTEL collector
+  config:
+    outputs: |
+      [OUTPUT]
+          Name opentelemetry
+          Match *
+          Host otel-collector
+          Port 4318
+          Metrics_uri /v1/metrics
+          Logs_uri /v1/logs
+          Traces_uri /v1/traces
+          Log_response_payload True
+    filters: |
+      [FILTER]
+          Name kubernetes
+          Match kube.*
+          Merge_Log On
+          Keep_Log Off
+          K8S-Logging.Parser On
+          K8S-Logging.Exclude On

@@ -1,0 +1,99 @@
+{{- if .Values.opentelemetryCollector.enabled }}
+# Auto-instrumentation for Node.js applications
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: nodejs-instrumentation
+  namespace: {{ .Release.Namespace }}
+spec:
+  # Configure auto-instrumentation for different runtimes
+  exporter:
+    endpoint: http://otel-collector:4318
+  
+  # Node.js auto-instrumentation
+  nodejs:
+    image: otel/autoinstrumentation-nodejs:0.45.0
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector:4318
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: deployment.environment=home-lab
+      - name: OTEL_SERVICE_NAME
+        value: ""  # Will be overridden by pod annotation
+      - name: OTEL_LOG_LEVEL
+        value: info
+  
+  # Python auto-instrumentation (for future use)
+  python:
+    image: otel/autoinstrumentation-python:0.41b0
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-collector:4318
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: deployment.environment=home-lab
+
+---
+# Sample ConfigMap showing how to instrument your apps
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: instrumentation-guide
+  namespace: {{ .Release.Namespace }}
+data:
+  README.md: |
+    # How to Instrument Your Applications
+    
+    ## Automatic Instrumentation (Easiest)
+    Add this annotation to your application's Deployment:
+    ```
+    instrumentation.opentelemetry.io/inject-nodejs: "monitoring/nodejs-instrumentation"
+    ```
+    
+    ## Manual Instrumentation (More Control)
+    
+    ### For Node.js/TypeScript apps:
+    1. Install dependencies:
+    ```bash
+    npm install @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node
+    ```
+    
+    2. Add this to your main.ts before other imports:
+    ```typescript
+    import { NodeSDK } from '@opentelemetry/sdk-node';
+    import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+    import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-http';
+    import { OTLPMetricExporter } from '@opentelemetry/exporter-otlp-http';
+    import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+    
+    const sdk = new NodeSDK({
+      traceExporter: new OTLPTraceExporter({
+        url: 'http://otel-collector:4318/v1/traces',
+      }),
+      metricReader: new PeriodicExportingMetricReader({
+        exporter: new OTLPMetricExporter({
+          url: 'http://otel-collector:4318/v1/metrics',
+        }),
+        exportIntervalMillis: 1000,
+      }),
+      instrumentations: [getNodeAutoInstrumentations()],
+    });
+    
+    sdk.start();
+    ```
+    
+    ## Environment Variables for Manual Setup:
+    ```
+    OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    OTEL_SERVICE_NAME=your-service-name
+    OTEL_RESOURCE_ATTRIBUTES=deployment.environment=home-lab
+    ```
+    
+    ## Testing Your Integration:
+    1. Check Jaeger UI: http://your-cluster-ip:30686
+    2. Check Grafana: http://your-cluster-ip:30300 (admin/admin123)
+    3. Look for traces and metrics in the dashboards
+{{- end }}
