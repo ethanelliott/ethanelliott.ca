@@ -1,12 +1,9 @@
 apiVersion: v2
 name: landing-page
-description: My application chart
+description: Landing page application chart
 type: application
 
 version: 0.0.1
 appVersion: '0.0.1'
 
-dependencies:
-  - name: nginx
-    version: '15.1.1'
-    repository: 'https://charts.bitnami.com/bitnami'
+dependencies: []

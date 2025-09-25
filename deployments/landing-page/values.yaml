@@ -1,15 +1,36 @@
-nginx:
-  replicaCount: 1
+replicaCount: 1
 
-  service:
-    type: ClusterIP
+image:
+  repository: ethanelliottio/landing
+  tag: latest
+  pullPolicy: Always
 
-  ingress:
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: 'nginx'
+  annotations:
+    kubernetes.io/ingress.class: 'nginx'
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+  hostname: 'elliott.haus'
+  tls:
     enabled: true
-    className: 'nginx'
-    annotations:
-      kubernetes.io/ingress.class: 'nginx'
-    hostname: 'elliott.haus'
-    tls:
-      enabled: true
-      secretName: 'elliott-haus-wildcard-tls'
+    secretName: 'elliott-haus-wildcard-tls'
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+
+# ConfigMap for nginx configuration
+configMap:
+  enabled: true
+  name: landing-page-nginx-config
+  mountPath: /etc/nginx/conf.d/default.conf
+  subPath: nginx.conf
