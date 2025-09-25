@@ -23,7 +23,7 @@ data:
             "targets": [
               {
                 "expr": "rate(otelcol_receiver_accepted_metric_points_total[5m])",
-                "legendFormat": "{{receiver}}"
+                "legendFormat": "{{`{{receiver}}`}}"
               }
             ],
             "fieldConfig": {
@@ -40,7 +40,7 @@ data:
             "targets": [
               {
                 "expr": "rate(otelcol_receiver_accepted_spans_total[5m])",
-                "legendFormat": "{{receiver}}"
+                "legendFormat": "{{`{{receiver}}`}}"
               }
             ],
             "fieldConfig": {
@@ -114,7 +114,7 @@ data:
             "targets": [
               {
                 "expr": "count(kube_pod_info) by (namespace)",
-                "legendFormat": "{{namespace}}"
+                "legendFormat": "{{`{{namespace}}`}}"
               }
             ],
             "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
