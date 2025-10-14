@@ -19,7 +19,6 @@ statping:
     hosts:
       - host: statping.elliott.haus
     tls:
-      enabled: true
       secretName: 'elliott-haus-wildcard-tls'
   resources:
     limits:
@@ -28,7 +27,6 @@ statping:
     requests:
       cpu: 100m
       memory: 128Mi
-
   application:
     enable:
       environment: true
@@ -40,3 +38,8 @@ statping:
     logs:
       ignore:
         ping: false
+
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    storageClassName: 'local-path'
