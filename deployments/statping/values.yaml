@@ -18,13 +18,9 @@ statping:
       nginx.ingress.kubernetes.io/ssl-redirect: 'true'
     hosts:
       - host: statping.elliott.haus
-        paths:
-          - /
     tls:
-      - secretName: 'elliott-haus-wildcard-tls'
-        hosts:
-          - statping.elliott.haus
-
+      enabled: true
+      secretName: 'elliott-haus-wildcard-tls'
   resources:
     limits:
       cpu: 200m
@@ -32,11 +28,6 @@ statping:
     requests:
       cpu: 100m
       memory: 128Mi
-
-  env: {}
-
-  debugMode: 1
-  disableColors: true
 
   application:
     enable:
@@ -49,10 +40,3 @@ statping:
     logs:
       ignore:
         ping: false
-
-  persistence:
-    enabled: true
-    size: 1Gi
-
-  nodeSelector: {}
-  tolerations: []
