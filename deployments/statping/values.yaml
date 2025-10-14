@@ -1,0 +1,61 @@
+statping:
+  replicaCount: 1
+
+  image:
+    repository: statping/statping
+    tag: v0.93.0
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  ingress:
+    enabled: true
+    className: 'nginx'
+    annotations:
+      kubernetes.io/ingress.class: 'nginx'
+      nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    hosts:
+      - host: statping.elliott.haus
+        paths:
+          - /
+    tls:
+      - secretName: 'elliott-haus-wildcard-tls'
+        hosts:
+          - statping.elliott.haus
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  env: {}
+
+  debugMode: 1
+  disableColors: true
+
+  application:
+    enable:
+      environment: true
+      file: true
+      header: true
+      host: true
+      http: true
+      request: true
+    logs:
+      ignore:
+        ping: false
+
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClassName: '' # set to your storage class if needed
+    accessModes:
+      - ReadWriteOnce
+
+  nodeSelector: {}
+  tolerations: []

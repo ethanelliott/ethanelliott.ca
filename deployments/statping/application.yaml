@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: statping
+  namespace: default
+spec:
+  project: home
+  source:
+    repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
+    path: deployments/statping
+    targetRevision: main
+    helm:
+      releaseName: statping
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated: {}
