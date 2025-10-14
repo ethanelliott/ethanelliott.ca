@@ -3,7 +3,6 @@ statping:
 
   image:
     repository: statping/statping
-    tag: v0.93.0
     pullPolicy: Always
 
   service:
