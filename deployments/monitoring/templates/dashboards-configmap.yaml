@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: List
+items:
+{{- range $index, $file := .Values.dashboards }}
+{{- $path := printf "dashboards/%s" $file -}}
+{{- if not ($.Files.Exists $path) }}
+{{- fail (printf "dashboard file %s not found" $path) -}}
+{{- end }}
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: {{ include "monitoring.dashboardConfigMapName" (dict "file" $file "context" $) }}
+      labels:
+        {{- include "monitoring.labels" $ | nindent 8 }}
+        grafana_dashboard: "true"
+      annotations:
+        grafanaFolder: cluster
+        dashboards.monitoring.elliott.haus/origin: "git"
+        dashboards.monitoring.elliott.haus/file: {{ $file | quote }}
+    data:
+      {{ $file }}: |
+{{ $.Files.Get $path | indent 8 }}
+{{- end }}
