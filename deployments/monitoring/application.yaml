@@ -20,3 +20,5 @@ spec:
     namespace: default
   syncPolicy:
     automated: {}
+    syncOptions:
+      - ServerSideApply=true
