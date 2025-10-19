@@ -20,4 +20,3 @@ data:
   {{ $file }}: |
 {{ $content | indent 4 }}
 {{- end }}
-{{ $content | indent 8 }}
