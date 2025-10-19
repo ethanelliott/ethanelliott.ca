@@ -3,9 +3,11 @@ kind: List
 items:
 {{- range $index, $file := .Values.dashboards }}
 {{- $path := printf "dashboards/%s" $file -}}
-{{- if not ($.Files.Exists $path) }}
+{{- $matches := $.Files.Glob $path -}}
+{{- if not $matches }}
 {{- fail (printf "dashboard file %s not found" $path) -}}
 {{- end }}
+{{- $content := $.Files.Get $path -}}
   - apiVersion: v1
     kind: ConfigMap
     metadata:
@@ -19,5 +21,5 @@ items:
         dashboards.monitoring.elliott.haus/file: {{ $file | quote }}
     data:
       {{ $file }}: |
-{{ $.Files.Get $path | indent 8 }}
+{{ $content | indent 8 }}
 {{- end }}

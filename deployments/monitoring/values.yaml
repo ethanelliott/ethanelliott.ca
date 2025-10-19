@@ -38,7 +38,7 @@ prometheus:
           resources:
             requests:
               storage: 20Gi
-    additionalScrapeConfigs:
+    additionalScrapeConfigsSecret:
       name: monitoring-additional-scrape-config
       key: scrape-config.yaml
 
@@ -127,7 +127,6 @@ grafana:
       folder: cluster
     datasources:
       enabled: true
-
   serviceMonitor:
     enabled: true
     selfMonitor: true
@@ -155,7 +154,7 @@ dashboards:
   - test-server-overview.json
 podMonitors: []
 
-additionalScrapeConfigs:
+additionalScrapeConfigsSecret:
   create: true
   name: monitoring-additional-scrape-config
   key: scrape-config.yaml
