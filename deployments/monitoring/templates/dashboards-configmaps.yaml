@@ -2,6 +2,10 @@
 {{- $labelValue := default "1" .Values.dashboardLabelValue -}}
 {{- $dashboards := .Files.Glob "dashboards/*.json" -}}
 {{- if $dashboards }}
+{{- $dashboardPaths := list -}}
+{{- range $path, $_ := $dashboards }}
+{{- $dashboardPaths = append $dashboardPaths $path -}}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,8 +14,8 @@ metadata:
     {{- include "monitoring.labels" . | nindent 4 }}
     {{ $labelKey }}: {{ $labelValue | quote }}
 data:
-{{- range $path, $content := $dashboards }}
+{{- range $path := sortAlpha $dashboardPaths }}
   {{ base $path }}: |
-{{ $content | indent 4 }}
+{{ printf "%s" (index $dashboards $path) | indent 4 }}
 {{- end }}
 {{- end }}
