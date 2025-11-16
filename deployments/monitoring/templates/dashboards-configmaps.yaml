@@ -1,7 +1,21 @@
 {{- $root := . -}}
-{{- $dashboardLabelKey := default "grafana_dashboard" (dig "kube-prometheus-stack" "grafana" "sidecar" "dashboards" "label" $root.Values) -}}
-{{- $dashboardLabelValue := default "1" (dig "kube-prometheus-stack" "grafana" "sidecar" "dashboards" "labelValue" $root.Values) -}}
-{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+{{- $dashboardConfig := dict -}}
+{{- with .Values.kube-prometheus-stack -}}
+  {{- with .grafana -}}
+    {{- with .sidecar -}}
+      {{- with .dashboards -}}
+        {{- $dashboardConfig = . -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $dashboardLabelKey := default "grafana_dashboard" (get $dashboardConfig "label") -}}
+{{- $dashboardLabelValue := default "1" (get $dashboardConfig "labelValue") -}}
+{{- $paths := list -}}
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" -}}
+  {{- $paths = append $paths $path -}}
+{{- end -}}
+{{- range $path := sortAlpha $paths }}
 ---
 {{- $basename := trimSuffix ".json" (base $path) }}
 {{- $sanitized := regexReplaceAll "[^a-z0-9-]" "-" (lower $basename) }}
