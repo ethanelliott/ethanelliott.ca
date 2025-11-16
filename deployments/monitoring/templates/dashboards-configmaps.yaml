@@ -1,12 +1,8 @@
-{{- $root := . }}
-{{- $files := sortAlpha (keys (.Files.Glob "dashboards/*.json")) }}
-{{- if $files }}
-{{- $dashboardLabelKey := default "grafana_dashboard" (dig "kube-prometheus-stack" "grafana" "sidecar" "dashboards" "label" $root.Values) }}
-{{- $dashboardLabelValue := default "1" (dig "kube-prometheus-stack" "grafana" "sidecar" "dashboards" "labelValue" $root.Values) }}
-{{- range $index, $path := $files }}
-{{- if gt $index 0 }}
+{{- $root := . -}}
+{{- $dashboardLabelKey := default "grafana_dashboard" (dig "kube-prometheus-stack" "grafana" "sidecar" "dashboards" "label" $root.Values) -}}
+{{- $dashboardLabelValue := default "1" (dig "kube-prometheus-stack" "grafana" "sidecar" "dashboards" "labelValue" $root.Values) -}}
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
 ---
-{{- end }}
 {{- $basename := trimSuffix ".json" (base $path) }}
 {{- $sanitized := regexReplaceAll "[^a-z0-9-]" "-" (lower $basename) }}
 {{- $configMapName := printf "%s-dashboard-%s" (include "monitoring.fullname" $root) $sanitized | trunc 63 | trimSuffix "-" }}
@@ -20,5 +16,4 @@ metadata:
 data:
   {{ base $path }}: |
 {{ $root.Files.Get $path | indent 4 }}
-{{- end }}
 {{- end }}
