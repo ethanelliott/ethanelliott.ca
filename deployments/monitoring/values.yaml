@@ -1,0 +1,70 @@
+ingress:
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: admin
+  ingress:
+    enabled: true
+    annotations: {}
+    ingressClassName: nginx
+    hosts:
+      - grafana.elliott.haus
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.elliott.haus
+  persistence:
+    enabled: true
+    size: 5Gi
+    type: pvc
+    accessModes:
+      - ReadWriteOnce
+    finalizers:
+      - kubernetes.io/pvc-protection
+  resources: {}
+  defaultDashboardsEnabled: true
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ['ReadWriteOnce']
+          resources:
+            requests:
+              storage: 10Gi
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+
+alertmanager:
+  enabled: false
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+## Reduce footprint for personal cluster
+defaultRules:
+  create: true
+  rules:
+    alertmanager: false
+    etcd: false
+    kubeScheduler: false
+    kubeControllerManager: false
+    windows: false
+
+## Disable components you might not need
+prometheusOperator:
+  admissionWebhooks:
+    enabled: true
+  resources: {}
+## Extra dashboards can be added via sidecar label matching; rely on defaults for now.

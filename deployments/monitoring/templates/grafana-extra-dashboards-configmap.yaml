@@ -1,0 +1,27 @@
+{{- /* Example extra dashboards; extend as needed */ -}}
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "monitoring.fullname" . }}-grafana-dashboards
+  labels:
+    {{- include "monitoring.grafana.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+    {{- /* sidecar in kube-prometheus-stack picks up grafana_dashboard label */ -}}
+{{- $datasource := .Values.grafana.datasource | default "Prometheus" -}}
+data:
+  kubernetes-cluster.json: |
+    {
+      "title": "Kubernetes Cluster Overview",
+      "panels": [
+        {"type": "stat", "title": "Nodes", "datasource": "${DS_PROMETHEUS}", "targets": [{"expr": "count(kube_node_info)"}]},
+        {"type": "stat", "title": "Pods", "datasource": "${DS_PROMETHEUS}", "targets": [{"expr": "count(kube_pod_info)"}]},
+        {"type": "graph", "title": "CPU Usage", "datasource": "${DS_PROMETHEUS}", "targets": [{"expr": "sum(rate(node_cpu_seconds_total{mode!='idle'}[5m]))"}]},
+        {"type": "graph", "title": "Memory Usage", "datasource": "${DS_PROMETHEUS}", "targets": [{"expr": "sum(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)"}]}
+      ],
+      "templating": {"list": []},
+      "schemaVersion": 16,
+      "version": 1,
+      "datasource": "${DS_PROMETHEUS}"
+    }
+{{- end }}
