@@ -1,4 +1,7 @@
 # Configuration for kube-prometheus-stack dependency
+dashboardLabelKey: &monitoring_dashboard_label grafana_dashboard
+dashboardLabelValue: &monitoring_dashboard_label_value '1'
+
 kube-prometheus-stack:
   grafana:
     enabled: true
@@ -27,8 +30,8 @@ kube-prometheus-stack:
     sidecar:
       dashboards:
         enabled: true
-        label: grafana_dashboard
-        labelValue: '1'
+        label: *monitoring_dashboard_label
+        labelValue: *monitoring_dashboard_label_value
         folder: /tmp/dashboards/Kubernetes
         provider:
           folder: Kubernetes

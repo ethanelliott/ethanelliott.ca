@@ -1,33 +1,17 @@
-{{- $root := . -}}
-{{- $dashboardConfig := dict -}}
-{{- with .Values.kube-prometheus-stack -}}
-  {{- with .grafana -}}
-    {{- with .sidecar -}}
-      {{- with .dashboards -}}
-        {{- $dashboardConfig = . -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-{{- end -}}
-{{- $dashboardLabelKey := default "grafana_dashboard" (get $dashboardConfig "label") -}}
-{{- $dashboardLabelValue := default "1" (get $dashboardConfig "labelValue") -}}
-{{- $paths := list -}}
-{{- range $path, $_ := .Files.Glob "dashboards/*.json" -}}
-  {{- $paths = append $paths $path -}}
-{{- end -}}
-{{- range $path := sortAlpha $paths }}
----
-{{- $basename := trimSuffix ".json" (base $path) }}
-{{- $sanitized := regexReplaceAll "[^a-z0-9-]" "-" (lower $basename) }}
-{{- $configMapName := printf "%s-dashboard-%s" (include "monitoring.fullname" $root) $sanitized | trunc 63 | trimSuffix "-" }}
+{{- $labelKey := default "grafana_dashboard" .Values.dashboardLabelKey -}}
+{{- $labelValue := default "1" .Values.dashboardLabelValue -}}
+{{- $dashboards := .Files.Glob "dashboards/*.json" -}}
+{{- if $dashboards }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $configMapName }}
+  name: {{ include "monitoring.fullname" . }}-dashboards
   labels:
-    {{- include "monitoring.labels" $root | nindent 4 }}
-    {{ $dashboardLabelKey }}: {{ $dashboardLabelValue | quote }}
+    {{- include "monitoring.labels" . | nindent 4 }}
+    {{ $labelKey }}: {{ $labelValue | quote }}
 data:
+{{- range $path, $content := $dashboards }}
   {{ base $path }}: |
-{{ $root.Files.Get $path | indent 4 }}
+{{ $content | indent 4 }}
+{{- end }}
 {{- end }}
