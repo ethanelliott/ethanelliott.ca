@@ -98,5 +98,7 @@ kube-prometheus-stack:
   ## Disable components you might not need
   prometheusOperator:
     admissionWebhooks:
-      enabled: true
+      enabled: false
+      patch:
+        enabled: false
     resources: {}
