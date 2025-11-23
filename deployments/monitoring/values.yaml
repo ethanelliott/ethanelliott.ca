@@ -7,7 +7,7 @@ kube-prometheus-stack:
     enabled: false
   kubeScheduler:
     enabled: false
-  
+
   # Core Components
   prometheus:
     prometheusSpec:
@@ -24,7 +24,7 @@ kube-prometheus-stack:
       storageSpec:
         volumeClaimTemplate:
           spec:
-            accessModes: ["ReadWriteOnce"]
+            accessModes: ['ReadWriteOnce']
             resources:
               requests:
                 storage: 10Gi
@@ -32,7 +32,7 @@ kube-prometheus-stack:
       serviceMonitorSelectorNilUsesHelmValues: false
       serviceMonitorSelector: {}
       serviceMonitorNamespaceSelector: {}
-      
+
       # Allow discovering PodMonitors from all namespaces
       podMonitorSelectorNilUsesHelmValues: false
       podMonitorSelector: {}
@@ -43,18 +43,18 @@ kube-prometheus-stack:
 
   grafana:
     enabled: true
-    adminPassword: "admin" # Change this on first login or use a secret
+    adminPassword: 'admin' # Change this on first login or use a secret
     sidecar:
       dashboards:
         enabled: true
         label: grafana_dashboard
-        labelValue: "1"
+        labelValue: '1'
         searchNamespace: ALL
     # Persistence for Grafana (dashboards/users/settings)
     persistence:
       enabled: true
       size: 2Gi
-      accessModes: ["ReadWriteOnce"]
+      accessModes: ['ReadWriteOnce']
 
   nodeExporter:
     enabled: true
