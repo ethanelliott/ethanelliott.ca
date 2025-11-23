@@ -3,6 +3,14 @@ dashboardLabelKey: &monitoring_dashboard_label grafana_dashboard
 dashboardLabelValue: &monitoring_dashboard_label_value '1'
 
 kube-prometheus-stack:
+  # K3s specific: Disable monitoring of control plane components that are not exposed or managed by k3s differently
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  etcd:
+    enabled: false
+
   grafana:
     enabled: true
     adminUser: admin
@@ -55,6 +63,18 @@ kube-prometheus-stack:
                 storage: 10Gi
       scrapeInterval: 15s
       evaluationInterval: 15s
+      # Allow selecting ServiceMonitors from all namespaces
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector: {}
+      # Allow selecting PodMonitors from all namespaces
+      podMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelector: {}
+      podMonitorNamespaceSelector: {}
+      # Allow selecting Rules from all namespaces
+      ruleSelectorNilUsesHelmValues: false
+      ruleSelector: {}
+      ruleNamespaceSelector: {}
 
   alertmanager:
     enabled: false

@@ -1,9 +1,9 @@
 apiVersion: v2
 name: monitoring
 description: Monitoring stack using kube-prometheus-stack for k3s cluster
-version: 0.1.0
+version: 0.2.0
 type: application
-appVersion: '0.1.0'
+appVersion: '0.2.0'
 
 dependencies:
   - name: kube-prometheus-stack
