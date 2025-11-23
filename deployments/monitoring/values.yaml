@@ -1,0 +1,70 @@
+# kube-prometheus-stack values
+kube-prometheus-stack:
+  # K3s Compatibility: Disable monitoring of components not exposed by default in k3s
+  kubeEtcd:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  
+  # Core Components
+  prometheus:
+    prometheusSpec:
+      # Reduce retention to save space
+      retention: 7d
+      # Resource limits for a lightweight setup
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+      # Allow discovering ServiceMonitors from all namespaces
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector: {}
+      
+      # Allow discovering PodMonitors from all namespaces
+      podMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelector: {}
+      podMonitorNamespaceSelector: {}
+
+  alertmanager:
+    enabled: false # Disable Alertmanager to save resources if not strictly needed (user asked for insight, not alerting)
+
+  grafana:
+    enabled: true
+    adminPassword: "admin" # Change this on first login or use a secret
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: ALL
+    # Persistence for Grafana (dashboards/users/settings)
+    persistence:
+      enabled: true
+      size: 2Gi
+      accessModes: ["ReadWriteOnce"]
+
+  nodeExporter:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true
+
+  prometheusOperator:
+    # Fix for potential webhook issues in some k3s setups
+    admissionWebhooks:
+      enabled: false
+      patch:
+        enabled: false
