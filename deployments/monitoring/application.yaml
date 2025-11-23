@@ -13,6 +13,7 @@ spec:
     targetRevision: main
     helm:
       releaseName: monitoring
+      dependencyUpdate: true
       valueFiles:
         - values.yaml
   destination:

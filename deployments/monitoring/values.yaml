@@ -43,7 +43,11 @@ kube-prometheus-stack:
 
   grafana:
     enabled: true
-    adminPassword: 'admin' # Change this on first login or use a secret
+    adminUser: admin
+    admin:
+      existingSecret: monitoring-grafana-admin
+      userKey: admin-user
+      passwordKey: admin-password
     sidecar:
       dashboards:
         enabled: true
