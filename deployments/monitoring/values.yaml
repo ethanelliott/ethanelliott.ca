@@ -48,12 +48,7 @@ kube-prometheus-stack:
       existingSecret: monitoring-grafana-admin
       userKey: admin-user
       passwordKey: admin-password
-    sidecar:
-      dashboards:
-        enabled: true
-        label: grafana_dashboard
-        labelValue: '1'
-        searchNamespace: ALL
+
     # Persistence for Grafana (dashboards/users/settings)
     persistence:
       enabled: true

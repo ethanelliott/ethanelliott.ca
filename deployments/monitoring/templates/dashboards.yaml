@@ -1,17 +1,1 @@
-{{- $files := .Files.Glob "dashboards/*.json" }}
-{{- range $path, $fileContents := $files }}
-{{- $dashboardName := regexReplaceAll "(^.*/)(.*)\\.json$" $path "${2}" }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: dashboard-{{ $dashboardName | lower | replace "_" "-" }}
-  namespace: {{ $.Release.Namespace }}
-  labels:
-    grafana_dashboard: "1"
-    app.kubernetes.io/name: {{ include "monitoring.name" $ }}
-    app.kubernetes.io/instance: {{ $.Release.Name }}
-data:
-  {{ $dashboardName }}.json: |
-{{ $.Files.Get $path | indent 4 }}
-{{- end }}
+# Dashboards intentionally not rendered; dashboards will be imported manually.
