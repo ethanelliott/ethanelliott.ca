@@ -79,6 +79,13 @@
           <br />
           <small class="discontinued-badge">Discontinued</small>
           <% } %>
+          
+          <div style="margin-top: 10px;">
+            <button onclick="toggleChart('<%= v.id %>')" style="font-size: 0.8em; cursor: pointer; padding: 2px 5px;">Show Price History</button>
+            <div id="chart-container-<%= v.id %>" style="display: none; margin-top: 10px; height: 200px;">
+              <canvas id="chart-<%= v.id %>"></canvas>
+            </div>
+          </div>
         </div>
         <% }); %>
       </div>
@@ -100,5 +107,63 @@
       <p>No images available</p>
       <% } %>
     </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      const charts = {};
+
+      async function toggleChart(variantId) {
+        const container = document.getElementById(`chart-container-${variantId}`);
+        const isVisible = container.style.display !== 'none';
+        
+        if (isVisible) {
+          container.style.display = 'none';
+          return;
+        }
+        
+        container.style.display = 'block';
+        
+        if (charts[variantId]) {
+          return; // Chart already created
+        }
+
+        try {
+          const response = await fetch(`/api/history/${variantId}`);
+          const data = await response.json();
+          
+          const ctx = document.getElementById(`chart-${variantId}`).getContext('2d');
+          
+          charts[variantId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: data.map(d => new Date(d.timestamp).toLocaleDateString()),
+              datasets: [{
+                label: 'Price',
+                data: data.map(d => d.price),
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: false,
+                  ticks: {
+                    callback: function(value) {
+                      return '$' + value;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        } catch (error) {
+          console.error('Error loading chart data:', error);
+          container.innerHTML = '<p>Error loading price history</p>';
+        }
+      }
+    </script>
   </body>
 </html>

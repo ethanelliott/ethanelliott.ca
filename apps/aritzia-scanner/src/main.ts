@@ -147,6 +147,24 @@ async function main() {
     }
   });
 
+  app.get('/api/history/:variant_id', async (req, res) => {
+    const variantId = req.params.variant_id;
+    const db = getDB();
+
+    const history = await allPromise.call(
+      db,
+      `
+      SELECT price, timestamp
+      FROM prices
+      WHERE variant_id = ?
+      ORDER BY timestamp ASC
+      `,
+      [variantId]
+    );
+
+    res.json(history);
+  });
+
   app.get('/sale', async (req, res) => {
     const db = getDB();
     const lastScanRow = await getPromise.call(
