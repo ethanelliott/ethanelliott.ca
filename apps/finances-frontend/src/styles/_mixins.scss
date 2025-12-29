@@ -3,8 +3,6 @@
 
 // ===== LAYOUT MIXINS =====
 @mixin dashboard-container {
-  padding: var(--spacing-lg);
-  background: var(--gradient-surface);
   width: 100%;
   box-sizing: border-box;
 }
