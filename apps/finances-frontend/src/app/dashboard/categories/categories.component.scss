@@ -68,7 +68,7 @@
 
   .analytics-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 2fr minmax(300px, 1fr);
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
 

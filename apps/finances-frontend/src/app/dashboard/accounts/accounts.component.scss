@@ -45,67 +45,85 @@
 
   .summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
 
     .summary-card {
       @include dashboard-card;
-      padding: var(--spacing-lg);
+      padding: var(--spacing-xl);
       background: linear-gradient(
         135deg,
-        rgba(var(--mat-sys-primary-rgb), 0.1) 0%,
-        rgba(var(--mat-sys-secondary-rgb), 0.1) 100%
+        rgba(var(--mat-sys-primary-rgb), 0.15) 0%,
+        rgba(var(--mat-sys-secondary-rgb), 0.05) 100%
       );
+      border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 200px;
+        background: radial-gradient(
+          circle,
+          rgba(var(--mat-sys-primary-rgb), 0.1),
+          transparent
+        );
+        pointer-events: none;
+      }
 
       &.total-balance {
         mat-card-header {
           display: flex;
           align-items: center;
-          gap: var(--spacing-md);
-          margin-bottom: var(--spacing-md);
+          gap: var(--spacing-lg);
+          margin-bottom: var(--spacing-lg);
 
           .summary-icon {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 56px;
-            height: 56px;
+            width: 64px;
+            height: 64px;
             background: var(--mat-sys-primary);
-            border-radius: var(--border-radius-lg);
-            box-shadow: var(--surface-elevation-2);
+            border-radius: var(--border-radius-xl);
+            box-shadow: 0 8px 24px rgba(var(--mat-sys-primary-rgb), 0.3);
 
             mat-icon {
               color: var(--mat-sys-on-primary);
-              font-size: 1.8rem;
-              width: 1.8rem;
-              height: 1.8rem;
+              font-size: 2rem;
+              width: 2rem;
+              height: 2rem;
             }
           }
 
           .summary-info {
             mat-card-title {
-              font-size: 1.2rem;
+              font-size: 1.3rem;
               font-weight: 700;
               margin: 0;
               color: var(--mat-sys-on-surface);
             }
 
             mat-card-subtitle {
-              font-size: 0.9rem;
+              font-size: 0.95rem;
               color: var(--mat-sys-on-surface-variant);
-              opacity: 0.8;
+              opacity: 0.9;
               margin: 4px 0 0 0;
             }
           }
         }
 
         .summary-value {
-          font-size: 2.5rem;
-          font-weight: 800;
+          font-size: 2.8rem;
+          font-weight: 900;
           color: var(--mat-sys-primary);
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-          letter-spacing: -0.02em;
+          text-shadow: 0 2px 8px rgba(var(--mat-sys-primary-rgb), 0.2);
+          letter-spacing: -0.03em;
         }
       }
     }
@@ -146,8 +164,8 @@
 
   .accounts-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: var(--spacing-lg);
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: var(--spacing-xl);
 
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
@@ -157,34 +175,39 @@
       @include dashboard-card;
       padding: 0;
       overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
       &:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--surface-elevation-3);
-        border-color: var(--mat-sys-primary);
+        transform: translateY(-6px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+        border-color: rgba(var(--mat-sys-primary-rgb), 0.5);
       }
 
       mat-card-header {
-        background: rgba(255, 255, 255, 0.03);
-        padding: var(--spacing-lg);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.04);
+        padding: var(--spacing-xl);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
         .account-avatar {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 48px;
-          height: 48px;
-          background: var(--mat-sys-primary);
-          border-radius: var(--border-radius-md);
-          margin-right: var(--spacing-md);
-          box-shadow: var(--surface-elevation-1);
+          width: 56px;
+          height: 56px;
+          background: linear-gradient(
+            135deg,
+            var(--mat-sys-primary),
+            var(--mat-sys-tertiary)
+          );
+          border-radius: var(--border-radius-lg);
+          margin-right: var(--spacing-lg);
+          box-shadow: 0 6px 16px rgba(var(--mat-sys-primary-rgb), 0.3);
 
           mat-icon {
             color: var(--mat-sys-on-primary);
-            font-size: 1.5rem;
-            width: 1.5rem;
-            height: 1.5rem;
+            font-size: 1.75rem;
+            width: 1.75rem;
+            height: 1.75rem;
           }
         }
 
@@ -192,17 +215,22 @@
           flex: 1;
 
           .account-name {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 700;
-            margin: 0 0 4px 0;
+            margin: 0 0 6px 0;
             color: var(--mat-sys-on-surface);
+            letter-spacing: -0.01em;
           }
 
           .account-currency {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: var(--mat-sys-primary);
-            font-weight: 600;
+            font-weight: 700;
             margin: 0;
+            padding: 4px 12px;
+            background: rgba(var(--mat-sys-primary-rgb), 0.15);
+            border-radius: var(--border-radius-md);
+            display: inline-block;
           }
         }
 

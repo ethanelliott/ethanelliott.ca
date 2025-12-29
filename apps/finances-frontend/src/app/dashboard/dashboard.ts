@@ -196,33 +196,37 @@ import { map } from 'rxjs/operators';
     }
 
     .sidenav-header {
-      padding: var(--spacing-lg) var(--spacing-md);
+      padding: var(--spacing-xl) var(--spacing-lg);
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .logo-container {
       display: flex;
       align-items: center;
-      gap: var(--spacing-sm);
+      gap: var(--spacing-md);
     }
 
     .logo-icon {
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
+      font-size: 40px;
+      width: 40px;
+      height: 40px;
       color: var(--mat-sys-primary);
+      filter: drop-shadow(0 4px 12px rgba(var(--mat-sys-primary-rgb), 0.4));
+      flex-shrink: 0;
     }
 
     .logo-text {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      background: linear-gradient(to right, var(--mat-sys-primary), var(--mat-sys-tertiary));
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--mat-sys-primary), var(--mat-sys-tertiary));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      text-shadow: 0 2px 12px rgba(var(--mat-sys-primary-rgb), 0.2);
     }
 
     .nav-list {
@@ -231,15 +235,34 @@ import { map } from 'rxjs/operators';
     }
 
     .nav-list a, .sidenav-footer a {
-      border-radius: 28px;
-      margin-bottom: 4px;
+      border-radius: 12px;
+      margin-bottom: 6px;
       color: var(--mat-sys-on-surface-variant);
-      transition: all 0.2s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .nav-list a::before, .sidenav-footer a::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 3px;
+      background: var(--mat-sys-primary);
+      transform: scaleY(0);
+      transition: transform 0.3s ease;
     }
     
     .nav-list a:hover, .sidenav-footer a:hover {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.05);
       color: var(--mat-sys-on-surface);
+      transform: translateX(4px);
+    }
+    
+    .nav-list a:hover::before, .sidenav-footer a:hover::before {
+      transform: scaleY(1);
     }
 
     .sidenav-wrapper {
@@ -281,13 +304,20 @@ import { map } from 'rxjs/operators';
     }
 
     .active-link {
-      background: linear-gradient(90deg, rgba(var(--mat-sys-primary-rgb), 0.15), rgba(var(--mat-sys-tertiary-rgb), 0.05)) !important;
+      background: linear-gradient(90deg, rgba(var(--mat-sys-primary-rgb), 0.2), rgba(var(--mat-sys-tertiary-rgb), 0.1)) !important;
       color: var(--mat-sys-primary) !important;
-      font-weight: 500;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(var(--mat-sys-primary-rgb), 0.15);
+      border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
+    }
+    
+    .active-link::before {
+      transform: scaleY(1) !important;
     }
 
     .active-link mat-icon {
       color: var(--mat-sys-primary) !important;
+      filter: drop-shadow(0 2px 4px rgba(var(--mat-sys-primary-rgb), 0.3));
     }
 
     .toolbar {

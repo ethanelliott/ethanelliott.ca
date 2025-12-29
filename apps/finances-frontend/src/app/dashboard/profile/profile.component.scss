@@ -52,8 +52,8 @@
   .profile-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-2xl);
+    margin-bottom: var(--spacing-2xl);
 
     @media (max-width: 1024px) {
       grid-template-columns: 1fr;
@@ -63,46 +63,54 @@
       @include dashboard-card;
       background: linear-gradient(
         135deg,
-        rgba(var(--mat-sys-primary-rgb), 0.1),
+        rgba(var(--mat-sys-primary-rgb), 0.12),
         rgba(var(--mat-sys-surface-rgb), 0.5)
       );
-      border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
+      border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.4);
+      box-shadow: 0 12px 40px rgba(var(--mat-sys-primary-rgb), 0.15);
 
       .profile-avatar {
-        width: 64px;
-        height: 64px;
-        background: var(--mat-sys-primary);
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(
+          135deg,
+          var(--mat-sys-primary),
+          var(--mat-sys-tertiary)
+        );
         color: var(--mat-sys-on-primary);
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        font-size: 1.5rem;
-        font-weight: 700;
-        box-shadow: 0 4px 12px rgba(var(--mat-sys-primary-rgb), 0.3);
+        font-size: 2rem;
+        font-weight: 800;
+        box-shadow: 0 8px 24px rgba(var(--mat-sys-primary-rgb), 0.4);
+        margin-bottom: var(--spacing-md);
       }
 
       .mat-mdc-card-title {
         color: var(--mat-sys-on-surface);
-        font-weight: 700;
-        font-size: 1.5rem;
+        font-weight: 800;
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
       }
 
       .mat-mdc-card-subtitle {
         color: var(--mat-sys-on-surface-variant);
-        opacity: 0.8;
-        font-weight: 500;
+        opacity: 0.9;
+        font-weight: 600;
+        font-size: 1rem;
       }
 
       .profile-details {
-        margin-top: var(--spacing-md);
+        margin-top: var(--spacing-lg);
 
         .detail-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: var(--spacing-sm) 0;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          padding: var(--spacing-md) 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
           &:last-child {
             border-bottom: none;
@@ -111,9 +119,9 @@
           .detail-label {
             display: flex;
             align-items: center;
-            gap: var(--spacing-xs);
+            gap: var(--spacing-sm);
             color: var(--mat-sys-on-surface-variant);
-            font-weight: 500;
+            font-weight: 600;
 
             mat-icon {
               color: var(--mat-sys-primary);
@@ -122,7 +130,7 @@
 
           .detail-value {
             color: var(--mat-sys-on-surface);
-            font-weight: 600;
+            font-weight: 700;
 
             &.user-id {
               font-family: 'Courier New', monospace;
@@ -142,7 +150,8 @@
           display: flex;
           align-items: center;
           gap: var(--spacing-sm);
-          font-weight: 600;
+          font-weight: 700;
+          font-size: 1.15rem;
           color: var(--mat-sys-on-surface);
 
           mat-icon {
@@ -158,7 +167,7 @@
       .stats-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: var(--spacing-md);
+        gap: var(--spacing-lg);
 
         @media (max-width: 640px) {
           grid-template-columns: 1fr;
@@ -168,28 +177,32 @@
           display: flex;
           align-items: flex-start;
           gap: var(--spacing-md);
-          padding: var(--spacing-md);
+          padding: var(--spacing-lg);
           @include glassmorphism(16px, 0.1);
           border-radius: var(--border-radius-lg);
-          transition: all 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
           &:hover {
-            background: rgba(255, 255, 255, 0.05);
-            transform: translateY(-1px);
-            border-color: var(--mat-sys-primary);
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+            border-color: rgba(var(--mat-sys-primary-rgb), 0.5);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
           }
 
           .stat-icon {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            background: rgba(var(--mat-sys-primary-rgb), 0.1);
+            background: rgba(var(--mat-sys-primary-rgb), 0.15);
 
             mat-icon {
               color: var(--mat-sys-primary);
+              font-size: 1.5rem;
+              width: 1.5rem;
+              height: 1.5rem;
             }
           }
 
@@ -200,10 +213,12 @@
               font-size: 0.875rem;
               color: var(--mat-sys-on-surface-variant);
               margin-bottom: var(--spacing-xs);
+              font-weight: 600;
             }
 
             .stat-value {
-              font-weight: 600;
+              font-weight: 700;
+              font-size: 1.1rem;
               color: var(--mat-sys-on-surface);
               margin-bottom: var(--spacing-xs);
 

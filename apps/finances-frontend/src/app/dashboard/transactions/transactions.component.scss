@@ -19,11 +19,16 @@
   @include dashboard-card;
   padding: 0;
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 
   mat-card-header {
-    padding: var(--spacing-lg);
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: var(--spacing-xl);
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.02)
+    );
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   mat-card-content {
@@ -40,21 +45,24 @@
     padding: var(--spacing-3xl) var(--spacing-xl);
 
     mat-icon {
-      font-size: 4rem;
-      width: 4rem;
-      height: 4rem;
+      font-size: 5rem;
+      width: 5rem;
+      height: 5rem;
+      opacity: 0.5;
+      color: var(--mat-sys-primary);
     }
 
     h3 {
-      font-size: 1.5rem;
+      font-size: 1.75rem;
       margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+      font-weight: 700;
     }
 
     p {
-      font-size: 1rem;
-      line-height: 1.6;
-      max-width: 400px;
-      margin: 0 auto var(--spacing-lg) auto;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      max-width: 480px;
+      margin: 0 auto var(--spacing-xl) auto;
     }
 
     .get-started-button {
@@ -115,45 +123,85 @@
 
 .summary-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
 
   .stat-card {
     @include dashboard-card;
-    padding: var(--spacing-lg);
+    padding: var(--spacing-xl);
     text-align: center;
-    border-left: 4px solid var(--mat-sys-primary);
+    border-left: 3px solid var(--mat-sys-primary);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(
+        90deg,
+        var(--mat-sys-primary),
+        var(--mat-sys-tertiary)
+      );
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    &:hover {
+      transform: translateY(-4px);
+      border-left-width: 4px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    &:hover::before {
+      opacity: 1;
+    }
 
     &.income {
       border-left-color: var(--success-color);
+
+      &::before {
+        background: var(--success-color);
+      }
     }
 
     &.expense {
       border-left-color: var(--error-color);
+
+      &::before {
+        background: var(--error-color);
+      }
     }
 
     .stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
+      font-size: 1.75rem;
+      font-weight: 800;
       color: var(--mat-sys-on-surface);
-      margin-bottom: var(--spacing-xs);
+      margin-bottom: var(--spacing-sm);
+      letter-spacing: -0.02em;
 
       &.income {
         color: var(--success-color);
+        text-shadow: 0 2px 8px rgba(var(--success-rgb), 0.2);
       }
 
       &.expense {
         color: var(--error-color);
+        text-shadow: 0 2px 8px rgba(var(--error-rgb), 0.2);
       }
     }
 
     .stat-label {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--mat-sys-on-surface-variant);
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
     }
   }
 }

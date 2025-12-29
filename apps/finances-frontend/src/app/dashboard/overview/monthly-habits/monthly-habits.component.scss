@@ -31,16 +31,28 @@
 
   .charts-row {
     @include analytics-grid;
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 2fr minmax(280px, 1fr) minmax(280px, 1fr);
+
+    @media (max-width: 1400px) {
+      grid-template-columns: repeat(2, minmax(300px, 1fr));
+    }
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    }
 
     &.secondary {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(300px, 1fr));
+
+      @media (max-width: 1024px) {
+        grid-template-columns: 1fr;
+      }
     }
   }
 
   .analytics-grid {
     @include analytics-grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   }
 
   .actions-row {

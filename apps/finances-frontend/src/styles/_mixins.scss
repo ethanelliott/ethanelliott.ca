@@ -213,6 +213,7 @@
 @mixin dashboard-card {
   @include base-card;
   @include glassmorphism(16px, 0.3);
+  overflow: hidden;
 
   .header {
     padding: var(--spacing-sm) var(--spacing-md);
@@ -223,12 +224,14 @@
       gap: var(--spacing-xs);
       font-size: 0.9rem;
       font-weight: 600;
+      min-width: 0;
 
       mat-icon {
         font-size: 16px;
         width: 16px;
         height: 16px;
         color: var(--mat-sys-primary);
+        flex-shrink: 0;
       }
     }
   }
@@ -242,11 +245,11 @@
 @mixin kpi-grid {
   .kpi-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: var(--spacing-md);
 
     @media (max-width: 1200px) {
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
 
     @media (max-width: 768px) {
@@ -258,10 +261,11 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md);
     @include glassmorphism(12px, 0.2);
     border-radius: var(--border-radius-md);
     transition: var(--transition-fast);
+    min-width: 0;
 
     &:hover {
       box-shadow: var(--surface-elevation-2);
@@ -321,6 +325,9 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .kpi-value {
@@ -328,12 +335,18 @@
         font-weight: 700;
         color: var(--mat-sys-on-surface);
         margin-bottom: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .kpi-detail {
         font-size: 0.7rem;
         color: var(--mat-sys-on-surface-variant);
         font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
     }
   }
@@ -578,8 +591,10 @@
 
   & > *:has(mat-card) {
     display: flex;
+    min-width: 0;
     mat-card {
       flex: 1;
+      min-width: 0;
     }
   }
 }
