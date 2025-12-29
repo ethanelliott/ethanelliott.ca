@@ -114,11 +114,7 @@
   "release": {
     "projects": ["apps/*"],
     "version": {
-      "conventionalCommits": true,
-      "generatorOptions": {
-        "currentVersionResolver": "git-tag",
-        "specifierSource": "conventional-commits"
-      }
+      "conventionalCommits": true
     },
     "changelog": {
       "workspaceChangelog": {
