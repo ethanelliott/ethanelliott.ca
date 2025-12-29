@@ -112,10 +112,18 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               id TEXT PRIMARY KEY,
               name TEXT,
               slug TEXT,
+              fabric TEXT,
               added_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               last_seen_at TEXT
           );
-      `);
+      `, async (err) => {
+        if (err) return reject(err);
+        try {
+          await addColumnIfNotExists(db, 'products', 'fabric', 'TEXT');
+        } catch (e) {
+          console.error('Error adding columns to products table:', e);
+        }
+      });
 
       // Table 2: Stores historical and current variant stock data
       db.run(

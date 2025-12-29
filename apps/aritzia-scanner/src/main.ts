@@ -70,7 +70,7 @@ async function main() {
     const product = await getPromise.call(
       db,
       `
-      SELECT id, name, slug
+      SELECT id, name, slug, fabric
       FROM products
       WHERE id = ?
   `,
@@ -294,7 +294,7 @@ async function main() {
     const product = await getPromise.call(
       db,
       `
-      SELECT id, name, slug, added_at, last_seen_at
+      SELECT id, name, slug, added_at, last_seen_at, fabric
       FROM products
       WHERE id = ?
   `,
@@ -380,6 +380,7 @@ async function main() {
     res.render('product', {
       product: {
         ...product,
+        fabric: product.fabric ? JSON.parse(product.fabric) : [],
         added_at_formatted: dayjs.utc(product.added_at).fromNow(),
         last_seen_at_formatted: dayjs.utc(product.last_seen_at).fromNow(),
         variants: Array.from(groupedVariants.values()),
@@ -394,7 +395,7 @@ async function main() {
 
     const product = await getPromise.call(
       db,
-      `SELECT id, name, slug FROM products WHERE id = ?`,
+      `SELECT id, name, slug, fabric FROM products WHERE id = ?`,
       [productId]
     );
 
@@ -474,7 +475,10 @@ async function main() {
     }
 
     res.render('variant', {
-      product,
+      product: {
+        ...product,
+        fabric: product.fabric ? JSON.parse(product.fabric) : [],
+      },
       color: variants[0].color,
       color_id: colorId,
       variants,

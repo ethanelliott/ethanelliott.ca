@@ -251,9 +251,10 @@ export async function updateDatabase() {
         masterId,
         product.name,
         product.slug,
+        JSON.stringify(product.about.fabric || []),
         scrapeTime, // last_seen_at for new inserts
       ]);
-      productUpdateRecords.push([scrapeTime, product.id]); // parameters for UPDATE
+      productUpdateRecords.push([scrapeTime, JSON.stringify(product.about.fabric || []), product.id]); // parameters for UPDATE
 
       for (const color of product.colors) {
         for (const colorId of color.colorIds) {
@@ -320,7 +321,7 @@ export async function updateDatabase() {
   // Products
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO products (id, name, slug, last_seen_at) VALUES (?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO products (id, name, slug, fabric, last_seen_at) VALUES (?, ?, ?, ?, ?)`,
     productInsertRecords,
     'Products'
   );
@@ -355,7 +356,7 @@ export async function updateDatabase() {
   // Update last_seen_at for products
   await prepareRunAll(
     DB,
-    `UPDATE products SET last_seen_at = ? WHERE id = ?`,
+    `UPDATE products SET last_seen_at = ?, fabric = ? WHERE id = ?`,
     productUpdateRecords,
     'Product Status'
   );

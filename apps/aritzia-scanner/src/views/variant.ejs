@@ -17,6 +17,13 @@
       <a href="/colors/<%= encodeURIComponent(color) %>" class="color-link"
         ><%= color %></a
       >
+      <% 
+        const naturalFibers = ['Cotton', 'Wool', 'Silk', 'Linen', 'Cashmere', 'Merino', 'Alpaca'];
+        const isNatural = product.fabric && product.fabric.some(f => naturalFibers.some(nf => f.includes(nf)));
+      %>
+      <% if (isNatural) { %>
+        <span class="badge natural-fiber">Natural Fiber</span>
+      <% } %>
     </h1>
 
     <div class="meta">
