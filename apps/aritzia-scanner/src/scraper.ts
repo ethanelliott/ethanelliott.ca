@@ -249,7 +249,10 @@ export async function updateDatabase() {
   const restockInsertRecords: any[][] = [];
 
   // Fetch existing variants to check for restocks
-  const existingVariants = await allPromise.call(DB, 'SELECT id, available_sizes FROM variants');
+  const existingVariants = await allPromise.call(
+    DB,
+    'SELECT id, available_sizes FROM variants'
+  );
   const existingVariantsMap = new Map<string, string[]>();
   existingVariants.forEach((v: any) => {
     existingVariantsMap.set(v.id, JSON.parse(v.available_sizes || '[]'));
@@ -268,7 +271,14 @@ export async function updateDatabase() {
         JSON.stringify(product.fit || []),
         scrapeTime, // last_seen_at for new inserts
       ]);
-      productUpdateRecords.push([scrapeTime, JSON.stringify(product.about.fabric || []), product.brand, JSON.stringify(product.warmth || []), JSON.stringify(product.fit || []), product.id]); // parameters for UPDATE
+      productUpdateRecords.push([
+        scrapeTime,
+        JSON.stringify(product.about.fabric || []),
+        product.brand,
+        JSON.stringify(product.warmth || []),
+        JSON.stringify(product.fit || []),
+        product.id,
+      ]); // parameters for UPDATE
 
       for (const color of product.colors) {
         for (const colorId of color.colorIds) {
@@ -316,7 +326,7 @@ export async function updateDatabase() {
           const oldSizes = existingVariantsMap.get(variantId);
           const newSizes = color.available_sizes || [];
           if (oldSizes && oldSizes.length === 0 && newSizes.length > 0) {
-             restockInsertRecords.push([variantId, scrapeTime]);
+            restockInsertRecords.push([variantId, scrapeTime]);
           }
 
           for (const imageId of color.images) {

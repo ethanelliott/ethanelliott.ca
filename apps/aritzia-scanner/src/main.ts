@@ -238,10 +238,16 @@ async function main() {
     const variants = await allPromise.call(db, sql, params);
 
     // Fetch brands for filter
-    const brands = await allPromise.call(db, `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`);
+    const brands = await allPromise.call(
+      db,
+      `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`
+    );
 
     // Fetch fits for filter
-    const allFitsRows = await allPromise.call(db, `SELECT fit FROM products WHERE fit IS NOT NULL`);
+    const allFitsRows = await allPromise.call(
+      db,
+      `SELECT fit FROM products WHERE fit IS NOT NULL`
+    );
     const fitsSet = new Set<string>();
     allFitsRows.forEach((row: any) => {
       try {
@@ -311,10 +317,16 @@ async function main() {
     const allProducts = await allPromise.call(db, sql, params);
 
     // Fetch brands for filter
-    const brands = await allPromise.call(db, `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`);
+    const brands = await allPromise.call(
+      db,
+      `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`
+    );
 
     // Fetch fits for filter
-    const allFitsRows = await allPromise.call(db, `SELECT fit FROM products WHERE fit IS NOT NULL`);
+    const allFitsRows = await allPromise.call(
+      db,
+      `SELECT fit FROM products WHERE fit IS NOT NULL`
+    );
     const fitsSet = new Set<string>();
     allFitsRows.forEach((row: any) => {
       try {
@@ -662,7 +674,7 @@ async function main() {
 
   app.get('/restocks', async (req, res) => {
     const db = getDB();
-    
+
     const restocks = await allPromise.call(
       db,
       `

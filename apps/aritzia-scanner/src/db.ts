@@ -107,7 +107,8 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
   return new Promise((resolve, reject) => {
     db.serialize(() => {
       // Table 1: Stores product metadata
-      db.run(`
+      db.run(
+        `
           CREATE TABLE IF NOT EXISTS products (
               id TEXT PRIMARY KEY,
               name TEXT,
@@ -119,17 +120,19 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               added_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               last_seen_at TEXT
           );
-      `, async (err) => {
-        if (err) return reject(err);
-        try {
-          await addColumnIfNotExists(db, 'products', 'fabric', 'TEXT');
-          await addColumnIfNotExists(db, 'products', 'brand', 'TEXT');
-          await addColumnIfNotExists(db, 'products', 'warmth', 'TEXT');
-          await addColumnIfNotExists(db, 'products', 'fit', 'TEXT');
-        } catch (e) {
-          console.error('Error adding columns to products table:', e);
+      `,
+        async (err) => {
+          if (err) return reject(err);
+          try {
+            await addColumnIfNotExists(db, 'products', 'fabric', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'brand', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'warmth', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'fit', 'TEXT');
+          } catch (e) {
+            console.error('Error adding columns to products table:', e);
+          }
         }
-      });
+      );
 
       // Table 2: Stores historical and current variant stock data
       db.run(
