@@ -1,50 +1,96 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MatButton } from '@angular/material/button';
-import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButton, MatCard, MatCardContent, MatIcon, RouterLink],
+  imports: [MatButton, MatIcon, RouterLink],
   styleUrl: './home.component.scss',
   template: `
     <div class="gradient-background">
       <div class="wrapper">
-        <div class="home-container">
-          <div class="hero-section">
-            <div class="logo">
-              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
+        <div class="home-grid">
+          <!-- Left Content -->
+          <div class="content-side">
+            <div class="brand-badge">
+              <mat-icon>account_balance_wallet</mat-icon>
+              <span>Finances</span>
             </div>
-            <h1 class="hero-title">Finances</h1>
+
+            <h1 class="hero-title">
+              Master your money,<br />
+              <span class="highlight">effortlessly.</span>
+            </h1>
+
+            <p class="hero-subtitle">
+              The modern way to track expenses, manage budgets, and reach your
+              financial goals without the headache.
+            </p>
+
+            <div class="action-buttons">
+              <button
+                [routerLink]="['/register']"
+                mat-flat-button
+                color="primary"
+                class="primary-action"
+              >
+                Get Started
+                <mat-icon iconPosition="end">arrow_forward</mat-icon>
+              </button>
+              <button
+                [routerLink]="['/login']"
+                mat-stroked-button
+                class="secondary-action"
+              >
+                Sign In
+              </button>
+            </div>
+
+            <div class="stats-row">
+              <div class="stat-item">
+                <span class="stat-value">100%</span>
+                <span class="stat-label">Secure</span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-item">
+                <span class="stat-value">Free</span>
+                <span class="stat-label">Open Source</span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-item">
+                <span class="stat-value">Fast</span>
+                <span class="stat-label">Performance</span>
+              </div>
+            </div>
           </div>
 
-          <mat-card class="action-card">
-            <mat-card-content>
-              <h2>Get Started</h2>
-              <div class="action-buttons">
-                <button
-                  [routerLink]="['/register']"
-                  mat-raised-button
-                  color="primary"
-                  class="primary-action"
-                >
-                  <mat-icon>person_add</mat-icon>
-                  Create Account
-                </button>
-                <button
-                  [routerLink]="['/login']"
-                  mat-stroked-button
-                  color="primary"
-                  class="secondary-action"
-                >
-                  <mat-icon>login</mat-icon>
-                  Sign In
-                </button>
+          <!-- Right Visual -->
+          <div class="visual-side">
+            <div class="abstract-card main-card">
+              <div class="card-header">
+                <div class="circle"></div>
+                <div class="line"></div>
               </div>
-            </mat-card-content>
-          </mat-card>
+              <div class="card-body">
+                <div class="graph-area">
+                  <div class="bar" style="height: 40%"></div>
+                  <div class="bar" style="height: 70%"></div>
+                  <div class="bar" style="height: 50%"></div>
+                  <div class="bar active" style="height: 85%"></div>
+                  <div class="bar" style="height: 60%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="abstract-card float-card">
+              <mat-icon class="check-icon">check_circle</mat-icon>
+              <div class="float-content">
+                <div class="line sm"></div>
+                <div class="line xs"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

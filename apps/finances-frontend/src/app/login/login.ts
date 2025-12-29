@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatCard, MatCardContent, MatCardHeader } from '@angular/material/card';
+import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -20,7 +20,6 @@ import { firstValueFrom } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCard,
-    MatCardHeader,
     MatCardContent,
     MatButton,
     MatIcon,
@@ -33,37 +32,43 @@ import { firstValueFrom } from 'rxjs';
     <div class="gradient-background">
       <div class="wrapper">
         <div class="login-container">
-          <div class="brand-section">
-            <div class="logo">
-              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
+          <div class="header-section">
+            <div class="brand-badge">
+              <mat-icon>account_balance_wallet</mat-icon>
+              <span>Finances</span>
             </div>
-            <h1 class="brand-title">Finances</h1>
+            <h1 class="page-title">
+              Welcome<br />
+              <span class="highlight">Back.</span>
+            </h1>
+            <p class="page-subtitle">
+              Sign in securely to access your dashboard.
+            </p>
           </div>
 
           <mat-card class="login-card">
-            <mat-card-header>
-              <h2>Welcome Back</h2>
-            </mat-card-header>
             <mat-card-content>
               <div class="login-content">
                 @if (isLoggingIn()) {
                 <div class="loading-state">
-                  <mat-spinner diameter="32"></mat-spinner>
-                  <p>Authenticating with your passkey...</p>
+                  <mat-spinner diameter="48" strokeWidth="4"></mat-spinner>
+                  <p>Authenticating...</p>
                 </div>
                 } @else {
                 <div class="passkey-info">
-                  <mat-icon class="security-icon">security ></mat-icon>
-                  <h3>Passwordless Authentication</h3>
-                  <p>Sign in securely using your passkey.</p>
+                  <div class="icon-circle">
+                    <mat-icon>fingerprint</mat-icon>
+                  </div>
+                  <h3>Passkey Login</h3>
+                  <p>Secure, passwordless authentication</p>
                   <button
-                    mat-raised-button
+                    mat-flat-button
                     color="primary"
                     (click)="loginWithPasskey()"
                     class="login-button"
                   >
-                    <mat-icon>fingerprint</mat-icon>
                     Sign In with Passkey
+                    <mat-icon iconPosition="end">arrow_forward</mat-icon>
                   </button>
                 </div>
                 }
@@ -72,9 +77,7 @@ import { firstValueFrom } from 'rxjs';
           </mat-card>
 
           <div class="footer-links">
-            <p>
-              Don't have an account? <a routerLink="/register">Sign up here</a>
-            </p>
+            <p>New here? <a routerLink="/register">Create an account</a></p>
           </div>
         </div>
       </div>

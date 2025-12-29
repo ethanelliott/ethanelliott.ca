@@ -1,143 +1,202 @@
-// ===== LOGIN COMPONENT STYLES =====
-// Authentication page design using shared mixins
-
+@use 'sass:map';
+@use '@angular/material' as mat;
 @import 'styles/mixins';
 
-// ===== BACKGROUND & WRAPPER =====
+:host {
+  display: block;
+  min-height: 100vh;
+  width: 100%;
+}
+
 .gradient-background {
   @include auth-background;
 }
 
 .wrapper {
-  @include auth-wrapper;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-// ===== LOGIN CONTAINER =====
 .login-container {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.header-section {
+  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xl);
-  width: 100%;
-  max-width: 400px;
-}
+  gap: 1.5rem;
 
-// ===== BRAND SECTION =====
-.brand-section {
-  @include auth-header;
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: var(--mat-sys-surface-container-high);
+    backdrop-filter: blur(12px);
+    border-radius: 100px;
+    border: 1px solid var(--mat-sys-outline-variant);
+    width: fit-content;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 
-  .logo {
-    margin-bottom: var(--spacing-md);
-  }
-
-  .logo-icon {
-    font-size: 3rem;
-    width: 3rem;
-    height: 3rem;
-    color: var(--mat-sys-primary);
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-
-    @media (max-width: 768px) {
-      font-size: 2.5rem;
-      width: 2.5rem;
-      height: 2.5rem;
-    }
-  }
-
-  .brand-title {
-    font-size: 2.5rem;
-    font-weight: 300;
-    margin: 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-
-    @media (max-width: 768px) {
-      font-size: 2rem;
-    }
-  }
-}
-
-// ===== LOGIN CARD =====
-.login-card {
-  @include auth-card;
-
-  .login-content {
-    padding: var(--spacing-md) 0;
-  }
-
-  .loading-state {
-    @include loading-state-auth;
-  }
-
-  .passkey-info {
-    text-align: center;
-    padding: var(--spacing-md);
-
-    .security-icon {
-      font-size: 3rem;
-      width: 3rem;
-      height: 3rem;
+    mat-icon {
       color: var(--mat-sys-primary);
-      margin-bottom: var(--spacing-md);
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
     }
 
-    h3 {
-      font-size: 1.25rem;
-      font-weight: 500;
-      margin: 0 0 var(--spacing-sm) 0;
+    span {
+      font-weight: 600;
+      font-size: 0.9rem;
       color: var(--mat-sys-on-surface);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
+  }
 
-    p {
-      color: var(--mat-sys-on-surface-variant);
-      margin: 0 0 var(--spacing-lg) 0;
-      line-height: 1.5;
-    }
+  .page-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--mat-sys-on-background);
+    margin: 0;
 
-    .login-button {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-md) var(--spacing-lg);
-      font-size: 1rem;
-      border-radius: var(--border-radius-2xl);
-      width: 100%;
-      justify-content: center;
+    .highlight {
+      color: var(--mat-sys-primary);
     }
+  }
+
+  .page-subtitle {
+    font-size: 1.1rem;
+    color: var(--mat-sys-on-surface-variant);
+    line-height: 1.5;
+    margin: 0;
+    font-weight: 400;
+    max-width: 300px;
   }
 }
 
-// ===== FOOTER LINKS =====
-.footer-links {
+.login-card {
+  background: var(--mat-sys-surface-container);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  width: 100%;
+}
+
+.login-content {
+  padding: 2.5rem 2rem;
   text-align: center;
-  color: white;
+}
+
+.passkey-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+
+  .icon-circle {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--mat-sys-primary-container);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--mat-sys-primary);
+
+    mat-icon {
+      font-size: 36px;
+      width: 36px;
+      height: 36px;
+      color: var(--mat-sys-on-primary-container);
+    }
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--mat-sys-on-surface);
+  }
 
   p {
+    color: var(--mat-sys-on-surface-variant);
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 1rem;
+  }
+
+  .login-button {
+    margin-top: 1.5rem;
+    width: 100%;
+    height: 56px;
+    font-size: 1.1rem;
+    border-radius: 16px;
+    background: var(--mat-sys-primary);
+    color: var(--mat-sys-on-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem 0;
+
+  p {
+    color: var(--mat-sys-on-surface-variant);
+    font-weight: 500;
+  }
+
+  mat-spinner {
+    ::ng-deep circle {
+      stroke: #818cf8;
+    }
+  }
+}
+
+.footer-links {
+  text-align: center;
+
+  p {
+    color: #64748b;
+    font-size: 0.95rem;
   }
 
   a {
-    color: var(--mat-sys-primary);
+    color: #818cf8;
     text-decoration: none;
-    font-weight: 500;
-    border-bottom: 1px solid transparent;
-    transition: var(--transition-fast);
+    font-weight: 600;
+    transition: color 0.2s;
 
     &:hover {
-      border-bottom-color: var(--mat-sys-primary);
+      color: #a5b4fc;
+      text-decoration: underline;
     }
-  }
-}
-
-// ===== RESPONSIVE DESIGN =====
-@media (max-width: 768px) {
-  .login-container {
-    max-width: 100%;
-    padding: 0 var(--spacing-md);
-    gap: var(--spacing-lg);
-  }
-
-  .wrapper {
-    padding: var(--spacing-lg);
   }
 }

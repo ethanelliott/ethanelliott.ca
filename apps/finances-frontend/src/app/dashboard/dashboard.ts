@@ -47,6 +47,11 @@ import { map } from 'rxjs/operators';
                 <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
                 <span class="logo-text">Finances</span>
               </div>
+              @if (isMobile()) {
+              <button mat-icon-button (click)="drawer.close()">
+                <mat-icon>close</mat-icon>
+              </button>
+              }
             </div>
             <div class="sidenav-main">
               <mat-nav-list class="nav-list">
@@ -189,6 +194,9 @@ import { map } from 'rxjs/operators';
     .sidenav-header {
       padding: 24px 16px;
       border-bottom: 1px solid var(--mat-sys-outline-variant);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .logo-container {
@@ -210,8 +218,13 @@ import { map } from 'rxjs/operators';
     }
 
     .nav-list {
-      padding: 8px 0;
+      padding: 12px;
       flex: 1;
+    }
+
+    .nav-list a, .sidenav-footer a {
+      border-radius: 28px;
+      margin-bottom: 4px;
     }
 
     .sidenav-wrapper {
@@ -230,7 +243,7 @@ import { map } from 'rxjs/operators';
     .sidenav-footer {
       margin-top: auto;
       border-top: 1px solid var(--mat-sys-outline-variant);
-      padding-top: 8px;
+      padding: 12px;
     }
 
     .logout-item {
@@ -278,7 +291,8 @@ import { map } from 'rxjs/operators';
 
     @media (max-width: 768px) {
       .sidenav {
-        width: 100%;
+        width: 320px;
+        max-width: 85vw;
       }
       
       .content-container {

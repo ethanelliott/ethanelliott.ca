@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
-import { MatCard, MatCardContent, MatCardHeader } from '@angular/material/card';
+import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatIcon } from '@angular/material/icon';
@@ -23,7 +23,6 @@ import { DialogService } from '../shared/dialogs';
   imports: [
     MatButton,
     MatCard,
-    MatCardHeader,
     MatCardContent,
     MatFormField,
     MatLabel,
@@ -38,65 +37,78 @@ import { DialogService } from '../shared/dialogs';
     <div class="gradient-background">
       <div class="wrapper">
         <div class="register-container">
-          <div class="brand-section">
-            <div class="logo">
-              <mat-icon class="logo-icon">account_balance_wallet</mat-icon>
+          <div class="header-section">
+            <div class="brand-badge">
+              <mat-icon>account_balance_wallet</mat-icon>
+              <span>Finances</span>
             </div>
-            <h1 class="brand-title">Finances</h1>
+            <h1 class="page-title">
+              Start Your<br />
+              <span class="highlight">Journey.</span>
+            </h1>
+            <p class="page-subtitle">
+              Create an account to take control of your financial future.
+            </p>
           </div>
 
           <mat-card class="register-card">
-            <mat-card-header>
-              <h2>Create Account</h2>
-            </mat-card-header>
             <mat-card-content>
-              @if (isRegistering()) {
-              <div class="loading-state">
-                <mat-spinner diameter="32"></mat-spinner>
-                <p>Setting up your secure passkey...</p>
-                <small>This may take a moment</small>
-              </div>
-              } @else {
-              <div class="register-form">
-                <mat-form-field appearance="outline">
-                  <mat-label>Full Name</mat-label>
-                  <input
-                    matInput
-                    [(ngModel)]="name"
-                    autocomplete="name"
-                    required
-                  />
-                </mat-form-field>
+              <div class="register-content">
+                @if (isRegistering()) {
+                <div class="loading-state">
+                  <mat-spinner diameter="48" strokeWidth="4"></mat-spinner>
+                  <p>Creating your account...</p>
+                  <small>This may take a moment</small>
+                </div>
+                } @else {
+                <div class="register-form">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Full Name</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="name"
+                      autocomplete="name"
+                      required
+                      placeholder="John Doe"
+                    />
+                    <mat-icon matSuffix>person</mat-icon>
+                  </mat-form-field>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Username</mat-label>
-                  <input
-                    matInput
-                    [(ngModel)]="username"
-                    autocomplete="username"
-                    required
-                  />
-                </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Username</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="username"
+                      autocomplete="username"
+                      required
+                      placeholder="johndoe"
+                    />
+                    <mat-icon matSuffix>alternate_email</mat-icon>
+                  </mat-form-field>
 
-                <button
-                  mat-raised-button
-                  color="primary"
-                  (click)="registerWithPasskey()"
-                  [disabled]="!name() || !username() || isRegistering()"
-                  class="register-button"
-                >
-                  <mat-icon>fingerprint</mat-icon>
-                  Create Account with Passkey
-                </button>
+                  <div class="passkey-note">
+                    <mat-icon>fingerprint</mat-icon>
+                    <p>We'll create a secure passkey for you.</p>
+                  </div>
+
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    (click)="registerWithPasskey()"
+                    [disabled]="!name() || !username() || isRegistering()"
+                    class="register-button"
+                  >
+                    Create Account
+                    <mat-icon iconPosition="end">arrow_forward</mat-icon>
+                  </button>
+                </div>
+                }
               </div>
-              }
             </mat-card-content>
           </mat-card>
 
           <div class="footer-links">
-            <p>
-              Already have an account? <a routerLink="/login">Sign in here</a>
-            </p>
+            <p>Already have an account? <a routerLink="/login">Sign in</a></p>
           </div>
         </div>
       </div>
