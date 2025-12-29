@@ -43,10 +43,6 @@ import { firstValueFrom } from 'rxjs';
       <div class="header">
         <div class="header-row">
           <div class="title-section">
-            <h1 class="page-title">
-              <mat-icon>account_balance_wallet</mat-icon>
-              Accounts
-            </h1>
             <p class="page-subtitle">
               Manage your financial accounts and track balances
             </p>

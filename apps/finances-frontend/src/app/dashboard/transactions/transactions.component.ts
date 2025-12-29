@@ -41,7 +41,6 @@ import { firstValueFrom } from 'rxjs';
       <div class="header">
         <div class="header-row">
           <div class="title-section">
-            <h1 class="page-title">Transactions</h1>
             <p class="page-subtitle">
               {{ transactions().length }} transactions total
             </p>

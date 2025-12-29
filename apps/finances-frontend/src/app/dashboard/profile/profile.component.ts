@@ -39,11 +39,7 @@ import { DialogService } from '../../shared/dialogs';
     MatListModule,
   ],
   styleUrl: './profile.component.scss',
-  template: `
-    <div class="profile-container">
-      <h1>Profile</h1>
-    </div>
-  `,
+  template: ` <div class="profile-container"></div> `,
 })
 export class ProfileComponent implements OnInit {
   protected readonly userStore = injectUserStore();

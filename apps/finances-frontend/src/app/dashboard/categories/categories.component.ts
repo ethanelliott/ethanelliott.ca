@@ -53,10 +53,6 @@ import { firstValueFrom } from 'rxjs';
       <div class="header">
         <div class="header-row">
           <div class="title-section">
-            <h1 class="page-title">
-              <mat-icon>category</mat-icon>
-              Categories
-            </h1>
             <p class="page-subtitle">
               Organize and analyze your spending patterns with intelligent
               categorization

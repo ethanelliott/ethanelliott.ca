@@ -44,7 +44,6 @@ import { formatAbsoluteDate } from '../../utils/date-utils';
       <div class="header">
         <div class="header-row">
           <div class="title-section">
-            <h1 class="page-title">Transfers</h1>
             <p class="page-subtitle">
               {{ transfers().length }} transfers total
             </p>

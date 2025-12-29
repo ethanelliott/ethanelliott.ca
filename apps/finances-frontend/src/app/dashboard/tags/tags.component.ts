@@ -69,10 +69,6 @@ interface TagData {
       <div class="header">
         <div class="header-row">
           <div class="title-section">
-            <h1 class="page-title">
-              <mat-icon>sell</mat-icon>
-              Tags
-            </h1>
             <p class="page-subtitle">
               Manage and organize your transaction tags efficiently
             </p>
