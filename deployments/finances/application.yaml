@@ -3,8 +3,6 @@ kind: Application
 metadata:
   name: finances
   namespace: elliott-haus
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
   project: elliott-haus
   source:
@@ -13,8 +11,6 @@ spec:
     targetRevision: main
     helm:
       releaseName: finances
-      valueFiles:
-        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: elliott-haus
