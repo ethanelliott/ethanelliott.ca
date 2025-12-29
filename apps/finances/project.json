@@ -34,7 +34,7 @@
           "thirdParty": false,
           "esbuildOptions": {
             "sourcemap": false,
-            "bundle": false,
+            "bundle": true,
             "outExtension": {
               ".js": ".js"
             }
