@@ -4,15 +4,19 @@ import {
   inject,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterModule } from '@angular/router';
 import { FinanceApiService } from '../services/finance-api.service';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'fin-dashboard',
@@ -34,8 +38,8 @@ import { FinanceApiService } from '../services/finance-api.service';
           class="sidenav"
           fixedInViewport
           [attr.role]="'navigation'"
-          [mode]="'side'"
-          [opened]="true"
+          [mode]="isMobile() ? 'over' : 'side'"
+          [opened]="!isMobile()"
         >
           <div class="sidenav-wrapper">
             <div class="sidenav-header">
@@ -50,6 +54,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/all-time"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>trending_up</mat-icon>
                   <span matListItemTitle>All-Time Overview</span>
@@ -59,6 +64,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/monthly-habits"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>calendar_month ></mat-icon>
                   <span matListItemTitle>Monthly Habits</span>
@@ -68,6 +74,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/transactions"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>receipt</mat-icon>
                   <span matListItemTitle>Transactions</span>
@@ -77,6 +84,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/transfers"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>swap_horiz</mat-icon>
                   <span matListItemTitle>Transfers</span>
@@ -88,6 +96,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/accounts"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>account_balance_wallet</mat-icon>
                   <span matListItemTitle>Accounts</span>
@@ -97,6 +106,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/categories"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>category</mat-icon>
                   <span matListItemTitle>Categories</span>
@@ -106,6 +116,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/tags"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>sell</mat-icon>
                   <span matListItemTitle>Tags</span>
@@ -119,6 +130,7 @@ import { FinanceApiService } from '../services/finance-api.service';
                   mat-list-item
                   routerLink="/dashboard/profile"
                   routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
                 >
                   <mat-icon matListItemIcon>person</mat-icon>
                   <span matListItemTitle>Profile</span>
@@ -141,6 +153,7 @@ import { FinanceApiService } from '../services/finance-api.service';
               mat-icon-button
               (click)="drawer.toggle()"
               class="menu-button"
+              [style.display]="isMobile() ? 'block' : 'none'"
             >
               <mat-icon>menu</mat-icon>
             </button>
@@ -277,6 +290,16 @@ import { FinanceApiService } from '../services/finance-api.service';
 export class Dashboard implements OnInit {
   private readonly router = inject(Router);
   private readonly apiService = inject(FinanceApiService);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+
+  readonly drawer = viewChild.required<MatSidenav>('drawer');
+
+  isMobile = toSignal(
+    this.breakpointObserver
+      .observe([Breakpoints.Handset, Breakpoints.TabletPortrait])
+      .pipe(map((result) => result.matches)),
+    { initialValue: false }
+  );
 
   currentPageTitle = signal('Dashboard');
 
@@ -285,6 +308,12 @@ export class Dashboard implements OnInit {
     this.router.events.subscribe(() => {
       this.updatePageTitle();
     });
+  }
+
+  closeSidenavOnMobile() {
+    if (this.isMobile()) {
+      this.drawer().close();
+    }
   }
 
   private updatePageTitle() {

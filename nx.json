@@ -9,6 +9,9 @@
     ],
     "sharedGlobals": []
   },
+  "cli": {
+    "packageManager": "pnpm"
+  },
   "targetDefaults": {
     "@angular-devkit/build-angular:application": {
       "cache": true,

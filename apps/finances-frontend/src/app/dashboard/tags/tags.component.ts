@@ -33,6 +33,9 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { injectFinanceStore } from '../../store/finance.provider';
 import { DialogService } from '../../shared/dialogs';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
 
 interface TagData {
   name: string;
@@ -267,8 +270,11 @@ interface TagData {
                 </td>
               </ng-container>
 
-              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+              <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: displayedColumns()"
+              ></tr>
             </table>
 
             <!-- Paginator -->
@@ -318,9 +324,17 @@ export class TagsComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialogService = inject(DialogService);
+  private readonly breakpointObserver = inject(BreakpointObserver);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+
+  isMobile = toSignal(
+    this.breakpointObserver
+      .observe([Breakpoints.Handset])
+      .pipe(map((result) => result.matches)),
+    { initialValue: false }
+  );
 
   loading = signal(true);
   submitting = signal(false);
@@ -335,7 +349,11 @@ export class TagsComponent implements OnInit, AfterViewInit {
   searchControl = new FormControl('');
 
   // Table configuration
-  displayedColumns: string[] = ['select', 'name', 'created', 'actions'];
+  displayedColumns = computed(() => {
+    return this.isMobile()
+      ? ['select', 'name', 'actions']
+      : ['select', 'name', 'created', 'actions'];
+  });
   dataSource = new MatTableDataSource<TagData>();
 
   // Computed properties

@@ -3,6 +3,9 @@ import { Component, output, effect, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { AgGridAngular } from 'ag-grid-angular';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
 import {
   AllCommunityModule,
   ColDef,
@@ -62,6 +65,14 @@ ModuleRegistry.registerModules([InfiniteRowModelModule, AllCommunityModule]);
 })
 export class TransactionsGridComponent {
   private readonly dialogService = inject(DialogService);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+
+  isMobile = toSignal(
+    this.breakpointObserver
+      .observe([Breakpoints.Handset])
+      .pipe(map((result) => result.matches)),
+    { initialValue: false }
+  );
 
   // Inputs
   transactions = input.required<Transaction[]>();
@@ -91,6 +102,19 @@ export class TransactionsGridComponent {
 
       if (this.gridApi && (categories.length > 0 || tags.length > 0)) {
         this.updateColumnDefinitions();
+      }
+    });
+
+    // Effect to handle mobile responsiveness
+    effect(() => {
+      const isMobile = this.isMobile();
+      if (this.gridApi) {
+        const columnsToHide = ['type', 'category', 'account.name', 'tags'];
+        this.gridApi.setColumnsVisible(columnsToHide, !isMobile);
+
+        if (isMobile) {
+          this.gridApi.sizeColumnsToFit();
+        }
       }
     });
   }
@@ -271,6 +295,12 @@ export class TransactionsGridComponent {
 
   onGridReady(params: any): void {
     this.gridApi = params.api;
+
+    // Apply initial mobile state
+    const isMobile = this.isMobile();
+    const columnsToHide = ['type', 'category', 'account.name', 'tags'];
+    this.gridApi.setColumnsVisible(columnsToHide, !isMobile);
+
     params.api.sizeColumnsToFit();
 
     // Use setTimeout to avoid AG Grid initialization race condition

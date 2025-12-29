@@ -1,25 +1,7 @@
 // ===== TAGS COMPONENT STYLES =====
 // Tags management page using shared mixins
 
-@import '../../../styles/mixins';
-
-// ===== MAIN CONTAINER =====
-.tags-container {
-  @include dashboard-container;
-  @include content-container;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-// ===== PAGE HEADER =====
-.header {
-  @include page-header;
-}
-
-// ===== TAGS COMPONENT STYLES =====
-// Tags management page using shared mixins
-
-@import '../../../styles/mixins';
+@import 'styles/mixins';
 
 // ===== MAIN CONTAINER =====
 .tags-container {
