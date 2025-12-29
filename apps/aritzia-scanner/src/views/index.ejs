@@ -11,6 +11,20 @@
 
     <h1><%= title %></h1>
 
+    <% if (locals.brands && brands.length > 0) { %>
+    <div class="filter-container" style="margin-bottom: 20px;">
+      <form action="" method="GET">
+        <label for="brand">Filter by Brand:</label>
+        <select name="brand" id="brand" onchange="this.form.submit()">
+          <option value="">All Brands</option>
+          <% brands.forEach(brand => { %>
+          <option value="<%= brand %>" <%= locals.currentBrand === brand ? 'selected' : '' %>><%= brand %></option>
+          <% }); %>
+        </select>
+      </form>
+    </div>
+    <% } %>
+
     <% if (activeProducts && activeProducts.length > 0) { %>
     <h2>Active Products</h2>
     <div class="product-grid">

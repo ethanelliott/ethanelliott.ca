@@ -113,6 +113,7 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               name TEXT,
               slug TEXT,
               fabric TEXT,
+              brand TEXT,
               added_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               last_seen_at TEXT
           );
@@ -120,6 +121,7 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
         if (err) return reject(err);
         try {
           await addColumnIfNotExists(db, 'products', 'fabric', 'TEXT');
+          await addColumnIfNotExists(db, 'products', 'brand', 'TEXT');
         } catch (e) {
           console.error('Error adding columns to products table:', e);
         }

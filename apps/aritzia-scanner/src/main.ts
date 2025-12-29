@@ -199,6 +199,7 @@ async function main() {
 
   app.get('/', async (req, res) => {
     const db = getDB();
+    const brandFilter = req.query.brand as string;
 
     // Get the latest scan time
     const lastScanRow = await getPromise.call(
@@ -209,10 +210,8 @@ async function main() {
       ? lastScanRow.max_time
       : new Date().toISOString();
 
-    const variants = await allPromise.call(
-      db,
-      `
-      SELECT v.id, v.color, v.color_id, v.length, v.added_at, v.price, v.list_price, p.name, p.id as product_id, p.slug,
+    let sql = `
+      SELECT v.id, v.color, v.color_id, v.length, v.added_at, v.price, v.list_price, p.name, p.brand, p.id as product_id, p.slug,
              COALESCE(
                (SELECT id FROM images WHERE variant_id = v.id LIMIT 1),
                (SELECT i.id FROM images i JOIN variants v2 ON i.variant_id = v2.id WHERE v2.product_id = v.product_id AND v2.color = v.color LIMIT 1)
@@ -220,11 +219,20 @@ async function main() {
       FROM variants v
       JOIN products p ON v.product_id = p.id
       WHERE v.last_seen_at = ?
-      ORDER BY v.added_at DESC
-      LIMIT 50
-  `,
-      [lastScanTime]
-    );
+    `;
+    const params: any[] = [lastScanTime];
+
+    if (brandFilter) {
+      sql += ` AND p.brand = ?`;
+      params.push(brandFilter);
+    }
+
+    sql += ` ORDER BY v.added_at DESC LIMIT 50`;
+
+    const variants = await allPromise.call(db, sql, params);
+
+    // Fetch brands for filter
+    const brands = await allPromise.call(db, `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`);
 
     // Format dates
     variants.forEach((v: any) => {
@@ -237,10 +245,13 @@ async function main() {
       discontinuedProducts: [],
       title: 'Newest Variants',
       showAllLink: true,
+      brands: brands.map((b: any) => b.brand),
+      currentBrand: brandFilter,
     });
   });
   app.get('/products', async (req, res) => {
     const db = getDB();
+    const brandFilter = req.query.brand as string;
 
     // Get the latest scan time
     const lastScanRow = await getPromise.call(
@@ -251,19 +262,27 @@ async function main() {
       ? lastScanRow.max_time
       : new Date().toISOString();
 
-    const allProducts = await allPromise.call(
-      db,
-      `
-      SELECT p.id, p.name, p.slug,
+    let sql = `
+      SELECT p.id, p.name, p.slug, p.brand,
              (SELECT id FROM images WHERE product_id = p.id LIMIT 1) as thumbnail_id,
              CASE WHEN MAX(v.last_seen_at) = ? THEN 0 ELSE 1 END as isDiscontinued
       FROM products p
       LEFT JOIN variants v ON p.id = v.product_id
-      GROUP BY p.id, p.name, p.slug
-      ORDER BY p.name
-  `,
-      [lastScanTime]
-    );
+      WHERE 1=1
+    `;
+    const params: any[] = [lastScanTime];
+
+    if (brandFilter) {
+      sql += ` AND p.brand = ?`;
+      params.push(brandFilter);
+    }
+
+    sql += ` GROUP BY p.id, p.name, p.slug ORDER BY p.name`;
+
+    const allProducts = await allPromise.call(db, sql, params);
+
+    // Fetch brands for filter
+    const brands = await allPromise.call(db, `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`);
 
     const activeProducts = allProducts.filter((p: any) => !p.isDiscontinued);
     const discontinuedProducts = allProducts.filter(
@@ -275,6 +294,8 @@ async function main() {
       discontinuedProducts,
       title: 'All Products',
       showAllLink: false,
+      brands: brands.map((b: any) => b.brand),
+      currentBrand: brandFilter,
     });
   });
 

@@ -52,6 +52,7 @@ export type APIResponse = {
 export type IntermediateForm = {
   id: string;
   name: string;
+  brand: string;
   description: string;
   price: {
     min: number;
