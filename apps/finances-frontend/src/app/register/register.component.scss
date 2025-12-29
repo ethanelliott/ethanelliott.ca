@@ -151,7 +151,7 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
     }
-    
+
     &:disabled {
       background: var(--mat-sys-surface-container-highest);
       color: var(--mat-sys-on-surface-variant);
@@ -185,7 +185,7 @@
 .footer-links {
   margin-top: 1rem;
   text-align: center;
-  
+
   p {
     color: var(--mat-sys-on-surface-variant);
     font-size: 0.95rem;
