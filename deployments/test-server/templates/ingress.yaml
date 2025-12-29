@@ -5,6 +5,8 @@ metadata:
   name: {{ include "test-server.fullname" . }}
   labels:
     {{- include "test-server.labels" . | nindent 4 }}
+  annotations:
+    link.argocd.argoproj.io/external-link: https://{{ .Values.ingress.hostname }}
 spec:
   entryPoints:
     - websecure

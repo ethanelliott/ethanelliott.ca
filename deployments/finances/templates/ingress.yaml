@@ -5,6 +5,8 @@ metadata:
   name: {{ include "finances.fullname" . }}
   labels:
     {{- include "finances.labels" . | nindent 4 }}
+  annotations:
+    link.argocd.argoproj.io/external-link: https://{{ .Values.ingress.hostname }}
 spec:
   entryPoints:
     - websecure
