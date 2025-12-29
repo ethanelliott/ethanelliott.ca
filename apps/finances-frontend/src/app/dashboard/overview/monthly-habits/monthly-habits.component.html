@@ -14,13 +14,10 @@
   <!-- Header with KPIs -->
   <section class="header">
     <div class="header-row">
-      <div class="title-section">
-        <h1 class="page-title">Monthly Analysis</h1>
-        <p class="page-subtitle">
-          {{ monthlyStats().transactionCount.toLocaleString() }} transactions •
-          {{ getSelectedMonthName() }} {{ selectedYear() }} •
-          {{ formatPercentage(getSavingsRate()) }} savings rate
-        </p>
+      <div class="page-subtitle">
+        {{ monthlyStats().transactionCount.toLocaleString() }} transactions •
+        {{ getSelectedMonthName() }} {{ selectedYear() }} •
+        {{ formatPercentage(getSavingsRate()) }} savings rate
       </div>
 
       <!-- Month/Year Selection Controls -->

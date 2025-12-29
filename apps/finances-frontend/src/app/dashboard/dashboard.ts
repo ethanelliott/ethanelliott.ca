@@ -353,7 +353,7 @@ import { map } from 'rxjs/operators';
       }
       
       .content-container {
-        padding: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-md);
       }
     }
   `,

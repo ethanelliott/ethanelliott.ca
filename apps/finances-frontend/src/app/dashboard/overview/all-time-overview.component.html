@@ -14,15 +14,12 @@
   <!-- Header with KPIs -->
   <section class="header">
     <div class="header-row">
-      <div class="title-section">
-        <h1 class="page-title">Financial Overview</h1>
-        <p class="page-subtitle">
-          {{ allTimeStats().transactionCount.toLocaleString() }} transactions •
-          {{ allTimeStats().totalTimespan }} @if
-          (allTimeStats().firstTransactionDate) { • Since
-          {{ formatDateShort(allTimeStats().firstTransactionDate!) }}
-          }
-        </p>
+      <div class="page-subtitle">
+        {{ allTimeStats().transactionCount.toLocaleString() }} transactions •
+        {{ allTimeStats().totalTimespan }} @if
+        (allTimeStats().firstTransactionDate) { • Since
+        {{ formatDateShort(allTimeStats().firstTransactionDate!) }}
+        }
       </div>
 
       <!-- Health Score -->

@@ -52,24 +52,15 @@
     }
   }
 
-  .title-section {
-    .page-title {
-      font-size: 2rem;
-      font-weight: 700;
-      margin: 0;
-      color: var(--mat-sys-primary);
-      line-height: 1.2;
-
-      @media (max-width: 768px) {
-        font-size: 1.5rem;
-      }
+  .page-subtitle {
+    @media (max-width: 768px) {
+      display: none;
     }
+  }
 
-    .page-subtitle {
-      font-size: 0.9rem;
-      color: var(--mat-sys-on-surface-variant);
-      margin: var(--spacing-xs) 0 0 0;
-      font-weight: 500;
+  .health-score {
+    @media (max-width: 768px) {
+      display: none;
     }
   }
 
