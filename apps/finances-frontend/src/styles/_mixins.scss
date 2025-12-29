@@ -135,12 +135,20 @@
   }
 }
 
+// ===== GLASSMORPHISM MIXINS =====
+@mixin glassmorphism($blur: 24px, $opacity: 0.4) {
+  background: rgba(30, 30, 30, $opacity);
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 // ===== CARD MIXINS =====
 @mixin base-card {
   border-radius: var(--border-radius-md);
   box-shadow: var(--surface-elevation-2);
   transition: var(--transition-fast);
-  border: 1px solid var(--mat-sys-outline-variant);
+  // border: 1px solid var(--mat-sys-outline-variant); // Removed to let glassmorphism handle border
 
   &:hover {
     box-shadow: var(--surface-elevation-3);
@@ -170,10 +178,7 @@
   @include base-card;
   width: 100%;
   max-width: var(--card-max-width);
-  background: rgba(30, 30, 30, 0.6);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  @include glassmorphism(24px, 0.6);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 
@@ -207,6 +212,7 @@
 
 @mixin dashboard-card {
   @include base-card;
+  @include glassmorphism(16px, 0.3);
 
   .header {
     padding: var(--spacing-sm) var(--spacing-md);
@@ -253,14 +259,14 @@
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
-    background: var(--mat-sys-surface-container);
+    @include glassmorphism(12px, 0.2);
     border-radius: var(--border-radius-md);
-    border: 1px solid var(--mat-sys-outline-variant);
     transition: var(--transition-fast);
 
     &:hover {
       box-shadow: var(--surface-elevation-2);
       transform: translateY(-1px);
+      background: rgba(30, 30, 30, 0.3);
     }
 
     // Status indicator borders
@@ -293,8 +299,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--mat-sys-primary-container);
-      color: var(--mat-sys-on-primary-container);
+      background: rgba(255, 255, 255, 0.05); // More subtle icon background
+      color: var(--mat-sys-primary);
       flex-shrink: 0;
 
       mat-icon {
@@ -439,11 +445,13 @@
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
     border-radius: var(--border-radius-sm);
-    background: var(--mat-sys-surface-container-low);
+    @include glassmorphism(12px, 0.1);
     transition: var(--transition-fast);
 
     &:hover {
-      background: var(--mat-sys-surface-container);
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateY(-1px);
+      border-color: var(--mat-sys-primary);
     }
 
     &.income {
@@ -464,8 +472,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--mat-sys-primary-container);
-      color: var(--mat-sys-on-primary-container);
+      background: rgba(var(--mat-sys-primary-rgb), 0.1);
+      color: var(--mat-sys-primary);
       flex-shrink: 0;
       font-size: 0.8rem;
       font-weight: 600;
@@ -656,4 +664,210 @@
 
 @mixin info-indicator {
   @include status-indicator(var(--info-color), var(--info-light));
+}
+
+// ===== GRADIENT TEXT MIXINS =====
+@mixin gradient-text-primary {
+  background: linear-gradient(
+    to right,
+    var(--mat-sys-primary),
+    var(--mat-sys-tertiary)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@mixin gradient-text-custom($color1, $color2, $direction: to right) {
+  background: linear-gradient($direction, $color1, $color2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// ===== BRAND BADGE MIXIN =====
+@mixin brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: var(--mat-sys-primary);
+  }
+
+  span {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+// ===== HERO TITLE MIXINS =====
+@mixin hero-title {
+  font-size: 4.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0;
+  letter-spacing: -0.02em;
+
+  @media (max-width: 768px) {
+    font-size: 3rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 2.5rem;
+  }
+}
+
+@mixin hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.6;
+  margin: 0;
+
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+  }
+}
+
+// ===== ABSTRACT CARD MIXINS =====
+@mixin abstract-card-base {
+  background: rgba(30, 30, 30, 0.4);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+@mixin abstract-card-3d {
+  @include abstract-card-base;
+  transform: perspective(1000px) rotateY(-10deg) rotateX(5deg);
+  transition: transform 0.5s ease;
+
+  &:hover {
+    transform: perspective(1000px) rotateY(-5deg) rotateX(2deg);
+  }
+}
+
+// ===== GLASSMORPHISM MIXINS =====
+@mixin glassmorphism($blur: 24px, $opacity: 0.4) {
+  background: rgba(30, 30, 30, $opacity);
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@mixin glassmorphism-light($blur: 20px, $opacity: 0.6) {
+  background: rgba(255, 255, 255, $opacity);
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+// ===== FLOATING ANIMATION MIXIN =====
+@mixin floating-animation($duration: 6s, $distance: -20px) {
+  animation: float $duration ease-in-out infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: perspective(1000px) translateZ(50px) translateY(0);
+    }
+    50% {
+      transform: perspective(1000px) translateZ(50px) translateY($distance);
+    }
+  }
+}
+
+// ===== STAT ROW MIXIN =====
+@mixin stat-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 480px) {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--mat-sys-on-surface);
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  .stat-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+// ===== ACTION BUTTON MIXINS =====
+@mixin primary-action-button {
+  height: 56px;
+  padding: 0 32px;
+  font-size: 1.1rem;
+  border-radius: 28px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  @media (max-width: 480px) {
+    width: 100%;
+  }
+}
+
+@mixin secondary-action-button {
+  @include primary-action-button;
+}
+
+// ===== AUTH PAGE LAYOUT MIXINS =====
+@mixin auth-page-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+
+  @media (max-width: 768px) {
+    padding: var(--spacing-lg);
+  }
+}
+
+@mixin auth-content-container {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
 }

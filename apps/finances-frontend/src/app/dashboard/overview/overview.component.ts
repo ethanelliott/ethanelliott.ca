@@ -56,41 +56,47 @@ import { MonthlyHabitsComponent } from './monthly-habits/monthly-habits.componen
       height: 100%;
       display: flex;
       flex-direction: column;
+      gap: var(--spacing-lg);
     }
 
     .header-section {
-      padding: 24px 24px 0 24px;
-      background: var(--mat-sys-surface);
+      // padding: 0;
     }
 
     .header-content {
-      max-width: 1400px;
+      max-width: var(--content-max-width);
       margin: 0 auto;
     }
 
     .title-section h1 {
       margin: 0 0 8px 0;
-      color: var(--mat-sys-on-surface);
-      font-weight: 600;
-      font-size: 2rem;
+      font-weight: 800;
+      font-size: 2.5rem;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, var(--mat-sys-primary), var(--mat-sys-tertiary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .title-section p {
       margin: 0;
       color: var(--mat-sys-on-surface-variant);
-      font-size: 1rem;
+      font-size: 1.1rem;
     }
 
     .overview-tabs {
       flex: 1;
-      margin: 24px;
-      background: var(--mat-sys-surface-container-low);
-      border-radius: 16px;
+      background: rgba(30, 30, 30, 0.4);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
       overflow: hidden;
+      box-shadow: var(--surface-elevation-2);
     }
 
     .overview-tabs ::ng-deep .mat-mdc-tab-header {
-      background: var(--mat-sys-surface-container-high);
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .overview-tabs ::ng-deep .mat-mdc-tab-body-wrapper {
@@ -110,16 +116,12 @@ import { MonthlyHabitsComponent } from './monthly-habits/monthly-habits.componen
     }
 
     @media (max-width: 768px) {
-      .header-section {
-        padding: 16px 16px 0 16px;
-      }
-
-      .overview-tabs {
-        margin: 16px;
+      .overview-container {
+        gap: var(--spacing-md);
       }
 
       .title-section h1 {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
       }
 
       .overview-tabs ::ng-deep .mat-mdc-tab .mdc-tab__text-label mat-icon {

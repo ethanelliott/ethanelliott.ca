@@ -178,22 +178,26 @@ import { map } from 'rxjs/operators';
       height: 100vh;
       display: flex;
       flex-direction: column;
+      background: var(--gradient-background);
     }
 
     .sidenav-container {
       flex: 1;
+      background: transparent;
     }
 
     .sidenav {
-      width: 280px;
-      --mat-sidenav-container-background-color: var(--mat-sys-surface-container-high);
+      width: var(--sidebar-width);
+      background: rgba(15, 20, 25, 0.8);
+      backdrop-filter: blur(12px);
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
       display: flex;
       flex-direction: column;
     }
 
     .sidenav-header {
-      padding: 24px 16px;
-      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      padding: var(--spacing-lg) var(--spacing-md);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -202,7 +206,7 @@ import { map } from 'rxjs/operators';
     .logo-container {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--spacing-sm);
     }
 
     .logo-icon {
@@ -214,17 +218,28 @@ import { map } from 'rxjs/operators';
 
     .logo-text {
       font-size: 1.5rem;
-      color: var(--mat-sys-on-surface);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, var(--mat-sys-primary), var(--mat-sys-tertiary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .nav-list {
-      padding: 12px;
+      padding: var(--spacing-md);
       flex: 1;
     }
 
     .nav-list a, .sidenav-footer a {
       border-radius: 28px;
       margin-bottom: 4px;
+      color: var(--mat-sys-on-surface-variant);
+      transition: all 0.2s ease;
+    }
+    
+    .nav-list a:hover, .sidenav-footer a:hover {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--mat-sys-on-surface);
     }
 
     .sidenav-wrapper {
@@ -242,51 +257,63 @@ import { map } from 'rxjs/operators';
 
     .sidenav-footer {
       margin-top: auto;
-      border-top: 1px solid var(--mat-sys-outline-variant);
-      padding: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: var(--spacing-md);
     }
 
     .logout-item {
       cursor: pointer;
+      color: var(--error-color) !important;
+    }
+    
+    .logout-item mat-icon {
+      color: var(--error-color) !important;
     }
 
     .nav-section-title {
-      padding: 16px 16px 8px 16px;
-      font-size: 12px;
-      font-weight: 600;
+      padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm) var(--spacing-md);
+      font-size: 11px;
+      font-weight: 700;
       color: var(--mat-sys-on-surface-variant);
       text-transform: uppercase;
       letter-spacing: 0.1em;
+      opacity: 0.7;
     }
 
     .active-link {
-      background: var(--mat-sys-primary-container) !important;
-      color: var(--mat-sys-on-primary-container) !important;
+      background: linear-gradient(90deg, rgba(var(--mat-sys-primary-rgb), 0.15), rgba(var(--mat-sys-tertiary-rgb), 0.05)) !important;
+      color: var(--mat-sys-primary) !important;
+      font-weight: 500;
     }
 
     .active-link mat-icon {
-      color: var(--mat-sys-on-primary-container) !important;
+      color: var(--mat-sys-primary) !important;
     }
 
     .toolbar {
       position: sticky;
       top: 0;
       z-index: 2;
+      background: rgba(15, 20, 25, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--mat-sys-on-surface);
     }
 
     .menu-button {
-      margin-right: 16px;
+      margin-right: var(--spacing-md);
     }
 
     .toolbar-title {
       flex: 1;
-      font-size: 20px;
-      font-weight: 500;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
     }
 
     .content-container {
-      background: var(--mat-sys-surface);
       min-height: calc(100vh - 64px);
+      padding: var(--spacing-lg);
     }
 
     @media (max-width: 768px) {
@@ -296,7 +323,7 @@ import { map } from 'rxjs/operators';
       }
       
       .content-container {
-        padding: 16px;
+        padding: var(--spacing-md);
       }
     }
   `,

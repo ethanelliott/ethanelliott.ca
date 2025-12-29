@@ -24,21 +24,25 @@
       align-items: center;
       padding: var(--spacing-sm);
       border-radius: var(--border-radius-lg);
-      background: var(--mat-sys-surface-container);
+      @include glassmorphism(12px, 0.2);
       border: 2px solid transparent;
       min-width: 80px;
 
       &.excellent {
         border-color: var(--success-color);
+        background: rgba(var(--success-rgb), 0.1);
       }
       &.good {
         border-color: var(--info-color);
+        background: rgba(var(--info-rgb), 0.1);
       }
       &.fair {
         border-color: var(--warning-color);
+        background: rgba(var(--warning-rgb), 0.1);
       }
       &.poor {
         border-color: var(--error-color);
+        background: rgba(var(--error-rgb), 0.1);
       }
 
       .score-value {
@@ -150,25 +154,23 @@
   gap: var(--spacing-md);
   padding: var(--spacing-md);
   border-radius: var(--border-radius-md);
-  background: var(--mat-sys-surface-container-low);
+  @include glassmorphism(12px, 0.1);
   transition: all var(--transition-fast);
 
   &:hover {
-    background: var(--mat-sys-surface-container);
+    background: rgba(255, 255, 255, 0.05);
     transform: translateY(-1px);
+    border-color: var(--mat-sys-primary);
   }
 
   &.highlight {
-    background: var(--gradient-primary);
-    border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.2);
+    background: rgba(var(--mat-sys-primary-rgb), 0.1);
+    border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
   }
 
   &.warning {
-    background: linear-gradient(
-      135deg,
-      var(--error-light),
-      rgba(251, 113, 133, 0.1)
-    );
+    background: rgba(var(--mat-sys-error-rgb), 0.1);
+    border: 1px solid rgba(var(--mat-sys-error-rgb), 0.3);
   }
 
   .insight-icon {

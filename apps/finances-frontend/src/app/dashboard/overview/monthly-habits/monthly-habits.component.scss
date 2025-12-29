@@ -79,12 +79,13 @@
   gap: var(--spacing-md);
   padding: var(--spacing-md);
   border-radius: var(--border-radius-md);
-  background: var(--mat-sys-surface-container-low);
+  @include glassmorphism(12px, 0.1);
   transition: all var(--transition-fast);
 
   &:hover {
-    background: var(--mat-sys-surface-container);
+    background: rgba(255, 255, 255, 0.05);
     transform: translateY(-1px);
+    border-color: var(--mat-sys-primary);
   }
 
   .insight-icon {

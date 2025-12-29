@@ -47,23 +47,6 @@ import { RouterLink } from '@angular/router';
                 Sign In
               </button>
             </div>
-
-            <div class="stats-row">
-              <div class="stat-item">
-                <span class="stat-value">100%</span>
-                <span class="stat-label">Secure</span>
-              </div>
-              <div class="stat-divider"></div>
-              <div class="stat-item">
-                <span class="stat-value">Free</span>
-                <span class="stat-label">Open Source</span>
-              </div>
-              <div class="stat-divider"></div>
-              <div class="stat-item">
-                <span class="stat-value">Fast</span>
-                <span class="stat-label">Performance</span>
-              </div>
-            </div>
           </div>
 
           <!-- Right Visual -->

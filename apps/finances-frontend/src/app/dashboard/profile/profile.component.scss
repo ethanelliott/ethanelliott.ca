@@ -1,77 +1,41 @@
-@import 'styles/variables';
+@import 'styles/mixins';
 
 .profile-container {
-  padding: var(--spacing-lg);
-  max-width: 1200px;
-  margin: 0 auto;
+  @include dashboard-container;
+  @include content-container;
 
   // Modern Header
   .header {
-    margin-bottom: var(--spacing-lg);
+    @include page-header;
 
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: var(--spacing-lg);
+    .controls-section {
+      .account-status {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius-lg);
+        font-size: 0.875rem;
+        font-weight: 600;
+        @include glassmorphism(12px, 0.2);
 
-      .title-section {
-        flex: 1;
-
-        .page-title {
-          font-size: 2rem;
-          font-weight: 700;
-          margin: 0;
+        &.active {
+          background: rgba(var(--mat-sys-primary-rgb), 0.1);
           color: var(--mat-sys-primary);
-          line-height: 1.2;
-          display: flex;
-          align-items: center;
-          gap: var(--spacing-sm);
-
-          @media (max-width: 768px) {
-            font-size: 1.5rem;
-          }
+          border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
 
           mat-icon {
             color: var(--mat-sys-primary);
           }
         }
 
-        .page-subtitle {
-          font-size: 0.9rem;
-          color: var(--mat-sys-on-surface-variant);
-          margin: var(--spacing-xs) 0 0 0;
-        }
-      }
+        &.inactive {
+          background: rgba(var(--mat-sys-error-rgb), 0.1);
+          color: var(--mat-sys-error);
+          border: 1px solid rgba(var(--mat-sys-error-rgb), 0.3);
 
-      .controls-section {
-        .account-status {
-          display: flex;
-          align-items: center;
-          gap: var(--spacing-xs);
-          padding: var(--spacing-xs) var(--spacing-sm);
-          border-radius: var(--border-radius-lg);
-          font-size: 0.875rem;
-          font-weight: 600;
-
-          &.active {
-            background: var(--mat-sys-primary-container);
-            color: var(--mat-sys-on-primary-container);
-            border: 1px solid var(--mat-sys-primary);
-
-            mat-icon {
-              color: var(--mat-sys-primary);
-            }
-          }
-
-          &.inactive {
-            background: var(--mat-sys-error-container);
-            color: var(--mat-sys-on-error-container);
-            border: 1px solid var(--mat-sys-error);
-
-            mat-icon {
-              color: var(--mat-sys-error);
-            }
+          mat-icon {
+            color: var(--mat-sys-error);
           }
         }
       }
@@ -80,27 +44,8 @@
 
   // Loading State
   .loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--spacing-xl) 0;
-    text-align: center;
+    @include loading-container;
     margin: var(--spacing-xl) 0;
-
-    mat-spinner {
-      margin-bottom: var(--spacing-md);
-    }
-
-    h3 {
-      margin: var(--spacing-md) 0 var(--spacing-sm) 0;
-      color: var(--mat-sys-on-surface);
-    }
-
-    p {
-      color: var(--mat-sys-on-surface-variant);
-      margin: 0;
-    }
   }
 
   // Profile Grid
@@ -115,16 +60,13 @@
     }
 
     .profile-card {
+      @include dashboard-card;
       background: linear-gradient(
         135deg,
-        var(--mat-sys-primary-container),
-        color-mix(
-          in srgb,
-          var(--mat-sys-primary-container) 80%,
-          var(--mat-sys-surface)
-        )
+        rgba(var(--mat-sys-primary-rgb), 0.1),
+        rgba(var(--mat-sys-surface-rgb), 0.5)
       );
-      border: 1px solid var(--mat-sys-primary);
+      border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
 
       .profile-avatar {
         width: 64px;
@@ -134,16 +76,20 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        border-radius: 50%;
+        font-size: 1.5rem;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(var(--mat-sys-primary-rgb), 0.3);
       }
 
       .mat-mdc-card-title {
-        color: var(--mat-sys-on-primary-container);
+        color: var(--mat-sys-on-surface);
         font-weight: 700;
         font-size: 1.5rem;
       }
 
       .mat-mdc-card-subtitle {
-        color: var(--mat-sys-on-primary-container);
+        color: var(--mat-sys-on-surface-variant);
         opacity: 0.8;
         font-weight: 500;
       }
@@ -156,7 +102,7 @@
           justify-content: space-between;
           align-items: center;
           padding: var(--spacing-sm) 0;
-          border-bottom: 1px solid var(--mat-sys-outline-variant);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
           &:last-child {
             border-bottom: none;
@@ -166,7 +112,7 @@
             display: flex;
             align-items: center;
             gap: var(--spacing-xs);
-            color: var(--mat-sys-on-primary-container);
+            color: var(--mat-sys-on-surface-variant);
             font-weight: 500;
 
             mat-icon {
@@ -175,7 +121,7 @@
           }
 
           .detail-value {
-            color: var(--mat-sys-on-primary-container);
+            color: var(--mat-sys-on-surface);
             font-weight: 600;
 
             &.user-id {
@@ -189,6 +135,8 @@
     }
 
     .stats-card {
+      @include dashboard-card;
+
       .mat-mdc-card-header {
         .mat-mdc-card-title {
           display: flex;
@@ -221,15 +169,14 @@
           align-items: flex-start;
           gap: var(--spacing-md);
           padding: var(--spacing-md);
-          background: var(--mat-sys-surface-container-low);
-          border: 1px solid var(--mat-sys-outline-variant);
+          @include glassmorphism(16px, 0.1);
           border-radius: var(--border-radius-lg);
           transition: all 0.2s ease;
 
           &:hover {
-            background: var(--mat-sys-surface-container);
+            background: rgba(255, 255, 255, 0.05);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-color: var(--mat-sys-primary);
           }
 
           .stat-icon {
@@ -239,7 +186,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: var(--mat-sys-primary-container);
+            background: rgba(var(--mat-sys-primary-rgb), 0.1);
 
             mat-icon {
               color: var(--mat-sys-primary);
@@ -282,6 +229,7 @@
 
   // Security Card
   .security-card {
+    @include dashboard-card;
     margin-bottom: var(--spacing-lg);
 
     .mat-mdc-card-header {
@@ -311,15 +259,14 @@
         display: flex;
         gap: var(--spacing-md);
         padding: var(--spacing-lg);
-        background: var(--mat-sys-surface-container-low);
-        border: 1px solid var(--mat-sys-outline-variant);
+        @include glassmorphism(16px, 0.1);
         border-radius: var(--border-radius-lg);
         transition: all 0.2s ease;
 
         &:hover {
-          background: var(--mat-sys-surface-container);
+          background: rgba(255, 255, 255, 0.05);
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          border-color: var(--mat-sys-primary);
         }
 
         .feature-icon {
@@ -329,7 +276,7 @@
           width: 48px;
           height: 48px;
           border-radius: 50%;
-          background: var(--mat-sys-primary-container);
+          background: rgba(var(--mat-sys-primary-rgb), 0.1);
           flex-shrink: 0;
 
           mat-icon {
@@ -384,6 +331,8 @@
     }
 
     .action-card {
+      @include dashboard-card;
+
       .mat-mdc-card-header {
         .mat-mdc-card-title {
           display: flex;
@@ -410,6 +359,10 @@
         }
 
         .logout-button {
+          @include primary-action-button;
+          background: var(--mat-sys-tertiary);
+          color: var(--mat-sys-on-tertiary);
+
           mat-icon {
             margin-right: var(--spacing-xs);
           }
@@ -418,12 +371,13 @@
     }
 
     .danger-card {
-      background: var(--mat-sys-error-container);
-      border: 1px solid var(--mat-sys-error);
+      @include dashboard-card;
+      background: rgba(var(--mat-sys-error-rgb), 0.05);
+      border: 1px solid rgba(var(--mat-sys-error-rgb), 0.3);
 
       .mat-mdc-card-header {
         .mat-mdc-card-title {
-          color: var(--mat-sys-on-error-container);
+          color: var(--mat-sys-error);
 
           mat-icon {
             color: var(--mat-sys-error);
@@ -431,7 +385,7 @@
         }
 
         .mat-mdc-card-subtitle {
-          color: var(--mat-sys-on-error-container);
+          color: var(--mat-sys-error);
           opacity: 0.8;
         }
       }
@@ -442,8 +396,8 @@
           gap: var(--spacing-md);
           margin-bottom: var(--spacing-lg);
           padding: var(--spacing-md);
-          background: var(--mat-sys-surface);
-          border: 1px solid var(--mat-sys-error);
+          background: rgba(var(--mat-sys-error-rgb), 0.1);
+          border: 1px solid rgba(var(--mat-sys-error-rgb), 0.2);
           border-radius: var(--border-radius-lg);
 
           > mat-icon {
@@ -474,10 +428,14 @@
           background: var(--mat-sys-error);
           color: var(--mat-sys-on-error);
           font-weight: 600;
+          padding: 0 var(--spacing-lg);
+          height: 40px;
+          border-radius: var(--border-radius-lg);
 
           &:hover:not(:disabled) {
             background: var(--mat-sys-error);
             opacity: 0.9;
+            box-shadow: 0 4px 8px rgba(var(--mat-sys-error-rgb), 0.3);
           }
 
           &:disabled {
@@ -497,48 +455,5 @@
     }
   }
 
-  // Responsive Design
-  @media (max-width: 768px) {
-    .header .header-row {
-      flex-direction: column;
-      align-items: stretch;
-
-      .controls-section {
-        margin-top: var(--spacing-md);
-        display: flex;
-        justify-content: center;
-      }
-    }
-
-    .profile-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .stats-grid {
-      grid-template-columns: 1fr !important;
-    }
-
-    .security-grid {
-      grid-template-columns: 1fr !important;
-    }
-
-    .actions-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 480px) {
-    padding: var(--spacing-md);
-
-    .danger-warning {
-      flex-direction: column;
-      text-align: center;
-
-      > mat-icon {
-        align-self: center;
-        margin-top: 0;
-        margin-bottom: var(--spacing-sm);
-      }
-    }
-  }
+  @include mobile-responsive;
 }

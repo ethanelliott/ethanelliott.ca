@@ -1,153 +1,69 @@
-@import 'styles/variables';
+@import 'styles/mixins';
 
 .transfers-container {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
+  @include dashboard-container;
+  @include content-container;
 
   .header {
-    margin-bottom: 32px;
+    @include page-header;
 
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 24px;
-
-      @media (max-width: 768px) {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 16px;
-      }
-
-      .title-section {
-        flex: 1;
-
-        .page-title {
-          font-size: 2.2rem;
-          font-weight: 700;
-          margin: 0;
-          color: var(--mat-sys-primary);
-          line-height: 1.2;
-        }
-
-        .page-subtitle {
-          font-size: 1rem;
-          color: var(--mat-sys-on-surface-variant);
-          margin: 8px 0 0 0;
-        }
-      }
-
-      .controls-section {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-
-        .add-button {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 600;
-          padding: 12px 24px;
-          border-radius: 12px;
-        }
+    .controls-section {
+      .add-button {
+        @include primary-action-button;
       }
     }
   }
 
   .transfers-card {
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--mat-sys-outline-variant);
+    @include dashboard-card;
+    padding: 0;
+    overflow: hidden;
 
     mat-card-header {
-      background: var(--mat-sys-surface-container);
-      border-bottom: 1px solid var(--mat-sys-outline-variant);
-      padding: 24px;
-
-      mat-card-title {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 1.3rem;
-        font-weight: 600;
-        color: var(--mat-sys-on-surface);
-
-        mat-icon {
-          color: var(--mat-sys-primary);
-          font-size: 1.5rem;
-        }
-      }
+      padding: var(--spacing-lg);
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     mat-card-content {
-      padding: 0; // Grid handles its own padding
-    }
-  }
-
-  .loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 48px;
-    text-align: center;
-
-    mat-spinner {
-      margin-bottom: 32px;
+      padding: 0;
     }
 
-    h3 {
-      margin: 0 0 12px 0;
-      color: var(--mat-sys-on-surface);
-      font-size: 1.3rem;
+    .loading-container {
+      @include loading-container;
+      min-height: 400px;
     }
 
-    p {
-      margin: 0;
-      color: var(--mat-sys-on-surface-variant);
-      font-size: 1rem;
-    }
-  }
+    .empty-state-card {
+      background: transparent;
+      box-shadow: none;
+      border: none;
 
-  .empty-state-card {
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 80px 48px;
-      text-align: center;
+      .empty-state {
+        @include empty-state;
+        padding: var(--spacing-3xl) var(--spacing-xl);
 
-      mat-icon {
-        font-size: 5rem;
-        width: 5rem;
-        height: 5rem;
-        color: var(--mat-sys-primary);
-        margin-bottom: 24px;
-        opacity: 0.6;
-      }
+        mat-icon {
+          font-size: 4rem;
+          width: 4rem;
+          height: 4rem;
+        }
 
-      h3 {
-        margin: 0 0 12px 0;
-        color: var(--mat-sys-on-surface);
-        font-size: 1.5rem;
-      }
+        h3 {
+          font-size: 1.5rem;
+          margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+        }
 
-      p {
-        margin: 0 0 32px 0;
-        color: var(--mat-sys-on-surface-variant);
-        max-width: 400px;
-        font-size: 1rem;
-      }
+        p {
+          font-size: 1rem;
+          line-height: 1.6;
+          max-width: 400px;
+          margin: 0 auto var(--spacing-lg) auto;
+        }
 
-      .get-started-button {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
+        .get-started-button {
+          @include primary-action-button;
+        }
       }
     }
   }
@@ -156,54 +72,56 @@
     width: 100%;
     height: 600px;
     overflow: hidden;
-    border-radius: var(--border-radius-sm);
 
     @media (max-width: 768px) {
       height: 500px;
     }
 
-    // Custom styling for AG Grid to match our design system
     :ng-deep {
       .ag-theme-material {
-        --ag-background-color: var(--mat-sys-surface);
+        --ag-background-color: transparent;
         --ag-foreground-color: var(--mat-sys-on-surface);
-        --ag-border-color: var(--mat-sys-outline-variant);
-        --ag-header-background-color: var(--mat-sys-surface-container);
+        --ag-border-color: rgba(255, 255, 255, 0.05);
+        --ag-header-background-color: rgba(255, 255, 255, 0.03);
         --ag-header-foreground-color: var(--mat-sys-on-surface);
-        --ag-row-hover-color: var(--mat-sys-surface-container-low);
-        --ag-selected-row-background-color: var(--mat-sys-primary-container);
+        --ag-row-hover-color: rgba(255, 255, 255, 0.05);
+        --ag-selected-row-background-color: rgba(
+          var(--mat-sys-primary-rgb),
+          0.1
+        );
         --ag-font-family: Roboto, 'Helvetica Neue', sans-serif;
         --ag-font-size: 0.875rem;
         --ag-header-height: 56px;
         --ag-row-height: 48px;
-      }
 
-      .ag-header {
-        font-weight: 600;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
+        .ag-header {
+          font-weight: 600;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-      .ag-cell {
-        display: flex;
-        align-items: center;
-        border-bottom: 1px solid var(--mat-sys-outline-variant);
-      }
+        .ag-cell {
+          display: flex;
+          align-items: center;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-      .ag-row:hover {
-        background-color: var(--mat-sys-surface-container-low);
-      }
+        .ag-row:hover {
+          background-color: rgba(255, 255, 255, 0.05);
+        }
 
-      .ag-paging-panel {
-        background-color: var(--mat-sys-surface-container);
-        border-top: 1px solid var(--mat-sys-outline-variant);
-        padding: var(--spacing-md);
-      }
+        .ag-paging-panel {
+          background-color: transparent;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          padding: var(--spacing-md);
+        }
 
-      .transfer-amount {
-        font-weight: 700;
-        color: var(--mat-sys-primary);
+        .transfer-amount {
+          font-weight: 700;
+          color: var(--mat-sys-primary);
+        }
       }
     }
   }

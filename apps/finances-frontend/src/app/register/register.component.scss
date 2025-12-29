@@ -13,9 +13,7 @@
 }
 
 .wrapper {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 2rem;
+  @include auth-page-wrapper;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -23,13 +21,7 @@
 }
 
 .register-container {
-  width: 100%;
-  max-width: 440px;
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-  position: relative;
-  z-index: 1;
+  @include auth-content-container;
 }
 
 .header-section {
@@ -40,61 +32,27 @@
   gap: 1.5rem;
 
   .brand-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 1rem;
-    background: var(--mat-sys-surface-container-high);
-    backdrop-filter: blur(12px);
-    border-radius: 100px;
-    border: 1px solid var(--mat-sys-outline-variant);
-    width: fit-content;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-
-    mat-icon {
-      color: var(--mat-sys-primary);
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-    }
-
-    span {
-      font-weight: 600;
-      font-size: 0.9rem;
-      color: var(--mat-sys-on-surface);
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
+    @include brand-badge;
   }
 
   .page-title {
+    @include hero-title;
     font-size: 3.5rem;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.03em;
-    color: var(--mat-sys-on-background);
-    margin: 0;
 
     .highlight {
-      color: var(--mat-sys-primary);
+      @include gradient-text-primary;
     }
   }
 
   .page-subtitle {
-    font-size: 1.1rem;
-    color: var(--mat-sys-on-surface-variant);
-    line-height: 1.5;
-    margin: 0;
-    font-weight: 400;
-    max-width: 300px;
+    @include hero-subtitle;
+    max-width: 380px;
   }
 }
 
 .register-card {
-  background: var(--mat-sys-surface-container);
-  backdrop-filter: blur(20px);
+  @include glassmorphism(20px, 0.6);
   border-radius: 24px;
-  border: 1px solid var(--mat-sys-outline-variant);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   width: 100%;
@@ -137,20 +95,13 @@
   }
 
   .register-button {
+    @include primary-action-button;
     margin-top: 0.5rem;
     width: 100%;
-    height: 56px;
-    font-size: 1.1rem;
     border-radius: 16px;
     background: var(--mat-sys-primary);
     color: var(--mat-sys-on-primary);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    }
 
     &:disabled {
       background: var(--mat-sys-surface-container-highest);
@@ -183,12 +134,12 @@
 }
 
 .footer-links {
-  margin-top: 1rem;
   text-align: center;
 
   p {
     color: var(--mat-sys-on-surface-variant);
     font-size: 0.95rem;
+    margin: 0;
   }
 
   a {
