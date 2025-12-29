@@ -15,16 +15,18 @@ ingress:
 
 resources:
   limits:
-    cpu: 1000m
-    memory: 1Gi
+    cpu: 4
+    memory: 2Gi
   requests:
-    cpu: 500m
-    memory: 512Mi
+    cpu: 2
+    memory: 1Gi
 
 env:
   NODE_ENV: 'production'
   PORT: '3000'
   DB_PATH: '/data/aritzia_stock.sqlite'
+  MAX_CONCURRENT_DOWNLOADS: '5'
+  DEBUG_LOGGING: 'true'
 
 storage:
   size: 20Gi

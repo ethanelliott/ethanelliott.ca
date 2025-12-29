@@ -19,7 +19,11 @@ const ALGOLIA_APP_ID = 'SONLJM8OH6';
 const ALGOLIA_API_KEY = '1455bca7c6c33e746a0f38beb28422e6';
 const INDEX_NAME = 'production_ecommerce_aritzia__Aritzia_CA__products__en_CA';
 const MAX_HITS_PER_PAGE = 1000;
-const MAX_CONCURRENT_DOWNLOADS = 20; // Parallel execution limit
+const MAX_CONCURRENT_DOWNLOADS = parseInt(
+  process.env.MAX_CONCURRENT_DOWNLOADS || '5',
+  10
+); // Parallel execution limit
+const DEBUG_LOGGING = process.env.DEBUG_LOGGING === 'true';
 
 const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${INDEX_NAME}/query`;
 
@@ -55,6 +59,7 @@ async function downloadImageWithPuppeteer(
   advance: () => void
 ) {
   const imageUrl = `${BASE_IMAGE_URL}${record.id}`;
+  if (DEBUG_LOGGING) console.log(`Starting download for ${record.id}`);
   const browser = await getBrowser();
   let page: Page | undefined;
   try {
@@ -101,6 +106,7 @@ async function downloadImageWithPuppeteer(
 
     await page.goto(imageUrl, {
       waitUntil: 'networkidle0',
+      timeout: 30000,
     });
 
     // Wait for the buffer capture promise to resolve
@@ -117,6 +123,7 @@ async function downloadImageWithPuppeteer(
     // Use runPromise (from db prototype) for the update
     await runPromise.call(db, updateSql, [imageBuffer, record.id]);
 
+    if (DEBUG_LOGGING) console.log(`Finished download for ${record.id}`);
     advance();
   } catch (error: any) {
     // We log errors but don't stop the whole process, so other workers continue
