@@ -8,7 +8,7 @@ COPY package*.json pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml ./
 
 # Install pnpm and dependencies
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 RUN pnpm install --frozen-lockfile
 
 # Copy source code and build

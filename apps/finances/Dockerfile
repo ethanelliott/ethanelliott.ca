@@ -20,8 +20,9 @@ RUN mkdir -p /app/data && chown server:server /app/data
 # Copy the pre-built application with correct ownership
 COPY --chown=server:server dist/apps/finances ./
 
-# Install production dependencies using npm (better native module support)
-RUN npm install --production --omit=dev --legacy-peer-deps && \
+# Install production dependencies using pnpm (better native module support)
+RUN npm install -g pnpm@9 && \
+    pnpm install --prod && \
     chown -R server:server .
 
 # Switch to non-root user
