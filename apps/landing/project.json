@@ -77,13 +77,17 @@
         "spa": true
       }
     },
-    "docker-build": {
+    "container": {
       "dependsOn": ["build"],
-      "command": "docker build -f apps/landing/Dockerfile . -t ethanelliottio/landing:latest"
-    },
-    "docker-push": {
-      "dependsOn": ["docker-build"],
-      "command": "docker push ethanelliottio/landing:latest"
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "docker build -f apps/landing/Dockerfile -t ethanelliottio/landing:{args.tag} -t ethanelliottio/landing:latest .",
+          "docker push ethanelliottio/landing:{args.tag}",
+          "docker push ethanelliottio/landing:latest"
+        ],
+        "parallel": false
+      }
     }
   }
 }

@@ -60,13 +60,17 @@
         }
       }
     },
-    "docker-build": {
+    "container": {
       "dependsOn": ["build"],
-      "command": "docker build -f apps/finances/Dockerfile . -t ethanelliottio/finances:latest"
-    },
-    "docker-push": {
-      "dependsOn": ["docker-build"],
-      "command": "docker push ethanelliottio/finances:latest"
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "docker build -f apps/finances/Dockerfile -t ethanelliottio/finances:{args.tag} -t ethanelliottio/finances:latest .",
+          "docker push ethanelliottio/finances:{args.tag}",
+          "docker push ethanelliottio/finances:latest"
+        ],
+        "parallel": false
+      }
     }
   }
 }

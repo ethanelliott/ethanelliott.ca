@@ -58,14 +58,17 @@
         }
       }
     },
-    "docker-build": {
+    "container": {
       "dependsOn": ["build"],
-      "command": "docker build -f apps/server/Dockerfile . -t ethanelliottio/test-server:latest"
-    },
-
-    "docker-push": {
-      "dependsOn": ["docker-build"],
-      "command": "docker push ethanelliottio/test-server:latest"
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "docker build -f apps/server/Dockerfile -t ethanelliottio/test-server:{args.tag} -t ethanelliottio/test-server:latest .",
+          "docker push ethanelliottio/test-server:{args.tag}",
+          "docker push ethanelliottio/test-server:latest"
+        ],
+        "parallel": false
+      }
     }
   }
 }
