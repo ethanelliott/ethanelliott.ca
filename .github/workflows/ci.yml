@@ -25,7 +25,7 @@ jobs:
           node-version: 24
           cache: 'pnpm'
       - run: pnpm install
-      
+
       - name: Lint & Build
         run: pnpm exec nx affected -t lint build
 
