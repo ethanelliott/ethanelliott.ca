@@ -194,11 +194,23 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               timestamp TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               FOREIGN KEY (variant_id) REFERENCES variants(id)
           );
+        `
+      );
+
+      // Table 5: Restocks
+      db.run(
+        `
+          CREATE TABLE IF NOT EXISTS restocks (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              variant_id TEXT,
+              timestamp TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+              FOREIGN KEY (variant_id) REFERENCES variants(id)
+          );
         `,
         (err) => {
           if (err) return reject(err);
           console.log(
-            'Database tables initialized (products, variants, images, prices).'
+            'Database tables initialized (products, variants, images, prices, restocks).'
           );
           resolve();
         }

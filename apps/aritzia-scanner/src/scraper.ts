@@ -245,6 +245,14 @@ export async function updateDatabase() {
   // Records for update (separate as they are only used for the last_seen_at update step)
   const productUpdateRecords: any[][] = [];
   const variantUpdateRecords: any[][] = [];
+  const restockInsertRecords: any[][] = [];
+
+  // Fetch existing variants to check for restocks
+  const existingVariants = await allPromise.call(DB, 'SELECT id, available_sizes FROM variants');
+  const existingVariantsMap = new Map<string, string[]>();
+  existingVariants.forEach((v: any) => {
+    existingVariantsMap.set(v.id, JSON.parse(v.available_sizes || '[]'));
+  });
 
   for (const [masterId, items] of groupedData.entries()) {
     for (const product of items) {
@@ -302,6 +310,13 @@ export async function updateDatabase() {
             scrapeTime,
           ]);
 
+          // Check for restock
+          const oldSizes = existingVariantsMap.get(variantId);
+          const newSizes = color.available_sizes || [];
+          if (oldSizes && oldSizes.length === 0 && newSizes.length > 0) {
+             restockInsertRecords.push([variantId, scrapeTime]);
+          }
+
           for (const imageId of color.images) {
             imageInsertRecords.push([imageId, product.id, variantId]);
           }
@@ -352,6 +367,14 @@ export async function updateDatabase() {
     `INSERT INTO prices (variant_id, price, list_price, timestamp) VALUES (?, ?, ?, ?)`,
     priceInsertRecords,
     'Prices'
+  );
+
+  // Restocks
+  await prepareRunAll(
+    DB,
+    `INSERT INTO restocks (variant_id, timestamp) VALUES (?, ?)`,
+    restockInsertRecords,
+    'Restocks'
   );
 
   // --- Step 2: Update last_seen_at for all records found in current scrape ---

@@ -614,6 +614,38 @@ async function main() {
     });
   });
 
+  app.get('/restocks', async (req, res) => {
+    const db = getDB();
+    
+    const restocks = await allPromise.call(
+      db,
+      `
+      SELECT r.timestamp, v.id, v.color, v.color_id, v.length, v.price, v.list_price, p.name, p.id as product_id, p.slug,
+             COALESCE(
+               (SELECT id FROM images WHERE variant_id = v.id LIMIT 1),
+               (SELECT i.id FROM images i JOIN variants v2 ON i.variant_id = v2.id WHERE v2.product_id = v.product_id AND v2.color = v.color LIMIT 1)
+             ) as thumbnail_id
+      FROM restocks r
+      JOIN variants v ON r.variant_id = v.id
+      JOIN products p ON v.product_id = p.id
+      ORDER BY r.timestamp DESC
+      LIMIT 50
+      `
+    );
+
+    restocks.forEach((r: any) => {
+      r.added_at_formatted = dayjs.utc(r.timestamp).fromNow(); // Reuse added_at_formatted for display
+      r.isVariant = true;
+    });
+
+    res.render('index', {
+      activeProducts: restocks,
+      discontinuedProducts: [],
+      title: 'Recent Restocks',
+      showAllLink: false,
+    });
+  });
+
   app.get('/discontinued', async (req, res) => {
     const db = getDB();
 
