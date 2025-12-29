@@ -25,39 +25,25 @@
             loading="lazy"
           />
           <% } else { %>
-          <span style="color: #999">No Image</span>
+          <span class="no-image-placeholder">No Image</span>
           <% } %>
         </a>
         <div class="product-info">
           <a href="<%= link %>" class="product-name"><%= product.name %></a>
 
-          <div class="product-price" style="margin-bottom: 5px">
-            <span style="color: #d9534f; font-weight: bold"
-              >$<%= product.price %></span
-            >
-            <span
-              style="
-                text-decoration: line-through;
-                color: #999;
-                font-size: 0.9em;
-              "
-              >$<%= product.list_price %></span
-            >
-            <span style="color: #d9534f; font-size: 0.8em; margin-left: 5px">
+          <div class="product-price-container">
+            <span class="price-sale">$<%= product.price %></span>
+            <span class="price-list">$<%= product.list_price %></span>
+            <span class="discount-badge">
               (<%= Math.round((1 - product.price / product.list_price) * 100)
               %>% OFF)
             </span>
           </div>
 
-          <div
-            class="variant-details"
-            style="font-size: 0.9em; color: #555; margin-bottom: 5px"
-          >
-            <%= subtext %>
-          </div>
+          <div class="variant-details"><%= subtext %></div>
 
           <% if (product.available_sizes) { %>
-          <div style="font-size: 0.8em; color: #555">
+          <div class="sale-sizes">
             Sizes: <%= JSON.parse(product.available_sizes).join(', ') %>
           </div>
           <% } %>

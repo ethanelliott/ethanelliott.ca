@@ -1,13 +1,32 @@
+:root {
+  color-scheme: light dark;
+}
+
 /* Global Styles */
 body {
   font-family: sans-serif;
   margin: 0 auto;
   padding: 20px;
+  background-color: light-dark(#fff, #121212);
+  color: light-dark(#333, #e0e0e0);
 }
 
 h1 {
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid light-dark(#eee, #333);
   padding-bottom: 10px;
+}
+
+a {
+  color: light-dark(#007bff, #64b5f6);
+  text-decoration: none;
+}
+
+a:visited {
+  color: light-dark(#007bff, #b39ddb);
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 .back-link {
@@ -22,12 +41,13 @@ h1 {
 .nav a {
   margin-right: 15px;
   text-decoration: none;
-  color: #333;
+  color: light-dark(#333, #e0e0e0);
   font-weight: bold;
 }
 
 .nav a:hover {
   text-decoration: underline;
+  color: light-dark(#333, #fff);
 }
 
 /* Product Grid */
@@ -38,17 +58,19 @@ h1 {
 }
 
 .product-card {
-  border: 1px solid #eee;
+  border: 1px solid light-dark(#eee, #333);
   border-radius: 8px;
   overflow: hidden;
   transition: transform 0.2s;
   display: flex;
   flex-direction: column;
+  background-color: light-dark(#fff, #1e1e1e);
 }
 
 .product-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 5px 15px
+    light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.05));
 }
 
 .product-card.discontinued {
@@ -59,7 +81,7 @@ h1 {
 .product-image {
   width: 100%;
   height: 250px;
-  background: #f4f4f4;
+  background-color: light-dark(#f4f4f4, #2c2c2c);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -82,18 +104,18 @@ h1 {
 .product-name {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #333;
+  color: light-dark(#333, #fff);
   text-decoration: none;
 }
 
 .product-meta {
   font-size: 0.85em;
-  color: #666;
+  color: light-dark(#666, #aaa);
   margin-top: auto;
 }
 .variant-details {
   font-size: 0.9em;
-  color: #555;
+  color: light-dark(#555, #aaa);
   margin-bottom: 5px;
 }
 
@@ -105,7 +127,7 @@ h1 {
 }
 
 .color-card {
-  border: 1px solid #eee;
+  border: 1px solid light-dark(#eee, #333);
   border-radius: 8px;
   overflow: hidden;
   text-align: center;
@@ -113,6 +135,7 @@ h1 {
   display: flex;
   flex-direction: column;
   padding-bottom: 16px;
+  background-color: light-dark(#fff, #1e1e1e);
 }
 
 .color-card.inactive {
@@ -121,14 +144,14 @@ h1 {
 
 .color-meta {
   font-size: 0.8em;
-  color: #888;
+  color: light-dark(#888, #aaa);
   margin-top: 10px;
 }
 
 .color-name {
   font-weight: bold;
   margin-top: 10px;
-  color: #333;
+  color: light-dark(#333, #fff);
   text-decoration: none;
 }
 
@@ -142,7 +165,7 @@ h1 {
 .color-placeholder {
   width: 100%;
   height: 200px;
-  background: #f4f4f4;
+  background-color: light-dark(#f4f4f4, #2c2c2c);
   margin-bottom: 6px;
   display: flex;
   align-items: center;
@@ -159,8 +182,9 @@ h1 {
 }
 
 .variant {
-  border: 1px solid #eee;
+  border: 1px solid light-dark(#eee, #333);
   border-radius: 5px;
+  background-color: light-dark(#fff, #1e1e1e);
 }
 
 .variant.discontinued {
@@ -170,4 +194,210 @@ h1 {
 
 .variant h3 {
   margin-top: 0;
+}
+
+/* New Classes for Refactoring */
+.filter-box {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: light-dark(#f9f9f9, #1e1e1e);
+  border: 1px solid light-dark(transparent, #333);
+  border-radius: 5px;
+  color: light-dark(#333, #e0e0e0);
+}
+
+select {
+  background-color: light-dark(#fff, #2c2c2c);
+  color: light-dark(#000, #e0e0e0);
+  border: 1px solid light-dark(#767676, #444);
+}
+
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.image-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid light-dark(#ddd, #333);
+}
+
+.image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lengths-list {
+  margin-bottom: 20px;
+}
+
+.variant-length-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.variant-length {
+  border: 1px solid light-dark(#eee, #333);
+  padding: 10px;
+  border-radius: 5px;
+  background-color: light-dark(#fff, #1e1e1e);
+}
+
+.variant-length.discontinued {
+  opacity: 0.6;
+  border-color: #d9534f;
+}
+
+.price-sale {
+  color: #d9534f;
+  font-weight: bold;
+}
+
+.price-list {
+  text-decoration: line-through;
+  color: light-dark(#999, #777);
+  font-size: 0.9em;
+}
+
+.price-lowest {
+  font-size: 0.8em;
+  color: #28a745;
+}
+
+.size-tag {
+  display: inline-block;
+  padding: 2px 5px;
+  margin: 2px;
+  border: 1px solid light-dark(#ccc, #444);
+  border-radius: 3px;
+  background-color: light-dark(#fff, #2c2c2c);
+  color: light-dark(#333, #e0e0e0);
+}
+
+.size-tag.unavailable {
+  text-decoration: line-through;
+  color: light-dark(#999, #666);
+  background-color: light-dark(#f5f5f5, #333);
+  border-color: light-dark(#ccc, #444);
+}
+
+.product-link,
+.color-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.external-link {
+  color: light-dark(#000, #e0e0e0);
+  text-decoration: underline;
+}
+
+.length-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted light-dark(#999, #666);
+}
+
+.price-container {
+  margin-top: 5px;
+}
+
+.sizes-container {
+  margin-top: 10px;
+  font-size: 0.8em;
+}
+
+.filter-label {
+  font-weight: bold;
+}
+
+.filter-select {
+  padding: 5px;
+  margin-left: 10px;
+}
+
+.variant-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.variant-title {
+  padding: 15px;
+}
+
+.variant-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.variant-price-container {
+  padding: 0 15px;
+  margin-bottom: 5px;
+}
+
+.variant-lengths {
+  margin-inline: 15px;
+}
+
+.discontinued-label {
+  color: #d9534f;
+  font-weight: bold;
+  padding: 0 15px;
+}
+
+.nav-sale-link {
+  color: #d9534f !important;
+  font-weight: bold;
+}
+
+.no-image-placeholder {
+  color: light-dark(#999, #777);
+}
+
+.product-price-container {
+  margin-bottom: 5px;
+}
+
+.discount-badge {
+  color: #d9534f;
+  font-size: 0.8em;
+  margin-left: 5px;
+}
+
+.sale-sizes {
+  font-size: 0.8em;
+  color: light-dark(#555, #aaa);
+}
+
+.discontinued-badge {
+  color: #d9534f;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+.view-all-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: light-dark(#000, #333);
+  color: light-dark(#fff, #e0e0e0);
+  text-decoration: none;
+  border-radius: 4px;
+  border: 1px solid light-dark(transparent, #444);
+}
+
+.view-all-button:hover {
+  background-color: light-dark(#000, #444);
+}
+
+.view-all-container {
+  margin-top: 30px;
+  text-align: center;
 }

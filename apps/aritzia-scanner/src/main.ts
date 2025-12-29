@@ -165,7 +165,7 @@ async function main() {
       FROM variants v
       JOIN products p ON v.product_id = p.id
       WHERE v.last_seen_at = ? AND v.price < v.list_price
-      ORDER BY (v.list_price - v.price) DESC
+      ORDER BY ((v.list_price - v.price) / v.list_price) DESC
       `,
       [lastScanTime]
     );

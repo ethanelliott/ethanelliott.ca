@@ -1,37 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= title %> - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
     <%- include('partials/nav') %>
 
     <h1><%= title %></h1>
-    
+
     <div class="product-grid">
-        <% variants.forEach(variant => { %>
-            <div class="product-card">
-                <a href="/product/<%= variant.product_id %>/variant/<%= variant.color_id %>" class="product-image">
-                    <% if (variant.thumbnail_id) { %>
-                        <img src="/api/images/<%= variant.thumbnail_id %>" alt="<%= variant.product_name %> - <%= variant.color %>" loading="lazy">
-                    <% } else { %>
-                        <span style="color: #999;">No Image</span>
-                    <% } %>
-                </a>
-                <div class="product-info">
-                    <a href="/product/<%= variant.product_id %>/variant/<%= variant.color_id %>" class="product-name"><%= variant.product_name %></a>
-                    <div class="variant-details">
-                        <%= variant.color %> (<%= variant.length %>)
-                    </div>
-                    <% if (variant.last_seen_at_formatted) { %>
-                        <div class="product-meta">Last seen <%= variant.last_seen_at_formatted %></div>
-                    <% } %>
-                </div>
-            </div>
-        <% }); %>
+      <% variants.forEach(variant => { %>
+      <div class="product-card">
+        <a
+          href="/product/<%= variant.product_id %>/variant/<%= variant.color_id %>"
+          class="product-image"
+        >
+          <% if (variant.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= variant.thumbnail_id %>"
+            alt="<%= variant.product_name %> - <%= variant.color %>"
+            loading="lazy"
+          />
+          <% } else { %>
+          <span class="no-image-placeholder">No Image</span>
+          <% } %>
+        </a>
+        <div class="product-info">
+          <a
+            href="/product/<%= variant.product_id %>/variant/<%= variant.color_id %>"
+            class="product-name"
+            ><%= variant.product_name %></a
+          >
+          <div class="variant-details">
+            <%= variant.color %> (<%= variant.length %>)
+          </div>
+          <% if (variant.last_seen_at_formatted) { %>
+          <div class="product-meta">
+            Last seen <%= variant.last_seen_at_formatted %>
+          </div>
+          <% } %>
+        </div>
+      </div>
+      <% }); %>
     </div>
-</body>
+  </body>
 </html>

@@ -22,18 +22,9 @@
     </p>
 
     <% if (product.allLengths && product.allLengths.length > 1) { %>
-    <div
-      style="
-        margin-bottom: 20px;
-        padding: 10px;
-        background: #f9f9f9;
-        border-radius: 5px;
-      "
-    >
-      <label for="length-select" style="font-weight: bold"
-        >Filter by Length:</label
-      >
-      <select id="length-select" style="padding: 5px; margin-left: 10px">
+    <div class="filter-box">
+      <label for="length-select" class="filter-label">Filter by Length:</label>
+      <select id="length-select" class="filter-select">
         <option value="all">All Lengths</option>
         <% product.allLengths.forEach(length => { %>
         <option value="<%= length %>"><%= length %></option>
@@ -59,45 +50,32 @@
           <img
             src="/api/images/<%= variant.thumbnail %>"
             alt="<%= variant.color %>"
-            style="
-              width: 100%;
-              height: auto;
-              display: block;
-              margin-bottom: 10px;
-              border-radius: 4px;
-            "
+            class="variant-image"
           />
         </a>
         <% } %>
-        <h3 style="padding: 15px">
+        <h3 class="variant-title">
           <a
             href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
-            style="color: inherit; text-decoration: none"
+            class="variant-link"
             ><%= variant.color %></a
           >
         </h3>
 
         <% if (variant.price) { %>
-        <div style="padding: 0 15px; margin-bottom: 5px">
+        <div class="variant-price-container">
           <% if (variant.price < variant.list_price) { %>
-          <span style="color: #d9534f; font-weight: bold"
-            >$<%= variant.price %></span
-          >
-          <span
-            style="text-decoration: line-through; color: #999; font-size: 0.9em"
-            >$<%= variant.list_price %></span
-          >
+          <span class="price-sale">$<%= variant.price %></span>
+          <span class="price-list">$<%= variant.list_price %></span>
           <% } else { %>
           <span>$<%= variant.price %></span>
           <% } %> <% if (variant.lowest_price && variant.lowest_price <
           variant.price) { %>
-          <div style="font-size: 0.8em; color: #28a745">
-            Lowest: $<%= variant.lowest_price %>
-          </div>
+          <div class="price-lowest">Lowest: $<%= variant.lowest_price %></div>
           <% } %>
         </div>
         <% } %> <% if (product.allLengths && product.allLengths.length > 1) { %>
-        <p style="margin-inline: 15px"><%= variant.lengths.join(', ') %></p>
+        <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
         <% } %>
       </div>
       <% }); %>
@@ -115,49 +93,34 @@
           <img
             src="/api/images/<%= variant.thumbnail %>"
             alt="<%= variant.color %>"
-            style="
-              width: 100%;
-              height: auto;
-              display: block;
-              margin-bottom: 10px;
-              border-radius: 4px;
-            "
+            class="variant-image"
           />
         </a>
         <% } %>
-        <h3 style="padding: 15px">
+        <h3 class="variant-title">
           <a
             href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
-            style="color: inherit; text-decoration: none"
+            class="variant-link"
             ><%= variant.color %></a
           >
         </h3>
 
         <% if (variant.price) { %>
-        <div style="padding: 0 15px; margin-bottom: 5px">
+        <div class="variant-price-container">
           <% if (variant.price < variant.list_price) { %>
-          <span style="color: #d9534f; font-weight: bold"
-            >$<%= variant.price %></span
-          >
-          <span
-            style="text-decoration: line-through; color: #999; font-size: 0.9em"
-            >$<%= variant.list_price %></span
-          >
+          <span class="price-sale">$<%= variant.price %></span>
+          <span class="price-list">$<%= variant.list_price %></span>
           <% } else { %>
           <span>$<%= variant.price %></span>
           <% } %> <% if (variant.lowest_price && variant.lowest_price <
           variant.price) { %>
-          <div style="font-size: 0.8em; color: #28a745">
-            Lowest: $<%= variant.lowest_price %>
-          </div>
+          <div class="price-lowest">Lowest: $<%= variant.lowest_price %></div>
           <% } %>
         </div>
         <% } %> <% if (product.allLengths && product.allLengths.length > 1) { %>
-        <p style="margin-inline: 15px"><%= variant.lengths.join(', ') %></p>
+        <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
         <% } %>
-        <p style="color: #d9534f; font-weight: bold; padding: 0 15px">
-          Discontinued
-        </p>
+        <p class="discontinued-label">Discontinued</p>
       </div>
       <% }); %>
     </div>
