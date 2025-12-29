@@ -2,9 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: test-server
-  namespace: default
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  namespace: elliott-haus
 spec:
   project: home
   source:
@@ -13,10 +11,8 @@ spec:
     targetRevision: main
     helm:
       releaseName: test-server
-      valueFiles:
-        - values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: elliott-haus
   syncPolicy:
     automated: {}
