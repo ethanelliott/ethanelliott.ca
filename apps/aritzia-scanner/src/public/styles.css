@@ -425,3 +425,10 @@ select {
   color: #fff;
   background-color: light-dark(#fd7e14, #d65b00);
 }
+
+.low-stock-warning {
+  color: light-dark(#dc3545, #f85149);
+  font-weight: bold;
+  font-size: 0.9em;
+  margin-top: 5px;
+}

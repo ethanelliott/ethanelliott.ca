@@ -82,6 +82,9 @@
             </span>
             <% }); %>
           </div>
+          <% if (v.available_sizes && v.available_sizes.length > 0 && v.available_sizes.length <= 2) { %>
+            <div class="low-stock-warning">Low Stock: Only <%= v.available_sizes.length %> size<%= v.available_sizes.length === 1 ? '' : 's' %> left!</div>
+          <% } %>
           <% } %>
 
           <br />
