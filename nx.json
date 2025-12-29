@@ -113,14 +113,11 @@
   ],
   "release": {
     "projects": ["apps/*"],
+    "projectsRelationship": "independent",
     "version": {
       "conventionalCommits": true
     },
     "changelog": {
-      "workspaceChangelog": {
-        "createRelease": "github",
-        "file": "CHANGELOG.md"
-      },
       "projectChangelogs": {
         "file": "CHANGELOG.md"
       }
