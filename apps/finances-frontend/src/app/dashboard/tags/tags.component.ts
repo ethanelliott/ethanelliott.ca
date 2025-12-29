@@ -527,7 +527,7 @@ export class TagsComponent implements OnInit, AfterViewInit {
     // updateDataSource() will be called automatically by the effect
   }
 
-  async deleteTag(tagName: string, skipConfirmation: boolean = false) {
+  async deleteTag(tagName: string, skipConfirmation = false) {
     if (!skipConfirmation) {
       const confirmed = await firstValueFrom(
         this.dialogService.confirm(

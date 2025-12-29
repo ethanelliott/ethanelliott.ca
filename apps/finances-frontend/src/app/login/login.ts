@@ -16,7 +16,7 @@ import { startAuthentication } from '@simplewebauthn/browser';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
-  selector: 'fin-login',
+  selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCard,

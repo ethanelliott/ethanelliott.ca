@@ -41,223 +41,11 @@ import { DialogService } from '../../shared/dialogs';
   styleUrl: './profile.component.scss',
   template: `
     <div class="profile-container">
-      <!-- Modern Header -->
-      <div class="header">
-        <div class="header-row">
-          <div class="title-section">
-            <h1 class="page-title">
-              <mat-icon>account_circle</mat-icon>
-              Profile
-            </h1>
-            <p class="page-subtitle">
-              Manage your account settings, security, and preferences
-            </p>
-          </div>
-          <div class="controls-section">
-            <div
-              class="account-status"
-              [class]="userStore.isActive() ? 'active' : 'inactive'"
-            >
-              <mat-icon>{{
-                userStore.isActive() ? 'check_circle' : 'cancel'
-              }}</mat-icon>
-              <span>{{
-                userStore.isActive() ? 'Active Account' : 'Inactive Account'
-              }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      @if (userStore.loading()) {
-      <div class="loading-container">
-        <mat-spinner diameter="48"></mat-spinner>
-        <h3>Loading Profile</h3>
-        <p>Retrieving your account information...</p>
-      </div>
-      } @else if (userStore.user()) {
-
-      <!-- Profile Overview Grid -->
-      <div class="profile-grid">
-        <!-- Profile Card -->
-        <mat-card class="profile-card">
-          <mat-card-header>
-            <div mat-card-avatar class="profile-avatar">
-              <mat-icon>account_circle</mat-icon>
-            </div>
-            <mat-card-title>{{ userStore.displayName() }}</mat-card-title>
-            <mat-card-subtitle>@{{ userStore.username() }}</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="profile-details">
-              <div class="detail-row">
-                <div class="detail-label">
-                  <mat-icon>person</mat-icon>
-                  <span>Display Name</span>
-                </div>
-                <div class="detail-value">{{ userStore.displayName() }}</div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">
-                  <mat-icon>alternate_email</mat-icon>
-                  <span>Username</span>
-                </div>
-                <div class="detail-value">@{{ userStore.username() }}</div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">
-                  <mat-icon>badge</mat-icon>
-                  <span>User ID</span>
-                </div>
-                <div class="detail-value user-id">
-                  {{ userStore.user()?.id }}
-                </div>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Account Statistics -->
-        <mat-card class="stats-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>trending_up</mat-icon>
-              Account Statistics
-            </mat-card-title>
-            <mat-card-subtitle
-              >Your account activity and milestones</mat-card-subtitle
-            >
-          </mat-card-header>
-          <mat-card-content>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <div class="stat-icon">
-                  <mat-icon>calendar_month</mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-label">Member Since</div>
-                  <div class="stat-value">
-                    {{ formatDate(userStore.memberSince()) }}
-                  </div>
-                  <div class="stat-meta">{{ getMembershipDuration() }}</div>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon">
-                  <mat-icon>schedule</mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-label">Last Active</div>
-                  <div class="stat-value">
-                    {{ formatDate(userStore.lastLoginAt()) || 'Never' }}
-                  </div>
-                  <div class="stat-meta">{{ getLastActiveTime() }}</div>
-                </div>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-      <!-- Actions Section -->
-      <div class="actions-grid">
-        <mat-card class="action-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>logout</mat-icon>
-              Session Management
-            </mat-card-title>
-            <mat-card-subtitle>Manage your current session</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="action-content">
-              <p>
-                Sign out of your account on this device. You'll need to
-                authenticate again to access your data.
-              </p>
-              <button
-                mat-raised-button
-                color="accent"
-                (click)="logout()"
-                class="logout-button"
-              >
-                <mat-icon>logout</mat-icon>
-                Sign Out
-              </button>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Danger Zone -->
-        <mat-card class="danger-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>warning</mat-icon>
-              Danger Zone
-            </mat-card-title>
-            <mat-card-subtitle
-              >Irreversible and destructive actions</mat-card-subtitle
-            >
-          </mat-card-header>
-          <mat-card-content>
-            <div class="danger-content">
-              <div class="danger-warning">
-                <mat-icon>clear_all</mat-icon>
-                <div class="warning-text">
-                  <h4>Delete All Transactions</h4>
-                  <p>
-                    Permanently delete all your financial transactions. This
-                    action cannot be undone and will remove all your transaction
-                    history while keeping your account and categories intact.
-                  </p>
-                </div>
-              </div>
-              <button
-                mat-flat-button
-                (click)="deleteAllTransactions()"
-                class="delete-button"
-              >
-                <mat-icon>clear_all</mat-icon>
-                Delete All Transactions
-              </button>
-
-              <mat-divider style="margin: 24px 0;"></mat-divider>
-
-              <div class="danger-warning">
-                <mat-icon>warning</mat-icon>
-                <div class="warning-text">
-                  <h4>Delete Account</h4>
-                  <p>
-                    Permanently delete your account and all associated data.
-                    This action cannot be undone and will immediately remove all
-                    your financial records, categories, and settings.
-                  </p>
-                </div>
-              </div>
-              <button
-                mat-flat-button
-                (click)="deleteAccount()"
-                [disabled]="userStore.deleting()"
-                class="delete-button"
-              >
-                @if (userStore.deleting()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                Deleting Account... } @else {
-                <ng-container>
-                  <mat-icon>delete</mat-icon>
-                  Delete Account
-                </ng-container>
-                }
-              </button>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-      }
+      <h1>Profile</h1>
     </div>
   `,
 })
-export class ProfileComponent {
+export class ProfileComponent implements OnInit {
   protected readonly userStore = injectUserStore();
   private readonly fb = inject(FormBuilder);
   private readonly dialogService = inject(DialogService);
@@ -267,9 +55,11 @@ export class ProfileComponent {
     username: [''],
   });
 
-  constructor() {
+  ngOnInit(): void {
     this.userStore.loadProfile();
+  }
 
+  constructor() {
     // Update form when user data changes
     effect(() => {
       const user = this.userStore.user();

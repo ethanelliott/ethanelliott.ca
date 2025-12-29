@@ -5,7 +5,7 @@ import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 @Component({
-  selector: 'fin-home',
+  selector: 'app-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButton, MatCard, MatCardContent, MatIcon, RouterLink],
   styleUrl: './home.component.scss',

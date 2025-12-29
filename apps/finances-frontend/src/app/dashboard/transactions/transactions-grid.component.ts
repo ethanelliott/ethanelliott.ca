@@ -437,9 +437,10 @@ export class TransactionsGridComponent {
         return numValue > filterValue;
       case 'greaterThanOrEqual':
         return numValue >= filterValue;
-      case 'inRange':
+      case 'inRange': {
         const filterTo = Number(filter.filterTo);
         return numValue >= filterValue && numValue <= filterTo;
+      }
       default:
         return true;
     }
@@ -460,9 +461,10 @@ export class TransactionsGridComponent {
         return dateValue < filterDate;
       case 'greaterThan':
         return dateValue > filterDate;
-      case 'inRange':
+      case 'inRange': {
         const filterTo = new Date(filter.dateTo);
         return dateValue >= filterDate && dateValue <= filterTo;
+      }
       default:
         return true;
     }

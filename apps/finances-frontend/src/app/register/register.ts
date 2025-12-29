@@ -18,7 +18,7 @@ import { Router, RouterModule } from '@angular/router';
 import { DialogService } from '../shared/dialogs';
 
 @Component({
-  selector: 'fin-register',
+  selector: 'app-register',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButton,

@@ -86,7 +86,7 @@ export class DialogService {
    */
   confirmDangerous(
     message: string,
-    confirmationText: string = 'DELETE',
+    confirmationText = 'DELETE',
     title?: string,
     confirmText?: string,
     cancelText?: string

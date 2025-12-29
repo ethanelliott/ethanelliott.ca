@@ -378,29 +378,33 @@ export class TransfersGridComponent {
         return Number(fieldValue) >= Number(filter.filter);
       case 'lessThanOrEqual':
         return Number(fieldValue) <= Number(filter.filter);
-      case 'inRange':
+      case 'inRange': {
         const numValue = Number(fieldValue);
         return (
           numValue >= Number(filter.filter) &&
           numValue <= Number(filter.filterTo)
         );
-      case 'dateEquals':
+      }
+      case 'dateEquals': {
         const transferDate = new Date(fieldValue).toDateString();
         const filterDate = new Date(filter.dateFrom).toDateString();
         return transferDate === filterDate;
-      case 'dateNotEqual':
+      }
+      case 'dateNotEqual': {
         const transferDateNE = new Date(fieldValue).toDateString();
         const filterDateNE = new Date(filter.dateFrom).toDateString();
         return transferDateNE !== filterDateNE;
+      }
       case 'dateBefore':
         return new Date(fieldValue) < new Date(filter.dateFrom);
       case 'dateAfter':
         return new Date(fieldValue) > new Date(filter.dateFrom);
-      case 'dateRange':
+      case 'dateRange': {
         const dateValue = new Date(fieldValue);
         const filterFromDate = new Date(filter.dateFrom);
         const filterToDate = new Date(filter.dateTo);
         return dateValue >= filterFromDate && dateValue <= filterToDate;
+      }
       default:
         return true;
     }
