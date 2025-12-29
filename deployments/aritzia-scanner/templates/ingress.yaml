@@ -1,20 +1,21 @@
 {{- if .Values.ingress.enabled -}}
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
 metadata:
   name: {{ include "aritzia-scanner.fullname" . }}
   labels:
     {{- include "aritzia-scanner.labels" . | nindent 4 }}
+  annotations:
+    link.argocd.argoproj.io/external-link: https://{{ .Values.ingress.hostname }}
 spec:
-  rules:
-    - host: {{ .Values.ingress.hostname }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "aritzia-scanner.fullname" . }}
-                port:
-                  number: {{ .Values.service.port }}
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.ingress.hostname }}`)
+      services:
+        - name: {{ include "aritzia-scanner.fullname" . }}
+          port: {{ .Values.service.port }}
+  tls:
+    certResolver: myresolver
 {{- end }}
