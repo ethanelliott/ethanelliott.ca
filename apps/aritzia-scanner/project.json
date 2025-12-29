@@ -1,0 +1,78 @@
+{
+  "name": "aritzia-scanner",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/aritzia-scanner/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/apps/aritzia-scanner",
+        "format": ["esm"],
+        "bundle": true,
+        "main": "apps/aritzia-scanner/src/main.ts",
+        "tsConfig": "apps/aritzia-scanner/tsconfig.app.json",
+        "assets": [
+          "apps/aritzia-scanner/src/assets",
+          {
+            "input": "apps/aritzia-scanner/src/views",
+            "glob": "**/*",
+            "output": "views"
+          },
+          {
+            "input": "apps/aritzia-scanner/src/public",
+            "glob": "**/*",
+            "output": "public"
+          }
+        ],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "aritzia-scanner:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "aritzia-scanner:build:development"
+        },
+        "production": {
+          "buildTarget": "aritzia-scanner:build:production"
+        }
+      }
+    },
+    "docker-build": {
+      "dependsOn": ["build"],
+      "command": "docker build -f apps/aritzia-scanner/Dockerfile . -t aritzia-scanner"
+    }
+  }
+}

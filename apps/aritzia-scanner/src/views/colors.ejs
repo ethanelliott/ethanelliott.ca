@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <%- include('partials/nav') %>
+
+    <h1><%= title %></h1>
+    
+    <h2>Active Colors</h2>
+    <div class="color-grid">
+        <% activeColors.forEach(color => { %>
+            <div class="color-card">
+                <% if (color.thumbnail) { %>
+                    <a href="/colors/<%= encodeURIComponent(color.color) %>">
+                        <img src="/api/images/<%= color.thumbnail.image_id %>" alt="<%= color.thumbnail.product_name %>" class="color-thumbnail">
+                    </a>
+                <% } else { %>
+                    <a href="/colors/<%= encodeURIComponent(color.color) %>">
+                        <div class="color-placeholder">No Image</div>
+                    </a>
+                <% } %>
+                <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
+            </div>
+        <% }); %>
+    </div>
+
+    <% if (inactiveColors.length > 0) { %>
+        <h2>Inactive Colors</h2>
+        <div class="color-grid">
+            <% inactiveColors.forEach(color => { %>
+                <div class="color-card inactive">
+                    <% if (color.thumbnail) { %>
+                        <a href="/colors/<%= encodeURIComponent(color.color) %>">
+                            <img src="/api/images/<%= color.thumbnail.image_id %>" alt="<%= color.thumbnail.product_name %>" class="color-thumbnail">
+                        </a>
+                    <% } else { %>
+                        <a href="/colors/<%= encodeURIComponent(color.color) %>">
+                            <div class="color-placeholder">No Image</div>
+                        </a>
+                    <% } %>
+                    <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <%- include('partials/nav') %>
+
+    <h1><%= title %></h1>
+    
+    <% if (activeProducts && activeProducts.length > 0) { %>
+        <h2>Active Products</h2>
+        <div class="product-grid">
+            <% activeProducts.forEach(product => { %>
+                <div class="product-card">
+                    <a href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>" class="product-image">
+                        <% if (product.thumbnail_id) { %>
+                            <img src="/api/images/<%= product.thumbnail_id %>" alt="<%= product.name %>" loading="lazy">
+                        <% } else { %>
+                            <span style="color: #999;">No Image</span>
+                        <% } %>
+                    </a>
+                    <div class="product-info">
+                        <a href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>" class="product-name"><%= product.name %></a>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+    
+    <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
+        <h2>Discontinued Products</h2>
+        <div class="product-grid">
+            <% discontinuedProducts.forEach(product => { %>
+                <div class="product-card discontinued">
+                    <a href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>" class="product-image">
+                        <% if (product.thumbnail_id) { %>
+                            <img src="/api/images/<%= product.thumbnail_id %>" alt="<%= product.name %>" loading="lazy">
+                        <% } else { %>
+                            <span style="color: #999;">No Image</span>
+                        <% } %>
+                    </a>
+                    <div class="product-info">
+                        <a href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>" class="product-name"><%= product.name %></a>
+                        <div style="color: #d9534f; font-weight: bold; font-size: 0.9em;">Discontinued</div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+</body>
+</html>

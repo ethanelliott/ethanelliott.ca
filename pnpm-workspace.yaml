@@ -1,6 +1,6 @@
 packages:
-  - 'apps/*'
-  - 'libs/*'
+  - apps/*
+  - libs/*
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
@@ -11,5 +11,6 @@ onlyBuiltDependencies:
   - lmdb
   - msgpackr-extract
   - nx
+  - puppeteer
   - sqlite3
   - unrs-resolver
