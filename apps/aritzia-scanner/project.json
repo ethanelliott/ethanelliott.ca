@@ -70,9 +70,15 @@
         }
       }
     },
-    "docker-build": {
+    "container": {
       "dependsOn": ["build"],
-      "command": "docker build -f apps/aritzia-scanner/Dockerfile . -t aritzia-scanner"
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "VERSION=$(git describe --tags --match 'aritzia-scanner@*' --abbrev=0 | sed 's/aritzia-scanner@//') && docker build -f apps/aritzia-scanner/Dockerfile -t ethanelliottio/aritzia-scanner:$VERSION -t ethanelliottio/aritzia-scanner:latest . && docker push ethanelliottio/aritzia-scanner:$VERSION && docker push ethanelliottio/aritzia-scanner:latest"
+        ],
+        "parallel": false
+      }
     }
   }
 }
