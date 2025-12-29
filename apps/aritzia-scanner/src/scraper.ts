@@ -180,6 +180,7 @@ function groupByMasterId(data: Array<Item>) {
       id: item.masterId,
       name: item.name,
       brand: item.brand,
+      warmth: item.warmth,
       description: item.seoProductDesc,
       price: item.price,
       onSale: item.onSale,
@@ -254,9 +255,10 @@ export async function updateDatabase() {
         product.slug,
         JSON.stringify(product.about.fabric || []),
         product.brand,
+        JSON.stringify(product.warmth || []),
         scrapeTime, // last_seen_at for new inserts
       ]);
-      productUpdateRecords.push([scrapeTime, JSON.stringify(product.about.fabric || []), product.brand, product.id]); // parameters for UPDATE
+      productUpdateRecords.push([scrapeTime, JSON.stringify(product.about.fabric || []), product.brand, JSON.stringify(product.warmth || []), product.id]); // parameters for UPDATE
 
       for (const color of product.colors) {
         for (const colorId of color.colorIds) {
@@ -323,7 +325,7 @@ export async function updateDatabase() {
   // Products
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO products (id, name, slug, fabric, brand, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO products (id, name, slug, fabric, brand, warmth, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     productInsertRecords,
     'Products'
   );
@@ -358,7 +360,7 @@ export async function updateDatabase() {
   // Update last_seen_at for products
   await prepareRunAll(
     DB,
-    `UPDATE products SET last_seen_at = ?, fabric = ?, brand = ? WHERE id = ?`,
+    `UPDATE products SET last_seen_at = ?, fabric = ?, brand = ?, warmth = ? WHERE id = ?`,
     productUpdateRecords,
     'Product Status'
   );

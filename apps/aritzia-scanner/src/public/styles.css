@@ -420,3 +420,8 @@ select {
   color: #fff;
   background-color: light-dark(#28a745, #2ea043);
 }
+
+.warmth-badge {
+  color: #fff;
+  background-color: light-dark(#fd7e14, #d65b00);
+}

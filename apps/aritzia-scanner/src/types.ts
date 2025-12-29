@@ -53,6 +53,7 @@ export type IntermediateForm = {
   id: string;
   name: string;
   brand: string;
+  warmth: Array<string>;
   description: string;
   price: {
     min: number;

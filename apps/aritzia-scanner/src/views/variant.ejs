@@ -24,6 +24,13 @@
       <% if (isNatural) { %>
         <span class="badge natural-fiber">Natural Fiber</span>
       <% } %>
+      <% 
+        const warmthLevels = ['Warmest', 'Warmer', 'Warm'];
+        const warmth = product.warmth && product.warmth.find(w => warmthLevels.some(wl => w.includes(wl)));
+      %>
+      <% if (warmth) { %>
+        <span class="badge warmth-badge"><%= warmth %></span>
+      <% } %>
     </h1>
 
     <div class="meta">
