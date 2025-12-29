@@ -65,9 +65,7 @@
       "executor": "nx:run-commands",
       "options": {
         "commands": [
-          "docker build -f apps/finances/Dockerfile -t ethanelliottio/finances:{args.tag} -t ethanelliottio/finances:latest .",
-          "docker push ethanelliottio/finances:{args.tag}",
-          "docker push ethanelliottio/finances:latest"
+          "VERSION=$(git describe --tags --match 'finances@*' --abbrev=0 | sed 's/finances@//') && docker build -f apps/finances/Dockerfile -t ethanelliottio/finances:$VERSION -t ethanelliottio/finances:latest . && docker push ethanelliottio/finances:$VERSION && docker push ethanelliottio/finances:latest"
         ],
         "parallel": false
       }

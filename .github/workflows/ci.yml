@@ -52,6 +52,4 @@ jobs:
       - name: Build & Push Containers
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
-          echo "Releasing version $VERSION"
-          pnpm exec nx run-many -t container --args="--tag=$VERSION"
+          pnpm exec nx run-many -t container
