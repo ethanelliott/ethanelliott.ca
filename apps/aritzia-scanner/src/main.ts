@@ -5,6 +5,7 @@ import relativeTime from 'dayjs/plugin/relativeTime.js';
 import utc from 'dayjs/plugin/utc.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import 'ejs'; // Force inclusion in generated package.json
 import { allPromise, closeDB, getDB, getPromise, setupDatabase } from './db';
 
 const __filename = fileURLToPath(import.meta.url);
