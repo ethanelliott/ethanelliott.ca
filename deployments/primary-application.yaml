@@ -9,6 +9,10 @@ spec:
     repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
     targetRevision: HEAD
     path: deployments
+    directory:
+      recurse: true
+      include: '{*/application.yaml,elliott-haus-project.yaml}'
+      exclude: 'primary-application.yaml'
   destination:
     server: https://kubernetes.default.svc
     namespace: elliott-haus

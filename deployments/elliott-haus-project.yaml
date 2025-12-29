@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: elliott-haus
+  namespace: argocd
+spec:
+  description: 'Project for Elliott Haus applications'
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: elliott-haus
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

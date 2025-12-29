@@ -2,11 +2,11 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: finances
-  namespace: default
+  namespace: elliott-haus
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: home
+  project: elliott-haus
   source:
     repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
     path: deployments/finances
@@ -17,6 +17,6 @@ spec:
         - values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: elliott-haus
   syncPolicy:
     automated: {}

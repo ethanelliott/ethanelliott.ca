@@ -4,7 +4,7 @@ metadata:
   name: landing-page
   namespace: elliott-haus
 spec:
-  project: home
+  project: elliott-haus
   source:
     repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
     path: deployments/landing-page
