@@ -81,6 +81,27 @@ export async function prepareRunAll(
   }
 }
 
+export async function addColumnIfNotExists(
+  db: sqlite3.Database,
+  table: string,
+  column: string,
+  type: string
+) {
+  try {
+    await runPromise.call(
+      db,
+      `ALTER TABLE ${table} ADD COLUMN ${column} ${type}`
+    );
+    console.log(`Added column ${column} to ${table}`);
+  } catch (error: any) {
+    if (error.message.includes('duplicate column name')) {
+      // Column already exists, ignore
+    } else {
+      throw error;
+    }
+  }
+}
+
 export function setupDatabase(db: sqlite3.Database): Promise<void> {
   console.log(`Setting up database at ${DB_PATH}...`);
   return new Promise((resolve, reject) => {
@@ -105,12 +126,33 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               color_id TEXT,
               color TEXT,
               length TEXT,
+              price REAL,
+              list_price REAL,
+              available_sizes TEXT,
+              all_sizes TEXT,
               added_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               last_seen_at TEXT,
               FOREIGN KEY (product_id) REFERENCES products(id),
               UNIQUE(id, product_id, color_id)
           );
-      `
+      `,
+        async (err) => {
+          if (err) return reject(err);
+          // Ensure new columns exist for existing tables
+          try {
+            await addColumnIfNotExists(db, 'variants', 'price', 'REAL');
+            await addColumnIfNotExists(db, 'variants', 'list_price', 'REAL');
+            await addColumnIfNotExists(
+              db,
+              'variants',
+              'available_sizes',
+              'TEXT'
+            );
+            await addColumnIfNotExists(db, 'variants', 'all_sizes', 'TEXT');
+          } catch (e) {
+            console.error('Error adding columns to variants table:', e);
+          }
+        }
       );
 
       // Table 3: Stores image metadata (IDs, not the binary data)
@@ -126,11 +168,25 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               FOREIGN KEY (variant_id) REFERENCES variants(id),
               UNIQUE(product_id, variant_id, id)
           );
+        `
+      );
+
+      // Table 4: Price History
+      db.run(
+        `
+          CREATE TABLE IF NOT EXISTS prices (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              variant_id TEXT,
+              price REAL,
+              list_price REAL,
+              timestamp TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+              FOREIGN KEY (variant_id) REFERENCES variants(id)
+          );
         `,
         (err) => {
           if (err) return reject(err);
           console.log(
-            'Database tables initialized (products, variants, images).'
+            'Database tables initialized (products, variants, images, prices).'
           );
           resolve();
         }

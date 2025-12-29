@@ -195,13 +195,30 @@ function groupByMasterId(data: Array<Item>) {
         sleeve: item.sleeve,
       },
       slug: item.slug,
-      colors: item.selectableColors.map((c) => ({
-        name: c.value,
-        onSale: c.onSale,
-        sizeRun: c.sizeRun,
-        colorIds: Object.keys(c.colorIds),
-        images: [...new Set(Object.values(c.colorIds).flat())],
-      })),
+      colors: item.selectableColors.map((c) => {
+        const listPriceEntry = c.prices.find(
+          (p) => p.source === 'cad-list-prices'
+        );
+        const salePriceEntry = c.prices.find(
+          (p) => p.source === 'cad-sale-prices'
+        );
+
+        const listPrice = listPriceEntry?.prices[0] || 0;
+        const salePrice = salePriceEntry?.prices[0];
+        const currentPrice = salePrice !== undefined ? salePrice : listPrice;
+
+        return {
+          name: c.value,
+          onSale: c.onSale,
+          sizeRun: c.sizeRun,
+          colorIds: Object.keys(c.colorIds),
+          images: [...new Set(Object.values(c.colorIds).flat())],
+          price: currentPrice,
+          list_price: listPrice,
+          available_sizes: c.shippableSizes || [],
+          all_sizes: c.sizeRun || [],
+        };
+      }),
     });
   });
 
@@ -221,6 +238,7 @@ export async function updateDatabase() {
   const productInsertRecords: any[][] = [];
   const variantInsertRecords: any[][] = [];
   const imageInsertRecords: any[][] = [];
+  const priceInsertRecords: any[][] = [];
 
   // Records for update (separate as they are only used for the last_seen_at update step)
   const productUpdateRecords: any[][] = [];
@@ -247,23 +265,40 @@ export async function updateDatabase() {
             ? 'TALL'
             : 'REGULAR';
 
+          const variantId = `${product.id}-${colorId}`;
+
           // 2. Prepare variant insert record
           variantInsertRecords.push([
-            `${product.id}-${colorId}`,
+            variantId,
             product.id,
             color.name,
             baseColorId,
             lengthLabel,
+            color.price,
+            color.list_price,
+            JSON.stringify(color.available_sizes),
+            JSON.stringify(color.all_sizes),
             scrapeTime, // last_seen_at for new inserts
           ]);
-          variantUpdateRecords.push([scrapeTime, `${product.id}-${colorId}`]); // parameters for UPDATE
+          variantUpdateRecords.push([
+            scrapeTime,
+            color.price,
+            color.list_price,
+            JSON.stringify(color.available_sizes),
+            JSON.stringify(color.all_sizes),
+            variantId,
+          ]); // parameters for UPDATE
+
+          // Price history
+          priceInsertRecords.push([
+            variantId,
+            color.price,
+            color.list_price,
+            scrapeTime,
+          ]);
 
           for (const imageId of color.images) {
-            imageInsertRecords.push([
-              imageId,
-              product.id,
-              `${product.id}-${colorId}`,
-            ]);
+            imageInsertRecords.push([imageId, product.id, variantId]);
           }
         }
       }
@@ -293,7 +328,7 @@ export async function updateDatabase() {
   // Variants
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO variants (id, product_id, color, color_id, length, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO variants (id, product_id, color, color_id, length, price, list_price, available_sizes, all_sizes, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     variantInsertRecords,
     'Variants'
   );
@@ -304,6 +339,14 @@ export async function updateDatabase() {
     `INSERT OR IGNORE INTO images (id, product_id, variant_id) VALUES (?, ?, ?)`,
     imageInsertRecords,
     'Image IDs'
+  );
+
+  // Prices
+  await prepareRunAll(
+    DB,
+    `INSERT INTO prices (variant_id, price, list_price, timestamp) VALUES (?, ?, ?, ?)`,
+    priceInsertRecords,
+    'Prices'
   );
 
   // --- Step 2: Update last_seen_at for all records found in current scrape ---
@@ -320,7 +363,7 @@ export async function updateDatabase() {
   // Update last_seen_at for variants
   await prepareRunAll(
     DB,
-    `UPDATE variants SET last_seen_at = ? WHERE id = ?`,
+    `UPDATE variants SET last_seen_at = ?, price = ?, list_price = ?, available_sizes = ?, all_sizes = ? WHERE id = ?`,
     variantUpdateRecords,
     'Variant Status'
   );

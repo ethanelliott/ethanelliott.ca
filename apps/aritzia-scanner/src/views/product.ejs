@@ -1,95 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= product.name %> - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
     <%- include('partials/nav') %>
     <h1><%= product.name %></h1>
-    <p><a href="https://www.aritzia.com/en/product/<%= product.slug %>" target="_blank">View on Aritzia</a></p>
-    <p class="meta">
-        Added: <%= product.added_at_formatted %> | Last Seen: <%= product.last_seen_at_formatted %>
+    <p>
+      <a
+        href="https://www.aritzia.com/en/product/<%= product.slug %>"
+        target="_blank"
+        >View on Aritzia</a
+      >
     </p>
-    
+    <p class="meta">
+      Added: <%= product.added_at_formatted %> | Last Seen: <%=
+      product.last_seen_at_formatted %>
+    </p>
+
     <% if (product.allLengths && product.allLengths.length > 1) { %>
-        <div style="margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
-            <label for="length-select" style="font-weight: bold;">Filter by Length:</label>
-            <select id="length-select" style="padding: 5px; margin-left: 10px;">
-                <option value="all">All Lengths</option>
-                <% product.allLengths.forEach(length => { %>
-                    <option value="<%= length %>"><%= length %></option>
-                <% }); %>
-            </select>
-        </div>
+    <div
+      style="
+        margin-bottom: 20px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 5px;
+      "
+    >
+      <label for="length-select" style="font-weight: bold"
+        >Filter by Length:</label
+      >
+      <select id="length-select" style="padding: 5px; margin-left: 10px">
+        <option value="all">All Lengths</option>
+        <% product.allLengths.forEach(length => { %>
+        <option value="<%= length %>"><%= length %></option>
+        <% }); %>
+      </select>
+    </div>
     <% } %>
 
     <h2>Variants</h2>
-    
-    <% 
-    const activeVariants = product.variants.filter(v => v.isActive);
-    const discontinuedVariants = product.variants.filter(v => !v.isActive);
-    %>
-    
-    <% if (activeVariants.length > 0) { %>
-        <h3>Active Variants</h3>
-        <div class="variant-wrapper">
-            <% activeVariants.forEach(variant => { %>
-                <div class="variant" data-lengths='<%= JSON.stringify(variant.lengths) %>'>
-                    <% if (variant.thumbnail) { %>
-                        <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
-                            <img src="/api/images/<%= variant.thumbnail %>" alt="<%= variant.color %>" style="width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px;">
-                        </a>
-                    <% } %>
-                    <h3 style="padding: 15px;"><a href="/product/<%= product.id %>/variant/<%= variant.color_id %>" style="color: inherit; text-decoration: none;"><%= variant.color %></a></h3>
-                    <% if (product.allLengths && product.allLengths.length > 1) { %>
-                        <p style="margin-inline: 15px;"><%= variant.lengths.join(', ') %></p>
-                    <% } %>
-                </div>
-            <% }); %>
+
+    <% const activeVariants = product.variants.filter(v => v.isActive); const
+    discontinuedVariants = product.variants.filter(v => !v.isActive); %> <% if
+    (activeVariants.length > 0) { %>
+    <h3>Active Variants</h3>
+    <div class="variant-wrapper">
+      <% activeVariants.forEach(variant => { %>
+      <div
+        class="variant"
+        data-lengths="<%= JSON.stringify(variant.lengths) %>"
+      >
+        <% if (variant.thumbnail) { %>
+        <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
+          <img
+            src="/api/images/<%= variant.thumbnail %>"
+            alt="<%= variant.color %>"
+            style="
+              width: 100%;
+              height: auto;
+              display: block;
+              margin-bottom: 10px;
+              border-radius: 4px;
+            "
+          />
+        </a>
+        <% } %>
+        <h3 style="padding: 15px">
+          <a
+            href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
+            style="color: inherit; text-decoration: none"
+            ><%= variant.color %></a
+          >
+        </h3>
+
+        <% if (variant.price) { %>
+        <div style="padding: 0 15px; margin-bottom: 5px">
+          <% if (variant.price < variant.list_price) { %>
+          <span style="color: #d9534f; font-weight: bold"
+            >$<%= variant.price %></span
+          >
+          <span
+            style="text-decoration: line-through; color: #999; font-size: 0.9em"
+            >$<%= variant.list_price %></span
+          >
+          <% } else { %>
+          <span>$<%= variant.price %></span>
+          <% } %> <% if (variant.lowest_price && variant.lowest_price <
+          variant.price) { %>
+          <div style="font-size: 0.8em; color: #28a745">
+            Lowest: $<%= variant.lowest_price %>
+          </div>
+          <% } %>
         </div>
-    <% } %>
-    
-    <% if (discontinuedVariants.length > 0) { %>
-        <h3>Discontinued Variants</h3>
-        <div class="variant-wrapper">
-            <% discontinuedVariants.forEach(variant => { %>
-                <div class="variant discontinued" data-lengths='<%= JSON.stringify(variant.lengths) %>'>
-                    <% if (variant.thumbnail) { %>
-                        <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
-                            <img src="/api/images/<%= variant.thumbnail %>" alt="<%= variant.color %>" style="width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px;">
-                        </a>
-                    <% } %>
-                    <h3 style="padding: 15px;"><a href="/product/<%= product.id %>/variant/<%= variant.color_id %>" style="color: inherit; text-decoration: none;"><%= variant.color %></a></h3>
-                    <% if (product.allLengths && product.allLengths.length > 1) { %>
-                        <p style="margin-inline: 15px;"><%= variant.lengths.join(', ') %></p>
-                    <% } %>
-                    <p style="color: #d9534f; font-weight: bold; padding: 0 15px;">Discontinued</p>
-                </div>
-            <% }); %>
+        <% } %> <% if (product.allLengths && product.allLengths.length > 1) { %>
+        <p style="margin-inline: 15px"><%= variant.lengths.join(', ') %></p>
+        <% } %>
+      </div>
+      <% }); %>
+    </div>
+    <% } %> <% if (discontinuedVariants.length > 0) { %>
+    <h3>Discontinued Variants</h3>
+    <div class="variant-wrapper">
+      <% discontinuedVariants.forEach(variant => { %>
+      <div
+        class="variant discontinued"
+        data-lengths="<%= JSON.stringify(variant.lengths) %>"
+      >
+        <% if (variant.thumbnail) { %>
+        <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
+          <img
+            src="/api/images/<%= variant.thumbnail %>"
+            alt="<%= variant.color %>"
+            style="
+              width: 100%;
+              height: auto;
+              display: block;
+              margin-bottom: 10px;
+              border-radius: 4px;
+            "
+          />
+        </a>
+        <% } %>
+        <h3 style="padding: 15px">
+          <a
+            href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
+            style="color: inherit; text-decoration: none"
+            ><%= variant.color %></a
+          >
+        </h3>
+
+        <% if (variant.price) { %>
+        <div style="padding: 0 15px; margin-bottom: 5px">
+          <% if (variant.price < variant.list_price) { %>
+          <span style="color: #d9534f; font-weight: bold"
+            >$<%= variant.price %></span
+          >
+          <span
+            style="text-decoration: line-through; color: #999; font-size: 0.9em"
+            >$<%= variant.list_price %></span
+          >
+          <% } else { %>
+          <span>$<%= variant.price %></span>
+          <% } %> <% if (variant.lowest_price && variant.lowest_price <
+          variant.price) { %>
+          <div style="font-size: 0.8em; color: #28a745">
+            Lowest: $<%= variant.lowest_price %>
+          </div>
+          <% } %>
         </div>
+        <% } %> <% if (product.allLengths && product.allLengths.length > 1) { %>
+        <p style="margin-inline: 15px"><%= variant.lengths.join(', ') %></p>
+        <% } %>
+        <p style="color: #d9534f; font-weight: bold; padding: 0 15px">
+          Discontinued
+        </p>
+      </div>
+      <% }); %>
+    </div>
     <% } %>
     <script>
-        const lengthSelect = document.getElementById('length-select');
-        if (lengthSelect) {
-            const variants = document.querySelectorAll('.variant');
-            
-            lengthSelect.addEventListener('change', (e) => {
-                const selectedLength = e.target.value;
-                
-                variants.forEach(variant => {
-                    const lengths = JSON.parse(variant.dataset.lengths || '[]');
-                    
-                    if (selectedLength === 'all' || lengths.includes(selectedLength)) {
-                        variant.style.display = 'block';
-                    } else {
-                        variant.style.display = 'none';
-                    }
-                });
-            });
-        }
+      const lengthSelect = document.getElementById('length-select');
+      if (lengthSelect) {
+        const variants = document.querySelectorAll('.variant');
+
+        lengthSelect.addEventListener('change', (e) => {
+          const selectedLength = e.target.value;
+
+          variants.forEach((variant) => {
+            const lengths = JSON.parse(variant.dataset.lengths || '[]');
+
+            if (selectedLength === 'all' || lengths.includes(selectedLength)) {
+              variant.style.display = 'block';
+            } else {
+              variant.style.display = 'none';
+            }
+          });
+        });
+      }
     </script>
-</body>
+  </body>
 </html>

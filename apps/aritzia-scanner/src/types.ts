@@ -78,6 +78,10 @@ export type IntermediateForm = {
     sizeRun: Array<string>;
     colorIds: Array<string>;
     images: Array<string>;
+    price: number;
+    list_price: number;
+    available_sizes: Array<string>;
+    all_sizes: Array<string>;
   }>;
 };
 

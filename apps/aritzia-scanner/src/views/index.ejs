@@ -1,85 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= title %> - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
     <%- include('partials/nav') %>
 
     <h1><%= title %></h1>
-    
+
     <% if (activeProducts && activeProducts.length > 0) { %>
-        <h2>Active Products</h2>
-        <div class="product-grid">
-            <% activeProducts.forEach(product => { %>
-                <% 
-                   const link = product.isVariant 
-                        ? `/product/${product.product_id}/variant/${product.color_id}` 
-                        : `/product/${product.id}`;
-                   const subtext = product.isVariant ? `${product.color} (${product.length})` : '';
-                %>
-                <div class="product-card">
-                    <a href="<%= link %>" class="product-image">
-                        <% if (product.thumbnail_id) { %>
-                            <img src="/api/images/<%= product.thumbnail_id %>" alt="<%= product.name %>" loading="lazy">
-                        <% } else { %>
-                            <span style="color: #999;">No Image</span>
-                        <% } %>
-                    </a>
-                    <div class="product-info">
-                        <a href="<%= link %>" class="product-name"><%= product.name %></a>
-                        <% if (subtext) { %>
-                            <div class="variant-details" style="font-size: 0.9em; color: #555; margin-bottom: 5px;"><%= subtext %></div>
-                        <% } %>
-                        <% if (product.added_at_formatted) { %>
-                            <div class="product-meta">Added <%= product.added_at_formatted %></div>
-                        <% } %>
-                    </div>
-                </div>
-            <% }); %>
+    <h2>Active Products</h2>
+    <div class="product-grid">
+      <% activeProducts.forEach(product => { %> <% const link =
+      product.isVariant ?
+      `/product/${product.product_id}/variant/${product.color_id}` :
+      `/product/${product.id}`; const subtext = product.isVariant ?
+      `${product.color} (${product.length})` : ''; %>
+      <div class="product-card">
+        <a href="<%= link %>" class="product-image">
+          <% if (product.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= product.thumbnail_id %>"
+            alt="<%= product.name %>"
+            loading="lazy"
+          />
+          <% } else { %>
+          <span style="color: #999">No Image</span>
+          <% } %>
+        </a>
+        <div class="product-info">
+          <a href="<%= link %>" class="product-name"><%= product.name %></a>
+          <% if (product.price) { %>
+          <div class="product-price" style="margin-bottom: 5px">
+            <% if (product.price < product.list_price) { %>
+            <span style="color: #d9534f; font-weight: bold"
+              >$<%= product.price %></span
+            >
+            <span
+              style="
+                text-decoration: line-through;
+                color: #999;
+                font-size: 0.9em;
+              "
+              >$<%= product.list_price %></span
+            >
+            <% } else { %>
+            <span>$<%= product.price %></span>
+            <% } %>
+          </div>
+          <% } %> <% if (subtext) { %>
+          <div
+            class="variant-details"
+            style="font-size: 0.9em; color: #555; margin-bottom: 5px"
+          >
+            <%= subtext %>
+          </div>
+          <% } %> <% if (product.added_at_formatted) { %>
+          <div class="product-meta">
+            Added <%= product.added_at_formatted %>
+          </div>
+          <% } %>
         </div>
-    <% } %>
-    
-    <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
-        <h2>Discontinued Products</h2>
-        <div class="product-grid">
-            <% discontinuedProducts.forEach(product => { %>
-                <% 
-                   const link = product.isVariant 
-                        ? `/product/${product.product_id}/variant/${product.color_id}` 
-                        : `/product/${product.id}`;
-                   const subtext = product.isVariant ? `${product.color} (${product.length})` : '';
-                %>
-                <div class="product-card discontinued">
-                    <a href="<%= link %>" class="product-image">
-                        <% if (product.thumbnail_id) { %>
-                            <img src="/api/images/<%= product.thumbnail_id %>" alt="<%= product.name %>" loading="lazy">
-                        <% } else { %>
-                            <span style="color: #999;">No Image</span>
-                        <% } %>
-                    </a>
-                    <div class="product-info">
-                        <a href="<%= link %>" class="product-name"><%= product.name %></a>
-                        <% if (subtext) { %>
-                            <div class="variant-details" style="font-size: 0.9em; color: #555; margin-bottom: 5px;"><%= subtext %></div>
-                        <% } %>
-                        <div style="color: #d9534f; font-weight: bold; font-size: 0.9em;">Discontinued</div>
-                        <% if (product.added_at_formatted) { %>
-                            <div class="product-meta">Added <%= product.added_at_formatted %></div>
-                        <% } %>
-                    </div>
-                </div>
-            <% }); %>
+      </div>
+      <% }); %>
+    </div>
+    <% } %> <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
+    <h2>Discontinued Products</h2>
+    <div class="product-grid">
+      <% discontinuedProducts.forEach(product => { %> <% const link =
+      product.isVariant ?
+      `/product/${product.product_id}/variant/${product.color_id}` :
+      `/product/${product.id}`; const subtext = product.isVariant ?
+      `${product.color} (${product.length})` : ''; %>
+      <div class="product-card discontinued">
+        <a href="<%= link %>" class="product-image">
+          <% if (product.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= product.thumbnail_id %>"
+            alt="<%= product.name %>"
+            loading="lazy"
+          />
+          <% } else { %>
+          <span style="color: #999">No Image</span>
+          <% } %>
+        </a>
+        <div class="product-info">
+          <a href="<%= link %>" class="product-name"><%= product.name %></a>
+          <% if (product.price) { %>
+          <div class="product-price" style="margin-bottom: 5px">
+            <% if (product.price < product.list_price) { %>
+            <span style="color: #d9534f; font-weight: bold"
+              >$<%= product.price %></span
+            >
+            <span
+              style="
+                text-decoration: line-through;
+                color: #999;
+                font-size: 0.9em;
+              "
+              >$<%= product.list_price %></span
+            >
+            <% } else { %>
+            <span>$<%= product.price %></span>
+            <% } %>
+          </div>
+          <% } %> <% if (subtext) { %>
+          <div
+            class="variant-details"
+            style="font-size: 0.9em; color: #555; margin-bottom: 5px"
+          >
+            <%= subtext %>
+          </div>
+          <% } %>
+          <div style="color: #d9534f; font-weight: bold; font-size: 0.9em">
+            Discontinued
+          </div>
+          <% if (product.added_at_formatted) { %>
+          <div class="product-meta">
+            Added <%= product.added_at_formatted %>
+          </div>
+          <% } %>
         </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %> <% if (showAllLink) { %>
+    <div style="margin-top: 30px; text-align: center">
+      <a
+        href="/products"
+        style="
+          display: inline-block;
+          padding: 10px 20px;
+          background: #000;
+          color: #fff;
+          text-decoration: none;
+          border-radius: 4px;
+        "
+        >View All Products</a
+      >
+    </div>
     <% } %>
-    
-    <% if (showAllLink) { %>
-        <div style="margin-top: 30px; text-align: center;">
-            <a href="/products" style="display: inline-block; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 4px;">View All Products</a>
-        </div>
-    <% } %>
-</body>
+  </body>
 </html>

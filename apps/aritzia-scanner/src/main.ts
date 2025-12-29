@@ -147,6 +147,35 @@ async function main() {
     }
   });
 
+  app.get('/sale', async (req, res) => {
+    const db = getDB();
+    const lastScanRow = await getPromise.call(
+      db,
+      'SELECT MAX(last_seen_at) as max_time FROM variants'
+    );
+    const lastScanTime = lastScanRow
+      ? lastScanRow.max_time
+      : new Date().toISOString();
+
+    const saleItems = await allPromise.call(
+      db,
+      `
+      SELECT v.id, v.color, v.color_id, v.length, v.price, v.list_price, v.available_sizes, p.name, p.id as product_id, p.slug,
+             (SELECT id FROM images WHERE variant_id = v.id LIMIT 1) as thumbnail_id
+      FROM variants v
+      JOIN products p ON v.product_id = p.id
+      WHERE v.last_seen_at = ? AND v.price < v.list_price
+      ORDER BY (v.list_price - v.price) DESC
+      `,
+      [lastScanTime]
+    );
+
+    res.render('sale', {
+      saleItems,
+      title: 'On Sale',
+    });
+  });
+
   app.get('/', async (req, res) => {
     const db = getDB();
 
@@ -162,7 +191,7 @@ async function main() {
     const variants = await allPromise.call(
       db,
       `
-      SELECT v.id, v.color, v.color_id, v.length, v.added_at, p.name, p.id as product_id, p.slug,
+      SELECT v.id, v.color, v.color_id, v.length, v.added_at, v.price, v.list_price, p.name, p.id as product_id, p.slug,
              (SELECT id FROM images WHERE variant_id = v.id LIMIT 1) as thumbnail_id
       FROM variants v
       JOIN products p ON v.product_id = p.id
@@ -256,7 +285,7 @@ async function main() {
     const variants = await allPromise.call(
       db,
       `
-      SELECT id, color, color_id, length, added_at, last_seen_at
+      SELECT id, color, color_id, length, added_at, last_seen_at, price, list_price, available_sizes, all_sizes
       FROM variants
       WHERE product_id = ?
       ORDER BY color, length
@@ -277,6 +306,13 @@ async function main() {
           last_seen_at: variant.last_seen_at,
           lastSeenAts: [],
           thumbnail: null,
+          price: variant.price,
+          list_price: variant.list_price,
+          lowest_price: variant.price,
+          available_sizes: variant.available_sizes
+            ? JSON.parse(variant.available_sizes)
+            : [],
+          all_sizes: variant.all_sizes ? JSON.parse(variant.all_sizes) : [],
         });
       }
 
@@ -286,6 +322,16 @@ async function main() {
         allLengths.add(variant.length);
       }
       group.lastSeenAts.push(variant.last_seen_at);
+
+      // Check for lowest price in history for this variant
+      const history = await getPromise.call(
+        db,
+        `SELECT MIN(price) as min_price FROM prices WHERE variant_id = ?`,
+        [variant.id]
+      );
+      if (history && history.min_price < group.lowest_price) {
+        group.lowest_price = history.min_price;
+      }
 
       if (!group.thumbnail) {
         const image = await getPromise.call(
@@ -347,7 +393,7 @@ async function main() {
     const variants = await allPromise.call(
       db,
       `
-      SELECT id, color, color_id, length, added_at, last_seen_at
+      SELECT id, color, color_id, length, added_at, last_seen_at, price, list_price, available_sizes, all_sizes
       FROM variants
       WHERE product_id = ? AND (color_id = ? OR color_id LIKE ?)
       ORDER BY length
@@ -376,6 +422,19 @@ async function main() {
         .utc(variant.last_seen_at)
         .fromNow();
       variant.isActive = variant.last_seen_at === lastScanTime;
+      variant.available_sizes = variant.available_sizes
+        ? JSON.parse(variant.available_sizes)
+        : [];
+      variant.all_sizes = variant.all_sizes
+        ? JSON.parse(variant.all_sizes)
+        : [];
+
+      const history = await getPromise.call(
+        db,
+        `SELECT MIN(price) as min_price FROM prices WHERE variant_id = ?`,
+        [variant.id]
+      );
+      variant.lowest_price = history ? history.min_price : variant.price;
 
       const variantImages = await allPromise.call(
         db,
