@@ -140,7 +140,7 @@ export class MonthlyHabitsComponent implements OnInit {
           label: (context) => {
             const label = context.dataset.label || '';
             const value = context.parsed.y;
-            return `${label}: ${this.formatCurrency(value)}`;
+            return `${label}: ${this.formatCurrency(value || 0)}`;
           },
         },
       },

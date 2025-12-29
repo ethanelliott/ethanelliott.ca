@@ -75,7 +75,7 @@ export class AuthService {
     const options = await generateRegistrationOptions({
       rpName: this.RP_NAME,
       rpID: this.RP_ID,
-      userID: new TextEncoder().encode(user.webAuthnUserId),
+      userID: new TextEncoder().encode(user.webAuthnUserId) as any,
       userName: user.username,
       userDisplayName: user.name,
       attestationType: 'none', // We trust the client
