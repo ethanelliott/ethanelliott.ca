@@ -200,6 +200,7 @@ async function main() {
   app.get('/', async (req, res) => {
     const db = getDB();
     const brandFilter = req.query.brand as string;
+    const fitFilter = req.query.fit as string;
 
     // Get the latest scan time
     const lastScanRow = await getPromise.call(
@@ -227,12 +228,32 @@ async function main() {
       params.push(brandFilter);
     }
 
+    if (fitFilter) {
+      sql += ` AND p.fit LIKE ?`;
+      params.push(`%${fitFilter}%`);
+    }
+
     sql += ` ORDER BY v.added_at DESC LIMIT 50`;
 
     const variants = await allPromise.call(db, sql, params);
 
     // Fetch brands for filter
     const brands = await allPromise.call(db, `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`);
+
+    // Fetch fits for filter
+    const allFitsRows = await allPromise.call(db, `SELECT fit FROM products WHERE fit IS NOT NULL`);
+    const fitsSet = new Set<string>();
+    allFitsRows.forEach((row: any) => {
+      try {
+        const fits = JSON.parse(row.fit);
+        if (Array.isArray(fits)) {
+          fits.forEach((f: string) => fitsSet.add(f));
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    });
+    const fits = Array.from(fitsSet).sort();
 
     // Format dates
     variants.forEach((v: any) => {
@@ -247,11 +268,14 @@ async function main() {
       showAllLink: true,
       brands: brands.map((b: any) => b.brand),
       currentBrand: brandFilter,
+      fits,
+      currentFit: fitFilter,
     });
   });
   app.get('/products', async (req, res) => {
     const db = getDB();
     const brandFilter = req.query.brand as string;
+    const fitFilter = req.query.fit as string;
 
     // Get the latest scan time
     const lastScanRow = await getPromise.call(
@@ -277,12 +301,32 @@ async function main() {
       params.push(brandFilter);
     }
 
+    if (fitFilter) {
+      sql += ` AND p.fit LIKE ?`;
+      params.push(`%${fitFilter}%`);
+    }
+
     sql += ` GROUP BY p.id, p.name, p.slug ORDER BY p.name`;
 
     const allProducts = await allPromise.call(db, sql, params);
 
     // Fetch brands for filter
     const brands = await allPromise.call(db, `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`);
+
+    // Fetch fits for filter
+    const allFitsRows = await allPromise.call(db, `SELECT fit FROM products WHERE fit IS NOT NULL`);
+    const fitsSet = new Set<string>();
+    allFitsRows.forEach((row: any) => {
+      try {
+        const fits = JSON.parse(row.fit);
+        if (Array.isArray(fits)) {
+          fits.forEach((f: string) => fitsSet.add(f));
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    });
+    const fits = Array.from(fitsSet).sort();
 
     const activeProducts = allProducts.filter((p: any) => !p.isDiscontinued);
     const discontinuedProducts = allProducts.filter(
@@ -296,6 +340,8 @@ async function main() {
       showAllLink: false,
       brands: brands.map((b: any) => b.brand),
       currentBrand: brandFilter,
+      fits,
+      currentFit: fitFilter,
     });
   });
 

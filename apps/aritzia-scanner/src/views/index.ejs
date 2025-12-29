@@ -21,6 +21,16 @@
           <option value="<%= brand %>" <%= locals.currentBrand === brand ? 'selected' : '' %>><%= brand %></option>
           <% }); %>
         </select>
+
+        <label for="fit" style="margin-left: 15px;">Filter by Fit:</label>
+        <select name="fit" id="fit" onchange="this.form.submit()">
+          <option value="">All Fits</option>
+          <% if (locals.fits) { %>
+            <% fits.forEach(fit => { %>
+            <option value="<%= fit %>" <%= locals.currentFit === fit ? 'selected' : '' %>><%= fit %></option>
+            <% }); %>
+          <% } %>
+        </select>
       </form>
     </div>
     <% } %>
