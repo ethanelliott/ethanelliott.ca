@@ -161,7 +161,14 @@ async function main() {
       db,
       `
       SELECT v.id, v.color, v.color_id, v.length, v.price, v.list_price, v.available_sizes, p.name, p.id as product_id, p.slug,
-             (SELECT id FROM images WHERE variant_id = v.id LIMIT 1) as thumbnail_id
+             (
+               SELECT i.id
+               FROM images i
+               JOIN variants v2 ON i.variant_id = v2.id
+               WHERE v2.product_id = v.product_id AND v2.color = v.color
+               ORDER BY CASE WHEN i.variant_id = v.id THEN 0 ELSE 1 END
+               LIMIT 1
+             ) as thumbnail_id
       FROM variants v
       JOIN products p ON v.product_id = p.id
       WHERE v.last_seen_at = ? AND v.price < v.list_price
@@ -192,7 +199,14 @@ async function main() {
       db,
       `
       SELECT v.id, v.color, v.color_id, v.length, v.added_at, v.price, v.list_price, p.name, p.id as product_id, p.slug,
-             (SELECT id FROM images WHERE variant_id = v.id LIMIT 1) as thumbnail_id
+             (
+               SELECT i.id
+               FROM images i
+               JOIN variants v2 ON i.variant_id = v2.id
+               WHERE v2.product_id = v.product_id AND v2.color = v.color
+               ORDER BY CASE WHEN i.variant_id = v.id THEN 0 ELSE 1 END
+               LIMIT 1
+             ) as thumbnail_id
       FROM variants v
       JOIN products p ON v.product_id = p.id
       WHERE v.last_seen_at = ?
@@ -579,7 +593,14 @@ async function main() {
       db,
       `
       SELECT v.id, v.color, v.color_id, v.length, v.last_seen_at, p.name as product_name, p.id as product_id, p.slug,
-             (SELECT id FROM images WHERE variant_id = v.id LIMIT 1) as thumbnail_id
+             (
+               SELECT i.id
+               FROM images i
+               JOIN variants v2 ON i.variant_id = v2.id
+               WHERE v2.product_id = v.product_id AND v2.color = v.color
+               ORDER BY CASE WHEN i.variant_id = v.id THEN 0 ELSE 1 END
+               LIMIT 1
+             ) as thumbnail_id
       FROM variants v
       JOIN products p ON v.product_id = p.id
       WHERE v.last_seen_at < ?
