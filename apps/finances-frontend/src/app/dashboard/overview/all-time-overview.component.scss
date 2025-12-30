@@ -16,39 +16,45 @@
 // ===== HEADER SECTION =====
 .header {
   @include page-header;
+  margin-bottom: var(--spacing-xl);
 
   .health-score {
+    @media (max-width: 768px) {
+      display: none;
+    }
+
     .score-indicator {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: var(--spacing-sm);
-      border-radius: var(--border-radius-lg);
-      @include glassmorphism(12px, 0.2);
-      border: 2px solid transparent;
-      min-width: 80px;
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      min-width: 100px;
 
       &.excellent {
-        border-color: var(--success-color);
-        background: rgba(var(--success-rgb), 0.1);
+        background: rgba(var(--success-rgb), 0.05);
+        border-color: rgba(var(--success-rgb), 0.2);
       }
       &.good {
-        border-color: var(--info-color);
-        background: rgba(var(--info-rgb), 0.1);
+        background: rgba(var(--info-rgb), 0.05);
+        border-color: rgba(var(--info-rgb), 0.2);
       }
       &.fair {
-        border-color: var(--warning-color);
-        background: rgba(var(--warning-rgb), 0.1);
+        background: rgba(var(--warning-rgb), 0.05);
+        border-color: rgba(var(--warning-rgb), 0.2);
       }
       &.poor {
-        border-color: var(--error-color);
-        background: rgba(var(--error-rgb), 0.1);
+        background: rgba(var(--error-rgb), 0.05);
+        border-color: rgba(var(--error-rgb), 0.2);
       }
 
       .score-value {
-        font-size: 1.5rem;
+        font-size: 2rem;
         font-weight: 700;
         line-height: 1;
+        margin-bottom: 4px;
 
         &.excellent {
           color: var(--success-color);
@@ -65,7 +71,7 @@
       }
 
       .score-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: var(--mat-sys-on-surface-variant);
         font-weight: 600;
         text-transform: uppercase;
@@ -917,18 +923,25 @@ mat-card {
 .transaction {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs);
-  border-radius: var(--border-radius-sm);
-  background: var(--mat-sys-surface-container-low);
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(var(--mat-sys-primary-rgb), 0.2);
+  }
 
   .transaction-type-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
 
     &.income {
       background: rgba(16, 185, 129, 0.1);
@@ -941,9 +954,9 @@ mat-card {
     }
 
     mat-icon {
-      font-size: 12px;
-      width: 12px;
-      height: 12px;
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
     }
   }
 
@@ -952,22 +965,23 @@ mat-card {
     min-width: 0;
 
     .transaction-desc {
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       font-weight: 600;
       color: var(--mat-sys-on-surface);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      margin-bottom: 2px;
     }
 
     .transaction-meta {
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       color: var(--mat-sys-on-surface-variant);
     }
   }
 
   .transaction-amount {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     font-weight: 600;
     white-space: nowrap;
 

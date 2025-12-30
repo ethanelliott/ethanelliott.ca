@@ -324,10 +324,9 @@ import { map } from 'rxjs/operators';
       position: sticky;
       top: 0;
       z-index: 2;
-      background: rgba(15, 20, 25, 0.8);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      background: transparent;
       color: var(--mat-sys-on-surface);
+      box-shadow: none;
     }
 
     .menu-button {
@@ -343,7 +342,7 @@ import { map } from 'rxjs/operators';
 
     .content-container {
       min-height: calc(100vh - 64px);
-      padding: var(--spacing-lg);
+      padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-2xl);
     }
 
     @media (max-width: 768px) {
@@ -353,7 +352,7 @@ import { map } from 'rxjs/operators';
       }
       
       .content-container {
-        padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-md);
+        padding: var(--spacing-md);
       }
     }
   `,
