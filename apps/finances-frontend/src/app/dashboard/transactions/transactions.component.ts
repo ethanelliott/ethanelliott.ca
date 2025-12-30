@@ -37,69 +37,72 @@ import { firstValueFrom } from 'rxjs';
   styleUrl: './transactions.component.scss',
   template: `
     <div class="transactions-container">
-      <!-- Header -->
-      <div class="header">
-        <div class="header-row">
-          <div class="title-section">
-            <p class="page-subtitle">
-              {{ transactions().length }} transactions total
-            </p>
+      <!-- Sticky Header -->
+      <section class="sticky-header">
+        <div class="header-content">
+          <div class="header-info">
+            <h2 class="page-title">Transactions</h2>
+            <div class="header-stats">
+              <span>{{ transactions().length }} total</span>
+            </div>
           </div>
-          <div class="controls-section">
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="openTransactionDialog()"
-              class="add-button"
-            >
-              <mat-icon>add</mat-icon>
-              Add Transaction
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <!-- Transactions Grid -->
-      <mat-card class="transactions-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>list</mat-icon>
-            All Transactions
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          @if (loading()) {
-          <div class="loading-container">
-            <mat-spinner></mat-spinner>
-            <h3>Loading transactions...</h3>
-            <p>Please wait while we fetch your transaction data</p>
-          </div>
-          } @else if (transactions().length === 0) {
-          <div class="empty-state">
-            <mat-icon>receipt</mat-icon>
-            <h3>No transactions yet</h3>
-            <p>Start tracking your finances by adding your first transaction</p>
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="openTransactionDialog()"
-              class="get-started-button"
-            >
-              <mat-icon>add</mat-icon>
-              Add Your First Transaction
-            </button>
-          </div>
-          } @else {
-          <div class="transactions-grid-container">
-            <app-transactions-grid
-              [transactions]="transactions()"
-              (editTransaction)="openTransactionDialog($event)"
-              (deleteTransaction)="deleteTransaction($event)"
-            ></app-transactions-grid>
-          </div>
-          }
-        </mat-card-content>
-      </mat-card>
+          <button
+            mat-button
+            (click)="openTransactionDialog()"
+            class="add-button"
+          >
+            <mat-icon>add</mat-icon>
+            Add Transaction
+          </button>
+        </div>
+      </section>
+
+      <div class="page-content">
+        <!-- Transactions Grid -->
+        <mat-card class="transactions-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>list</mat-icon>
+              All Transactions
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (loading()) {
+            <div class="loading-container">
+              <mat-spinner></mat-spinner>
+              <h3>Loading transactions...</h3>
+              <p>Please wait while we fetch your transaction data</p>
+            </div>
+            } @else if (transactions().length === 0) {
+            <div class="empty-state">
+              <mat-icon>receipt</mat-icon>
+              <h3>No transactions yet</h3>
+              <p>
+                Start tracking your finances by adding your first transaction
+              </p>
+              <button
+                mat-raised-button
+                color="primary"
+                (click)="openTransactionDialog()"
+                class="get-started-button"
+              >
+                <mat-icon>add</mat-icon>
+                Add Your First Transaction
+              </button>
+            </div>
+            } @else {
+            <div class="transactions-grid-container">
+              <app-transactions-grid
+                [transactions]="transactions()"
+                (editTransaction)="openTransactionDialog($event)"
+                (deleteTransaction)="deleteTransaction($event)"
+              ></app-transactions-grid>
+            </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
     </div>
   `,
 })

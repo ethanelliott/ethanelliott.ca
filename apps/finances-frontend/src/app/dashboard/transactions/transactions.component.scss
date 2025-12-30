@@ -2,33 +2,87 @@
 
 .transactions-container {
   @include dashboard-container;
-  @include content-container;
+  position: relative;
 }
 
-.header {
-  @include page-header;
+// ===== STICKY HEADER =====
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: calc(var(--spacing-xl) * -1) calc(var(--spacing-xl) * -1)
+    var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: rgba(15, 20, 25, 0.7);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
-  .controls-section {
-    .add-button {
-      @include primary-action-button;
+  @media (max-width: 768px) {
+    margin: calc(var(--spacing-md) * -1) calc(var(--spacing-md) * -1)
+      var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-lg);
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-md);
     }
   }
+
+  .header-info {
+    flex: 1;
+
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin: 0 0 var(--spacing-xs) 0;
+      letter-spacing: -0.02em;
+      color: var(--mat-sys-on-surface);
+
+      @media (max-width: 768px) {
+        font-size: 1.5rem;
+      }
+    }
+
+    .header-stats {
+      font-size: 0.9rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  .add-button {
+    color: var(--mat-sys-primary);
+    font-weight: 500;
+
+    @media (max-width: 768px) {
+      align-self: stretch;
+    }
+  }
+}
+
+// ===== PAGE CONTENT =====
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
 }
 
 .transactions-card {
   @include dashboard-card;
   padding: 0;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 
   mat-card-header {
-    padding: var(--spacing-xl);
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.05),
-      rgba(255, 255, 255, 0.02)
-    );
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   mat-card-content {
@@ -37,36 +91,39 @@
 
   .loading-container {
     @include loading-container;
-    min-height: 400px;
+    min-height: 300px;
   }
 
   .empty-state {
     @include empty-state;
-    padding: var(--spacing-3xl) var(--spacing-xl);
+    padding: var(--spacing-xl);
 
     mat-icon {
-      font-size: 5rem;
-      width: 5rem;
-      height: 5rem;
-      opacity: 0.5;
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      opacity: 0.3;
       color: var(--mat-sys-primary);
     }
 
     h3 {
-      font-size: 1.75rem;
-      margin: var(--spacing-lg) 0 var(--spacing-md) 0;
-      font-weight: 700;
+      font-size: 1.25rem;
+      margin: var(--spacing-md) 0 var(--spacing-xs) 0;
+      font-weight: 600;
     }
 
     p {
-      font-size: 1.05rem;
-      line-height: 1.7;
-      max-width: 480px;
-      margin: 0 auto var(--spacing-xl) auto;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      max-width: 400px;
+      margin: 0 auto var(--spacing-md) auto;
+      opacity: 0.8;
     }
 
     .get-started-button {
-      @include primary-action-button;
+      color: var(--mat-sys-primary);
+      font-weight: 500;
+      font-size: 0.875rem;
     }
   }
 }
