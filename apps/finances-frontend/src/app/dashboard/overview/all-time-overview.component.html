@@ -11,15 +11,28 @@
   </div>
   } @else {
 
-  <!-- Header with KPIs -->
-  <section class="header">
-    <div class="header-row">
-      <div class="page-subtitle">
-        {{ allTimeStats().transactionCount.toLocaleString() }} transactions •
-        {{ allTimeStats().totalTimespan }} @if
-        (allTimeStats().firstTransactionDate) { • Since
-        {{ formatDateShort(allTimeStats().firstTransactionDate!) }}
-        }
+  <!-- Sticky Header -->
+  <section class="sticky-header">
+    <div class="header-content">
+      <div class="header-info">
+        <h2 class="page-title">All-Time Overview</h2>
+        <div class="header-stats">
+          <span
+            >{{
+              allTimeStats().transactionCount.toLocaleString()
+            }}
+            transactions</span
+          >
+          <span class="separator">•</span>
+          <span>{{ allTimeStats().totalTimespan }}</span>
+          @if (allTimeStats().firstTransactionDate) {
+          <span class="separator">•</span>
+          <span
+            >Since
+            {{ formatDateShort(allTimeStats().firstTransactionDate!) }}</span
+          >
+          }
+        </div>
       </div>
 
       <!-- Health Score -->
@@ -30,7 +43,9 @@
         </div>
       </div>
     </div>
+  </section>
 
+  <div class="page-content">
     <!-- KPI Grid -->
     <div class="kpis">
       <div class="kpi-row">
@@ -124,247 +139,255 @@
         </div>
       </div>
     </div>
-  </section>
 
-  <!-- Analytics Dashboard -->
-  <section class="analytics">
-    <!-- Main Charts Row -->
-    <div class="charts-row">
-      <!-- Historical Trends -->
-      <div class="chart-section trends">
-        <mat-card class="chart-card">
-          <mat-card-header class="header">
-            <mat-card-title>
-              <mat-icon>show_chart</mat-icon>
-              Financial Trends
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="chart-container">
-              <canvas
-                baseChart
-                [data]="historicalTrendsChartData()"
-                [options]="chartOptions"
-                [type]="'line'"
-              >
-              </canvas>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-      <!-- Spending Breakdown -->
-      <div class="chart-section breakdown">
-        <mat-card class="chart-card">
-          <mat-card-header class="header">
-            <mat-card-title>
-              <mat-icon>pie_chart</mat-icon>
-              Spending by Category
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            @if (hasExpenseTransactions()) {
-            <div class="pie-container">
-              <canvas
-                baseChart
-                [data]="allTimeCategoryChartData()"
-                [options]="pieChartOptions"
-                [type]="'doughnut'"
-              >
-              </canvas>
-            </div>
-            } @else {
-            <div class="empty-chart">
-              <mat-icon>pie_chart</mat-icon>
-              <p>No expense data</p>
-            </div>
-            }
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-      <!-- Quick Insights Panel -->
-      <div class="insights-section">
-        <mat-card class="insights-card">
-          <mat-card-header class="header">
-            <mat-card-title>
-              <mat-icon>lightbulb</mat-icon>
-              Quick Insights
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="insights-grid">
-              <div class="insight">
-                <mat-icon class="insight-icon expense">shopping_cart</mat-icon>
-                <div class="insight-text">
-                  <div class="insight-label">Top Category</div>
-                  <div class="insight-value">
-                    {{ allTimeStats().topExpenseCategory || 'None' }}
-                  </div>
-                </div>
+    <!-- Analytics Dashboard -->
+    <section class="analytics">
+      <!-- Main Charts Row -->
+      <div class="charts-row">
+        <!-- Historical Trends -->
+        <div class="chart-section trends">
+          <mat-card class="chart-card">
+            <mat-card-header class="header">
+              <mat-card-title>
+                <mat-icon>show_chart</mat-icon>
+                Financial Trends
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="chart-container">
+                <canvas
+                  baseChart
+                  [data]="historicalTrendsChartData()"
+                  [options]="chartOptions"
+                  [type]="'line'"
+                >
+                </canvas>
               </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
 
-              <div class="insight">
-                <mat-icon class="insight-icon primary">category</mat-icon>
-                <div class="insight-text">
-                  <div class="insight-label">Top Category</div>
-                  <div class="insight-value">
-                    {{ allTimeStats().topExpenseCategory || 'None' }}
-                  </div>
-                </div>
+        <!-- Spending Breakdown -->
+        <div class="chart-section breakdown">
+          <mat-card class="chart-card">
+            <mat-card-header class="header">
+              <mat-card-title>
+                <mat-icon>pie_chart</mat-icon>
+                Spending by Category
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (hasExpenseTransactions()) {
+              <div class="pie-container">
+                <canvas
+                  baseChart
+                  [data]="allTimeCategoryChartData()"
+                  [options]="pieChartOptions"
+                  [type]="'doughnut'"
+                >
+                </canvas>
               </div>
-
-              <div class="insight">
-                <mat-icon class="insight-icon neutral">calendar_month</mat-icon>
-                <div class="insight-text">
-                  <div class="insight-label">Most Active</div>
-                  <div class="insight-value">
-                    {{ getMostActiveDay().split('(')[0].trim() }}
-                  </div>
-                </div>
-              </div>
-
-              @if (getMostExpensiveTransaction(); as mostExpensive) {
-              <div class="insight">
-                <mat-icon class="insight-icon warning">warning</mat-icon>
-                <div class="insight-text">
-                  <div class="insight-label">Largest Expense</div>
-                  <div class="insight-value">
-                    {{ formatCurrency(mostExpensive.amount) }}
-                  </div>
-                </div>
-              </div>
-              } @if (getBiggestIncomeTransaction(); as biggestIncome) {
-              <div class="insight">
-                <mat-icon class="insight-icon income">emoji_events</mat-icon>
-                <div class="insight-text">
-                  <div class="insight-label">Biggest Income</div>
-                  <div class="insight-value">
-                    {{ formatCurrency(biggestIncome.amount) }}
-                  </div>
-                </div>
+              } @else {
+              <div class="empty-chart">
+                <mat-icon>pie_chart</mat-icon>
+                <p>No expense data</p>
               </div>
               }
+            </mat-card-content>
+          </mat-card>
+        </div>
 
-              <div class="insight">
-                <mat-icon class="insight-icon info">trending_up</mat-icon>
-                <div class="insight-text">
-                  <div class="insight-label">Spending Trend</div>
-                  <div class="insight-value">
-                    {{ getSpendingTrend() | titlecase }}
+        <!-- Quick Insights Panel -->
+        <div class="insights-section">
+          <mat-card class="insights-card">
+            <mat-card-header class="header">
+              <mat-card-title>
+                <mat-icon>lightbulb</mat-icon>
+                Quick Insights
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="insights-grid">
+                <div class="insight">
+                  <mat-icon class="insight-icon expense"
+                    >shopping_cart</mat-icon
+                  >
+                  <div class="insight-text">
+                    <div class="insight-label">Top Category</div>
+                    <div class="insight-value">
+                      {{ allTimeStats().topExpenseCategory || 'None' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="insight">
+                  <mat-icon class="insight-icon primary">category</mat-icon>
+                  <div class="insight-text">
+                    <div class="insight-label">Top Category</div>
+                    <div class="insight-value">
+                      {{ allTimeStats().topExpenseCategory || 'None' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="insight">
+                  <mat-icon class="insight-icon neutral"
+                    >calendar_month</mat-icon
+                  >
+                  <div class="insight-text">
+                    <div class="insight-label">Most Active</div>
+                    <div class="insight-value">
+                      {{ getMostActiveDay().split('(')[0].trim() }}
+                    </div>
+                  </div>
+                </div>
+
+                @if (getMostExpensiveTransaction(); as mostExpensive) {
+                <div class="insight">
+                  <mat-icon class="insight-icon warning">warning</mat-icon>
+                  <div class="insight-text">
+                    <div class="insight-label">Largest Expense</div>
+                    <div class="insight-value">
+                      {{ formatCurrency(mostExpensive.amount) }}
+                    </div>
+                  </div>
+                </div>
+                } @if (getBiggestIncomeTransaction(); as biggestIncome) {
+                <div class="insight">
+                  <mat-icon class="insight-icon income">emoji_events</mat-icon>
+                  <div class="insight-text">
+                    <div class="insight-label">Biggest Income</div>
+                    <div class="insight-value">
+                      {{ formatCurrency(biggestIncome.amount) }}
+                    </div>
+                  </div>
+                </div>
+                }
+
+                <div class="insight">
+                  <mat-icon class="insight-icon info">trending_up</mat-icon>
+                  <div class="insight-text">
+                    <div class="insight-label">Spending Trend</div>
+                    <div class="insight-value">
+                      {{ getSpendingTrend() | titlecase }}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
+            </mat-card-content>
+          </mat-card>
+        </div>
       </div>
-    </div>
 
-    <!-- Bottom Row: Merchants & Recent Activity -->
-    <div class="bottom-row">
-      <!-- Top Merchants -->
-      <div class="merchants-section">
-        <mat-card class="list-card">
-          <mat-card-header class="header">
-            <mat-card-title>
-              <mat-icon>store</mat-icon>
-              Top Merchants
-            </mat-card-title>
-            <button
-              mat-icon-button
-              (click)="navigateToTransactions()"
-              class="nav-button"
-            >
-              <mat-icon>arrow_forward</mat-icon>
-            </button>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="list">
-              @for (merchant of financeStore.topMerchants().slice(0, 5); track
-              merchant.description) {
-              <div class="list-item">
-                <div class="item-rank">{{ $index + 1 }}</div>
-                <div class="item-content">
-                  <div class="item-name">{{ merchant.description }}</div>
-                  <div class="item-detail">
-                    {{ merchant.count }} transactions
-                  </div>
-                </div>
-                <div class="item-amount">
-                  {{ formatCurrency(merchant.amount) }}
-                </div>
-              </div>
-              } @empty {
-              <div class="empty-state-mini">
+      <!-- Bottom Row: Merchants & Recent Activity -->
+      <div class="bottom-row">
+        <!-- Top Merchants -->
+        <div class="merchants-section">
+          <mat-card class="list-card">
+            <mat-card-header class="header">
+              <mat-card-title>
                 <mat-icon>store</mat-icon>
-                <span>No merchant data</span>
+                Top Merchants
+              </mat-card-title>
+              <button
+                mat-icon-button
+                (click)="navigateToTransactions()"
+                class="nav-button"
+              >
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="list">
+                @for (merchant of financeStore.topMerchants().slice(0, 5); track
+                merchant.description) {
+                <div class="list-item">
+                  <div class="item-rank">{{ $index + 1 }}</div>
+                  <div class="item-content">
+                    <div class="item-name">{{ merchant.description }}</div>
+                    <div class="item-detail">
+                      {{ merchant.count }} transactions
+                    </div>
+                  </div>
+                  <div class="item-amount">
+                    {{ formatCurrency(merchant.amount) }}
+                  </div>
+                </div>
+                } @empty {
+                <div class="empty-state-mini">
+                  <mat-icon>store</mat-icon>
+                  <span>No merchant data</span>
+                </div>
+                }
               </div>
-              }
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
 
-      <!-- Recent Transactions -->
-      <div class="recent-section">
-        <mat-card class="list-card">
-          <mat-card-header class="header">
-            <mat-card-title>
-              <mat-icon>schedule</mat-icon>
-              Recent Activity
-            </mat-card-title>
-            <button
-              mat-icon-button
-              (click)="navigateToTransactions()"
-              class="nav-button"
-            >
-              <mat-icon>arrow_forward</mat-icon>
-            </button>
-          </mat-card-header>
-          <mat-card-content>
-            @if (recentTransactions().length === 0) {
-            <div class="empty-state-mini">
-              <mat-icon>receipt</mat-icon>
-              <span>No transactions yet</span>
-            </div>
-            } @else {
-            <div class="transactions">
-              @for (transaction of recentTransactions().slice(0, 6); track
-              transaction.id) {
-              <div class="transaction" [class]="transaction.type.toLowerCase()">
+        <!-- Recent Transactions -->
+        <div class="recent-section">
+          <mat-card class="list-card">
+            <mat-card-header class="header">
+              <mat-card-title>
+                <mat-icon>schedule</mat-icon>
+                Recent Activity
+              </mat-card-title>
+              <button
+                mat-icon-button
+                (click)="navigateToTransactions()"
+                class="nav-button"
+              >
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
+            </mat-card-header>
+            <mat-card-content>
+              @if (recentTransactions().length === 0) {
+              <div class="empty-state-mini">
+                <mat-icon>receipt</mat-icon>
+                <span>No transactions yet</span>
+              </div>
+              } @else {
+              <div class="transactions">
+                @for (transaction of recentTransactions().slice(0, 6); track
+                transaction.id) {
                 <div
-                  class="transaction-type-icon"
+                  class="transaction"
                   [class]="transaction.type.toLowerCase()"
                 >
-                  <mat-icon>
-                    @if (transaction.type === 'INCOME') { add } @else { remove }
-                  </mat-icon>
-                </div>
-                <div class="transaction-info">
-                  <div class="transaction-desc">
-                    {{ transaction.description }}
+                  <div
+                    class="transaction-type-icon"
+                    [class]="transaction.type.toLowerCase()"
+                  >
+                    <mat-icon>
+                      @if (transaction.type === 'INCOME') { add } @else { remove
+                      }
+                    </mat-icon>
                   </div>
-                  <div class="transaction-meta">
-                    {{ transaction.category }} •
-                    {{ formatDateShort(transaction.date) }}
+                  <div class="transaction-info">
+                    <div class="transaction-desc">
+                      {{ transaction.description }}
+                    </div>
+                    <div class="transaction-meta">
+                      {{ transaction.category }} •
+                      {{ formatDateShort(transaction.date) }}
+                    </div>
+                  </div>
+                  <div
+                    class="transaction-amount"
+                    [class]="transaction.type.toLowerCase()"
+                  >
+                    {{ formatCurrency(transaction.amount) }}
                   </div>
                 </div>
-                <div
-                  class="transaction-amount"
-                  [class]="transaction.type.toLowerCase()"
-                >
-                  {{ formatCurrency(transaction.amount) }}
-                </div>
+                }
               </div>
               }
-            </div>
-            }
-          </mat-card-content>
-        </mat-card>
+            </mat-card-content>
+          </mat-card>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
   }
 </div>
