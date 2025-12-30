@@ -40,80 +40,72 @@ import { formatAbsoluteDate } from '../../utils/date-utils';
   styleUrl: './transfers.component.scss',
   template: `
     <div class="transfers-container">
-      <!-- Header -->
-      <div class="header">
-        <div class="header-row">
-          <div class="title-section">
-            <p class="page-subtitle">
-              {{ transfers().length }} transfers total
-            </p>
+      <!-- Sticky Header -->
+      <section class="sticky-header">
+        <div class="header-content">
+          <div class="header-info">
+            <h2 class="page-title">Transfers</h2>
+            <div class="header-stats">
+              <span>{{ transfers().length }} total</span>
+            </div>
           </div>
-          <div class="controls-section">
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="openTransferDialog()"
-              class="add-button"
-            >
-              <mat-icon>add</mat-icon>
-              Add Transfer
-            </button>
-          </div>
+
+          <button mat-button (click)="openTransferDialog()" class="add-button">
+            <mat-icon>add</mat-icon>
+            Add Transfer
+          </button>
         </div>
+      </section>
+
+      <div class="page-content">
+        <!-- Transfers Grid -->
+        <mat-card class="transfers-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>swap_horiz</mat-icon>
+              All Transfers
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (loading()) {
+            <div class="loading-container">
+              <mat-spinner></mat-spinner>
+              <h3>Loading Transfers</h3>
+              <p>Setting up your transfer management...</p>
+            </div>
+            } @else {
+
+            <!-- Transfers Grid -->
+            @if (transfers().length === 0) {
+            <div class="empty-state">
+              <mat-icon>swap_horiz</mat-icon>
+              <h3>No transfers yet</h3>
+              <p>
+                Create your first transfer to start moving money between
+                accounts
+              </p>
+              <button
+                mat-button
+                (click)="openTransferDialog()"
+                class="get-started-button"
+              >
+                <mat-icon>add</mat-icon>
+                Add Your First Transfer
+              </button>
+            </div>
+            } @else {
+            <div class="transfers-grid-container">
+              <app-transfers-grid
+                [transfers]="transfers()"
+                [accounts]="accounts()"
+                (editTransfer)="openTransferDialog($event)"
+                (deleteTransfer)="deleteTransfer($event)"
+              ></app-transfers-grid>
+            </div>
+            } }
+          </mat-card-content>
+        </mat-card>
       </div>
-
-      <!-- Transfers Grid -->
-      <mat-card class="transfers-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>swap_horiz</mat-icon>
-            All Transfers
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          @if (loading()) {
-          <div class="loading-container">
-            <mat-spinner></mat-spinner>
-            <h3>Loading Transfers</h3>
-            <p>Setting up your transfer management...</p>
-          </div>
-          } @else {
-
-          <!-- Transfers Grid -->
-          @if (transfers().length === 0) {
-          <mat-card class="empty-state-card">
-            <mat-card-content>
-              <div class="empty-state">
-                <mat-icon>swap_horiz</mat-icon>
-                <h3>No Transfers Yet</h3>
-                <p>
-                  Create your first transfer to start moving money between
-                  accounts
-                </p>
-                <button
-                  mat-raised-button
-                  color="primary"
-                  (click)="openTransferDialog()"
-                  class="get-started-button"
-                >
-                  <mat-icon>add</mat-icon>
-                  Create Your First Transfer
-                </button>
-              </div>
-            </mat-card-content>
-          </mat-card>
-          } @else {
-          <div class="transfers-grid-container">
-            <app-transfers-grid
-              [transfers]="transfers()"
-              [accounts]="accounts()"
-              (editTransfer)="openTransferDialog($event)"
-              (deleteTransfer)="deleteTransfer($event)"
-            ></app-transfers-grid>
-          </div>
-          } }
-        </mat-card-content>
-      </mat-card>
     </div>
   `,
 })
