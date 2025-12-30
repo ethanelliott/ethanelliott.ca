@@ -1,0 +1,56 @@
+<div class="container">
+  <div class="header">
+    <h1>🎯 Randomizer Wheel</h1>
+    <p>Enter items below (one per line) and spin the wheel!</p>
+  </div>
+
+  <div class="content">
+    <div class="input-section">
+      <textarea
+        [(ngModel)]="inputText"
+        (ngModelChange)="onInputChange()"
+        placeholder="Enter items here (one per line)&#10;Example:&#10;Pizza&#10;Sushi&#10;Tacos&#10;Burger"
+        rows="10"
+      ></textarea>
+      <button
+        (click)="spinWheel()"
+        [disabled]="isSpinning() || segments().length === 0"
+        class="spin-button"
+      >
+        {{ isSpinning() ? 'Spinning...' : 'Spin the Wheel!' }}
+      </button>
+    </div>
+
+    <div class="wheel-section">
+      @if (segments().length > 0) {
+        <canvas
+          #canvas
+          width="500"
+          height="500"
+          class="wheel-canvas"
+        ></canvas>
+      } @else {
+        <div class="empty-state">
+          <p>Enter some items to get started!</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (showModal()) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h2>🎉 Winner!</h2>
+        <div class="winner-text">{{ selectedItem() }}</div>
+        <div class="modal-actions">
+          <button (click)="removeSelectedItem()" class="btn-remove">
+            Remove from List
+          </button>
+          <button (click)="keepSelectedItem()" class="btn-keep">
+            Keep & Close
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

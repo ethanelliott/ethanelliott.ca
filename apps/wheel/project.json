@@ -1,0 +1,91 @@
+{
+  "name": "wheel",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/wheel/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/wheel",
+        "browser": "apps/wheel/src/main.ts",
+        "tsConfig": "apps/wheel/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/wheel/public"
+          }
+        ],
+        "styles": ["apps/wheel/src/styles.scss"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "wheel:build:production"
+        },
+        "development": {
+          "buildTarget": "wheel:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular/build:extract-i18n",
+      "options": {
+        "buildTarget": "wheel:build"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "wheel:build",
+        "staticFilePath": "dist/apps/wheel/browser",
+        "spa": true
+      }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "VERSION=$(git describe --tags --match 'wheel@*' --abbrev=0 | sed 's/wheel@//') && docker build -f apps/wheel/Dockerfile -t ethanelliottio/wheel:$VERSION -t ethanelliottio/wheel:latest . && docker push ethanelliottio/wheel:$VERSION && docker push ethanelliottio/wheel:latest"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

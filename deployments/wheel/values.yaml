@@ -1,0 +1,29 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/wheel
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  hostname: 'wheel.elliott.haus'
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+
+# ConfigMap for nginx configuration
+configMap:
+  enabled: true
+  name: wheel-nginx-config
+  mountPath: /etc/nginx/conf.d/default.conf
+  subPath: nginx.conf
