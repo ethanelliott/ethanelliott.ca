@@ -37,16 +37,12 @@ import { firstValueFrom } from 'rxjs';
   styleUrl: './transactions.component.scss',
   template: `
     <div class="transactions-container">
-      <!-- Sticky Header -->
-      <section class="sticky-header">
-        <div class="header-content">
-          <div class="header-info">
-            <h2 class="page-title">Transactions</h2>
-            <div class="header-stats">
-              <span>{{ transactions().length }} total</span>
-            </div>
+      <div class="page-content">
+        <!-- Header Info -->
+        <div class="page-header">
+          <div class="header-stats">
+            <span>{{ transactions().length }} total</span>
           </div>
-
           <button
             mat-button
             (click)="openTransactionDialog()"
@@ -56,9 +52,7 @@ import { firstValueFrom } from 'rxjs';
             Add Transaction
           </button>
         </div>
-      </section>
 
-      <div class="page-content">
         <!-- Transactions Grid -->
         <mat-card class="transactions-card">
           <mat-card-header>

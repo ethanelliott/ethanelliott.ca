@@ -151,14 +151,13 @@ import { map } from 'rxjs/operators';
         </mat-sidenav>
 
         <mat-sidenav-content class="main-content">
-          <mat-toolbar class="toolbar" color="primary">
+          <mat-toolbar class="toolbar">
             <button
               type="button"
               aria-label="Toggle sidenav"
               mat-icon-button
               (click)="drawer.toggle()"
               class="menu-button"
-              [style.display]="isMobile() ? 'block' : 'none'"
             >
               <mat-icon>menu</mat-icon>
             </button>
@@ -323,10 +322,14 @@ import { map } from 'rxjs/operators';
     .toolbar {
       position: sticky;
       top: 0;
-      z-index: 2;
-      background: transparent;
+      z-index: 100;
+      background: rgba(15, 20, 25, 0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       color: var(--mat-sys-on-surface);
       box-shadow: none;
+      height: 56px;
+      min-height: 56px;
     }
 
     .menu-button {
@@ -341,7 +344,7 @@ import { map } from 'rxjs/operators';
     }
 
     .content-container {
-      min-height: calc(100vh - 64px);
+      min-height: calc(100vh - 56px);
       padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-2xl);
     }
 

@@ -11,23 +11,22 @@
   </div>
   } @else {
 
-  <!-- Sticky Header with Controls -->
-  <section class="sticky-header">
-    <div class="header-content">
-      <div class="header-info">
-        <h2 class="month-title">
-          {{ getSelectedMonthName() }} {{ selectedYear() }}
-        </h2>
-        <div class="header-stats">
-          <span
-            >{{
-              monthlyStats().transactionCount.toLocaleString()
-            }}
-            transactions</span
-          >
-          <span class="separator">•</span>
-          <span>{{ formatPercentage(getSavingsRate()) }} savings rate</span>
-        </div>
+  <div class="page-content">
+    <!-- Header Controls -->
+    <div class="header-controls-wrapper">
+      <div class="month-display">
+        {{ getSelectedMonthName() }} {{ selectedYear() }}
+      </div>
+
+      <div class="header-stats">
+        <span
+          >{{
+            monthlyStats().transactionCount.toLocaleString()
+          }}
+          transactions</span
+        >
+        <span class="separator">•</span>
+        <span>{{ formatPercentage(getSavingsRate()) }} savings rate</span>
       </div>
 
       <div class="header-controls">
@@ -56,9 +55,7 @@
         </mat-form-field>
       </div>
     </div>
-  </section>
 
-  <div class="page-content">
     <!-- KPI Grid -->
     <div class="kpis">
       <div class="kpi-row">

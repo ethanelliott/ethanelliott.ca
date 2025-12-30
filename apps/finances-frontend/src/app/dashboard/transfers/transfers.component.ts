@@ -40,24 +40,18 @@ import { formatAbsoluteDate } from '../../utils/date-utils';
   styleUrl: './transfers.component.scss',
   template: `
     <div class="transfers-container">
-      <!-- Sticky Header -->
-      <section class="sticky-header">
-        <div class="header-content">
-          <div class="header-info">
-            <h2 class="page-title">Transfers</h2>
-            <div class="header-stats">
-              <span>{{ transfers().length }} total</span>
-            </div>
+      <div class="page-content">
+        <!-- Header Info -->
+        <div class="page-header">
+          <div class="header-stats">
+            <span>{{ transfers().length }} total</span>
           </div>
-
           <button mat-button (click)="openTransferDialog()" class="add-button">
             <mat-icon>add</mat-icon>
             Add Transfer
           </button>
         </div>
-      </section>
 
-      <div class="page-content">
         <!-- Transfers Grid -->
         <mat-card class="transfers-card">
           <mat-card-header>

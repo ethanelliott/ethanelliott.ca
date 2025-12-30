@@ -11,28 +11,25 @@
   </div>
   } @else {
 
-  <!-- Sticky Header -->
-  <section class="sticky-header">
-    <div class="header-content">
-      <div class="header-info">
-        <h2 class="page-title">All-Time Overview</h2>
-        <div class="header-stats">
-          <span
-            >{{
-              allTimeStats().transactionCount.toLocaleString()
-            }}
-            transactions</span
-          >
-          <span class="separator">•</span>
-          <span>{{ allTimeStats().totalTimespan }}</span>
-          @if (allTimeStats().firstTransactionDate) {
-          <span class="separator">•</span>
-          <span
-            >Since
-            {{ formatDateShort(allTimeStats().firstTransactionDate!) }}</span
-          >
-          }
-        </div>
+  <div class="page-content">
+    <!-- Header Stats -->
+    <div class="header-stats-wrapper">
+      <div class="header-stats">
+        <span
+          >{{
+            allTimeStats().transactionCount.toLocaleString()
+          }}
+          transactions</span
+        >
+        <span class="separator">•</span>
+        <span>{{ allTimeStats().totalTimespan }}</span>
+        @if (allTimeStats().firstTransactionDate) {
+        <span class="separator">•</span>
+        <span
+          >Since
+          {{ formatDateShort(allTimeStats().firstTransactionDate!) }}</span
+        >
+        }
       </div>
 
       <!-- Health Score -->
@@ -43,9 +40,7 @@
         </div>
       </div>
     </div>
-  </section>
 
-  <div class="page-content">
     <!-- KPI Grid -->
     <div class="kpis">
       <div class="kpi-row">
