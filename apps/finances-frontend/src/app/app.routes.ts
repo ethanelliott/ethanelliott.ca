@@ -1,13 +1,13 @@
 import { Route } from '@angular/router';
 import { UserLogin } from './login/login';
-import { HomePage } from './home/home';
 import { UserRegister } from './register/register';
 import { Dashboard } from './dashboard/dashboard';
 
 export const appRoutes: Route[] = [
   {
     path: '',
-    component: HomePage,
+    pathMatch: 'full',
+    redirectTo: 'login',
   },
   {
     path: 'login',

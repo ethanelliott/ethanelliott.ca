@@ -46,9 +46,6 @@ import { DialogService } from '../shared/dialogs';
               Start Your<br />
               <span class="highlight">Journey.</span>
             </h1>
-            <p class="page-subtitle">
-              Create an account to take control of your financial future.
-            </p>
           </div>
 
           <mat-card class="register-card">
@@ -85,11 +82,6 @@ import { DialogService } from '../shared/dialogs';
                     />
                     <mat-icon matSuffix>alternate_email</mat-icon>
                   </mat-form-field>
-
-                  <div class="passkey-note">
-                    <mat-icon>fingerprint</mat-icon>
-                    <p>We'll create a secure passkey for you.</p>
-                  </div>
 
                   <button
                     mat-flat-button

@@ -78,6 +78,55 @@
 // ===== KPI GRID =====
 .kpis {
   @include kpi-grid;
+
+  @media (max-width: 768px) {
+    .kpi-row {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: var(--spacing-sm);
+    }
+
+    .kpi-item {
+      padding: var(--spacing-md);
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-xs);
+
+      .kpi-icon {
+        width: 32px;
+        height: 32px;
+        margin-bottom: var(--spacing-xs);
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          line-height: 18px;
+        }
+      }
+
+      .kpi-content {
+        width: 100%;
+
+        .kpi-label {
+          font-size: 0.7rem;
+          margin-bottom: 2px;
+          opacity: 0.8;
+        }
+
+        .kpi-value {
+          font-size: 1.1rem;
+          margin-bottom: 2px;
+        }
+
+        .kpi-detail {
+          font-size: 0.65rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+    }
+  }
 }
 
 // ===== ANALYTICS SECTION =====
@@ -112,6 +161,10 @@
 
   .chart-container {
     @include chart-container;
+
+    @media (max-width: 768px) {
+      min-height: 250px;
+    }
   }
 
   .pie-container {

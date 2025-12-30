@@ -41,9 +41,6 @@ import { firstValueFrom } from 'rxjs';
               Welcome<br />
               <span class="highlight">Back.</span>
             </h1>
-            <p class="page-subtitle">
-              Sign in securely to access your dashboard.
-            </p>
           </div>
 
           <mat-card class="login-card">
