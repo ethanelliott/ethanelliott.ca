@@ -25,7 +25,8 @@ interface WheelSegment {
   styleUrls: ['./wheel.component.scss'],
 })
 export class WheelComponent implements OnInit {
-  @ViewChild('canvas', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('canvas', { static: false })
+  canvasRef!: ElementRef<HTMLCanvasElement>;
 
   inputText = signal<string>('');
   isSpinning = signal<boolean>(false);
@@ -128,14 +129,21 @@ export class WheelComponent implements OnInit {
 
     // Normalize rotation to 0-2π
     const normalizedRotation = this.currentRotation % (2 * Math.PI);
-    
-    // The pointer is at the top (90 degrees in our coordinate system)
-    // We need to find which segment is under the pointer
-    const pointerAngle = (Math.PI / 2 - normalizedRotation) % (2 * Math.PI);
-    const adjustedAngle = pointerAngle < 0 ? pointerAngle + 2 * Math.PI : pointerAngle;
+
+    // The pointer is at the top which is 3π/2 radians (270°) in standard canvas coordinates
+    // After rotation, we need to find which segment is at the top position
+    // A segment originally at angle θ is now at θ + rotation
+    // We want the segment where θ + rotation = 3π/2, so θ = 3π/2 - rotation
+    const pointerAngle =
+      ((3 * Math.PI) / 2 - normalizedRotation) % (2 * Math.PI);
+    const adjustedAngle =
+      pointerAngle < 0 ? pointerAngle + 2 * Math.PI : pointerAngle;
 
     for (const segment of segments) {
-      if (adjustedAngle >= segment.startAngle && adjustedAngle < segment.endAngle) {
+      if (
+        adjustedAngle >= segment.startAngle &&
+        adjustedAngle < segment.endAngle
+      ) {
         this.selectedItem.set(segment.text);
         this.showModal.set(true);
         break;
@@ -155,7 +163,7 @@ export class WheelComponent implements OnInit {
     const newItems = currentItems.filter((item) => item !== selected);
     this.urlState.updateItems(newItems);
     this.inputText.set(newItems.join('\n'));
-    
+
     this.showModal.set(false);
     this.selectedItem.set(null);
   }
@@ -181,6 +189,11 @@ export class WheelComponent implements OnInit {
     const centerY = canvas.height / 2;
     const radius = Math.min(centerX, centerY) - 10;
 
+    // Detect dark mode
+    const isDarkMode =
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches;
+
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -197,8 +210,11 @@ export class WheelComponent implements OnInit {
       ctx.closePath();
       ctx.fillStyle = segment.color;
       ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
+      // Crisp white borders in light mode, subtle in dark mode
+      ctx.strokeStyle = isDarkMode
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = isDarkMode ? 1.5 : 3;
       ctx.stroke();
 
       // Draw text
@@ -208,33 +224,38 @@ export class WheelComponent implements OnInit {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 16px Arial';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-      ctx.shadowBlur = 3;
+      ctx.shadowColor = isDarkMode
+        ? 'rgba(0, 0, 0, 0.8)'
+        : 'rgba(0, 0, 0, 0.6)';
+      ctx.shadowBlur = isDarkMode ? 4 : 4;
       ctx.fillText(segment.text, radius * 0.65, 0);
       ctx.restore();
     });
 
     ctx.restore();
 
-    // Draw center circle
+    // Draw center circle with adjusted colors for dark mode
     ctx.beginPath();
     ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = isDarkMode ? '#f0f0f0' : '#fff';
     ctx.fill();
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = isDarkMode ? '#555' : '#666';
+    ctx.lineWidth = isDarkMode ? 3 : 4;
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Draw pointer at top
+    // Draw pointer at top - large triangle pointing down at the wheel
+    const pointerTip = centerY - radius + 20; // Point just inside the wheel edge
+    const pointerBase = centerY - radius - 50; // Base well above the wheel
     ctx.beginPath();
-    ctx.moveTo(centerX, 10);
-    ctx.lineTo(centerX - 15, 40);
-    ctx.lineTo(centerX + 15, 40);
+    ctx.moveTo(centerX, pointerTip); // Tip pointing at wheel
+    ctx.lineTo(centerX - 60, pointerBase); // Left base
+    ctx.lineTo(centerX + 60, pointerBase); // Right base
     ctx.closePath();
     ctx.fillStyle = '#ff4444';
     ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.8)' : '#fff';
+    ctx.lineWidth = 4;
     ctx.stroke();
   }
 

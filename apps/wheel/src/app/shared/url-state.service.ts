@@ -13,11 +13,11 @@ export class UrlStateService {
   private loadFromUrl(): void {
     const params = new URLSearchParams(window.location.search);
     const itemsParam = params.get('items');
-    
+
     if (itemsParam) {
       try {
         const decoded = atob(itemsParam);
-        const items = decoded.split('\n').filter(item => item.trim() !== '');
+        const items = decoded.split('\n').filter((item) => item.trim() !== '');
         this.items.set(items);
       } catch (e) {
         console.error('Failed to decode items from URL', e);
@@ -33,14 +33,14 @@ export class UrlStateService {
   private syncToUrl(): void {
     const items = this.items();
     const url = new URL(window.location.href);
-    
+
     if (items.length > 0) {
       const encoded = btoa(items.join('\n'));
       url.searchParams.set('items', encoded);
     } else {
       url.searchParams.delete('items');
     }
-    
+
     window.history.replaceState({}, '', url.toString());
   }
 }
