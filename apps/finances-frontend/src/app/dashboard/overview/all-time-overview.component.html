@@ -34,11 +34,7 @@
     <!-- KPI Grid -->
     <div class="kpis">
       <div class="kpi-row">
-        <div
-          class="kpi-item wealth"
-          [class.positive]="allTimeStats().netWorth >= 0"
-          [class.negative]="allTimeStats().netWorth < 0"
-        >
+        <div class="kpi-item">
           <div class="kpi-icon">
             <mat-icon>
               @if (allTimeStats().netWorth >= 0) { trending_up } @else {
@@ -56,7 +52,7 @@
           </div>
         </div>
 
-        <div class="kpi-item income">
+        <div class="kpi-item">
           <div class="kpi-icon">
             <mat-icon>paid</mat-icon>
           </div>
@@ -71,7 +67,7 @@
           </div>
         </div>
 
-        <div class="kpi-item expense">
+        <div class="kpi-item">
           <div class="kpi-icon">
             <mat-icon>receipt</mat-icon>
           </div>
@@ -86,7 +82,7 @@
           </div>
         </div>
 
-        <div class="kpi-item activity">
+        <div class="kpi-item">
           <div class="kpi-icon">
             <mat-icon>bar_chart</mat-icon>
           </div>
@@ -101,7 +97,7 @@
           </div>
         </div>
 
-        <div class="kpi-item highlight">
+        <div class="kpi-item">
           <div class="kpi-icon">
             <mat-icon>event</mat-icon>
           </div>
@@ -114,7 +110,7 @@
           </div>
         </div>
 
-        <div class="kpi-item info">
+        <div class="kpi-item">
           <div class="kpi-icon">
             <mat-icon>calculate</mat-icon>
           </div>
