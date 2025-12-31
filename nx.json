@@ -115,16 +115,26 @@
     "projects": ["apps/*"],
     "projectsRelationship": "independent",
     "version": {
-      "conventionalCommits": true
+      "conventionalCommits": true,
+      "generatorOptions": {
+        "packageRoot": "{projectRoot}",
+        "currentVersionResolver": "git-tag"
+      }
     },
     "changelog": {
+      "workspaceChangelog": {
+        "file": "CHANGELOG.md",
+        "createRelease": "github"
+      },
       "projectChangelogs": {
-        "file": "CHANGELOG.md"
+        "file": "CHANGELOG.md",
+        "createRelease": false
       }
     },
     "git": {
-      "commit": true,
-      "tag": true
+      "commit": false,
+      "tag": false,
+      "commitMessage": "chore(release): publish {version}"
     }
   }
 }

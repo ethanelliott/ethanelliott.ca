@@ -101,9 +101,14 @@
       "executor": "nx:run-commands",
       "options": {
         "commands": [
-          "VERSION=$(git describe --tags --match 'finances-frontend@*' --abbrev=0 | sed 's/finances-frontend@//') && docker build -f apps/finances-frontend/Dockerfile -t ethanelliottio/finances-frontend:$VERSION -t ethanelliottio/finances-frontend:latest . && docker push ethanelliottio/finances-frontend:$VERSION && docker push ethanelliottio/finances-frontend:latest"
+          "TAG={args.tag} && docker build -f apps/finances-frontend/Dockerfile -t ethanelliottio/finances-frontend:$TAG . && docker push ethanelliottio/finances-frontend:$TAG"
         ],
         "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
       }
     }
   }

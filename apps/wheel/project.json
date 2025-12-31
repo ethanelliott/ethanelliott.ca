@@ -82,9 +82,14 @@
       "executor": "nx:run-commands",
       "options": {
         "commands": [
-          "VERSION=$(git describe --tags --match 'wheel@*' --abbrev=0 | sed 's/wheel@//') && docker build -f apps/wheel/Dockerfile -t ethanelliottio/wheel:$VERSION -t ethanelliottio/wheel:latest . && docker push ethanelliottio/wheel:$VERSION && docker push ethanelliottio/wheel:latest"
+          "TAG={args.tag} && docker build -f apps/wheel/Dockerfile -t ethanelliottio/wheel:$TAG . && docker push ethanelliottio/wheel:$TAG"
         ],
         "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
       }
     }
   }

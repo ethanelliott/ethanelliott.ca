@@ -63,9 +63,14 @@
       "executor": "nx:run-commands",
       "options": {
         "commands": [
-          "VERSION=$(git describe --tags --match 'server@*' --abbrev=0 | sed 's/server@//') && docker build -f apps/server/Dockerfile -t ethanelliottio/test-server:$VERSION -t ethanelliottio/test-server:latest . && docker push ethanelliottio/test-server:$VERSION && docker push ethanelliottio/test-server:latest"
+          "TAG={args.tag} && docker build -f apps/server/Dockerfile -t ethanelliottio/test-server:$TAG . && docker push ethanelliottio/test-server:$TAG"
         ],
         "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
       }
     }
   }

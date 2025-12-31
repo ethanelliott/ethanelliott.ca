@@ -1,0 +1,127 @@
+name: Execute Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if release commit
+        id: check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          # Check if commit message starts with "chore(release):" (works with squash merge)
+          if [[ "$COMMIT_MSG" == chore\(release\):\ publish* ]]; then
+
+      - name: Extract version
+        id: extract
+        if: steps.check.outputs.is_release == 'true'
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          # Extract version from commit message like "chore(release): publish 1.2.3 [skip ci]"
+          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/chore(release): publish \([^ ]*\).*/\1/p')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+  execute-release:
+    needs: check-release
+    if: needs.check-release.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --no-save
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Create and push git tags
+        run: |
+          echo "Creating git tags for released versions..."
+          bun tsx tools/scripts/publish-release.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build affected projects
+        run: |
+          bun nx affected -t build --base=HEAD~1 --head=HEAD
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get project versions and build Docker images
+        run: |
+          echo "Building and pushing Docker images with version tags..."
+
+          # Get list of all apps
+          APPS=$(ls -d apps/*/ | xargs -n 1 basename)
+
+          for APP in $APPS; do
+            # Check if app has a package.json
+            if [ -f "apps/$APP/package.json" ]; then
+              # Get version from package.json
+              VERSION=$(node -p "require('./apps/$APP/package.json').version")
+              
+              # Check if app has container target
+              if bun nx show project $APP --json 2>/dev/null | grep -q '"container"'; then
+                echo "Building $APP:$VERSION..."
+                
+                # Build and push with version tag
+                bun nx run $APP:container --tag=$VERSION
+                
+                # Also tag and push as latest
+                bun nx run $APP:container --tag=latest
+                
+                echo "✅ Successfully built and pushed $APP:$VERSION and $APP:latest"
+              fi
+            fi
+          done
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ needs.check-release.outputs.version }}
+          name: Release ${{ needs.check-release.outputs.version }}
+          body: |
+            ## Release ${{ needs.check-release.outputs.version }}
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+
+            ### Docker Images
+            Docker images have been published with the following tags:
+            - `ethanelliottio/*:${{ needs.check-release.outputs.version }}`
+            - `ethanelliottio/*:latest`
+          generateReleaseNotes: true
+          makeLatest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

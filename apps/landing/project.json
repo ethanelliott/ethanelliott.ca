@@ -82,9 +82,14 @@
       "executor": "nx:run-commands",
       "options": {
         "commands": [
-          "VERSION=$(git describe --tags --match 'landing@*' --abbrev=0 | sed 's/landing@//') && docker build -f apps/landing/Dockerfile -t ethanelliottio/landing:$VERSION -t ethanelliottio/landing:latest . && docker push ethanelliottio/landing:$VERSION && docker push ethanelliottio/landing:latest"
+          "TAG={args.tag} && docker build -f apps/landing/Dockerfile -t ethanelliottio/landing:$TAG . && docker push ethanelliottio/landing:$TAG"
         ],
         "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
       }
     }
   }

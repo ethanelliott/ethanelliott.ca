@@ -24,7 +24,11 @@
   },
   "scripts": {
     "start": "nx serve",
-    "build": "nx build"
+    "build": "nx build",
+    "release:prepare": "bun tools/scripts/prepare-release.ts",
+    "release:prepare:dry-run": "bun tools/scripts/prepare-release.ts --dry-run",
+    "release:publish": "bun tools/scripts/publish-release.ts",
+    "release:publish:dry-run": "bun tools/scripts/publish-release.ts --dry-run"
   },
   "private": true,
   "dependencies": {
