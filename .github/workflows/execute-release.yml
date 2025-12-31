@@ -71,7 +71,7 @@ jobs:
 
       - name: Build affected projects
         run: |
-          bun nx affected -t build --base=HEAD~1 --head=HEAD
+          bun nx affected -t build --base=HEAD~1 --head=HEAD --parallel=3
 
       - name: Docker Login
         uses: docker/login-action@v3
