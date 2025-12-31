@@ -4,7 +4,7 @@ FROM docker.io/node:lts-alpine as build
 WORKDIR /app
 
 # Copy package files for dependency installation
-COPY package*.json bun.lockb ./
+COPY package*.json bun.lock ./
 
 # Install bun and dependencies
 RUN npm install -g bun

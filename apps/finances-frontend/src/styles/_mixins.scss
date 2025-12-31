@@ -137,11 +137,6 @@
   border-radius: var(--border-radius-md);
   box-shadow: var(--surface-elevation-2);
   transition: var(--transition-fast);
-  // border: 1px solid var(--mat-sys-outline-variant); // Removed to let glassmorphism handle border
-
-  &:hover {
-    box-shadow: var(--surface-elevation-3);
-  }
 
   mat-card-header {
     mat-card-title {
@@ -191,25 +186,14 @@
   mat-card-content {
     padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
   }
-
-  // Override base-card hover to prevent shadow jumping
-  &:hover {
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    transform: none;
-  }
 }
 
 @mixin dashboard-card {
   @include base-card;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(var(--mat-sys-primary-rgb), 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(var(--mat-sys-primary-rgb), 0.2);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  }
 
   .header {
     padding: var(--spacing-md) var(--spacing-lg);
@@ -260,15 +244,10 @@
     gap: var(--spacing-md);
     padding: var(--spacing-lg);
     background: rgba(30, 35, 40, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
     border-radius: var(--border-radius-lg);
     transition: none;
     min-width: 0;
-
-    &:hover {
-      background: rgba(30, 35, 40, 0.6);
-      border-color: rgba(255, 255, 255, 0.1);
-    }
 
     .kpi-icon {
       width: 48px;
@@ -436,12 +415,6 @@
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.05);
     transition: all 0.2s ease;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: rgba(var(--mat-sys-primary-rgb), 0.2);
-      transform: translateY(-1px);
-    }
 
     .item-icon,
     .item-rank {
@@ -816,11 +789,6 @@
   font-size: 1.1rem;
   border-radius: 28px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  }
 
   @media (max-width: 480px) {
     width: 100%;
