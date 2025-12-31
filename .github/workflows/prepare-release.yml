@@ -8,16 +8,16 @@ on:
         required: true
         type: choice
         options:
+          - auto
           - patch
           - minor
           - major
           - prerelease
-        default: 'patch'
+        default: 'auto'
       preid:
         description: 'Pre-release identifier (e.g., rc, alpha, beta) - only used with prerelease type'
         required: false
         type: string
-        default: 'rc'
 
 permissions:
   contents: write

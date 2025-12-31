@@ -26,15 +26,31 @@ async function main() {
   // Parse arguments
   const releaseType =
     process.env.RELEASE_TYPE ||
-    args.find((arg) => arg.startsWith('--type='))?.split('=')[1] ||
-    'patch';
-  const preid =
+    args.find((arg) => arg.startsWith('--type='))?.split('=')[1];
+  let preid =
     process.env.PREID ||
     args.find((arg) => arg.startsWith('--preid='))?.split('=')[1];
   const dryRun = process.env.DRY_RUN === 'true' || args.includes('--dry-run');
 
+  // Validate preid is only used with prerelease
+  if (preid && releaseType !== 'prerelease') {
+    console.log(
+      '⚠️  Warning: preid is only used with prerelease type, ignoring...'
+    );
+    preid = undefined;
+  }
+
+  // Default preid to 'rc' when release type is prerelease and no preid is provided
+  if (releaseType === 'prerelease' && !preid) {
+    preid = 'rc';
+  }
+
   console.log('🚀 Preparing release...');
-  console.log(`   Release Type: ${releaseType}`);
+  if (releaseType && releaseType !== 'auto') {
+    console.log(`   Release Type: ${releaseType}`);
+  } else {
+    console.log('   Release Type: auto (Nx will analyze conventional commits)');
+  }
   if (preid) {
     console.log(`   Pre-release ID: ${preid}`);
   }
@@ -45,7 +61,7 @@ async function main() {
     // Step 1: Calculate and update versions
     console.log('📝 Step 1: Calculating new versions...');
     const versionResult = await releaseVersion({
-      specifier: releaseType,
+      specifier: releaseType === 'auto' ? undefined : releaseType,
       preid: preid,
       dryRun: dryRun,
       gitCommit: false,
