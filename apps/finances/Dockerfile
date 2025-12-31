@@ -17,13 +17,8 @@ RUN addgroup --system server && \
 # Create data directory for database files
 RUN mkdir -p /app/data && chown server:server /app/data
 
-# Copy the pre-built application with correct ownership
+# Copy the pre-built application (includes package.json and node_modules from build)
 COPY --chown=server:server dist/apps/finances ./
-
-# Install production dependencies using bun
-RUN npm install -g bun && \
-    bun install --production && \
-    chown -R server:server .
 
 # Switch to non-root user
 USER server

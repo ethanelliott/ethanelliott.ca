@@ -1,8 +1,7 @@
+# Runtime-only Docker image for pre-built aritzia-scanner
 FROM node:20-slim
 
-# Install latest chrome dev package and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others)
-# Note: this installs the necessary libs to make the bundled version of Chromium that Puppeteer
-# installs, work.
+# Install Chrome and dependencies for Puppeteer
 RUN apt-get update \
     && apt-get install -y wget gnupg \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
@@ -14,15 +13,13 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Copy the pre-built application (includes package.json and node_modules from build)
 COPY dist/apps/aritzia-scanner .
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
-# Install dependencies
-RUN npm install --omit=dev
-
-# Add user so we don't need --no-sandbox.
+# Add user so we don't need --no-sandbox
 RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
     && mkdir -p /home/pptruser/Downloads \
     && chown -R pptruser:pptruser /home/pptruser \

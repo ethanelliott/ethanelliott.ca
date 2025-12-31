@@ -1,24 +1,11 @@
-# Multi-stage build for Angular app
-FROM docker.io/node:lts-alpine as build
-
-WORKDIR /app
-
-# Copy package files for dependency installation
-COPY package*.json bun.lock ./
-
-# Install bun and dependencies
-RUN npm install -g bun
-RUN bun install --frozen-lockfile
-
-# Copy source code and build
-COPY . .
-RUN bun nx build finances-frontend --prod
-
-# Production stage with nginx
+# Production build using pre-built Angular app from CI
 FROM docker.io/nginx:alpine
 
-# Copy built app to nginx html directory
-COPY --from=build /app/dist/apps/finances-frontend/browser /usr/share/nginx/html
+# Copy pre-built app to nginx html directory
+COPY dist/apps/finances-frontend/browser /usr/share/nginx/html
+
+# Copy nginx configuration if needed
+COPY apps/finances-frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
