@@ -28,7 +28,8 @@
     "release:prepare": "bun tools/scripts/prepare-release.ts",
     "release:prepare:dry-run": "bun tools/scripts/prepare-release.ts --dry-run",
     "release:publish": "bun tools/scripts/publish-release.ts",
-    "release:publish:dry-run": "bun tools/scripts/publish-release.ts --dry-run"
+    "release:publish:dry-run": "bun tools/scripts/publish-release.ts --dry-run",
+    "deployment:update": "bun tools/scripts/update-deployments.ts"
   },
   "private": true,
   "dependencies": {

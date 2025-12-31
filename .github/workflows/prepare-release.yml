@@ -56,6 +56,11 @@ jobs:
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
           PREID: ${{ github.event.inputs.preid }}
 
+      - name: Update deployment manifests
+        run: |
+          echo "Updating Helm values.yaml files with new versions..."
+          bun tools/scripts/update-deployments.ts
+
       - name: Get version information
         id: version
         run: |
@@ -91,6 +96,10 @@ jobs:
             This PR includes:
             - Version bumps in package.json files
             - Updated CHANGELOG.md files
+            - Updated Helm values.yaml files with new Docker image tags
+
+            ### Deployments
+            When this PR is merged, ArgoCD will automatically detect the updated image tags and roll out the new versions to the cluster.
 
             ### What happens next?
             1. Review the changes in this PR
