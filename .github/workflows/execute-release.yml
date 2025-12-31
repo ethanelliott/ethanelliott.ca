@@ -29,6 +29,12 @@ jobs:
 
           # Check if commit message starts with "chore(release):" (works with squash merge)
           if [[ "$COMMIT_MSG" == chore\(release\):\ publish* ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "This is a release commit"
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "This is NOT a release commit"
+          fi
 
       - name: Extract version
         id: extract
