@@ -88,16 +88,5 @@ jobs:
       - name: Build & Push Development Containers
         run: |
           echo "Building and pushing development containers with 'latest' tag..."
-
-          # Get list of affected apps with container targets
-          APPS=$(ls -d apps/*/ | xargs -n 1 basename)
-
-          for APP in $APPS; do
-            # Check if app has container target
-            if bun nx show project $APP --json 2>/dev/null | grep -q '"container"'; then
-              echo "Building $APP:latest..."
-              bun nx run $APP:container --tag=latest || echo "⚠️  Failed to build $APP, continuing..."
-            fi
-          done
-
+          bun nx run-many -t container --tag=latest --parallel=3
           echo "✅ Development containers built and pushed successfully"
