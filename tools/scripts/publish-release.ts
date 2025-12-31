@@ -15,6 +15,12 @@ import { execSync } from 'child_process';
  */
 
 async function main() {
+  // Guard against circular project graph creation
+  if ((global as any).NX_GRAPH_CREATION) {
+    console.error('❌ Cannot run release script during project graph creation');
+    process.exit(1);
+  }
+
   const args = process.argv.slice(2);
   const dryRun = process.env.DRY_RUN === 'true' || args.includes('--dry-run');
 
