@@ -5,7 +5,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,15 +27,14 @@ import { firstValueFrom } from 'rxjs';
   selector: 'app-accounts',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatDialogModule,
-    MatChipsModule,
-  ],
+    MatChipsModule
+],
   styleUrl: './accounts.component.scss',
   template: `
     <div class="accounts-container">

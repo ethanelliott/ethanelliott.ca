@@ -8,7 +8,7 @@ import {
   ElementRef,
   ViewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   FormBuilder,
   FormControl,
@@ -34,7 +34,6 @@ import { firstValueFrom } from 'rxjs';
   selector: 'app-categories',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -44,8 +43,8 @@ import { firstValueFrom } from 'rxjs';
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatListModule,
-    MatDividerModule,
-  ],
+    MatDividerModule
+],
   styleUrl: './categories.component.scss',
   template: `
     <div class="categories-container">

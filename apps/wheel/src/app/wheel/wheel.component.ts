@@ -7,7 +7,7 @@ import {
   signal,
   computed,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { UrlStateService } from '../shared/url-state.service';
 
@@ -20,7 +20,7 @@ interface WheelSegment {
 
 @Component({
   selector: 'app-wheel',
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './wheel.component.html',
   styleUrls: ['./wheel.component.scss'],
 })

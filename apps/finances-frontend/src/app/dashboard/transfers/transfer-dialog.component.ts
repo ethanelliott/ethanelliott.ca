@@ -5,7 +5,7 @@ import {
   signal,
   OnInit,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   FormBuilder,
   FormGroup,
@@ -43,7 +43,6 @@ export interface TransferDialogData {
   selector: 'app-transfer-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -53,8 +52,8 @@ export interface TransferDialogData {
     MatSelectModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatProgressSpinnerModule,
-  ],
+    MatProgressSpinnerModule
+],
   template: `
     <div class="dialog-header">
       <h2 mat-dialog-title>

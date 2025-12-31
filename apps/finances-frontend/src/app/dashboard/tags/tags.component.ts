@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -46,7 +46,6 @@ interface TagData {
   selector: 'app-tags',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -60,8 +59,8 @@ interface TagData {
     MatSortModule,
     MatMenuModule,
     MatTooltipModule,
-    MatCheckboxModule,
-  ],
+    MatCheckboxModule
+],
   styleUrl: './tags.component.scss',
   template: `
     <div class="tags-container">

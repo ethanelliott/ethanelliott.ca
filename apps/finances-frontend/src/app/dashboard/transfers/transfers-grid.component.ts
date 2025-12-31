@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, output, effect, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,7 +39,7 @@ ModuleRegistry.registerModules([InfiniteRowModelModule, AllCommunityModule]);
 @Component({
   selector: 'app-transfers-grid',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, AgGridAngular],
+  imports: [MatButtonModule, MatIconModule, AgGridAngular],
   template: `
     <ag-grid-angular
       class="transfers-grid"

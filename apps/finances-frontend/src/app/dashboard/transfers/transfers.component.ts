@@ -5,7 +5,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,7 +27,6 @@ import { formatAbsoluteDate } from '../../utils/date-utils';
   selector: 'app-transfers',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -35,8 +34,8 @@ import { formatAbsoluteDate } from '../../utils/date-utils';
     MatTooltipModule,
     MatDialogModule,
     MatChipsModule,
-    TransfersGridComponent,
-  ],
+    TransfersGridComponent
+],
   styleUrl: './transfers.component.scss',
   template: `
     <div class="transfers-container">

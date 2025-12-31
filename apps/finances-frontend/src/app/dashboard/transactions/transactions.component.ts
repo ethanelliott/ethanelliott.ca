@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -25,15 +25,14 @@ import { firstValueFrom } from 'rxjs';
   selector: 'app-transactions',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatMenuModule,
     MatDialogModule,
-    TransactionsGridComponent,
-  ],
+    TransactionsGridComponent
+],
   styleUrl: './transactions.component.scss',
   template: `
     <div class="transactions-container">

@@ -5,7 +5,7 @@ import {
   signal,
   OnInit,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   FormBuilder,
   FormGroup,
@@ -38,7 +38,6 @@ export interface AccountDialogData {
   selector: 'app-account-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -46,8 +45,8 @@ export interface AccountDialogData {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatProgressSpinnerModule,
-  ],
+    MatProgressSpinnerModule
+],
   template: `
     <div class="dialog-header">
       <h2 mat-dialog-title>

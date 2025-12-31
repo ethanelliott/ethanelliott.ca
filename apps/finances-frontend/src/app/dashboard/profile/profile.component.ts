@@ -5,7 +5,7 @@ import {
   OnInit,
   effect,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   FormBuilder,
   FormGroup,
@@ -27,7 +27,6 @@ import { DialogService } from '../../shared/dialogs';
   selector: 'app-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -36,8 +35,8 @@ import { DialogService } from '../../shared/dialogs';
     MatInputModule,
     MatProgressSpinnerModule,
     MatDividerModule,
-    MatListModule,
-  ],
+    MatListModule
+],
   styleUrl: './profile.component.scss',
   template: `
     <div class="profile-container">
