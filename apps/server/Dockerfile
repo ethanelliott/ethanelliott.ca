@@ -19,7 +19,7 @@ RUN chown -R server:server .
 
 # You can remove this install step if you build with `--bundle` option.
 # The bundled output will include external dependencies.
-RUN npm install -g pnpm@9 && cd server && pnpm install --prod
+RUN npm install -g bun && cd server && bun install --production
 
 # Expose the port that the application will run on
 EXPOSE 3000

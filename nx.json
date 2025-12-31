@@ -10,7 +10,7 @@
     "sharedGlobals": []
   },
   "cli": {
-    "packageManager": "pnpm"
+    "packageManager": "bun"
   },
   "targetDefaults": {
     "@angular-devkit/build-angular:application": {

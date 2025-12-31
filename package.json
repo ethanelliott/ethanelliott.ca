@@ -1,6 +1,24 @@
 {
   "name": "@ethanelliott.ca",
   "version": "0.0.0",
+  "packageManager": "bun@latest",
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "trustedDependencies": [
+    "@parcel/watcher",
+    "@swc/core",
+    "bcrypt",
+    "better-sqlite3",
+    "esbuild",
+    "lmdb",
+    "msgpackr-extract",
+    "nx",
+    "puppeteer",
+    "sqlite3",
+    "unrs-resolver"
+  ],
   "engines": {
     "node": "24"
   },

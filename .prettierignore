@@ -5,5 +5,4 @@
 /.nx/workspace-data
 .angular
 
-pnpm-lock.yaml
-pnpm-workspace.yaml
+bun.lockb

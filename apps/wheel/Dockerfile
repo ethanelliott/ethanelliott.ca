@@ -4,16 +4,15 @@ FROM docker.io/node:lts-alpine as build
 WORKDIR /app
 
 # Copy package files for dependency installation
-COPY package*.json pnpm-lock.yaml ./
-COPY pnpm-workspace.yaml ./
+COPY package*.json bun.lockb ./
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm@9
-RUN pnpm install --frozen-lockfile
+# Install bun and dependencies
+RUN npm install -g bun
+RUN bun install --frozen-lockfile
 
 # Copy source code and build
 COPY . .
-RUN pnpm nx build wheel --prod
+RUN bun nx build wheel --prod
 
 # Production stage with nginx
 FROM docker.io/nginx:alpine

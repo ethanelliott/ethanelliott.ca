@@ -17,17 +17,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v2
+      - uses: oven-sh/setup-bun@v2
         with:
-          version: 8
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install
+          bun-version: latest
+      - run: bun install
 
       - name: Lint & Build
-        run: pnpm exec nx affected -t lint build
+        run: bun nx affected -t lint build
 
       - name: Docker Login
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -45,11 +41,11 @@ jobs:
       - name: Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          pnpm exec nx release --skip-publish
+          bun nx release --skip-publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & Push Containers
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          pnpm exec nx run-many -t container
+          bun nx run-many -t container
