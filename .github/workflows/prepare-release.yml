@@ -48,9 +48,9 @@ jobs:
         id: prepare
         run: |
           if [ "${{ github.event.inputs.release_type }}" = "prerelease" ]; then
-            bun tsx tools/scripts/prepare-release.ts --type=prerelease --preid=${{ github.event.inputs.preid }}
+            bun tools/scripts/prepare-release.ts --type=prerelease --preid=${{ github.event.inputs.preid }}
           else
-            bun tsx tools/scripts/prepare-release.ts --type=${{ github.event.inputs.release_type }}
+            bun tools/scripts/prepare-release.ts --type=${{ github.event.inputs.release_type }}
           fi
         env:
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
