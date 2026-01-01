@@ -33,11 +33,14 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: bun install --no-save
+        run: npm ci
 
       - name: Configure Git
         run: |
@@ -48,9 +51,9 @@ jobs:
         id: prepare
         run: |
           if [ "${{ github.event.inputs.release_type }}" = "prerelease" ]; then
-            bun tools/scripts/prepare-release.ts --type=prerelease --preid=${{ github.event.inputs.preid }}
+            npm run release:prepare -- --type=prerelease --preid=${{ github.event.inputs.preid }}
           else
-            bun tools/scripts/prepare-release.ts --type=${{ github.event.inputs.release_type }}
+            npm run release:prepare -- --type=${{ github.event.inputs.release_type }}
           fi
         env:
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
@@ -59,7 +62,7 @@ jobs:
       - name: Update deployment manifests
         run: |
           echo "Updating Helm values.yaml files with new versions..."
-          bun tools/scripts/update-deployments.ts
+          npm run update:deployments
 
       - name: Get version information
         id: version
