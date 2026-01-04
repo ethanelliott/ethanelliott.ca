@@ -128,18 +128,18 @@ Prepares a release by calculating versions and generating changelogs.
 **Usage**:
 ```bash
 # Interactive (prompts for type)
-bun tsx tools/scripts/prepare-release.ts
+npm run release:prepare
 
 # With arguments
-bun tsx tools/scripts/prepare-release.ts --type=minor
-bun tsx tools/scripts/prepare-release.ts --type=prerelease --preid=rc
+npm run release:prepare -- --type=minor
+npm run release:prepare -- --type=prerelease --preid=rc
 
 # Dry run (preview changes without modifying files)
-bun tsx tools/scripts/prepare-release.ts --dry-run
+npm run release:prepare:dry-run
 
 # With environment variables
-RELEASE_TYPE=patch bun tsx tools/scripts/prepare-release.ts
-RELEASE_TYPE=prerelease PREID=alpha bun tsx tools/scripts/prepare-release.ts
+RELEASE_TYPE=patch npm run release:prepare
+RELEASE_TYPE=prerelease PREID=alpha npm run release:prepare
 ```
 
 **What it does**:
@@ -155,10 +155,10 @@ Publishes a release by creating and pushing git tags.
 **Usage**:
 ```bash
 # Publish release
-bun tsx tools/scripts/publish-release.ts
+npm run release:publish
 
 # Dry run
-bun tsx tools/scripts/publish-release.ts --dry-run
+npm run release:publish:dry-run
 ```
 
 **What it does**:
@@ -223,13 +223,13 @@ All `project.json` container targets accept a `tag` argument:
 
 ```bash
 # Build with custom tag
-bun nx run finances:container --tag=1.2.3
+npx nx run finances:container --tag=1.2.3
 
 # Build with latest tag
-bun nx run finances:container --tag=latest
+npx nx run finances:container --tag=latest
 
 # Using configuration
-bun nx run finances:container:latest
+npx nx run finances:container:latest
 ```
 
 ---
@@ -359,13 +359,13 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 
 ```bash
 # Dry run prepare release
-bun tsx tools/scripts/prepare-release.ts --dry-run --type=patch
+npm run release:prepare:dry-run -- --type=patch
 
 # Dry run publish release
-bun tsx tools/scripts/publish-release.ts --dry-run
+npm run release:publish:dry-run
 
 # Test Docker build with custom tag
-bun nx run finances:container --tag=test-1.0.0
+npx nx run finances:container --tag=test-1.0.0
 ```
 
 ### Releasing Specific Projects

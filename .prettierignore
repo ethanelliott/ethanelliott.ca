@@ -5,4 +5,4 @@
 /.nx/workspace-data
 .angular
 
-bun.lock
+package-lock.json

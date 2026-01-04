@@ -35,22 +35,22 @@ After merging, the "Execute Release" workflow will:
 ### Test Release Locally (Dry Run)
 ```bash
 # Preview patch release
-bun tsx tools/scripts/prepare-release.ts --dry-run --type=patch
+npm run release:prepare:dry-run -- --type=patch
 
 # Preview minor release
-bun tsx tools/scripts/prepare-release.ts --dry-run --type=minor
+npm run release:prepare:dry-run -- --type=minor
 
 # Preview pre-release
-bun tsx tools/scripts/prepare-release.ts --dry-run --type=prerelease --preid=rc
+npm run release:prepare:dry-run -- --type=prerelease --preid=rc
 ```
 
 ### Build Docker Image with Custom Tag
 ```bash
 # Single project
-bun nx run finances:container --tag=1.2.3
+npx nx run finances:container --tag=1.2.3
 
 # All projects with latest tag
-bun nx run-many -t container --tag=latest
+npx nx run-many -t container --tag=latest
 ```
 
 ---
