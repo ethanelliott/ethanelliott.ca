@@ -20,7 +20,7 @@
     "unrs-resolver"
   ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.8.0"
   },
   "scripts": {
     "start": "nx serve",
