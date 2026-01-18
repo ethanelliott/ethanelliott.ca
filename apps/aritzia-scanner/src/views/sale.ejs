@@ -11,48 +11,72 @@
 
     <h1><%= title %></h1>
 
+    <!-- Filters -->
+    <form action="" method="GET" class="filters-form">
+      <select name="size" class="filter-input">
+        <option value="">All Sizes</option>
+        <% sizes.forEach(size => { %>
+        <option value="<%= size %>" <%= currentSize === size ? 'selected' : '' %>><%= size %></option>
+        <% }); %>
+      </select>
+
+      <select name="sort" class="filter-input">
+        <option value="discount" <%= currentSort === 'discount' ? 'selected' : '' %>>Biggest Discount</option>
+        <option value="price-low" <%= currentSort === 'price-low' ? 'selected' : '' %>>Price: Low</option>
+        <option value="price-high" <%= currentSort === 'price-high' ? 'selected' : '' %>>Price: High</option>
+      </select>
+
+      <button type="submit" class="filter-btn">Go</button>
+      <a href="/sale" class="filter-clear">Clear</a>
+    </form>
+
     <% if (saleItems && saleItems.length > 0) { %>
+    <p class="results-count"><%= saleItems.length %> items on sale</p>
     <div class="product-grid">
-      <% saleItems.forEach(product => { %> <% const link =
-      `/product/${product.product_id}/variant/${product.color_id}`; const
-      subtext = `${product.color} (${product.length})`; %>
-      <div class="product-card">
+      <% saleItems.forEach(product => { %>
+      <% const link = `/product/${product.product_id}/variant/${product.color_id}`; %>
+      <% const subtext = `${product.color} (${product.length})`; %>
+      <div class="product-card sale-card">
         <a href="<%= link %>" class="product-image">
           <% if (product.thumbnail_id) { %>
           <img
             src="/api/images/<%= product.thumbnail_id %>"
-            alt="<%= product.name %>"
+            alt="<%= product.display_name || product.name %>"
             loading="lazy"
           />
           <% } else { %>
           <span class="no-image-placeholder">No Image</span>
           <% } %>
         </a>
+        
         <div class="product-info">
-          <a href="<%= link %>" class="product-name"><%= product.name %></a>
+          <a href="<%= link %>" class="product-name"><%= product.display_name || product.name %></a>
 
-          <div class="product-price-container">
-            <span class="price-sale">$<%= product.price %></span>
+          <div class="product-price-container sale-price">
+            <span class="price-sale large">$<%= product.price %></span>
             <span class="price-list">$<%= product.list_price %></span>
-            <span class="discount-badge">
-              (<%= Math.round((1 - product.price / product.list_price) * 100)
-              %>% OFF)
-            </span>
           </div>
 
           <div class="variant-details"><%= subtext %></div>
 
-          <% if (product.available_sizes) { %>
+          <% if (product.available_sizes_arr && product.available_sizes_arr.length > 0) { %>
           <div class="sale-sizes">
-            Sizes: <%= JSON.parse(product.available_sizes).join(', ') %>
+            <% product.available_sizes_arr.forEach(size => { %>
+            <span class="size-tag-mini available"><%= size %></span>
+            <% }); %>
           </div>
+          <% if (product.available_sizes_arr.length <= 2) { %>
+          <div class="low-stock-warning">Low Stock!</div>
+          <% } %>
+          <% } else { %>
+          <div class="out-of-stock">Out of Stock Online</div>
           <% } %>
         </div>
       </div>
       <% }); %>
     </div>
     <% } else { %>
-    <p>No items currently on sale.</p>
+    <p class="no-results">No items currently on sale.</p>
     <% } %>
   </body>
 </html>

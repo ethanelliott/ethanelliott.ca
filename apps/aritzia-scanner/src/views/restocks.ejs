@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %> - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1><%= title %></h1>
+    
+    <p class="results-count"><%= restocks.length %> recent restocks</p>
+
+    <% if (restocks && restocks.length > 0) { %>
+    <div class="product-grid">
+      <% restocks.forEach(product => { %>
+      <% const link = `/product/${product.product_id}/variant/${product.color_id}`; %>
+      <div class="product-card restock-card">
+        <a href="<%= link %>" class="product-image">
+          <% if (product.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= product.thumbnail_id %>"
+            alt="<%= product.display_name || product.name %>"
+            loading="lazy"
+          />
+          <% } else { %>
+          <span class="no-image-placeholder">No Image</span>
+          <% } %>
+        </a>
+        <div class="product-info">
+          <a href="<%= link %>" class="product-name"><%= product.display_name || product.name %></a>
+          
+          <div class="variant-details"><%= product.color %> (<%= product.length %>)</div>
+          
+          <% if (product.price) { %>
+          <div class="product-price-container">
+            <% if (product.price < product.list_price) { %>
+            <span class="price-sale">$<%= product.price %></span>
+            <span class="price-list">$<%= product.list_price %></span>
+            <% } else { %>
+            <span>$<%= product.price %></span>
+            <% } %>
+          </div>
+          <% } %>
+          
+          <% if (product.available_sizes_arr && product.available_sizes_arr.length > 0) { %>
+          <div class="sizes-mini">
+            <% product.available_sizes_arr.forEach(size => { %>
+            <span class="size-tag-mini available"><%= size %></span>
+            <% }); %>
+          </div>
+          <% } %>
+          
+          <div class="product-meta">Restocked <%= product.added_at_formatted %></div>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } else { %>
+    <p class="no-results">No recent restocks.</p>
+    <% } %>
+  </body>
+</html>

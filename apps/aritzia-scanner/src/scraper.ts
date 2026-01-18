@@ -14,6 +14,7 @@ import {
   runPromise,
 } from './db';
 import { createProgressBar } from './utils';
+import storeData from './stores.json';
 
 const ALGOLIA_APP_ID = 'SONLJM8OH6';
 const ALGOLIA_API_KEY = '1455bca7c6c33e746a0f38beb28422e6';
@@ -161,6 +162,31 @@ async function fetchApiData() {
   return data.hits;
 }
 
+// Helper to parse store availability string like "18111|1275:XS" or "10230|4425:2XS|L|M|S|XL|XS"
+function parseStoreAvailability(
+  storeAvailability: Array<{ id: string; a: Array<string> }>
+): Array<{
+  storeId: string;
+  availability: Array<{ colorId: string; sizes: Array<string> }>;
+}> {
+  return storeAvailability.map((store) => ({
+    storeId: store.id,
+    availability: store.a.flatMap((entry) => {
+      // Format: "colorId1|colorId2:size1|size2" or just "colorId1|colorId2:size1"
+      const [colorPart, sizePart] = entry.split(':');
+      if (!colorPart || !sizePart) return [];
+
+      const colorIds = colorPart.split('|');
+      const sizes = sizePart.split('|');
+
+      return colorIds.map((colorId) => ({
+        colorId,
+        sizes,
+      }));
+    }),
+  }));
+}
+
 function groupByMasterId(data: Array<Item>) {
   const groupedData = new Map<string, Array<IntermediateForm>>();
 
@@ -178,24 +204,34 @@ function groupByMasterId(data: Array<Item>) {
 
     groupedData.get(item.masterId)?.push({
       id: item.masterId,
-      name: item.name,
+      name: item.name || item.c_displayName,
+      displayName: item.c_displayName || item.name,
       brand: item.brand,
-      warmth: item.warmth,
-      fit: item.articleFit,
-      description: item.seoProductDesc,
+      warmth: item.warmth || [],
+      fit: item.articleFit || [],
+      description: item.seoProductDesc || '',
+      designersNotes: item.designersNotes || '',
       price: item.price,
       onSale: item.onSale,
       orderable: item.orderable,
+      // New fields
+      rating: item.rating || 0,
+      reviewCount: item.reviewCount || 0,
+      category: item.subDept || [],
+      refinementColor: item.refinementColor || '',
+      sustainability: item.sustainability || [],
+      defaultImage: item.defaultImage || '',
+      storeAvailability: parseStoreAvailability(item.storeAvailability || []),
       about: {
-        rise: item.rise,
-        legShape: item.legShape,
-        articleFit: item.articleFit,
-        inseam: item.inseam,
-        length: item.length,
-        fabric: item.fabric,
-        style: item.style,
-        neckline: item.neckline,
-        sleeve: item.sleeve,
+        rise: item.rise || [],
+        legShape: item.legShape || [],
+        articleFit: item.articleFit || [],
+        inseam: item.inseam || [],
+        length: item.length || [],
+        fabric: item.fabric || [],
+        style: item.style || [],
+        neckline: item.neckline || [],
+        sleeve: item.sleeve || [],
       },
       slug: item.slug,
       colors: item.selectableColors.map((c) => {
@@ -216,6 +252,8 @@ function groupByMasterId(data: Array<Item>) {
           sizeRun: c.sizeRun,
           colorIds: Object.keys(c.colorIds),
           images: [...new Set(Object.values(c.colorIds).flat())],
+          swatch: c.swatch || '',
+          refColor: c.refColor || '',
           price: currentPrice,
           list_price: listPrice,
           available_sizes: c.shippableSizes || [],
@@ -242,6 +280,7 @@ export async function updateDatabase() {
   const variantInsertRecords: any[][] = [];
   const imageInsertRecords: any[][] = [];
   const priceInsertRecords: any[][] = [];
+  const storeAvailabilityRecords: any[][] = [];
 
   // Records for update (separate as they are only used for the last_seen_at update step)
   const productUpdateRecords: any[][] = [];
@@ -260,23 +299,45 @@ export async function updateDatabase() {
 
   for (const [masterId, items] of groupedData.entries()) {
     for (const product of items) {
-      // 1. Prepare product insert record
+      // 1. Prepare product insert record with all new fields
       productInsertRecords.push([
         masterId,
         product.name,
+        product.displayName,
         product.slug,
+        product.description,
+        product.designersNotes,
         JSON.stringify(product.about.fabric || []),
         product.brand,
         JSON.stringify(product.warmth || []),
         JSON.stringify(product.fit || []),
+        JSON.stringify(product.category || []),
+        product.rating || 0,
+        product.reviewCount || 0,
+        JSON.stringify(product.sustainability || []),
+        JSON.stringify(product.about.neckline || []),
+        JSON.stringify(product.about.sleeve || []),
+        JSON.stringify(product.about.style || []),
+        product.defaultImage || '',
         scrapeTime, // last_seen_at for new inserts
       ]);
       productUpdateRecords.push([
         scrapeTime,
+        product.displayName,
+        product.description,
+        product.designersNotes,
         JSON.stringify(product.about.fabric || []),
         product.brand,
         JSON.stringify(product.warmth || []),
         JSON.stringify(product.fit || []),
+        JSON.stringify(product.category || []),
+        product.rating || 0,
+        product.reviewCount || 0,
+        JSON.stringify(product.sustainability || []),
+        JSON.stringify(product.about.neckline || []),
+        JSON.stringify(product.about.sleeve || []),
+        JSON.stringify(product.about.style || []),
+        product.defaultImage || '',
         product.id,
       ]); // parameters for UPDATE
 
@@ -292,7 +353,7 @@ export async function updateDatabase() {
 
           const variantId = `${product.id}-${colorId}`;
 
-          // 2. Prepare variant insert record
+          // 2. Prepare variant insert record with swatch and refColor
           variantInsertRecords.push([
             variantId,
             product.id,
@@ -303,6 +364,8 @@ export async function updateDatabase() {
             color.list_price,
             JSON.stringify(color.available_sizes),
             JSON.stringify(color.all_sizes),
+            color.swatch || '',
+            color.refColor || '',
             scrapeTime, // last_seen_at for new inserts
           ]);
           variantUpdateRecords.push([
@@ -311,6 +374,8 @@ export async function updateDatabase() {
             color.list_price,
             JSON.stringify(color.available_sizes),
             JSON.stringify(color.all_sizes),
+            color.swatch || '',
+            color.refColor || '',
             variantId,
           ]); // parameters for UPDATE
 
@@ -334,11 +399,39 @@ export async function updateDatabase() {
           }
         }
       }
+
+      // 3. Process store availability
+      for (const store of product.storeAvailability) {
+        for (const avail of store.availability) {
+          // Find the variant ID for this color
+          const matchingColor = product.colors.find((c) =>
+            c.colorIds.some((cid) => cid.split('_')[0] === avail.colorId)
+          );
+          if (matchingColor) {
+            const colorId = matchingColor.colorIds.find(
+              (cid) => cid.split('_')[0] === avail.colorId
+            );
+            if (colorId) {
+              const variantId = `${product.id}-${colorId}`;
+              storeAvailabilityRecords.push([
+                store.storeId,
+                variantId,
+                avail.colorId,
+                JSON.stringify(avail.sizes),
+                scrapeTime,
+              ]);
+            }
+          }
+        }
+      }
     }
   }
 
   console.log(
     `Prepared ${productInsertRecords.length} products and ${variantInsertRecords.length} variants for processing.`
+  );
+  console.log(
+    `Prepared ${storeAvailabilityRecords.length} store availability records.`
   );
 
   // --- Counting before insertion for change tracking ---
@@ -349,18 +442,18 @@ export async function updateDatabase() {
   // --- Step 1: Insert New Records (INSERT OR IGNORE) ---
   console.log('\n--- Step 1: Inserting new records (INSERT OR IGNORE) ---');
 
-  // Products
+  // Products (with all new columns)
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO products (id, name, slug, fabric, brand, warmth, fit, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO products (id, name, display_name, slug, description, designers_notes, fabric, brand, warmth, fit, category, rating, review_count, sustainability, neckline, sleeve, style, default_image, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     productInsertRecords,
     'Products'
   );
 
-  // Variants
+  // Variants (with swatch and ref_color)
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO variants (id, product_id, color, color_id, length, price, list_price, available_sizes, all_sizes, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO variants (id, product_id, color, color_id, length, price, list_price, available_sizes, all_sizes, swatch, ref_color, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     variantInsertRecords,
     'Variants'
   );
@@ -389,21 +482,59 @@ export async function updateDatabase() {
     'Restocks'
   );
 
+  // Store Availability (clear old data for this scrape and insert new)
+  await runPromise.call(
+    DB,
+    `DELETE FROM store_availability WHERE timestamp < ?`,
+    [scrapeTime]
+  );
+  await prepareRunAll(
+    DB,
+    `INSERT OR IGNORE INTO store_availability (store_id, variant_id, color_id, available_sizes, timestamp) VALUES (?, ?, ?, ?, ?)`,
+    storeAvailabilityRecords,
+    'Store Availability'
+  );
+
+  // Populate stores table from stores.json and discovered store IDs
+  const storeIds = new Set(storeAvailabilityRecords.map((r) => r[0] as string));
+  const storeInserts: any[][] = [];
+  for (const storeId of storeIds) {
+    const storeInfo = (storeData.stores as Record<string, any>)[storeId] || {
+      name: 'Unknown',
+      city: '',
+      province: '',
+      country: '',
+    };
+    storeInserts.push([
+      storeId,
+      storeInfo.name,
+      storeInfo.city,
+      storeInfo.province,
+      storeInfo.country,
+    ]);
+  }
+  await prepareRunAll(
+    DB,
+    `INSERT OR REPLACE INTO stores (id, name, city, province, country) VALUES (?, ?, ?, ?, ?)`,
+    storeInserts,
+    'Stores'
+  );
+
   // --- Step 2: Update last_seen_at for all records found in current scrape ---
   console.log('\n--- Step 2: Updating last_seen_at for current records ---');
 
-  // Update last_seen_at for products
+  // Update last_seen_at for products (with all new fields)
   await prepareRunAll(
     DB,
-    `UPDATE products SET last_seen_at = ?, fabric = ?, brand = ?, warmth = ?, fit = ? WHERE id = ?`,
+    `UPDATE products SET last_seen_at = ?, display_name = ?, description = ?, designers_notes = ?, fabric = ?, brand = ?, warmth = ?, fit = ?, category = ?, rating = ?, review_count = ?, sustainability = ?, neckline = ?, sleeve = ?, style = ?, default_image = ? WHERE id = ?`,
     productUpdateRecords,
     'Product Status'
   );
 
-  // Update last_seen_at for variants
+  // Update last_seen_at for variants (with swatch and ref_color)
   await prepareRunAll(
     DB,
-    `UPDATE variants SET last_seen_at = ?, price = ?, list_price = ?, available_sizes = ?, all_sizes = ? WHERE id = ?`,
+    `UPDATE variants SET last_seen_at = ?, price = ?, list_price = ?, available_sizes = ?, all_sizes = ?, swatch = ?, ref_color = ? WHERE id = ?`,
     variantUpdateRecords,
     'Variant Status'
   );

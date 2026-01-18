@@ -3,28 +3,92 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= product.name %> - Aritzia Scanner</title>
+    <title><%= product.display_name || product.name %> - Aritzia Scanner</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <%- include('partials/nav') %>
-    <h1><%= product.name %></h1>
-    <p>
-      <a
-        href="https://www.aritzia.com/en/product/<%= product.slug %>"
-        target="_blank"
-        >View on Aritzia</a
-      >
-    </p>
-    <p class="meta">
-      Added: <%= product.added_at_formatted %> | Last Seen: <%=
-      product.last_seen_at_formatted %>
-    </p>
+    
+    <div class="product-header">
+      <h1><%= product.display_name || product.name %></h1>
+    </div>
+
+    <div class="product-details-section">
+      <div class="product-details-box">
+        <% if (product.description) { %>
+        <p class="product-description"><%= product.description %></p>
+        <% } %>
+        
+        <% if (product.designers_notes) { %>
+        <p class="designers-notes"><%- product.designers_notes.replace(/&mdash;/g, '—').replace(/&rsquo;/g, "'").replace(/&nbsp;/g, ' ') %></p>
+        <% } %>
+        
+        <%
+          const naturalFibers = ['Cotton', 'Wool', 'Silk', 'Linen', 'Cashmere', 'Merino', 'Alpaca'];
+          const isNatural = product.fabric && product.fabric.some(f => naturalFibers.some(nf => f.includes(nf)));
+          const warmthLevels = ['Warmest', 'Warmer', 'Warm'];
+          const warmth = product.warmth && product.warmth.find(w => warmthLevels.some(wl => w.includes(wl)));
+          const hasAttributes = (product.fabric && product.fabric.length > 0) || 
+                                (product.neckline && product.neckline.length > 0) || 
+                                (product.sleeve && product.sleeve.length > 0) || 
+                                (product.style && product.style.length > 0);
+          const hasBadges = product.brand || (product.category && product.category.length > 0) || 
+                           isNatural || (product.sustainability && product.sustainability.length > 0) || warmth;
+        %>
+        
+        <% if (hasAttributes || hasBadges) { %>
+        <div class="product-attributes">
+          <% if (product.brand) { %>
+          <span class="attribute"><strong>Brand:</strong> <%= product.brand %></span>
+          <% } %>
+          <% if (product.category && product.category.length > 0) { %>
+          <span class="attribute"><strong>Category:</strong> <%- product.category.map(cat => `<a href="/categories/${encodeURIComponent(cat)}">${cat}</a>`).join(', ') %></span>
+          <% } %>
+          <% if (product.fabric && product.fabric.length > 0) { %>
+          <span class="attribute"><strong>Fabric:</strong> <%= product.fabric.join(', ') %></span>
+          <% } %>
+          <% if (product.neckline && product.neckline.length > 0) { %>
+          <span class="attribute"><strong>Neckline:</strong> <%= product.neckline.join(', ') %></span>
+          <% } %>
+          <% if (product.sleeve && product.sleeve.length > 0) { %>
+          <span class="attribute"><strong>Sleeve:</strong> <%= product.sleeve.join(', ') %></span>
+          <% } %>
+          <% if (product.style && product.style.length > 0) { %>
+          <span class="attribute"><strong>Style:</strong> <%= product.style.join(', ') %></span>
+          <% } %>
+          <% if (warmth) { %>
+          <span class="attribute"><strong>Warmth:</strong> <%= warmth %></span>
+          <% } %>
+          <% if (isNatural) { %>
+          <span class="attribute badge-natural">Natural Fiber</span>
+          <% } %>
+          <% if (product.sustainability && product.sustainability.length > 0) { %>
+          <span class="attribute badge-sustainable">Sustainable</span>
+          <% } %>
+        </div>
+        <% } %>
+        
+        <% if (product.rating) { %>
+        <div class="product-rating-row">
+          <span class="stars"><%= '★'.repeat(Math.round(product.rating)) %><%= '☆'.repeat(5 - Math.round(product.rating)) %></span>
+          <span class="rating-value"><%= product.rating.toFixed(1) %></span>
+          <% if (product.review_count) { %>
+          <span class="review-count">(<%= product.review_count.toLocaleString() %> reviews)</span>
+          <% } %>
+        </div>
+        <% } %>
+        
+        <div class="product-meta-row">
+          <span class="meta-item">Added: <%= product.added_at_formatted %></span>
+          <span class="meta-item">Last seen: <%= product.last_seen_at_formatted %></span>
+          <a href="https://www.aritzia.com/en/product/<%= product.slug %>" target="_blank" class="meta-link">View on Aritzia</a>
+        </div>
+      </div>
+    </div>
 
     <% if (product.allLengths && product.allLengths.length > 1) { %>
-    <div class="filter-box">
-      <label for="length-select" class="filter-label">Filter by Length:</label>
-      <select id="length-select" class="filter-select">
+    <div class="filters-form">
+      <select id="length-select" class="filter-input">
         <option value="all">All Lengths</option>
         <% product.allLengths.forEach(length => { %>
         <option value="<%= length %>"><%= length %></option>
@@ -33,18 +97,16 @@
     </div>
     <% } %>
 
-    <h2>Variants</h2>
+    <h2>Variants (<%= product.variants.length %> colors)</h2>
 
-    <% const activeVariants = product.variants.filter(v => v.isActive); const
-    discontinuedVariants = product.variants.filter(v => !v.isActive); %> <% if
-    (activeVariants.length > 0) { %>
-    <h3>Active Variants</h3>
+    <% const activeVariants = product.variants.filter(v => v.isActive); 
+       const discontinuedVariants = product.variants.filter(v => !v.isActive); %>
+    
+    <% if (activeVariants.length > 0) { %>
+    <h3>Active Variants (<%= activeVariants.length %>)</h3>
     <div class="variant-wrapper">
       <% activeVariants.forEach(variant => { %>
-      <div
-        class="variant"
-        data-lengths="<%= JSON.stringify(variant.lengths) %>"
-      >
+      <div class="variant" data-lengths="<%= JSON.stringify(variant.lengths) %>">
         <% if (variant.thumbnail) { %>
         <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
           <img
@@ -54,88 +116,90 @@
           />
         </a>
         <% } %>
-        <h3 class="variant-title">
-          <a
-            href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
-            class="variant-link"
-            ><%= variant.color %></a
-          >
-        </h3>
+        
+        <div class="variant-info">
+          <h3 class="variant-title">
+            <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>" class="variant-link"><%= variant.color %></a>
+          </h3>
 
-        <% if (variant.price) { %>
-        <div class="variant-price-container">
-          <% if (variant.price < variant.list_price) { %>
-          <span class="price-sale">$<%= variant.price %></span>
-          <span class="price-list">$<%= variant.list_price %></span>
-          <% } else { %>
-          <span>$<%= variant.price %></span>
-          <% } %> <% if (variant.lowest_price && variant.lowest_price <
-          variant.price) { %>
-          <div class="price-lowest">Lowest: $<%= variant.lowest_price %></div>
+          <% if (variant.price) { %>
+          <div class="variant-price-container">
+            <% if (variant.price < variant.list_price) { %>
+            <span class="price-sale">$<%= variant.price %></span>
+            <span class="price-list">$<%= variant.list_price %></span>
+            <% } else { %>
+            <span>$<%= variant.price %></span>
+            <% } %>
+          </div>
+          <% } %>
+          
+          <% if (variant.available_sizes && variant.available_sizes.length > 0) { %>
+          <div class="sizes-mini">
+            <% variant.all_sizes.forEach(size => { %>
+            <span class="size-tag-mini <%= variant.available_sizes.includes(size) ? 'available' : 'unavailable' %>"><%= size %></span>
+            <% }); %>
+          </div>
+          <% } %>
+          
+          <% if (product.allLengths && product.allLengths.length > 1) { %>
+          <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
           <% } %>
         </div>
-        <% } %> <% if (product.allLengths && product.allLengths.length > 1) { %>
-        <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
-        <% } %>
-      </div>
-      <% }); %>
-    </div>
-    <% } %> <% if (discontinuedVariants.length > 0) { %>
-    <h3>Discontinued Variants</h3>
-    <div class="variant-wrapper">
-      <% discontinuedVariants.forEach(variant => { %>
-      <div
-        class="variant discontinued"
-        data-lengths="<%= JSON.stringify(variant.lengths) %>"
-      >
-        <% if (variant.thumbnail) { %>
-        <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
-          <img
-            src="/api/images/<%= variant.thumbnail %>"
-            alt="<%= variant.color %>"
-            class="variant-image"
-          />
-        </a>
-        <% } %>
-        <h3 class="variant-title">
-          <a
-            href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
-            class="variant-link"
-            ><%= variant.color %></a
-          >
-        </h3>
-
-        <% if (variant.price) { %>
-        <div class="variant-price-container">
-          <% if (variant.price < variant.list_price) { %>
-          <span class="price-sale">$<%= variant.price %></span>
-          <span class="price-list">$<%= variant.list_price %></span>
-          <% } else { %>
-          <span>$<%= variant.price %></span>
-          <% } %> <% if (variant.lowest_price && variant.lowest_price <
-          variant.price) { %>
-          <div class="price-lowest">Lowest: $<%= variant.lowest_price %></div>
-          <% } %>
-        </div>
-        <% } %> <% if (product.allLengths && product.allLengths.length > 1) { %>
-        <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
-        <% } %>
-        <p class="discontinued-label">Discontinued</p>
       </div>
       <% }); %>
     </div>
     <% } %>
+    
+    <% if (discontinuedVariants.length > 0) { %>
+    <h3>Discontinued Variants (<%= discontinuedVariants.length %>)</h3>
+    <div class="variant-wrapper">
+      <% discontinuedVariants.forEach(variant => { %>
+      <div class="variant discontinued" data-lengths="<%= JSON.stringify(variant.lengths) %>">
+        <% if (variant.thumbnail) { %>
+        <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
+          <img
+            src="/api/images/<%= variant.thumbnail %>"
+            alt="<%= variant.color %>"
+            class="variant-image"
+          />
+        </a>
+        <% } %>
+        
+        <div class="variant-info">
+          <h3 class="variant-title">
+            <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>" class="variant-link"><%= variant.color %></a>
+          </h3>
+
+          <% if (variant.price) { %>
+          <div class="variant-price-container">
+            <% if (variant.price < variant.list_price) { %>
+            <span class="price-sale">$<%= variant.price %></span>
+            <span class="price-list">$<%= variant.list_price %></span>
+            <% } else { %>
+            <span>$<%= variant.price %></span>
+            <% } %>
+          </div>
+          <% } %>
+          
+          <% if (product.allLengths && product.allLengths.length > 1) { %>
+          <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
+          <% } %>
+          
+          <p class="discontinued-label">Discontinued</p>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+    
     <script>
       const lengthSelect = document.getElementById('length-select');
       if (lengthSelect) {
         const variants = document.querySelectorAll('.variant');
-
         lengthSelect.addEventListener('change', (e) => {
           const selectedLength = e.target.value;
-
           variants.forEach((variant) => {
             const lengths = JSON.parse(variant.dataset.lengths || '[]');
-
             if (selectedLength === 'all' || lengths.includes(selectedLength)) {
               variant.style.display = 'block';
             } else {

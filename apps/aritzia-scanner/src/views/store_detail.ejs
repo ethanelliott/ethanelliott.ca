@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %> - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1><%= title %></h1>
+    <% if (store.city) { %>
+    <p class="store-location-header"><%= store.city %>, <%= store.province %>, <%= store.country %></p>
+    <% } %>
+
+    <!-- Filters -->
+    <form action="" method="GET" class="filters-form">
+      <select name="size" class="filter-input">
+        <option value="">All Sizes</option>
+        <% sizes.forEach(size => { %>
+        <option value="<%= size %>" <%= currentSize === size ? 'selected' : '' %>><%= size %></option>
+        <% }); %>
+      </select>
+
+      <select name="sort" class="filter-input">
+        <option value="name" <%= currentSort === 'name' ? 'selected' : '' %>>Name</option>
+        <option value="price-low" <%= currentSort === 'price-low' ? 'selected' : '' %>>Price: Low</option>
+        <option value="price-high" <%= currentSort === 'price-high' ? 'selected' : '' %>>Price: High</option>
+      </select>
+
+      <button type="submit" class="filter-btn">Go</button>
+      <a href="/stores/<%= store.id %>" class="filter-clear">Clear</a>
+    </form>
+
+    <% if (items && items.length > 0) { %>
+    <p class="results-count"><%= items.length %> items in stock</p>
+    <div class="product-grid">
+      <% items.forEach(item => { %>
+      <% const link = `/product/${item.product_id}/variant/${item.color_id}`; %>
+      <div class="product-card">
+        <a href="<%= link %>" class="product-image">
+          <% if (item.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= item.thumbnail_id %>"
+            alt="<%= item.display_name || item.name %>"
+            loading="lazy"
+          />
+          <% } else { %>
+          <span class="no-image-placeholder">No Image</span>
+          <% } %>
+        </a>
+        
+        <div class="product-info">
+          <a href="<%= link %>" class="product-name"><%= item.display_name || item.name %></a>
+
+          <div class="product-price-container">
+            <% if (item.price < item.list_price) { %>
+            <span class="price-sale">$<%= item.price %></span>
+            <span class="price-list">$<%= item.list_price %></span>
+            <% } else { %>
+            <span class="price-regular">$<%= item.price %></span>
+            <% } %>
+          </div>
+
+          <div class="variant-details"><%= item.color %></div>
+
+          <% if (item.store_sizes) { %>
+          <% 
+            let sizesArr = [];
+            try {
+              sizesArr = JSON.parse(item.store_sizes);
+            } catch(e) {
+              sizesArr = item.store_sizes.split('|');
+            }
+          %>
+          <div class="sale-sizes">
+            <% sizesArr.forEach(size => { %>
+            <span class="size-tag-mini available"><%= size %></span>
+            <% }); %>
+          </div>
+          <% } %>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } else { %>
+    <p class="no-results">No items currently in stock at this store.</p>
+    <% } %>
+
+    <p style="margin-top: 2rem;"><a href="/stores">&larr; Back to all stores</a></p>
+  </body>
+</html>

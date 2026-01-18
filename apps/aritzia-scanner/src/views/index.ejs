@@ -11,52 +11,95 @@
 
     <h1><%= title %></h1>
 
-    <% if (locals.brands && brands.length > 0) { %>
-    <div class="filter-container" style="margin-bottom: 20px;">
-      <form action="" method="GET">
-        <label for="brand">Filter by Brand:</label>
-        <select name="brand" id="brand" onchange="this.form.submit()">
-          <option value="">All Brands</option>
-          <% brands.forEach(brand => { %>
-          <option value="<%= brand %>" <%= locals.currentBrand === brand ? 'selected' : '' %>><%= brand %></option>
-          <% }); %>
-        </select>
+    <!-- Search and Filters -->
+    <form action="" method="GET" class="filters-form">
+      <input 
+        type="text" 
+        name="q" 
+        placeholder="Search products..." 
+        value="<%= searchQuery || '' %>"
+        class="filter-input filter-search"
+      />
+      
+      <% if (locals.brands && brands.length > 0) { %>
+      <select name="brand" class="filter-input">
+        <option value="">All Brands</option>
+        <% brands.forEach(brand => { %>
+        <option value="<%= brand %>" <%= locals.currentBrand === brand ? 'selected' : '' %>><%= brand %></option>
+        <% }); %>
+      </select>
+      <% } %>
 
-        <label for="fit" style="margin-left: 15px;">Filter by Fit:</label>
-        <select name="fit" id="fit" onchange="this.form.submit()">
-          <option value="">All Fits</option>
-          <% if (locals.fits) { %>
-            <% fits.forEach(fit => { %>
-            <option value="<%= fit %>" <%= locals.currentFit === fit ? 'selected' : '' %>><%= fit %></option>
-            <% }); %>
-          <% } %>
-        </select>
-      </form>
-    </div>
-    <% } %>
+      <% if (locals.fits && fits.length > 0) { %>
+      <select name="fit" class="filter-input">
+        <option value="">All Fits</option>
+        <% fits.forEach(fit => { %>
+        <option value="<%= fit %>" <%= locals.currentFit === fit ? 'selected' : '' %>><%= fit %></option>
+        <% }); %>
+      </select>
+      <% } %>
+
+      <% if (locals.categories && categories.length > 0) { %>
+      <select name="category" class="filter-input">
+        <option value="">All Categories</option>
+        <% categories.forEach(cat => { %>
+        <option value="<%= cat %>" <%= locals.currentCategory === cat ? 'selected' : '' %>><%= cat %></option>
+        <% }); %>
+      </select>
+      <% } %>
+
+      <% if (locals.sizes && sizes.length > 0) { %>
+      <select name="size" class="filter-input">
+        <option value="">All Sizes</option>
+        <% sizes.forEach(size => { %>
+        <option value="<%= size %>" <%= locals.currentSize === size ? 'selected' : '' %>><%= size %></option>
+        <% }); %>
+      </select>
+      <% } %>
+
+      <select name="sort" class="filter-input">
+        <option value="newest" <%= locals.currentSort === 'newest' ? 'selected' : '' %>>Newest</option>
+        <option value="price-low" <%= locals.currentSort === 'price-low' ? 'selected' : '' %>>Price: Low</option>
+        <option value="price-high" <%= locals.currentSort === 'price-high' ? 'selected' : '' %>>Price: High</option>
+        <option value="rating" <%= locals.currentSort === 'rating' ? 'selected' : '' %>>Top Rated</option>
+        <option value="discount" <%= locals.currentSort === 'discount' ? 'selected' : '' %>>Discount</option>
+      </select>
+
+      <button type="submit" class="filter-btn">Go</button>
+      <a href="<%= title === 'All Products' ? '/products' : '/' %>" class="filter-clear">Clear</a>
+    </form>
 
     <% if (activeProducts && activeProducts.length > 0) { %>
-    <h2>Active Products</h2>
+    <h2>Active Products (<%= activeProducts.length %>)</h2>
     <div class="product-grid">
-      <% activeProducts.forEach(product => { %> <% const link =
-      product.isVariant ?
-      `/product/${product.product_id}/variant/${product.color_id}` :
-      `/product/${product.id}`; const subtext = product.isVariant ?
-      `${product.color} (${product.length})` : ''; %>
+      <% activeProducts.forEach(product => { %>
+      <% 
+        const link = product.isVariant 
+          ? `/product/${product.product_id}/variant/${product.color_id}` 
+          : `/product/${product.id}`;
+        const subtext = product.isVariant 
+          ? `${product.color} (${product.length})` 
+          : '';
+        const aritziaLink = product.isVariant
+          ? `https://www.aritzia.com/en/product/${product.slug}?color=${product.color_id}`
+          : `https://www.aritzia.com/en/product/${product.slug}`;
+      %>
       <div class="product-card">
         <a href="<%= link %>" class="product-image">
           <% if (product.thumbnail_id) { %>
           <img
             src="/api/images/<%= product.thumbnail_id %>"
-            alt="<%= product.name %>"
+            alt="<%= product.display_name || product.name %>"
             loading="lazy"
           />
           <% } else { %>
           <span class="no-image-placeholder">No Image</span>
           <% } %>
         </a>
+        
         <div class="product-info">
-          <a href="<%= link %>" class="product-name"><%= product.name %></a>
+          <a href="<%= link %>" class="product-name"><%= product.display_name || product.name %></a>
+          
           <% if (product.price) { %>
           <div class="product-price-container">
             <% if (product.price < product.list_price) { %>
@@ -66,31 +109,43 @@
             <span>$<%= product.price %></span>
             <% } %>
           </div>
-          <% } %> <% if (subtext) { %>
-          <div class="variant-details"><%= subtext %></div>
-          <% } %> <% if (product.added_at_formatted) { %>
-          <div class="product-meta">
-            Added <%= product.added_at_formatted %>
+          <% } else if (product.min_price) { %>
+          <div class="product-price-container">
+            <span>From $<%= product.min_price %></span>
           </div>
+          <% } %>
+          
+          <% if (subtext) { %>
+          <div class="variant-details"><%= subtext %></div>
+          <% } %>
+          
+          <% if (product.added_at_formatted) { %>
+          <div class="product-meta">Added <%= product.added_at_formatted %></div>
           <% } %>
         </div>
       </div>
       <% }); %>
     </div>
-    <% } %> <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
-    <h2>Discontinued Products</h2>
+    <% } %>
+    
+    <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
+    <h2>Discontinued Products (<%= discontinuedProducts.length %>)</h2>
     <div class="product-grid">
-      <% discontinuedProducts.forEach(product => { %> <% const link =
-      product.isVariant ?
-      `/product/${product.product_id}/variant/${product.color_id}` :
-      `/product/${product.id}`; const subtext = product.isVariant ?
-      `${product.color} (${product.length})` : ''; %>
+      <% discontinuedProducts.forEach(product => { %>
+      <% 
+        const link = product.isVariant 
+          ? `/product/${product.product_id}/variant/${product.color_id}` 
+          : `/product/${product.id}`;
+        const subtext = product.isVariant 
+          ? `${product.color} (${product.length})` 
+          : '';
+      %>
       <div class="product-card discontinued">
         <a href="<%= link %>" class="product-image">
           <% if (product.thumbnail_id) { %>
           <img
             src="/api/images/<%= product.thumbnail_id %>"
-            alt="<%= product.name %>"
+            alt="<%= product.display_name || product.name %>"
             loading="lazy"
           />
           <% } else { %>
@@ -98,7 +153,8 @@
           <% } %>
         </a>
         <div class="product-info">
-          <a href="<%= link %>" class="product-name"><%= product.name %></a>
+          <a href="<%= link %>" class="product-name"><%= product.display_name || product.name %></a>
+          
           <% if (product.price) { %>
           <div class="product-price-container">
             <% if (product.price < product.list_price) { %>
@@ -108,20 +164,20 @@
             <span>$<%= product.price %></span>
             <% } %>
           </div>
-          <% } %> <% if (subtext) { %>
+          <% } %>
+          
+          <% if (subtext) { %>
           <div class="variant-details"><%= subtext %></div>
           <% } %>
+          
           <div class="discontinued-badge">Discontinued</div>
-          <% if (product.added_at_formatted) { %>
-          <div class="product-meta">
-            Added <%= product.added_at_formatted %>
-          </div>
-          <% } %>
         </div>
       </div>
       <% }); %>
     </div>
-    <% } %> <% if (showAllLink) { %>
+    <% } %>
+    
+    <% if (showAllLink) { %>
     <div class="view-all-container">
       <a href="/products" class="view-all-button">View All Products</a>
     </div>

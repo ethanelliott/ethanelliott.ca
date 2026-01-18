@@ -3,35 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= color %> - <%= product.name %></title>
+    <title><%= color %> - <%= product.display_name || product.name %></title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <%- include('partials/nav') %>
 
-    <h1>
-      <a href="/product/<%= product.id %>" class="product-link"
-        ><%= product.name %></a
-      >
-      -
-      <a href="/colors/<%= encodeURIComponent(color) %>" class="color-link"
-        ><%= color %></a
-      >
-      <% 
-        const naturalFibers = ['Cotton', 'Wool', 'Silk', 'Linen', 'Cashmere', 'Merino', 'Alpaca'];
-        const isNatural = product.fabric && product.fabric.some(f => naturalFibers.some(nf => f.includes(nf)));
-      %>
-      <% if (isNatural) { %>
+    <div class="variant-header">
+      <h1>
+        <a href="/product/<%= product.id %>" class="product-link"><%= product.display_name || product.name %></a>
+        -
+        <a href="/colors/<%= encodeURIComponent(color) %>" class="color-link"><%= color %></a>
+      </h1>
+      
+      <div class="product-meta-badges">
+        <% if (product.rating) { %>
+        <span class="badge rating-badge">
+          <span class="stars"><%= '★'.repeat(Math.round(product.rating)) %><%= '☆'.repeat(5 - Math.round(product.rating)) %></span>
+          <%= product.rating.toFixed(1) %>
+          <% if (product.review_count) { %>
+          (<%= product.review_count.toLocaleString() %> reviews)
+          <% } %>
+        </span>
+        <% } %>
+        
+        <% 
+          const naturalFibers = ['Cotton', 'Wool', 'Silk', 'Linen', 'Cashmere', 'Merino', 'Alpaca'];
+          const isNatural = product.fabric && product.fabric.some(f => naturalFibers.some(nf => f.includes(nf)));
+        %>
+        <% if (isNatural) { %>
         <span class="badge natural-fiber">Natural Fiber</span>
-      <% } %>
-      <% 
-        const warmthLevels = ['Warmest', 'Warmer', 'Warm'];
-        const warmth = product.warmth && product.warmth.find(w => warmthLevels.some(wl => w.includes(wl)));
-      %>
-      <% if (warmth) { %>
+        <% } %>
+        
+        <% if (product.sustainability && product.sustainability.length > 0) { %>
+        <span class="badge sustainability-badge">Sustainable</span>
+        <% } %>
+        
+        <% 
+          const warmthLevels = ['Warmest', 'Warmer', 'Warm'];
+          const warmth = product.warmth && product.warmth.find(w => warmthLevels.some(wl => w.includes(wl)));
+        %>
+        <% if (warmth) { %>
         <span class="badge warmth-badge"><%= warmth %></span>
-      <% } %>
-    </h1>
+        <% } %>
+      </div>
+    </div>
 
     <div class="meta">
       <p>
@@ -39,66 +55,76 @@
           href="https://www.aritzia.com/en/product/<%= product.slug %>?color=<%= color_id %>"
           target="_blank"
           class="external-link"
-          >View on Aritzia</a
-        >
+          >View on Aritzia</a>
       </p>
       <p class="meta">
-        Added: <%= variants[0].added_at_formatted %> | Last Seen: <%=
-        variants[0].last_seen_at_formatted %>
+        Added: <%= variants[0].added_at_formatted %> | Last Seen: <%= variants[0].last_seen_at_formatted %>
       </p>
     </div>
+    
+    <% if (product.fabric && product.fabric.length > 0) { %>
+    <div class="product-attributes-inline">
+      <span><strong>Fabric:</strong> <%= product.fabric.join(', ') %></span>
+      <% if (product.neckline && product.neckline.length > 0) { %>
+      <span><strong>Neckline:</strong> <%= product.neckline.join(', ') %></span>
+      <% } %>
+      <% if (product.sleeve && product.sleeve.length > 0) { %>
+      <span><strong>Sleeve:</strong> <%= product.sleeve.join(', ') %></span>
+      <% } %>
+    </div>
+    <% } %>
 
     <div class="lengths-list">
       <h3>Available Lengths</h3>
       <div class="variant-length-wrapper">
         <% variants.forEach(v => { %>
         <div class="variant-length <%= !v.isActive ? 'discontinued' : '' %>">
-          <strong
-            ><a
+          <strong>
+            <a
               href="https://www.aritzia.com/en/product/<%= product.slug %>?color=<%= v.color_id %>"
               target="_blank"
               class="length-link"
-              ><%= v.length %></a
-            ></strong
-          >
+            ><%= v.length %></a>
+          </strong>
 
           <% if (v.price) { %>
           <div class="price-container">
             <% if (v.price < v.list_price) { %>
             <span class="price-sale">$<%= v.price %></span>
             <span class="price-list">$<%= v.list_price %></span>
+            <span class="discount-badge">(<%= Math.round((1 - v.price / v.list_price) * 100) %>% OFF)</span>
             <% } else { %>
             <span>$<%= v.price %></span>
             <% } %>
           </div>
           <% if (v.lowest_price && v.lowest_price < v.price) { %>
           <div class="price-lowest">Lowest seen: $<%= v.lowest_price %></div>
-          <% } %> <% } %> <% if (v.all_sizes && v.all_sizes.length > 0) { %>
+          <% } %>
+          <% } %>
+          
+          <% if (v.all_sizes && v.all_sizes.length > 0) { %>
           <div class="sizes-container">
-            <% v.all_sizes.forEach(size => { %> <% const isAvailable =
-            v.available_sizes.includes(size); %>
+            <% v.all_sizes.forEach(size => { %>
+            <% const isAvailable = v.available_sizes.includes(size); %>
             <span class="size-tag <%= !isAvailable ? 'unavailable' : '' %>">
               <%= size %>
             </span>
             <% }); %>
           </div>
           <% if (v.available_sizes && v.available_sizes.length > 0 && v.available_sizes.length <= 2) { %>
-            <div class="low-stock-warning">Low Stock: Only <%= v.available_sizes.length %> size<%= v.available_sizes.length === 1 ? '' : 's' %> left!</div>
+          <div class="low-stock-warning">Low Stock: Only <%= v.available_sizes.length %> size<%= v.available_sizes.length === 1 ? '' : 's' %> left!</div>
           <% } %>
           <% } %>
 
           <br />
-          <small
-            >Added: <%= v.added_at_formatted %> | Last Seen: <%=
-            v.last_seen_at_formatted %></small
-          >
+          <small>Added: <%= v.added_at_formatted %> | Last Seen: <%= v.last_seen_at_formatted %></small>
           <% if (!v.isActive) { %>
           <br />
           <small class="discontinued-badge">Discontinued</small>
           <% } %>
           
           <div style="margin-top: 10px;">
-            <button onclick="toggleChart('<%= v.id %>')" style="font-size: 0.8em; cursor: pointer; padding: 2px 5px;">Show Price History</button>
+            <button onclick="toggleChart('<%= v.id %>')" class="btn-small">Show Price History</button>
             <div id="chart-container-<%= v.id %>" style="display: none; margin-top: 10px; height: 200px;">
               <canvas id="chart-<%= v.id %>"></canvas>
             </div>
@@ -108,9 +134,10 @@
       </div>
     </div>
 
-    <h2>Images</h2>
+    <h2>Images (<%= images.length %>)</h2>
     <div class="images-grid">
-      <% if (images && images.length > 0) { %> <% images.forEach(image => { %>
+      <% if (images && images.length > 0) { %>
+      <% images.forEach(image => { %>
       <div class="image-container">
         <a href="/api/images/<%= image.id %>" target="_blank">
           <img
@@ -120,10 +147,30 @@
           />
         </a>
       </div>
-      <% }); %> <% } else { %>
+      <% }); %>
+      <% } else { %>
       <p>No images available</p>
       <% } %>
     </div>
+    
+    <% if (storeAvailability && storeAvailability.length > 0) { %>
+    <div class="store-availability-section">
+      <h3>Store Availability (<%= storeAvailability.length %> stores)</h3>
+      <div class="store-list">
+        <% storeAvailability.forEach(store => { %>
+        <a href="/stores/<%= store.store_id %>" class="store-item">
+          <strong><%= store.store_name && store.store_name !== 'Unknown' ? store.store_name : `Store #${store.store_id}` %></strong>
+          <% if (store.city) { %>
+          <span class="store-location"><%= store.city %>, <%= store.province %></span>
+          <% } %>
+          <div class="store-sizes">
+            <%= store.sizes.join(', ') %>
+          </div>
+        </a>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -141,7 +188,7 @@
         container.style.display = 'block';
         
         if (charts[variantId]) {
-          return; // Chart already created
+          return;
         }
 
         try {

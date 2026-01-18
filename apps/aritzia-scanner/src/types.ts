@@ -4,6 +4,7 @@ export type Item = {
   name: string;
   c_displayName: string;
   seoProductDesc: string;
+  designersNotes: string;
   trueColor: string;
   color: string;
   subDept: Array<string>;
@@ -33,6 +34,17 @@ export type Item = {
   occasion: Array<string>;
   primaryCategoryId: string;
   feature: Array<string>;
+  // New fields from API
+  rating: number;
+  reviewCount: number;
+  refinementColor: string;
+  sustainability: Array<string>;
+  hierarchicalCategories: Record<string, string>;
+  defaultImage: string;
+  storeAvailability: Array<{
+    id: string;
+    a: Array<string>;
+  }>;
   selectableColors: Array<{
     value: string;
     swatch: string;
@@ -52,10 +64,12 @@ export type APIResponse = {
 export type IntermediateForm = {
   id: string;
   name: string;
+  displayName: string;
   brand: string;
   warmth: Array<string>;
   fit: Array<string>;
   description: string;
+  designersNotes: string;
   price: {
     min: number;
     max: number;
@@ -63,6 +77,17 @@ export type IntermediateForm = {
   };
   onSale: boolean;
   orderable: boolean;
+  // New fields
+  rating: number;
+  reviewCount: number;
+  category: Array<string>;
+  refinementColor: string;
+  sustainability: Array<string>;
+  defaultImage: string;
+  storeAvailability: Array<{
+    storeId: string;
+    availability: Array<{ colorId: string; sizes: Array<string> }>;
+  }>;
   about: {
     rise: Array<string>;
     legShape: Array<string>;
@@ -81,6 +106,8 @@ export type IntermediateForm = {
     sizeRun: Array<string>;
     colorIds: Array<string>;
     images: Array<string>;
+    swatch: string;
+    refColor: string;
     price: number;
     list_price: number;
     available_sizes: Array<string>;

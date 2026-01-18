@@ -112,11 +112,22 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
           CREATE TABLE IF NOT EXISTS products (
               id TEXT PRIMARY KEY,
               name TEXT,
+              display_name TEXT,
               slug TEXT,
+              description TEXT,
+              designers_notes TEXT,
               fabric TEXT,
               brand TEXT,
               warmth TEXT,
               fit TEXT,
+              category TEXT,
+              rating REAL,
+              review_count INTEGER,
+              sustainability TEXT,
+              neckline TEXT,
+              sleeve TEXT,
+              style TEXT,
+              default_image TEXT,
               added_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               last_seen_at TEXT
           );
@@ -128,6 +139,32 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
             await addColumnIfNotExists(db, 'products', 'brand', 'TEXT');
             await addColumnIfNotExists(db, 'products', 'warmth', 'TEXT');
             await addColumnIfNotExists(db, 'products', 'fit', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'display_name', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'description', 'TEXT');
+            await addColumnIfNotExists(
+              db,
+              'products',
+              'designers_notes',
+              'TEXT'
+            );
+            await addColumnIfNotExists(db, 'products', 'category', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'rating', 'REAL');
+            await addColumnIfNotExists(
+              db,
+              'products',
+              'review_count',
+              'INTEGER'
+            );
+            await addColumnIfNotExists(
+              db,
+              'products',
+              'sustainability',
+              'TEXT'
+            );
+            await addColumnIfNotExists(db, 'products', 'neckline', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'sleeve', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'style', 'TEXT');
+            await addColumnIfNotExists(db, 'products', 'default_image', 'TEXT');
           } catch (e) {
             console.error('Error adding columns to products table:', e);
           }
@@ -147,6 +184,8 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               list_price REAL,
               available_sizes TEXT,
               all_sizes TEXT,
+              swatch TEXT,
+              ref_color TEXT,
               added_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               last_seen_at TEXT,
               FOREIGN KEY (product_id) REFERENCES products(id),
@@ -166,6 +205,8 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               'TEXT'
             );
             await addColumnIfNotExists(db, 'variants', 'all_sizes', 'TEXT');
+            await addColumnIfNotExists(db, 'variants', 'swatch', 'TEXT');
+            await addColumnIfNotExists(db, 'variants', 'ref_color', 'TEXT');
           } catch (e) {
             console.error('Error adding columns to variants table:', e);
           }
@@ -211,11 +252,40 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               timestamp TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
               FOREIGN KEY (variant_id) REFERENCES variants(id)
           );
+        `
+      );
+
+      // Table 6: Store Availability (new)
+      db.run(
+        `
+          CREATE TABLE IF NOT EXISTS store_availability (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              store_id TEXT,
+              variant_id TEXT,
+              color_id TEXT,
+              available_sizes TEXT,
+              timestamp TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+              FOREIGN KEY (variant_id) REFERENCES variants(id),
+              UNIQUE(store_id, variant_id, color_id, timestamp)
+          );
+        `
+      );
+
+      // Table 7: Stores (store metadata)
+      db.run(
+        `
+          CREATE TABLE IF NOT EXISTS stores (
+              id TEXT PRIMARY KEY,
+              name TEXT,
+              city TEXT,
+              province TEXT,
+              country TEXT
+          );
         `,
         (err) => {
           if (err) return reject(err);
           console.log(
-            'Database tables initialized (products, variants, images, prices, restocks).'
+            'Database tables initialized (products, variants, images, prices, restocks, store_availability, stores).'
           );
           resolve();
         }

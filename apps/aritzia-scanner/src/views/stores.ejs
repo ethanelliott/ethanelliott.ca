@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %> - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1><%= title %></h1>
+    
+    <p class="results-count"><%= stores.length %> stores tracked</p>
+
+    <% if (stores && stores.length > 0) { %>
+    <% 
+      // Group stores by country
+      const caStores = stores.filter(s => s.country === 'CA');
+      const usStores = stores.filter(s => s.country === 'US');
+    %>
+    
+    <% if (caStores.length > 0) { %>
+    <h2>Canada (<%= caStores.length %>)</h2>
+    <div class="stores-grid">
+      <% caStores.forEach(store => { %>
+      <a href="/stores/<%= store.id %>" class="store-card">
+        <h3><%= store.name !== 'Unknown' ? store.name : `Store #${store.id}` %></h3>
+        <% if (store.city) { %>
+        <p class="store-location"><%= store.city %>, <%= store.province %></p>
+        <% } %>
+        <p class="store-stats"><%= store.variant_count %> items in stock</p>
+      </a>
+      <% }); %>
+    </div>
+    <% } %>
+    
+    <% if (usStores.length > 0) { %>
+    <h2>United States (<%= usStores.length %>)</h2>
+    <div class="stores-grid">
+      <% usStores.forEach(store => { %>
+      <a href="/stores/<%= store.id %>" class="store-card">
+        <h3><%= store.name !== 'Unknown' ? store.name : `Store #${store.id}` %></h3>
+        <% if (store.city) { %>
+        <p class="store-location"><%= store.city %>, <%= store.province %></p>
+        <% } %>
+        <p class="store-stats"><%= store.variant_count %> items in stock</p>
+      </a>
+      <% }); %>
+    </div>
+    <% } %>
+    
+    <% } else { %>
+    <p class="no-results">No store data available yet. Store availability is populated during data updates.</p>
+    <% } %>
+  </body>
+</html>

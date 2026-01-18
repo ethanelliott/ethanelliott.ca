@@ -11,7 +11,9 @@
 
     <h1><%= title %></h1>
     
-    <h2>Active Colors</h2>
+    <p class="results-count"><%= activeColors.length %> active colors, <%= inactiveColors.length %> inactive</p>
+    
+    <h2>Active Colors (<%= activeColors.length %>)</h2>
     <div class="color-grid">
         <% activeColors.forEach(color => { %>
             <div class="color-card">
@@ -25,12 +27,13 @@
                     </a>
                 <% } %>
                 <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
+                <span class="color-count"><%= color.variant_count %> variants</span>
             </div>
         <% }); %>
     </div>
 
     <% if (inactiveColors.length > 0) { %>
-        <h2>Inactive Colors</h2>
+        <h2>Inactive Colors (<%= inactiveColors.length %>)</h2>
         <div class="color-grid">
             <% inactiveColors.forEach(color => { %>
                 <div class="color-card inactive">
@@ -44,6 +47,7 @@
                         </a>
                     <% } %>
                     <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
+                    <span class="color-count"><%= color.variant_count %> variants</span>
                 </div>
             <% }); %>
         </div>

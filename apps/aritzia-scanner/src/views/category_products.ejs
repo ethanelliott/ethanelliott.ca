@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %> - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1><%= title %></h1>
+
+    <!-- Sort -->
+    <form action="" method="GET" class="filters-form">
+      <select name="sort" class="filter-input" onchange="this.form.submit()">
+        <option value="reviews" <%= currentSort === 'reviews' ? 'selected' : '' %>>Most Reviews</option>
+        <option value="rating" <%= currentSort === 'rating' ? 'selected' : '' %>>Highest Rated</option>
+        <option value="price-low" <%= currentSort === 'price-low' ? 'selected' : '' %>>Price: Low</option>
+        <option value="price-high" <%= currentSort === 'price-high' ? 'selected' : '' %>>Price: High</option>
+      </select>
+    </form>
+
+    <% if (activeProducts && activeProducts.length > 0) { %>
+    <h2>Active (<%= activeProducts.length %>)</h2>
+    <div class="product-grid">
+      <% activeProducts.forEach(product => { %>
+      <div class="product-card">
+        <a href="/product/<%= product.id %>" class="product-image">
+          <% if (product.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= product.thumbnail_id %>"
+            alt="<%= product.display_name || product.name %>"
+            loading="lazy"
+          />
+          <% } else { %>
+          <span class="no-image-placeholder">No Image</span>
+          <% } %>
+        </a>
+        <div class="product-info">
+          <a href="/product/<%= product.id %>" class="product-name"><%= product.display_name || product.name %></a>
+          
+          <% if (product.price) { %>
+          <div class="product-price-container">
+            <% if (product.price < product.list_price) { %>
+            <span class="price-sale">$<%= product.price %></span>
+            <span class="price-list">$<%= product.list_price %></span>
+            <% } else { %>
+            <span>$<%= product.price %></span>
+            <% } %>
+          </div>
+          <% } %>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
+    <h2>Discontinued (<%= discontinuedProducts.length %>)</h2>
+    <div class="product-grid">
+      <% discontinuedProducts.forEach(product => { %>
+      <div class="product-card discontinued">
+        <a href="/product/<%= product.id %>" class="product-image">
+          <% if (product.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= product.thumbnail_id %>"
+            alt="<%= product.display_name || product.name %>"
+            loading="lazy"
+          />
+          <% } else { %>
+          <span class="no-image-placeholder">No Image</span>
+          <% } %>
+        </a>
+        <div class="product-info">
+          <a href="/product/<%= product.id %>" class="product-name"><%= product.display_name || product.name %></a>
+          <div class="discontinued-badge">Discontinued</div>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+  </body>
+</html>
