@@ -17,8 +17,11 @@ RUN addgroup --system server && \
 # Create data directory for database files
 RUN mkdir -p /app/data && chown server:server /app/data
 
-# Copy the pre-built application (includes package.json and node_modules from build)
+# Copy the pre-built application
 COPY --chown=server:server dist/apps/finances ./
+
+# Install runtime dependencies
+RUN npm install --omit=dev
 
 # Switch to non-root user
 USER server

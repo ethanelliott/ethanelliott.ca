@@ -6,11 +6,20 @@ ENV PORT=3000
 
 WORKDIR /app
 
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++ libc6-compat
+
 RUN addgroup --system server && \
           adduser --system -G server server
 
-# Copy the pre-built application (includes package.json and node_modules from build)
+# Copy the pre-built application
 COPY dist/apps/server server/
+
+# Install runtime dependencies
+WORKDIR /app/server
+RUN npm install --omit=dev
+WORKDIR /app
+
 RUN chown -R server:server .
 
 # Expose the port that the application will run on
