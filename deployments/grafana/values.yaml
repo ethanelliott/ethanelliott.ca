@@ -1,0 +1,48 @@
+replicaCount: 1
+
+image:
+  repository: grafana/grafana
+  tag: 10.2.2
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  hostname: 'grafana.elliott.haus'
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+storage:
+  size: 10Gi
+
+# Default admin credentials (change after first login!)
+admin:
+  user: admin
+  # Password will be generated as a secret, change it after first login
+  password: admin
+
+# Grafana configuration
+config:
+  # Server settings
+  serverRootUrl: 'https://grafana.elliott.haus'
+
+# Prometheus data source configuration
+prometheus:
+  url: 'http://prometheus.elliott-haus.svc.cluster.local:9090'
+
+# Environment variables
+env:
+  GF_SECURITY_ADMIN_USER: admin
+  GF_SECURITY_ADMIN_PASSWORD: admin
+  GF_USERS_ALLOW_SIGN_UP: 'false'
+  GF_SERVER_ROOT_URL: 'https://grafana.elliott.haus'
+  GF_INSTALL_PLUGINS: 'grafana-clock-panel,grafana-piechart-panel'

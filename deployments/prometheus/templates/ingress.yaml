@@ -1,0 +1,21 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "prometheus.fullname" . }}
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+  annotations:
+    link.argocd.argoproj.io/external-link: https://{{ .Values.ingress.hostname }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.ingress.hostname }}`)
+      services:
+        - name: {{ include "prometheus.fullname" . }}
+          port: {{ .Values.service.port }}
+  tls:
+    certResolver: myresolver
+{{- end }}
