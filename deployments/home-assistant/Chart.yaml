@@ -1,0 +1,6 @@
+apiVersion: v2
+name: home-assistant
+description: Home Assistant Self-Hosted Home Automation Helm Chart
+type: application
+version: 1.0.0
+appVersion: '1.0.0'

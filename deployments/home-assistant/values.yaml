@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/home-assistant/home-assistant
+  tag: stable
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8123
+
+ingress:
+  enabled: true
+  hostname: 'home.elliott.haus'
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  TZ: 'America/Toronto'
+
+storage:
+  size: 10Gi
+
+# Enable host network mode if needed for device discovery
+# hostNetwork: false
+
+# Security context for privileged access (needed for some integrations)
+securityContext:
+  privileged: false
