@@ -11,432 +11,351 @@ interface AppLink {
 @Component({
   selector: 'app-home',
   template: `
-    <div class="dashboard-container">
-      <!-- Header Section -->
-      <header class="header-section">
-        <div class="header-content">
-          <div class="logo-section">
-            <div class="logo">
-              <span class="logo-text">🏠</span>
-            </div>
-            <div class="title-section">
-              <h1 class="main-title">Elliott Haus</h1>
-              <p class="subtitle">Internal Services Dashboard</p>
-            </div>
-          </div>
-        </div>
+    <div class="page">
+      <!-- Header -->
+      <header class="header">
+        <h1>🏠 Elliott Haus</h1>
       </header>
 
-      <!-- Services Grid -->
-      <section class="services-section">
-        <h2 class="section-title">
-          Available Services ({{ totalServices() }})
-        </h2>
-        <div class="services-grid">
-          @for (app of filteredApps(); track app.name) {
-          <div class="service-card" [style.--card-color]="app.color">
-            <div class="service-header">
-              <div class="service-icon">{{ app.icon }}</div>
+      <!-- Services Bento Grid -->
+      <section class="services">
+        <div class="bento">
+          @for (app of services(); track app.name; let i = $index) {
+          <a
+            [href]="app.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="bento-item"
+            [style.--accent]="app.color"
+            [style.--i]="i"
+          >
+            <div class="bento-glow"></div>
+            <div class="bento-content">
+              <span class="bento-icon">{{ app.icon }}</span>
+              <div class="bento-text">
+                <h3>{{ app.name }}</h3>
+                <p>{{ app.description }}</p>
+              </div>
             </div>
-
-            <div class="service-content">
-              <h3 class="service-name">{{ app.name }}</h3>
-              <p class="service-description">{{ app.description }}</p>
+            <div class="bento-footer">
+              <span class="bento-link">
+                Open
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </span>
             </div>
-
-            <div class="service-actions">
-              <button class="launch-btn" (click)="openService(app.url)">
-                <span class="btn-icon">🚀</span>
-                Launch
-              </button>
-            </div>
-          </div>
-          } @empty {
-          <div class="empty-state">
-            <p>No services available at the moment.</p>
-          </div>
+          </a>
           }
         </div>
       </section>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <div class="footer-content">
+          <span>© {{ currentYear }} Elliott Haus</span>
+          <span class="footer-dot">·</span>
+          <span>{{ services().length }} Services Online</span>
+        </div>
+      </footer>
     </div>
   `,
   styles: `
     :host {
       display: block;
       min-height: 100vh;
-      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: #ffffff;
+      background: #09090b;
+      color: #fafafa;
     }
 
-    .dashboard-container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
+    .page {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    /* Header Styles */
-    .header-section {
-      margin-bottom: 3rem;
+    /* Header */
+    .header {
+      padding: 2rem 1.5rem 1.5rem;
+      text-align: center;
     }
 
-    .header-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 2rem;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-
-    .logo-section {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    .logo {
-      width: 80px;
-      height: 80px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-    }
-
-    .logo-text {
-      font-size: 2rem;
-    }
-
-    .main-title {
-      font-size: 2.5rem;
+    .header h1 {
+      font-size: clamp(1.5rem, 4vw, 2rem);
       font-weight: 700;
       margin: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .subtitle {
-      font-size: 1.2rem;
-      color: rgba(255, 255, 255, 0.7);
-      margin: 0.5rem 0 0 0;
+      letter-spacing: -0.02em;
+      color: #fafafa;
     }
 
     /* Services Section */
-    .services-section {
+    .services {
       flex: 1;
-      margin-bottom: 3rem;
+      padding: 0.5rem 1.5rem 3rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
     }
 
-    .section-title {
-      font-size: 2rem;
-      font-weight: 600;
-      margin-bottom: 2rem;
-      color: #fff;
-    }
-
-    .services-grid {
+    /* Bento Grid */
+    .bento {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
     }
 
-    .service-card {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      padding: 1.5rem;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
+    .bento-item {
       position: relative;
+      background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 1.25rem;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
       overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: slideUp 0.5s ease-out backwards;
+      animation-delay: calc(var(--i) * 40ms);
     }
 
-    .service-card::before {
-      content: '';
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+    }
+
+    .bento-item.featured {
+      grid-column: span 2;
+      padding: 2rem;
+    }
+
+    .bento-item:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+      background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+    }
+
+    .bento-glow {
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
-      height: 3px;
-      background: var(--card-color);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
 
-    .service-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
-      border-color: rgba(255, 255, 255, 0.2);
+    .bento-item:hover .bento-glow {
+      opacity: 0.6;
     }
 
-    .service-header {
+    .bento-content {
+      flex: 1;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .service-icon {
-      font-size: 2rem;
-      width: 60px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-    }
-
-    .service-content {
-      margin-bottom: 1.5rem;
-    }
-
-    .service-name {
-      font-size: 1.3rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      color: #fff;
-    }
-
-    .service-description {
-      color: rgba(255, 255, 255, 0.7);
-      line-height: 1.5;
-      margin-bottom: 1rem;
-    }
-
-    .service-actions {
-      display: flex;
+      flex-direction: column;
       gap: 1rem;
     }
 
-    .launch-btn {
+    .bento-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+      filter: saturate(1.1);
+    }
+
+    .featured .bento-icon {
+      font-size: 3rem;
+    }
+
+    .bento-text h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 0.4rem;
+      color: #fafafa;
+      letter-spacing: -0.01em;
+    }
+
+    .featured .bento-text h3 {
+      font-size: 1.3rem;
+    }
+
+    .bento-text p {
+      font-size: 0.85rem;
+      color: #71717a;
+      margin: 0;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .featured .bento-text p {
+      -webkit-line-clamp: 3;
+    }
+
+    .bento-footer {
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .bento-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #71717a;
+      transition: all 0.2s ease;
+    }
+
+    .bento-link svg {
+      transition: transform 0.2s ease;
+    }
+
+    .bento-item:hover .bento-link {
+      color: var(--accent);
+    }
+
+    .bento-item:hover .bento-link svg {
+      transform: translateX(3px);
+    }
+
+    /* Footer */
+    .footer {
+      padding: 2rem 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .footer-content {
       display: flex;
+      justify-content: center;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      flex: 1;
-      justify-content: center;
+      font-size: 0.85rem;
+      color: #52525b;
     }
 
-    .launch-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-    }
-
-    .launch-btn:disabled {
+    .footer-dot {
       opacity: 0.5;
-      cursor: not-allowed;
     }
 
-    .btn-icon {
-      font-size: 1rem;
+    /* Responsive - Tablet */
+    @media (max-width: 900px) {
+      .bento {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
-    /* Empty State */
-    .empty-state {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 3rem 1rem;
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 1.1rem;
-    }
-
-    .empty-state p {
-      margin: 0;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .dashboard-container {
-        padding: 1rem;
+    /* Responsive - Mobile */
+    @media (max-width: 600px) {
+      .header {
+        padding: 1.5rem 1rem 1rem;
       }
 
-      .header-content {
-        flex-direction: column;
-        gap: 2rem;
-        text-align: center;
+      .services {
+        padding: 0.5rem 1rem 2rem;
       }
 
-      .main-title {
+      .bento {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+
+      .bento-item {
+        padding: 1.25rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .bento-content {
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .bento-icon {
         font-size: 2rem;
       }
 
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+      .bento-text {
+        flex: 1;
+        min-width: 0;
       }
 
-      .services-grid {
-        grid-template-columns: 1fr;
+      .bento-text h3 {
+        font-size: 1rem;
+      }
+
+      .bento-text p {
+        font-size: 0.8rem;
+        -webkit-line-clamp: 1;
+      }
+
+      .bento-footer {
+        display: none;
+      }
+
+      .footer {
+        padding: 1.5rem 1rem;
       }
 
       .footer-content {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
+        font-size: 0.8rem;
       }
     }
 
-    @media (max-width: 480px) {
-      .stats-grid {
-        grid-template-columns: 1fr;
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .bento-item {
+        animation: none;
       }
 
-      .category-filters {
-        justify-content: center;
+      .bento-link svg,
+      .bento-item {
+        transition: none;
       }
     }
   `,
 })
 export class HomeComponent {
-  // Using signals for reactive state management
+  readonly currentYear = new Date().getFullYear();
+
   private readonly appLinks = signal<AppLink[]>([
     {
       name: 'Finances',
       url: 'https://finances.elliott.haus',
-      description:
-        'Personal finance tracking and budgeting application with advanced analytics and insights.',
+      description: 'Personal finance tracking and budgeting.',
       icon: '💰',
-      color: '#4caf50',
+      color: '#22c55e',
+    },
+    {
+      name: 'Wheel',
+      url: 'https://wheel.elliott.haus',
+      description: 'Spin the wheel for random decisions.',
+      icon: '🎡',
+      color: '#8b5cf6',
     },
     {
       name: 'ArgoCD',
       url: 'https://argocd.elliott.haus',
-      description:
-        'GitOps continuous deployment tool for Kubernetes applications.',
+      description: 'GitOps continuous deployment.',
       icon: '🚀',
-      color: '#ff5722',
+      color: '#f97316',
     },
-    // Commented out services for future expansion
-    // {
-    //   name: 'Grafana',
-    //   url: 'https://grafana.elliott.haus',
-    //   description:
-    //     'Monitoring and observability platform with beautiful dashboards.',
-    //   icon: '📊',
-    //   color: '#ff9800',
-    // },
-    // {
-    //   name: 'Prometheus',
-    //   url: 'https://prometheus.elliott.haus',
-    //   description:
-    //     'Metrics collection and alerting toolkit for monitoring infrastructure.',
-    //   icon: '🔥',
-    //   color: '#e91e63',
-    // },
-    // {
-    //   name: 'Loki',
-    //   url: 'https://loki.elliott.haus',
-    //   description:
-    //     'Log aggregation system designed to store and query logs efficiently.',
-    //   icon: '📝',
-    //   color: '#9c27b0',
-    // },
-    // {
-    //   name: 'Kubernetes Dashboard',
-    //   url: 'https://k8s-dashboard.elliott.haus',
-    //   description:
-    //     'Web-based Kubernetes user interface for cluster management.',
-    //   icon: '☸️',
-    //   color: '#326ce5',
-    // },
-    // {
-    //   name: 'Portainer',
-    //   url: 'https://portainer.elliott.haus',
-    //   description:
-    //     'Container management platform for Docker and Kubernetes environments.',
-    //   icon: '🐳',
-    //   color: '#13bef9',
-    // },
-    // {
-    //   name: 'Home Assistant',
-    //   url: 'https://homeassistant.elliott.haus',
-    //   description:
-    //     'Open-source home automation platform for smart home control.',
-    //   icon: '🏡',
-    //   color: '#41bdf5',
-    // },
-    // {
-    //   name: 'Plex Media Server',
-    //   url: 'https://plex.elliott.haus',
-    //   description: 'Media server for streaming movies, TV shows, and music.',
-    //   icon: '🎬',
-    //   color: '#e5a00d',
-    // },
-    // {
-    //   name: 'Jellyfin',
-    //   url: 'https://jellyfin.elliott.haus',
-    //   description:
-    //     'Free and open-source media server software for streaming content.',
-    //   icon: '🎭',
-    //   color: '#00a4dc',
-    // },
-    // {
-    //   name: 'Pi-hole',
-    //   url: 'https://pihole.elliott.haus',
-    //   description:
-    //     'Network-wide ad blocker acting as DNS sinkhole for advertisements.',
-    //   icon: '🛡️',
-    //   color: '#96060c',
-    // },
-    // {
-    //   name: 'Nextcloud',
-    //   url: 'https://nextcloud.elliott.haus',
-    //   description: 'Self-hosted cloud storage and collaboration platform.',
-    //   icon: '☁️',
-    //   color: '#0082c9',
-    // },
-    // {
-    //   name: 'GitLab',
-    //   url: 'https://gitlab.elliott.haus',
-    //   description:
-    //     'Self-hosted Git repository manager with CI/CD capabilities.',
-    //   icon: '🦊',
-    //   color: '#fc6d26',
-    // },
-    // {
-    //   name: 'Vault',
-    //   url: 'https://vault.elliott.haus',
-    //   description:
-    //     'Secrets management tool for secure storage and access control.',
-    //   icon: '🔐',
-    //   color: '#ffec6e',
-    // },
   ]);
 
-  // Computed signals for derived state
-  readonly filteredApps = computed(() => this.appLinks());
-  readonly totalServices = computed(() => this.appLinks().length);
-
-  // Methods using modern arrow function syntax
-  readonly openService = (url: string): void => {
-    window.open(url, '_blank');
-  };
-
-  // Method to add new services dynamically (using signals)
-  readonly addService = (service: AppLink): void => {
-    this.appLinks.update((services) => [...services, service]);
-  };
-
-  // Method to remove a service (using signals)
-  readonly removeService = (serviceName: string): void => {
-    this.appLinks.update((services) =>
-      services.filter((service) => service.name !== serviceName)
-    );
-  };
+  readonly services = computed(() => this.appLinks());
 }
