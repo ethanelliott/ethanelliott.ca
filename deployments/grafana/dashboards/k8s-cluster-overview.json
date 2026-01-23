@@ -100,7 +100,7 @@
       "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "title": "Running",
       "type": "stat",
-      "targets": [{ "expr": "count(kube_pod_status_phase{phase=\"Running\"})", "refId": "A" }]
+      "targets": [{ "expr": "sum(kube_pod_status_phase{phase=\"Running\"} == 1) or vector(0)", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -118,7 +118,7 @@
       "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "title": "Pending",
       "type": "stat",
-      "targets": [{ "expr": "count(kube_pod_status_phase{phase=\"Pending\"}) or vector(0)", "refId": "A" }]
+      "targets": [{ "expr": "sum(kube_pod_status_phase{phase=\"Pending\"} == 1) or vector(0)", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -136,7 +136,7 @@
       "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "title": "Failed",
       "type": "stat",
-      "targets": [{ "expr": "count(kube_pod_status_phase{phase=\"Failed\"}) or vector(0)", "refId": "A" }]
+      "targets": [{ "expr": "sum(kube_pod_status_phase{phase=\"Failed\"} == 1) or vector(0)", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -172,7 +172,7 @@
       "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "title": "Namespaces",
       "type": "stat",
-      "targets": [{ "expr": "count(kube_namespace_labels)", "refId": "A" }]
+      "targets": [{ "expr": "count(kube_namespace_created)", "refId": "A" }]
     },
     {
       "collapsed": false,
