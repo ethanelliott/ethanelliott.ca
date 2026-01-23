@@ -19,6 +19,24 @@ spec:
       {{- if .Values.hostNetwork }}
       hostNetwork: {{ .Values.hostNetwork }}
       {{- end }}
+      initContainers:
+        - name: init-config
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /config/configuration.yaml ]; then
+                echo "No configuration.yaml found, copying default..."
+                cp /default-config/configuration.yaml /config/configuration.yaml
+              else
+                echo "configuration.yaml already exists, skipping..."
+              fi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+            - name: default-config
+              mountPath: /default-config
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -58,3 +76,6 @@ spec:
         - name: config-volume
           persistentVolumeClaim:
             claimName: {{ include "home-assistant.fullname" . }}-config
+        - name: default-config
+          configMap:
+            name: {{ include "home-assistant.fullname" . }}-config

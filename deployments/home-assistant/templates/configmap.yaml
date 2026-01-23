@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "home-assistant.fullname" . }}-config
+  labels:
+    {{- include "home-assistant.labels" . | nindent 4 }}
+data:
+  configuration.yaml: |
+    # Home Assistant Base Configuration
+    homeassistant:
+      name: Home
+      unit_system: metric
+      time_zone: {{ .Values.env.TZ | default "UTC" }}
+
+    # HTTP configuration for reverse proxy
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        - 10.42.0.0/16   # k3s pod network
+        - 10.43.0.0/16   # k3s service network
+        - 127.0.0.1
+        - ::1
+
+    # Default integrations
+    frontend:
+    config:
+    mobile_app:
+    
+    # Enable default_config for common components
+    # Uncomment below if you want all default components
+    # default_config:
