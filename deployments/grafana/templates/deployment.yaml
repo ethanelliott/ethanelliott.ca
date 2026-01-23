@@ -71,5 +71,11 @@ spec:
           configMap:
             name: {{ include "grafana.fullname" . }}-dashboards-provider
         - name: grafana-dashboards
-          configMap:
-            name: {{ include "grafana.fullname" . }}-dashboards
+          projected:
+            sources:
+              {{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+              {{- $name := base $path | trimSuffix ".json" }}
+              - configMap:
+                  name: {{ include "grafana.fullname" $ }}-dashboard-{{ $name }}
+              {{- end }}
+
