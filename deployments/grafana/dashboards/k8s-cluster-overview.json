@@ -199,7 +199,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "CPU Usage by Node",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (instance) (rate(container_cpu_usage_seconds_total{id=\"/\", job=\"kubernetes-nodes-cadvisor\"}[5m]))", "legendFormat": "{{`{{instance}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "sum by (instance) (rate(container_cpu_usage_seconds_total{id=\"/\", job=\"kubernetes-nodes-cadvisor\"}[5m]))", "legendFormat": "{{instance}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -218,7 +218,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Memory Usage by Node",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (instance) (container_memory_working_set_bytes{id=\"/\", job=\"kubernetes-nodes-cadvisor\"})", "legendFormat": "{{`{{instance}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "sum by (instance) (container_memory_working_set_bytes{id=\"/\", job=\"kubernetes-nodes-cadvisor\"})", "legendFormat": "{{instance}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -237,7 +237,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Network I/O by Node (Receive)",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (instance) (rate(container_network_receive_bytes_total{id=\"/\"}[5m]))", "legendFormat": "{{`{{instance}}`}} RX", "refId": "A" }]
+      "targets": [{ "expr": "sum by (instance) (rate(container_network_receive_bytes_total{id=\"/\"}[5m]))", "legendFormat": "{{instance}} RX", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -256,7 +256,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Network I/O by Node (Transmit)",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (instance) (rate(container_network_transmit_bytes_total{id=\"/\"}[5m]))", "legendFormat": "{{`{{instance}}`}} TX", "refId": "A" }]
+      "targets": [{ "expr": "sum by (instance) (rate(container_network_transmit_bytes_total{id=\"/\"}[5m]))", "legendFormat": "{{instance}} TX", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -283,7 +283,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "CPU Usage by Pod (Top 10)",
       "type": "timeseries",
-      "targets": [{ "expr": "topk(10, sum by (pod, namespace) (rate(container_cpu_usage_seconds_total{container!=\"\", container!=\"POD\"}[5m])))", "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "topk(10, sum by (pod, namespace) (rate(container_cpu_usage_seconds_total{container!=\"\", container!=\"POD\"}[5m])))", "legendFormat": "{{namespace}}/{{pod}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -302,7 +302,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Memory Usage by Pod (Top 10)",
       "type": "timeseries",
-      "targets": [{ "expr": "topk(10, sum by (pod, namespace) (container_memory_working_set_bytes{container!=\"\", container!=\"POD\"}))", "legendFormat": "{{`{{namespace}}`}}/{{`{{pod}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "topk(10, sum by (pod, namespace) (container_memory_working_set_bytes{container!=\"\", container!=\"POD\"}))", "legendFormat": "{{namespace}}/{{pod}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -321,7 +321,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Network Receive by Pod (Top 10)",
       "type": "timeseries",
-      "targets": [{ "expr": "topk(10, sum by (pod) (rate(container_network_receive_bytes_total{pod!=\"\"}[5m])))", "legendFormat": "{{`{{pod}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "topk(10, sum by (pod) (rate(container_network_receive_bytes_total{pod!=\"\"}[5m])))", "legendFormat": "{{pod}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -340,7 +340,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Network Transmit by Pod (Top 10)",
       "type": "timeseries",
-      "targets": [{ "expr": "topk(10, sum by (pod) (rate(container_network_transmit_bytes_total{pod!=\"\"}[5m])))", "legendFormat": "{{`{{pod}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "topk(10, sum by (pod) (rate(container_network_transmit_bytes_total{pod!=\"\"}[5m])))", "legendFormat": "{{pod}}", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -368,7 +368,7 @@
       "options": { "displayMode": "lcd", "minVizHeight": 10, "minVizWidth": 0, "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showUnfilled": true, "valueMode": "color" },
       "title": "PVC Usage %",
       "type": "bargauge",
-      "targets": [{ "expr": "(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes)", "legendFormat": "{{`{{persistentvolumeclaim}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes)", "legendFormat": "{{persistentvolumeclaim}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -387,7 +387,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "PVC Used Space Over Time",
       "type": "timeseries",
-      "targets": [{ "expr": "kubelet_volume_stats_used_bytes", "legendFormat": "{{`{{persistentvolumeclaim}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "kubelet_volume_stats_used_bytes", "legendFormat": "{{persistentvolumeclaim}}", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -442,7 +442,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Pod Restarts Over Time",
       "type": "timeseries",
-      "targets": [{ "expr": "increase(kube_pod_container_status_restarts_total[5m])", "legendFormat": "{{`{{pod}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "increase(kube_pod_container_status_restarts_total[5m])", "legendFormat": "{{pod}}", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -541,7 +541,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Pods by Namespace Over Time",
       "type": "timeseries",
-      "targets": [{ "expr": "count by (namespace) (kube_pod_info)", "legendFormat": "{{`{{namespace}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "count by (namespace) (kube_pod_info)", "legendFormat": "{{namespace}}", "refId": "A" }]
     },
     {
       "collapsed": false,

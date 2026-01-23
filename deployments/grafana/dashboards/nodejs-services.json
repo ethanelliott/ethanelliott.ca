@@ -142,7 +142,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Request Rate by Service",
       "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (kubernetes_pod_name)", "legendFormat": "{{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (kubernetes_pod_name)", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -161,7 +161,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Response Time by Service",
       "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_sum[5m])) by (kubernetes_pod_name) / sum(rate(http_request_duration_seconds_count[5m])) by (kubernetes_pod_name)", "legendFormat": "{{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_sum[5m])) by (kubernetes_pod_name) / sum(rate(http_request_duration_seconds_count[5m])) by (kubernetes_pod_name)", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -180,7 +180,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Request Rate by Method",
       "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (method)", "legendFormat": "{{`{{method}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (method)", "legendFormat": "{{method}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -199,7 +199,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Request Rate by Status Code",
       "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (status_code)", "legendFormat": "{{`{{status_code}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (status_code)", "legendFormat": "{{status_code}}", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -250,7 +250,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "P99 Latency by Service",
       "type": "timeseries",
-      "targets": [{ "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, kubernetes_pod_name))", "legendFormat": "{{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, kubernetes_pod_name))", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -277,7 +277,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Heap Memory Usage",
       "type": "timeseries",
-      "targets": [{ "expr": "nodejs_heap_size_used_bytes", "legendFormat": "{{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "nodejs_heap_size_used_bytes", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -296,7 +296,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Event Loop Lag",
       "type": "timeseries",
-      "targets": [{ "expr": "nodejs_eventloop_lag_seconds", "legendFormat": "{{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "nodejs_eventloop_lag_seconds", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -315,7 +315,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Active Handles",
       "type": "timeseries",
-      "targets": [{ "expr": "nodejs_active_handles_total", "legendFormat": "{{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "nodejs_active_handles_total", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -334,7 +334,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Active Requests",
       "type": "timeseries",
-      "targets": [{ "expr": "nodejs_active_requests_total", "legendFormat": "{{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "nodejs_active_requests_total", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -361,7 +361,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "GC Duration by Type",
       "type": "timeseries",
-      "targets": [{ "expr": "rate(nodejs_gc_duration_seconds_sum[5m])", "legendFormat": "{{`{{kind}}`}} - {{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "rate(nodejs_gc_duration_seconds_sum[5m])", "legendFormat": "{{kind}} - {{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -380,7 +380,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "GC Runs per Second",
       "type": "timeseries",
-      "targets": [{ "expr": "rate(nodejs_gc_runs_total[5m])", "legendFormat": "{{`{{kind}}`}} - {{`{{kubernetes_pod_name}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "rate(nodejs_gc_runs_total[5m])", "legendFormat": "{{kind}} - {{kubernetes_pod_name}}", "refId": "A" }]
     },
     {
       "collapsed": false,
@@ -407,7 +407,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "title": "Request Rate by Route",
       "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (route, method)", "legendFormat": "{{`{{method}}`}} {{`{{route}}`}}", "refId": "A" }]
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (route, method)", "legendFormat": "{{method}} {{route}}", "refId": "A" }]
     }
   ],
   "refresh": "30s",
