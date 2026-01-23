@@ -133,8 +133,3 @@ data:
           - source_labels: [__meta_kubernetes_pod_name]
             action: replace
             target_label: kubernetes_pod_name
-
-      # kube-state-metrics (if deployed separately)
-      - job_name: 'kube-state-metrics'
-        static_configs:
-          - targets: ['kube-state-metrics.elliott-haus.svc.cluster.local:8080']
