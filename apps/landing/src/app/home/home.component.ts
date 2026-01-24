@@ -21,13 +21,7 @@ interface AppLink {
     <div class="page">
       <!-- Header -->
       <header class="header">
-        <h1>
-          <iconify-icon
-            icon="mdi:home"
-            style="vertical-align: middle;"
-          ></iconify-icon>
-          Elliott Haus
-        </h1>
+        <h1>elliott.haus</h1>
       </header>
 
       <!-- Services Bento Grid -->
@@ -74,15 +68,6 @@ interface AppLink {
           }
         </div>
       </section>
-
-      <!-- Footer -->
-      <footer class="footer">
-        <div class="footer-content">
-          <span>© {{ currentYear }} Elliott Haus</span>
-          <span class="footer-dot">·</span>
-          <span>{{ services().length }} Services Online</span>
-        </div>
-      </footer>
     </div>
   `,
   styles: `
@@ -91,12 +76,48 @@ interface AppLink {
       min-height: 100vh;
       background: #09090b;
       color: #fafafa;
+      position: relative;
+      overflow: hidden;
+    }
+
+    :host::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 40% 80%, rgba(34, 197, 94, 0.08) 0%, transparent 40%),
+        radial-gradient(ellipse at 80% 20%, rgba(249, 115, 22, 0.08) 0%, transparent 40%);
+      animation: gradientMove 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes gradientMove {
+      0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+      }
+      25% {
+        transform: translate(2%, 2%) rotate(1deg);
+      }
+      50% {
+        transform: translate(-1%, 3%) rotate(-1deg);
+      }
+      75% {
+        transform: translate(-2%, -1%) rotate(0.5deg);
+      }
     }
 
     .page {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      position: relative;
+      z-index: 1;
     }
 
     /* Header */
@@ -253,25 +274,6 @@ interface AppLink {
       transform: translateX(3px);
     }
 
-    /* Footer */
-    .footer {
-      padding: 2rem 1.5rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .footer-content {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.85rem;
-      color: #52525b;
-    }
-
-    .footer-dot {
-      opacity: 0.5;
-    }
-
     /* Responsive - Tablet */
     @media (max-width: 900px) {
       .bento {
@@ -327,14 +329,6 @@ interface AppLink {
 
       .bento-footer {
         display: none;
-      }
-
-      .footer {
-        padding: 1.5rem 1rem;
-      }
-
-      .footer-content {
-        font-size: 0.8rem;
       }
     }
 
