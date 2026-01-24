@@ -1,0 +1,89 @@
+{
+  "name": "plaid-test",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/plaid-test/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/apps/plaid-test",
+        "format": ["esm"],
+        "bundle": true,
+        "main": "apps/plaid-test/src/main.ts",
+        "tsConfig": "apps/plaid-test/tsconfig.app.json",
+        "assets": [
+          "apps/plaid-test/src/assets",
+          {
+            "input": "apps/plaid-test/src/views",
+            "glob": "**/*",
+            "output": "views"
+          },
+          {
+            "input": "apps/plaid-test/src/public",
+            "glob": "**/*",
+            "output": "public"
+          }
+        ],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "plaid-test:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "plaid-test:build:development"
+        },
+        "production": {
+          "buildTarget": "plaid-test:build:production"
+        }
+      }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "TAG={args.tag} && docker build -f apps/plaid-test/Dockerfile -t ethanelliottio/plaid-test:$TAG . && docker push ethanelliottio/plaid-test:$TAG"
+        ],
+        "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
+      }
+    }
+  }
+}

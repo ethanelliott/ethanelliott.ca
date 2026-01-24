@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <a href="/" class="back-link">← Back to Home</a>
+        <h1>❌ Error</h1>
+      </header>
+
+      <section class="error-section">
+        <div class="error-card">
+          <h2><%= message %></h2>
+          <% if (typeof details !== 'undefined' && details) { %>
+          <details>
+            <summary>Technical Details</summary>
+            <pre><%= JSON.stringify(details, null, 2) %></pre>
+          </details>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="actions">
+        <a href="/" class="btn btn-primary">Back to Dashboard</a>
+      </section>
+    </div>
+  </body>
+</html>

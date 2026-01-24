@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <a href="/" class="back-link">← Back to Home</a>
+        <h1>🔗 Connect Bank Account</h1>
+        <p class="subtitle">Use Plaid Link to securely connect your bank</p>
+      </header>
+
+      <section class="link-section">
+        <div id="loading" class="loading">
+          <div class="spinner"></div>
+          <p>Initializing Plaid Link...</p>
+        </div>
+
+        <div id="link-container" style="display: none">
+          <p>
+            Click the button below to open Plaid Link and connect your bank
+            account.
+          </p>
+          <button id="link-button" class="btn btn-primary btn-large">
+            Open Plaid Link
+          </button>
+        </div>
+
+        <div id="error-container" style="display: none" class="error">
+          <h3>Error</h3>
+          <p id="error-message"></p>
+          <a href="/" class="btn btn-secondary">Back to Home</a>
+        </div>
+      </section>
+
+      <section class="info-section">
+        <h2>What happens next?</h2>
+        <ol>
+          <li>Plaid Link will open in a secure modal</li>
+          <li>
+            Select your bank from the list (in sandbox mode, use "user_good" /
+            "pass_good")
+          </li>
+          <li>Complete the authentication process</li>
+          <li>
+            Your bank will be connected and you can view accounts/transactions
+          </li>
+        </ol>
+
+        <div class="sandbox-info">
+          <h3>Sandbox Test Credentials</h3>
+          <p>When using the sandbox environment, use these test credentials:</p>
+          <ul>
+            <li><strong>Username:</strong> <code>user_good</code></li>
+            <li><strong>Password:</strong> <code>pass_good</code></li>
+            <li><strong>MFA Code (if prompted):</strong> <code>1234</code></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      let linkHandler = null;
+
+      async function initializePlaidLink() {
+        try {
+          // Get link token from server
+          const response = await fetch('/api/create_link_token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create link token');
+          }
+
+          const data = await response.json();
+
+          // Initialize Plaid Link
+          linkHandler = Plaid.create({
+            token: data.link_token,
+            onSuccess: async (public_token, metadata) => {
+              console.log('Link success:', metadata);
+
+              // Exchange public token for access token
+              try {
+                const exchangeResponse = await fetch('/api/exchange_token', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    public_token: public_token,
+                    institution: metadata.institution,
+                  }),
+                });
+
+                if (!exchangeResponse.ok) {
+                  const error = await exchangeResponse.json();
+                  throw new Error(error.error || 'Failed to exchange token');
+                }
+
+                const result = await exchangeResponse.json();
+
+                // Redirect to success page
+                window.location.href = `/success?item_id=${result.item_id}`;
+              } catch (error) {
+                showError(
+                  'Failed to complete bank connection: ' + error.message
+                );
+              }
+            },
+            onExit: (err, metadata) => {
+              if (err) {
+                console.error('Link exit with error:', err);
+                showError(
+                  err.display_message ||
+                    err.error_message ||
+                    'An error occurred'
+                );
+              } else {
+                console.log('Link exited by user');
+              }
+            },
+            onEvent: (eventName, metadata) => {
+              console.log('Plaid event:', eventName, metadata);
+            },
+          });
+
+          // Show the link button
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('link-container').style.display = 'block';
+        } catch (error) {
+          console.error('Error initializing Plaid Link:', error);
+          showError(error.message);
+        }
+      }
+
+      function showError(message) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('link-container').style.display = 'none';
+        document.getElementById('error-container').style.display = 'block';
+        document.getElementById('error-message').textContent = message;
+      }
+
+      document.getElementById('link-button').addEventListener('click', () => {
+        if (linkHandler) {
+          linkHandler.open();
+        }
+      });
+
+      // Initialize on page load
+      initializePlaidLink();
+    </script>
+  </body>
+</html>

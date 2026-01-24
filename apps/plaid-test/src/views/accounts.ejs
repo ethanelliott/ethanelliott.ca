@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <a href="/" class="back-link">← Back to Home</a>
+        <h1>💳 Accounts</h1>
+        <% if (institutionName) { %>
+        <p class="subtitle"><%= institutionName %></p>
+        <% } %>
+      </header>
+
+      <section class="accounts-section">
+        <% if (accounts && accounts.length > 0) { %>
+        <div class="accounts-list">
+          <% accounts.forEach(function(account) { %>
+          <div class="account-card">
+            <div class="account-header">
+              <h3><%= account.name %></h3>
+              <span class="account-type"
+                ><%= account.type %> - <%= account.subtype %></span
+              >
+            </div>
+            <div class="account-details">
+              <div class="balance-row">
+                <span class="label">Current Balance:</span>
+                <span class="value"
+                  ><%= account.balances.current ? '$' +
+                  account.balances.current.toFixed(2) : 'N/A' %></span
+                >
+              </div>
+              <% if (account.balances.available !== null) { %>
+              <div class="balance-row">
+                <span class="label">Available Balance:</span>
+                <span class="value"
+                  >$<%= account.balances.available.toFixed(2) %></span
+                >
+              </div>
+              <% } %> <% if (account.balances.limit !== null) { %>
+              <div class="balance-row">
+                <span class="label">Credit Limit:</span>
+                <span class="value"
+                  >$<%= account.balances.limit.toFixed(2) %></span
+                >
+              </div>
+              <% } %>
+              <div class="balance-row">
+                <span class="label">Account ID:</span>
+                <span class="value code"
+                  ><%= account.account_id.substring(0, 16) %>...</span
+                >
+              </div>
+              <% if (account.mask) { %>
+              <div class="balance-row">
+                <span class="label">Account Number:</span>
+                <span class="value">****<%= account.mask %></span>
+              </div>
+              <% } %>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+        <% } else { %>
+        <p class="empty-state">No accounts found.</p>
+        <% } %>
+      </section>
+
+      <section class="item-info">
+        <h2>Item Information</h2>
+        <div class="info-card">
+          <div class="info-row">
+            <span class="label">Item ID:</span>
+            <span class="value code"><%= item.item_id %></span>
+          </div>
+          <div class="info-row">
+            <span class="label">Institution ID:</span>
+            <span class="value code"><%= item.institution_id %></span>
+          </div>
+          <div class="info-row">
+            <span class="label">Consent Expiration:</span>
+            <span class="value"
+              ><%= item.consent_expiration_time ? new
+              Date(item.consent_expiration_time).toLocaleDateString() : 'Never'
+              %></span
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="actions">
+        <a href="/transactions/<%= itemId %>" class="btn btn-primary"
+          >View Transactions</a
+        >
+        <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+      </section>
+    </div>
+  </body>
+</html>
