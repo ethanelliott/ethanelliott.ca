@@ -1,5 +1,5 @@
 # Runtime-only Docker image for pre-built server
-FROM docker.io/node:lts-alpine
+FROM oven/bun:alpine
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
@@ -17,7 +17,7 @@ COPY dist/apps/server server/
 
 # Install runtime dependencies
 WORKDIR /app/server
-RUN npm install --omit=dev
+RUN bun install --production
 WORKDIR /app
 
 RUN chown -R server:server .
@@ -28,4 +28,4 @@ EXPOSE 3000
 # Switch to non-root user for security
 USER server
 
-CMD [ "node", "server" ]
+CMD [ "bun", "run", "server" ]

@@ -1,7 +1,7 @@
 {
   "name": "@ethanelliott.ca",
   "version": "0.0.0",
-  "packageManager": "npm@latest",
+  "packageManager": "bun@latest",
   "workspaces": [
     "apps/*",
     "libs/*"
@@ -23,13 +23,13 @@
     "node": ">=24.8.0"
   },
   "scripts": {
-    "start": "nx serve",
-    "build": "nx build",
-    "release:prepare": "node --import tsx tools/scripts/prepare-release.ts",
-    "release:prepare:dry-run": "node --import tsx tools/scripts/prepare-release.ts --dry-run",
-    "release:publish": "node --import tsx tools/scripts/publish-release.ts",
-    "release:publish:dry-run": "node --import tsx tools/scripts/publish-release.ts --dry-run",
-    "update:deployments": "node --import tsx tools/scripts/update-deployments.ts"
+    "start": "bun nx serve",
+    "build": "bun nx build",
+    "release:prepare": "bun run tools/scripts/prepare-release.ts",
+    "release:prepare:dry-run": "bun run tools/scripts/prepare-release.ts --dry-run",
+    "release:publish": "bun run tools/scripts/publish-release.ts",
+    "release:publish:dry-run": "bun run tools/scripts/publish-release.ts --dry-run",
+    "update:deployments": "bun run tools/scripts/update-deployments.ts"
   },
   "private": true,
   "dependencies": {

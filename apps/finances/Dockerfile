@@ -1,5 +1,5 @@
 # Runtime-only Docker image for pre-built finances backend
-FROM docker.io/node:lts-alpine
+FROM oven/bun:alpine
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
@@ -21,11 +21,11 @@ RUN mkdir -p /app/data && chown server:server /app/data
 COPY --chown=server:server dist/apps/finances ./
 
 # Install runtime dependencies
-RUN npm install --omit=dev
+RUN bun install --production
 
 # Switch to non-root user
 USER server
 
 EXPOSE 3000
 
-CMD ["node", "main.js"]
+CMD ["bun", "run", "main.js"]

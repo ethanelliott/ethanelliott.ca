@@ -57,14 +57,13 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '24.8.0'
-          cache: 'npm'
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Configure Git
         run: |
@@ -74,7 +73,7 @@ jobs:
       - name: Create and push git tags
         run: |
           echo "Creating git tags for released versions..."
-          npm run release:publish
+          bun run release:publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -95,17 +94,17 @@ jobs:
             # Check if app has a package.json
             if [ -f "apps/$APP/package.json" ]; then
               # Get version from package.json
-              VERSION=$(node -p "require('./apps/$APP/package.json').version")
+              VERSION=$(bun -e "console.log(require('./apps/$APP/package.json').version)")
               
               # Check if app has container target
-              if npx nx show project $APP --json 2>/dev/null | grep -q '"container"'; then
+              if bun nx show project $APP --json 2>/dev/null | grep -q '"container"'; then
                 echo "Building $APP:$VERSION..."
                 
                 # Build and push with version tag
-                npx nx run $APP:container --tag=$VERSION
+                bun nx run $APP:container --tag=$VERSION
                 
                 # Also tag and push as latest
-                npx nx run $APP:container --tag=latest
+                bun nx run $APP:container --tag=latest
                 
                 echo "✅ Successfully built and pushed $APP:$VERSION and $APP:latest"
               fi

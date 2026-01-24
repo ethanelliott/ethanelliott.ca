@@ -1,5 +1,5 @@
 # Runtime-only Docker image for pre-built aritzia-scanner
-FROM node:20-slim
+FROM oven/bun:debian
 
 # Install Chrome and dependencies for Puppeteer
 RUN apt-get update \
@@ -20,7 +20,7 @@ WORKDIR /app
 COPY dist/apps/aritzia-scanner .
 
 # Install runtime dependencies (express, puppeteer, sqlite3, etc.)
-RUN npm install --omit=dev
+RUN bun install --production
 
 # Add user so we don't need --no-sandbox
 RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
@@ -30,4 +30,4 @@ RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
 
 USER pptruser
 
-CMD ["node", "main.js"]
+CMD ["bun", "run", "main.js"]
