@@ -333,7 +333,7 @@ import { map } from 'rxjs/operators';
       position: sticky;
       top: 0;
       z-index: 100;
-      background: var(--bg-card);
+      background: var(--bg-base);
       border-bottom: 1px solid var(--border-subtle);
       color: var(--mat-sys-on-surface);
       box-shadow: none;
