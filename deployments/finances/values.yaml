@@ -29,8 +29,27 @@ env:
   NODE_ENV: 'production'
   HOST: '0.0.0.0'
   PORT: '3000'
-  RP_ID: 'finances-service.elliott.haus'
+  RP_ID: 'finances.elliott.haus'
   ORIGIN: 'https://finances.elliott.haus'
+  PLAID_ENV: 'production'
+
+# Secret environment variables (loaded from K8s secrets)
+secretEnv:
+  - name: JWT_SECRET
+    secretName: finances-secrets
+    secretKey: jwt-secret
+  - name: COOKIE_SECRET
+    secretName: finances-secrets
+    secretKey: cookie-secret
+  - name: PLAID_CLIENT_ID
+    secretName: finances-secrets
+    secretKey: plaid-client-id
+  - name: PLAID_SECRET
+    secretName: finances-secrets
+    secretKey: plaid-secret
+
+# Set to true to create the secret via Helm (for development/testing)
+createSecret: false
 
 storage:
   size: 10Gi

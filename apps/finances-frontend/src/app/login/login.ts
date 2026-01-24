@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { environment } from '../../environments/environment';
 import { FormsModule } from '@angular/forms';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatButton } from '@angular/material/button';
@@ -102,7 +103,7 @@ export class UserLogin {
     try {
       // Step 1: Start passkey authentication
       const authResponse: any = await firstValueFrom(
-        this._http.post('https://finances-service.elliott.haus/users/login', {
+        this._http.post(`${environment.apiUrl}/users/login`, {
           username: this.username() || undefined,
         })
       );
@@ -116,13 +117,10 @@ export class UserLogin {
 
       // Step 3: Complete authentication
       const completeResponse: any = await firstValueFrom(
-        this._http.post(
-          'https://finances-service.elliott.haus/users/login/complete',
-          {
-            sessionId: authResponse.sessionId,
-            credential: passkeyAssertion,
-          }
-        )
+        this._http.post(`${environment.apiUrl}/users/login/complete`, {
+          sessionId: authResponse.sessionId,
+          credential: passkeyAssertion,
+        })
       );
 
       console.log('Authentication completed:', completeResponse);

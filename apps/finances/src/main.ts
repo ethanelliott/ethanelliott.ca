@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import 'reflect-metadata';
 import { Application } from './app/app';
 import { starter } from '@ee/starter';

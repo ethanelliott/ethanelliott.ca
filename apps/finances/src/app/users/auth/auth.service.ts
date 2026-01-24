@@ -52,10 +52,10 @@ export class AuthService {
   private readonly _refreshTokenRepository =
     inject(Database).repositoryFor(RefreshToken);
 
-  // Configuration - in production, these should come from environment variables
+  // Configuration - uses environment variables for flexibility
   private readonly RP_NAME = 'Finance App';
-  private readonly RP_ID = 'finances.elliott.haus'; // Change to your domain in production
-  private readonly ORIGIN = 'https://finances.elliott.haus'; // Change to your frontend URL
+  private readonly RP_ID = process.env['RP_ID'] || 'localhost';
+  private readonly ORIGIN = process.env['ORIGIN'] || 'https://localhost:4200';
   private readonly ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes
   private readonly REFRESH_TOKEN_EXPIRY = 30; // days
 

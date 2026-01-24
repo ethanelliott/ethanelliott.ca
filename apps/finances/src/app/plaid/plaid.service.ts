@@ -1,0 +1,676 @@
+import { inject } from '@ee/di';
+import {
+  Configuration,
+  PlaidApi,
+  PlaidEnvironments,
+  Products,
+  CountryCode,
+  LinkTokenCreateRequest,
+  ItemPublicTokenExchangeRequest,
+  TransactionsSyncRequest,
+  AccountsGetRequest,
+  InstitutionsGetByIdRequest,
+  Transaction as PlaidTransaction,
+  RemovedTransaction,
+} from 'plaid';
+import { Database } from '../data-source';
+import { PlaidItem, PlaidItemStatus } from './plaid-item.entity';
+import { Account, AccountType } from './account.entity';
+import { Transaction, TransactionType } from './transaction.entity';
+import { SyncLog, SyncType, SyncStatus } from './sync-log.entity';
+import HttpErrors from 'http-errors';
+
+// Plaid configuration from environment
+const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID || '';
+const PLAID_SECRET = process.env.PLAID_SECRET || '';
+const PLAID_ENV = process.env.PLAID_ENV || 'production';
+
+const configuration = new Configuration({
+  basePath:
+    PlaidEnvironments[PLAID_ENV as keyof typeof PlaidEnvironments] ||
+    PlaidEnvironments.sandbox,
+  baseOptions: {
+    headers: {
+      'PLAID-CLIENT-ID': PLAID_CLIENT_ID,
+      'PLAID-SECRET': PLAID_SECRET,
+    },
+  },
+});
+
+export interface SyncResult {
+  added: number;
+  modified: number;
+  removed: number;
+  accountsUpdated: number;
+  hasMore: boolean;
+}
+
+export class PlaidService {
+  private readonly _plaidClient = new PlaidApi(configuration);
+  private readonly _plaidItemRepository =
+    inject(Database).repositoryFor(PlaidItem);
+  private readonly _accountRepository = inject(Database).repositoryFor(Account);
+  private readonly _transactionRepository =
+    inject(Database).repositoryFor(Transaction);
+  private readonly _syncLogRepository = inject(Database).repositoryFor(SyncLog);
+
+  /**
+   * Check if Plaid is configured
+   */
+  isConfigured(): boolean {
+    return !!(PLAID_CLIENT_ID && PLAID_SECRET);
+  }
+
+  /**
+   * Create a link token for initializing Plaid Link
+   */
+  async createLinkToken(
+    userId: string
+  ): Promise<{ linkToken: string; expiration: string }> {
+    if (!this.isConfigured()) {
+      throw new HttpErrors.ServiceUnavailable('Plaid is not configured');
+    }
+
+    const request: LinkTokenCreateRequest = {
+      user: {
+        client_user_id: userId,
+      },
+      client_name: 'Finance App',
+      products: [Products.Transactions],
+      country_codes: [CountryCode.Us, CountryCode.Ca],
+      language: 'en',
+    };
+
+    const response = await this._plaidClient.linkTokenCreate(request);
+
+    return {
+      linkToken: response.data.link_token,
+      expiration: response.data.expiration,
+    };
+  }
+
+  /**
+   * Create a link token for updating an existing item (re-authentication)
+   */
+  async createUpdateLinkToken(
+    userId: string,
+    plaidItemId: string
+  ): Promise<{ linkToken: string; expiration: string }> {
+    const plaidItem = await this._plaidItemRepository.findOne({
+      where: { id: plaidItemId, user: { id: userId } },
+    });
+
+    if (!plaidItem) {
+      throw new HttpErrors.NotFound('Plaid item not found');
+    }
+
+    const request: LinkTokenCreateRequest = {
+      user: {
+        client_user_id: userId,
+      },
+      client_name: 'Finance App',
+      products: [Products.Transactions],
+      country_codes: [CountryCode.Us, CountryCode.Ca],
+      language: 'en',
+      access_token: plaidItem.accessToken,
+    };
+
+    const response = await this._plaidClient.linkTokenCreate(request);
+
+    return {
+      linkToken: response.data.link_token,
+      expiration: response.data.expiration,
+    };
+  }
+
+  /**
+   * Exchange public token for access token and save the item
+   */
+  async exchangeToken(
+    userId: string,
+    publicToken: string,
+    institutionId?: string,
+    institutionName?: string
+  ): Promise<PlaidItem> {
+    const exchangeRequest: ItemPublicTokenExchangeRequest = {
+      public_token: publicToken,
+    };
+
+    const exchangeResponse = await this._plaidClient.itemPublicTokenExchange(
+      exchangeRequest
+    );
+
+    const accessToken = exchangeResponse.data.access_token;
+    const itemId = exchangeResponse.data.item_id;
+
+    // Get institution details if we have the ID
+    let institutionLogo: string | undefined;
+    let institutionColor: string | undefined;
+
+    if (institutionId) {
+      try {
+        const instRequest: InstitutionsGetByIdRequest = {
+          institution_id: institutionId,
+          country_codes: [CountryCode.Us, CountryCode.Ca],
+          options: {
+            include_optional_metadata: true,
+          },
+        };
+        const instResponse = await this._plaidClient.institutionsGetById(
+          instRequest
+        );
+        institutionLogo = instResponse.data.institution.logo || undefined;
+        institutionColor =
+          instResponse.data.institution.primary_color || undefined;
+        institutionName = instResponse.data.institution.name || institutionName;
+      } catch (error) {
+        console.warn('Failed to fetch institution details:', error);
+      }
+    }
+
+    // Check if this item already exists (reconnecting)
+    let plaidItem = await this._plaidItemRepository.findOne({
+      where: { itemId, user: { id: userId } },
+    });
+
+    if (plaidItem) {
+      // Update existing item
+      plaidItem.accessToken = accessToken;
+      plaidItem.status = PlaidItemStatus.ACTIVE;
+      plaidItem.lastError = undefined;
+      plaidItem.institutionName = institutionName;
+      plaidItem.institutionLogo = institutionLogo;
+      plaidItem.institutionColor = institutionColor;
+    } else {
+      // Create new item
+      plaidItem = this._plaidItemRepository.create({
+        itemId,
+        accessToken,
+        institutionId,
+        institutionName,
+        institutionLogo,
+        institutionColor,
+        status: PlaidItemStatus.ACTIVE,
+        user: { id: userId } as any,
+      });
+    }
+
+    const savedItem = await this._plaidItemRepository.save(plaidItem);
+
+    // Fetch accounts for this item
+    await this.syncAccounts(savedItem, userId);
+
+    // Do initial transaction sync (YTD)
+    await this.syncTransactions(savedItem.id, userId, SyncType.INITIAL);
+
+    return savedItem;
+  }
+
+  /**
+   * Sync accounts for a Plaid item
+   */
+  async syncAccounts(plaidItem: PlaidItem, userId: string): Promise<number> {
+    const request: AccountsGetRequest = {
+      access_token: plaidItem.accessToken,
+    };
+
+    const response = await this._plaidClient.accountsGet(request);
+    let updatedCount = 0;
+
+    for (const plaidAccount of response.data.accounts) {
+      let account = await this._accountRepository.findOne({
+        where: {
+          plaidAccountId: plaidAccount.account_id,
+          user: { id: userId },
+        },
+      });
+
+      const accountType = this.mapAccountType(plaidAccount.type);
+
+      if (account) {
+        // Update existing account
+        account.name = plaidAccount.name;
+        account.officialName = plaidAccount.official_name || undefined;
+        account.type = accountType;
+        account.subtype = plaidAccount.subtype || undefined;
+        account.mask = plaidAccount.mask || undefined;
+        account.currentBalance = plaidAccount.balances.current ?? undefined;
+        account.availableBalance = plaidAccount.balances.available ?? undefined;
+        account.limitAmount = plaidAccount.balances.limit ?? undefined;
+        account.isoCurrencyCode =
+          plaidAccount.balances.iso_currency_code || 'CAD';
+        account.lastBalanceUpdate = new Date();
+      } else {
+        // Create new account
+        account = this._accountRepository.create({
+          plaidAccountId: plaidAccount.account_id,
+          plaidItem: plaidItem,
+          name: plaidAccount.name,
+          officialName: plaidAccount.official_name || undefined,
+          type: accountType,
+          subtype: plaidAccount.subtype || undefined,
+          mask: plaidAccount.mask || undefined,
+          currentBalance: plaidAccount.balances.current ?? undefined,
+          availableBalance: plaidAccount.balances.available ?? undefined,
+          limitAmount: plaidAccount.balances.limit ?? undefined,
+          isoCurrencyCode: plaidAccount.balances.iso_currency_code || 'CAD',
+          lastBalanceUpdate: new Date(),
+          user: { id: userId } as any,
+        });
+      }
+
+      await this._accountRepository.save(account);
+      updatedCount++;
+    }
+
+    return updatedCount;
+  }
+
+  /**
+   * Sync transactions using Plaid's transactions/sync endpoint
+   * This is the recommended approach for incremental syncing
+   */
+  async syncTransactions(
+    plaidItemId: string,
+    userId: string,
+    syncType: SyncType = SyncType.INCREMENTAL
+  ): Promise<SyncResult> {
+    const startTime = Date.now();
+
+    const plaidItem = await this._plaidItemRepository.findOne({
+      where: { id: plaidItemId, user: { id: userId } },
+    });
+
+    if (!plaidItem) {
+      throw new HttpErrors.NotFound('Plaid item not found');
+    }
+
+    // Create sync log entry
+    const syncLog = this._syncLogRepository.create({
+      plaidItem: plaidItem,
+      syncType,
+      status: SyncStatus.STARTED,
+      user: { id: userId } as any,
+    });
+    await this._syncLogRepository.save(syncLog);
+
+    try {
+      // Update account balances first
+      const accountsUpdated = await this.syncAccounts(plaidItem, userId);
+
+      let cursor = plaidItem.lastSyncCursor || undefined;
+      let hasMore = true;
+      let totalAdded = 0;
+      let totalModified = 0;
+      let totalRemoved = 0;
+
+      // For initial sync, we want YTD data
+      // Plaid's sync endpoint handles this automatically if no cursor exists
+
+      while (hasMore) {
+        const request: TransactionsSyncRequest = {
+          access_token: plaidItem.accessToken,
+          cursor: cursor,
+          count: 500, // Max allowed
+        };
+
+        const response = await this._plaidClient.transactionsSync(request);
+
+        // Process added transactions
+        for (const plaidTxn of response.data.added) {
+          await this.processTransaction(plaidTxn, plaidItem, userId);
+          totalAdded++;
+        }
+
+        // Process modified transactions
+        for (const plaidTxn of response.data.modified) {
+          await this.processTransaction(plaidTxn, plaidItem, userId);
+          totalModified++;
+        }
+
+        // Process removed transactions
+        for (const removedTxn of response.data.removed) {
+          await this.removeTransaction(removedTxn, userId);
+          totalRemoved++;
+        }
+
+        cursor = response.data.next_cursor;
+        hasMore = response.data.has_more;
+      }
+
+      // Update the cursor for next sync
+      plaidItem.lastSyncCursor = cursor;
+      plaidItem.lastSyncAt = new Date();
+      plaidItem.status = PlaidItemStatus.ACTIVE;
+      plaidItem.lastError = undefined;
+      await this._plaidItemRepository.save(plaidItem);
+
+      // Detect transfers after syncing
+      await this.detectTransfers(userId);
+
+      // Update sync log
+      syncLog.status = SyncStatus.COMPLETED;
+      syncLog.transactionsAdded = totalAdded;
+      syncLog.transactionsModified = totalModified;
+      syncLog.transactionsRemoved = totalRemoved;
+      syncLog.accountsUpdated = accountsUpdated;
+      syncLog.durationMs = Date.now() - startTime;
+      await this._syncLogRepository.save(syncLog);
+
+      return {
+        added: totalAdded,
+        modified: totalModified,
+        removed: totalRemoved,
+        accountsUpdated,
+        hasMore: false,
+      };
+    } catch (error: any) {
+      // Update sync log with error
+      syncLog.status = SyncStatus.FAILED;
+      syncLog.error = error.message || 'Unknown error';
+      syncLog.durationMs = Date.now() - startTime;
+      await this._syncLogRepository.save(syncLog);
+
+      // Update plaid item status
+      plaidItem.status = PlaidItemStatus.ERROR;
+      plaidItem.lastError = error.message || 'Sync failed';
+      await this._plaidItemRepository.save(plaidItem);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Process a single transaction from Plaid
+   */
+  private async processTransaction(
+    plaidTxn: PlaidTransaction,
+    plaidItem: PlaidItem,
+    userId: string
+  ): Promise<void> {
+    // Find the account for this transaction
+    const account = await this._accountRepository.findOne({
+      where: {
+        plaidAccountId: plaidTxn.account_id,
+        user: { id: userId },
+      },
+    });
+
+    if (!account) {
+      console.warn(
+        `Account not found for transaction: ${plaidTxn.transaction_id}`
+      );
+      return;
+    }
+
+    // Check if transaction already exists
+    let transaction = await this._transactionRepository.findOne({
+      where: {
+        plaidTransactionId: plaidTxn.transaction_id,
+        user: { id: userId },
+      },
+    });
+
+    // Determine transaction type
+    // Plaid: positive = money out (expense), negative = money in (income)
+    const type = this.determineTransactionType(plaidTxn);
+
+    // Get Plaid's personal finance category
+    const personalFinanceCategory =
+      plaidTxn.personal_finance_category?.primary ||
+      plaidTxn.personal_finance_category?.detailed ||
+      undefined;
+
+    if (transaction) {
+      // Update existing transaction (but preserve user edits)
+      transaction.date = plaidTxn.date;
+      transaction.authorizedDate = plaidTxn.authorized_date
+        ? new Date(plaidTxn.authorized_date)
+        : undefined;
+      transaction.amount = plaidTxn.amount;
+      transaction.type = type;
+      transaction.name = plaidTxn.name;
+      transaction.merchantName = plaidTxn.merchant_name || undefined;
+      transaction.plaidCategory = plaidTxn.category?.join(' > ') || undefined;
+      transaction.plaidCategoryId = plaidTxn.category_id || undefined;
+      transaction.plaidPersonalFinanceCategory = personalFinanceCategory;
+      transaction.pending = plaidTxn.pending;
+      transaction.paymentChannel = plaidTxn.payment_channel || undefined;
+      transaction.transactionCode = plaidTxn.transaction_code || undefined;
+      transaction.locationCity = plaidTxn.location?.city || undefined;
+      transaction.locationRegion = plaidTxn.location?.region || undefined;
+      transaction.locationCountry = plaidTxn.location?.country || undefined;
+      transaction.isoCurrencyCode =
+        plaidTxn.iso_currency_code ||
+        plaidTxn.unofficial_currency_code ||
+        'CAD';
+    } else {
+      // Create new transaction
+      transaction = this._transactionRepository.create({
+        plaidTransactionId: plaidTxn.transaction_id,
+        account: account,
+        date: plaidTxn.date,
+        authorizedDate: plaidTxn.authorized_date
+          ? new Date(plaidTxn.authorized_date)
+          : undefined,
+        amount: plaidTxn.amount,
+        type: type,
+        name: plaidTxn.name,
+        merchantName: plaidTxn.merchant_name || undefined,
+        plaidCategory: plaidTxn.category?.join(' > ') || undefined,
+        plaidCategoryId: plaidTxn.category_id || undefined,
+        plaidPersonalFinanceCategory: personalFinanceCategory,
+        pending: plaidTxn.pending,
+        isReviewed: false,
+        paymentChannel: plaidTxn.payment_channel || undefined,
+        transactionCode: plaidTxn.transaction_code || undefined,
+        locationCity: plaidTxn.location?.city || undefined,
+        locationRegion: plaidTxn.location?.region || undefined,
+        locationCountry: plaidTxn.location?.country || undefined,
+        isoCurrencyCode:
+          plaidTxn.iso_currency_code ||
+          plaidTxn.unofficial_currency_code ||
+          'CAD',
+        tags: [],
+        user: { id: userId } as any,
+      });
+    }
+
+    await this._transactionRepository.save(transaction);
+  }
+
+  /**
+   * Remove a transaction that Plaid says was removed
+   */
+  private async removeTransaction(
+    removedTxn: RemovedTransaction,
+    userId: string
+  ): Promise<void> {
+    const transaction = await this._transactionRepository.findOne({
+      where: {
+        plaidTransactionId: removedTxn.transaction_id,
+        user: { id: userId },
+      },
+    });
+
+    if (transaction) {
+      await this._transactionRepository.remove(transaction);
+    }
+  }
+
+  /**
+   * Detect transfers between accounts
+   * This looks for matching transactions on the same date with opposite amounts
+   */
+  async detectTransfers(userId: string): Promise<number> {
+    // Find transactions that look like transfers (not already linked)
+    const potentialTransfers = await this._transactionRepository
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.account', 'account')
+      .where('t.user.id = :userId', { userId })
+      .andWhere('t.linkedTransferId IS NULL')
+      .andWhere('t.type = :type', { type: TransactionType.TRANSFER })
+      .orderBy('t.date', 'ASC')
+      .getMany();
+
+    let linkedCount = 0;
+
+    for (const txn of potentialTransfers) {
+      // Look for a matching transaction on the same date with opposite amount
+      // in a different account
+      const match = await this._transactionRepository
+        .createQueryBuilder('t')
+        .leftJoinAndSelect('t.account', 'account')
+        .where('t.user.id = :userId', { userId })
+        .andWhere('t.id != :txnId', { txnId: txn.id })
+        .andWhere('t.linkedTransferId IS NULL')
+        .andWhere('t.date = :date', { date: txn.date })
+        .andWhere('t.amount = :amount', { amount: -txn.amount })
+        .andWhere('account.id != :accountId', { accountId: txn.account.id })
+        .getOne();
+
+      if (match) {
+        // Link the two transactions
+        txn.linkedTransferId = match.id;
+        match.linkedTransferId = txn.id;
+        await this._transactionRepository.save([txn, match]);
+        linkedCount++;
+      }
+    }
+
+    return linkedCount;
+  }
+
+  /**
+   * Determine transaction type based on Plaid data
+   */
+  private determineTransactionType(
+    plaidTxn: PlaidTransaction
+  ): TransactionType {
+    // Check if it's a transfer based on category or name
+    const isTransfer =
+      plaidTxn.category?.includes('Transfer') ||
+      plaidTxn.personal_finance_category?.primary === 'TRANSFER_IN' ||
+      plaidTxn.personal_finance_category?.primary === 'TRANSFER_OUT' ||
+      plaidTxn.name.toLowerCase().includes('transfer') ||
+      plaidTxn.name.toLowerCase().includes('e-transfer');
+
+    if (isTransfer) {
+      return TransactionType.TRANSFER;
+    }
+
+    // Plaid: positive = money out (expense), negative = money in (income)
+    return plaidTxn.amount > 0
+      ? TransactionType.EXPENSE
+      : TransactionType.INCOME;
+  }
+
+  /**
+   * Map Plaid account type to our enum
+   */
+  private mapAccountType(plaidType: string): AccountType {
+    switch (plaidType.toLowerCase()) {
+      case 'depository':
+        return AccountType.DEPOSITORY;
+      case 'credit':
+        return AccountType.CREDIT;
+      case 'loan':
+        return AccountType.LOAN;
+      case 'investment':
+        return AccountType.INVESTMENT;
+      case 'brokerage':
+        return AccountType.BROKERAGE;
+      default:
+        return AccountType.OTHER;
+    }
+  }
+
+  /**
+   * Get all Plaid items for a user
+   */
+  async getItems(userId: string): Promise<PlaidItem[]> {
+    return this._plaidItemRepository.find({
+      where: { user: { id: userId } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Get a specific Plaid item
+   */
+  async getItem(itemId: string, userId: string): Promise<PlaidItem | null> {
+    return this._plaidItemRepository.findOne({
+      where: { id: itemId, user: { id: userId } },
+    });
+  }
+
+  /**
+   * Remove a Plaid item (disconnect bank)
+   */
+  async removeItem(itemId: string, userId: string): Promise<void> {
+    const plaidItem = await this._plaidItemRepository.findOne({
+      where: { id: itemId, user: { id: userId } },
+    });
+
+    if (!plaidItem) {
+      throw new HttpErrors.NotFound('Plaid item not found');
+    }
+
+    try {
+      // Remove from Plaid
+      await this._plaidClient.itemRemove({
+        access_token: plaidItem.accessToken,
+      });
+    } catch (error) {
+      console.warn('Failed to remove item from Plaid:', error);
+      // Continue with local removal even if Plaid call fails
+    }
+
+    // Cascade will remove accounts and transactions
+    await this._plaidItemRepository.remove(plaidItem);
+  }
+
+  /**
+   * Get sync logs for a user
+   */
+  async getSyncLogs(userId: string, limit: number = 20): Promise<SyncLog[]> {
+    return this._syncLogRepository.find({
+      where: { user: { id: userId } },
+      relations: { plaidItem: true },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+  }
+
+  /**
+   * Sync all items for a user
+   */
+  async syncAllItems(userId: string): Promise<Map<string, SyncResult>> {
+    const items = await this.getItems(userId);
+    const results = new Map<string, SyncResult>();
+
+    for (const item of items) {
+      if (item.status === PlaidItemStatus.ACTIVE) {
+        try {
+          const result = await this.syncTransactions(
+            item.id,
+            userId,
+            SyncType.MANUAL
+          );
+          results.set(item.id, result);
+        } catch (error: any) {
+          console.error(`Failed to sync item ${item.id}:`, error);
+          results.set(item.id, {
+            added: 0,
+            modified: 0,
+            removed: 0,
+            accountsUpdated: 0,
+            hasMore: false,
+          });
+        }
+      }
+    }
+
+    return results;
+  }
+}

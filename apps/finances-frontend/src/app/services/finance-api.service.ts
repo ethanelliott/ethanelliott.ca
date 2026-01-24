@@ -1,94 +1,191 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
-export interface Account {
+// ==================== Plaid Types ====================
+
+export enum PlaidItemStatus {
+  ACTIVE = 'ACTIVE',
+  ERROR = 'ERROR',
+  PENDING_EXPIRATION = 'PENDING_EXPIRATION',
+  REVOKED = 'REVOKED',
+}
+
+export interface PlaidItem {
   id: string;
-  name: string;
-  description?: string;
-  initialBalance: number;
-  currentBalance?: number;
-  totalIncome?: number;
-  totalExpenses?: number;
-  transfersIn?: number;
-  transfersOut?: number;
-  currency: string;
-  timestamp: Date;
+  itemId: string;
+  institutionId: string | null;
+  institutionName: string | null;
+  institutionLogo: string | null;
+  institutionColor: string | null;
+  status: PlaidItemStatus;
+  lastSyncAt: Date | null;
+  lastError: string | null;
+  consentExpiresAt: Date | null;
+  createdAt: Date;
   updatedAt: Date;
 }
 
-export interface AccountInput {
+export interface LinkTokenResponse {
+  linkToken: string;
+  expiration: string;
+}
+
+export interface ExchangeTokenResponse {
+  success: boolean;
+  item: PlaidItem;
+}
+
+export interface SyncResult {
+  added: number;
+  modified: number;
+  removed: number;
+  accountsUpdated: number;
+}
+
+export interface SyncLog {
+  id: string;
+  plaidItemId: string;
+  institutionName: string | null;
+  syncType: string;
+  status: string;
+  transactionsAdded: number;
+  transactionsModified: number;
+  transactionsRemoved: number;
+  accountsUpdated: number;
+  error: string | null;
+  durationMs: number | null;
+  createdAt: Date;
+}
+
+// ==================== Account Types ====================
+
+export enum AccountType {
+  DEPOSITORY = 'depository',
+  CREDIT = 'credit',
+  LOAN = 'loan',
+  INVESTMENT = 'investment',
+  BROKERAGE = 'brokerage',
+  OTHER = 'other',
+}
+
+export interface Account {
+  id: string;
+  plaidAccountId: string;
+  plaidItemId: string;
+  institutionName: string | null;
+  institutionLogo: string | null;
+  institutionColor: string | null;
   name: string;
-  description?: string;
-  initialBalance?: number;
-  currency?: string;
+  officialName: string | null;
+  type: AccountType;
+  subtype: string | null;
+  mask: string | null;
+  currentBalance: number | null;
+  availableBalance: number | null;
+  limitAmount: number | null;
+  isoCurrencyCode: string;
+  lastBalanceUpdate: Date | null;
+  isVisible: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AccountsByInstitution {
+  institutionId: string | null;
+  institutionName: string;
+  institutionLogo: string | null;
+  institutionColor: string | null;
+  accounts: Account[];
+  totalBalance: number;
 }
 
 export interface AccountSummary {
   totalAccounts: number;
+  visibleAccounts: number;
   totalBalance: number;
+  totalAvailable: number;
+  byType: Record<string, { count: number; balance: number }>;
+}
+
+// ==================== Transaction Types ====================
+
+export enum TransactionType {
+  INCOME = 'INCOME',
+  EXPENSE = 'EXPENSE',
+  TRANSFER = 'TRANSFER',
 }
 
 export interface Transaction {
   id: string;
-  type: 'INCOME' | 'EXPENSE';
-  account: {
-    id: string;
-    name: string;
-  };
+  plaidTransactionId: string;
+  accountId: string;
+  accountName: string;
+  institutionName: string | null;
   date: string;
+  authorizedDate: Date | null;
   amount: number;
-  category: string;
+  type: TransactionType;
+  name: string;
+  merchantName: string | null;
+  plaidCategory: string | null;
+  plaidPersonalFinanceCategory: string | null;
+  category: string | null;
+  categoryColor: string | null;
   tags: string[];
-  description: string;
-  timestamp: Date;
+  notes: string | null;
+  pending: boolean;
+  isReviewed: boolean;
+  linkedTransferId: string | null;
+  paymentChannel: string | null;
+  locationCity: string | null;
+  locationRegion: string | null;
+  isoCurrencyCode: string;
+  createdAt: Date;
   updatedAt: Date;
 }
 
-export interface TransactionInput {
-  type: 'INCOME' | 'EXPENSE';
-  account: string; // UUID
-  date: string;
-  amount: number;
-  category: string; // Category name
-  tags: string[]; // Tag names
-  description: string;
+export interface TransactionUpdate {
+  category?: string | null;
+  tags?: string[];
+  notes?: string | null;
+  isReviewed?: boolean;
 }
 
-export interface Transfer {
-  id: string;
-  transferType: string;
-  date: string;
-  amount: number;
-  description: string;
-  timestamp: Date;
-  updatedAt: Date;
-  fromAccount: {
-    id: string;
-    name: string;
-  };
-  toAccount: {
-    id: string;
-    name: string;
-  };
-  category?: string;
+export interface TransactionFilters {
+  accountId?: string;
+  categoryId?: string;
+  type?: TransactionType;
+  isReviewed?: boolean;
+  isPending?: boolean;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  hasLinkedTransfer?: boolean;
 }
 
-export interface TransferInput {
-  transferType: string;
-  fromAccountId: string;
-  toAccountId: string;
-  date: string;
-  amount: number;
-  description: string;
+export interface TransactionStats {
+  totalTransactions: number;
+  unreviewedCount: number;
+  totalIncome: number;
+  totalExpenses: number;
+  totalTransfers: number;
+  byCategory: Array<{ category: string; amount: number; count: number }>;
 }
+
+// ==================== Category Types ====================
 
 export interface Category {
   id: string;
   name: string;
-  description?: string;
-  color?: string;
-  timestamp: Date;
+  description: string | null;
+  color: string | null;
+  icon: string | null;
+  plaidCategoryMapping: string | null;
+  sortOrder: number;
+  isSystem: boolean;
+  createdAt: Date;
   updatedAt: Date;
 }
 
@@ -96,15 +193,23 @@ export interface CategoryInput {
   name: string;
   description?: string;
   color?: string;
+  icon?: string;
 }
+
+export interface CategoryUsage {
+  categoryId: string;
+  name: string;
+  transactionCount: number;
+}
+
+// ==================== Tag Types ====================
 
 export interface Tag {
   id: string;
   name: string;
-  description?: string;
-  color?: string;
-  isActive?: boolean;
-  timestamp: Date;
+  description: string | null;
+  color: string | null;
+  createdAt: Date;
   updatedAt: Date;
 }
 
@@ -112,136 +217,64 @@ export interface TagInput {
   name: string;
   description?: string;
   color?: string;
-  isActive?: boolean;
 }
 
-// Overview interfaces
-export interface AccountBalance {
-  accountId: string;
-  accountName: string;
-  initialBalance: number;
-  currentBalance: number;
+export interface TagUsage {
+  tagId: string;
+  name: string;
+  transactionCount: number;
+}
+
+// ==================== Overview Types ====================
+
+export interface NetWorthSummary {
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+  accountBreakdown: Array<{
+    accountId: string;
+    accountName: string;
+    institutionName: string | null;
+    type: string;
+    balance: number;
+    isAsset: boolean;
+  }>;
+}
+
+export interface SpendingSummary {
   totalIncome: number;
   totalExpenses: number;
-  transfersIn: number;
-  transfersOut: number;
+  netCashFlow: number;
+  byCategory: Array<{
+    category: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }>;
+  byDay: Array<{
+    date: string;
+    income: number;
+    expenses: number;
+  }>;
 }
 
-export interface CategoryInsight {
-  category: string;
-  totalSpent: number;
-  transactionCount: number;
-  averageTransaction: number;
-  monthlyTrend: 'increasing' | 'decreasing' | 'stable';
-  percentOfTotalExpenses: number;
+export interface DashboardSummary {
+  netWorth: NetWorthSummary;
+  spending: SpendingSummary;
+  unreviewedCount: number;
+  pendingCount: number;
+  lastSyncAt: Date | null;
+  connectedBanks: number;
 }
 
-export interface MonthlyBreakdown {
+export interface MonthlyTrend {
   month: string;
-  year: number;
-  totalIncome: number;
-  totalExpenses: number;
-  netCashFlow: number;
-  transferVolume: number;
-  transactionCount: number;
-  transferCount: number;
-  netWorthChange: number;
-}
-
-export interface AllTimeOverview {
-  currentNetWorth: number;
-  totalAccountBalance: number;
-  totalIncome: number;
-  totalExpenses: number;
-  netCashFlow: number;
-  totalTransferVolume: number;
-  accountCount: number;
-  accountBalances: AccountBalance[];
-  transactionCount: number;
-  transferCount: number;
-  firstTransactionDate: string | null;
-  lastTransactionDate: string | null;
-  daysSinceFirstTransaction: number;
-  topExpenseCategories: CategoryInsight[];
-  monthlyBreakdowns: MonthlyBreakdown[];
-  averageMonthlyIncome: number;
-  averageMonthlyExpenses: number;
-  expenseToIncomeRatio: number;
-  savingsRate: number;
-}
-
-export interface DailyBreakdown {
-  day: number;
   income: number;
   expenses: number;
-  transfers: number;
-}
-
-export interface WeeklyBreakdown {
-  week: number;
-  income: number;
-  expenses: number;
-  transfers: number;
-}
-
-export interface CategoryBreakdown {
-  category: string;
-  amount: number;
-  transactionCount: number;
-  percentOfTotal: number;
-}
-
-export interface AccountActivity {
-  accountId: string;
-  accountName: string;
-  income: number;
-  expenses: number;
-  transfersIn: number;
-  transfersOut: number;
-  netChange: number;
-}
-
-export interface MonthlyComparison {
-  incomeChange: number;
-  expenseChange: number;
-  netCashFlowChange: number;
-  transactionCountChange: number;
-}
-
-export interface MonthlyHabitsOverview {
-  month: number;
-  year: number;
-  totalIncome: number;
-  totalExpenses: number;
   netCashFlow: number;
-  totalTransferVolume: number;
-  transfersIn: number;
-  transfersOut: number;
-  transactionCount: number;
-  transferCount: number;
-  averageTransactionSize: number;
-  dailyBreakdown: DailyBreakdown[];
-  weeklyBreakdown: WeeklyBreakdown[];
-  categoryBreakdown: CategoryBreakdown[];
-  accountActivity: AccountActivity[];
-  comparison: MonthlyComparison;
 }
 
-export interface NetWorthData {
-  currentNetWorth: number;
-  totalAccountBalance: number;
-  accountBalances: AccountBalance[];
-  lastUpdated: string;
-}
-
-export interface FinancialHealthScore {
-  healthScore: number;
-  savingsRate: number;
-  expenseToIncomeRatio: number;
-  averageMonthlyIncome: number;
-  averageMonthlyExpenses: number;
-  recommendations: string[];
-}
+// ==================== User Types ====================
 
 export interface User {
   id: string;
@@ -258,15 +291,101 @@ export interface User {
 })
 export class FinanceApiService {
   private readonly _http = inject(HttpClient);
-  private readonly baseUrl = 'https://finances-service.elliott.haus';
+  private readonly baseUrl = environment.apiUrl;
 
-  // Accounts
-  getAllAccounts(): Observable<Account[]> {
-    return this._http.get<Account[]>(`${this.baseUrl}/finances/accounts`);
+  // ==================== Plaid ====================
+
+  getPlaidStatus(): Observable<{ configured: boolean; environment: string }> {
+    return this._http.get<{ configured: boolean; environment: string }>(
+      `${this.baseUrl}/finances/plaid/status`
+    );
   }
 
-  getAccount(id: string): Observable<Account> {
-    return this._http.get<Account>(`${this.baseUrl}/finances/accounts/${id}`);
+  createLinkToken(): Observable<LinkTokenResponse> {
+    return this._http.post<LinkTokenResponse>(
+      `${this.baseUrl}/finances/plaid/link-token`,
+      {}
+    );
+  }
+
+  createUpdateLinkToken(itemId: string): Observable<LinkTokenResponse> {
+    return this._http.post<LinkTokenResponse>(
+      `${this.baseUrl}/finances/plaid/link-token/${itemId}`,
+      {}
+    );
+  }
+
+  exchangeToken(
+    publicToken: string,
+    institutionId?: string,
+    institutionName?: string
+  ): Observable<ExchangeTokenResponse> {
+    return this._http.post<ExchangeTokenResponse>(
+      `${this.baseUrl}/finances/plaid/exchange-token`,
+      { publicToken, institutionId, institutionName }
+    );
+  }
+
+  getPlaidItems(): Observable<PlaidItem[]> {
+    return this._http.get<PlaidItem[]>(`${this.baseUrl}/finances/plaid/items`);
+  }
+
+  getPlaidItem(itemId: string): Observable<PlaidItem> {
+    return this._http.get<PlaidItem>(
+      `${this.baseUrl}/finances/plaid/items/${itemId}`
+    );
+  }
+
+  removePlaidItem(itemId: string): Observable<{ success: boolean }> {
+    return this._http.delete<{ success: boolean }>(
+      `${this.baseUrl}/finances/plaid/items/${itemId}`
+    );
+  }
+
+  syncItem(itemId: string): Observable<SyncResult> {
+    return this._http.post<SyncResult>(
+      `${this.baseUrl}/finances/plaid/items/${itemId}/sync`,
+      {}
+    );
+  }
+
+  syncAllItems(): Observable<{
+    success: boolean;
+    results: Record<string, SyncResult>;
+  }> {
+    return this._http.post<{
+      success: boolean;
+      results: Record<string, SyncResult>;
+    }>(`${this.baseUrl}/finances/plaid/sync-all`, {});
+  }
+
+  getSyncLogs(limit?: number): Observable<SyncLog[]> {
+    let params = new HttpParams();
+    if (limit) {
+      params = params.set('limit', limit.toString());
+    }
+    return this._http.get<SyncLog[]>(
+      `${this.baseUrl}/finances/plaid/sync-logs`,
+      { params }
+    );
+  }
+
+  // ==================== Accounts ====================
+
+  getAllAccounts(visibleOnly = false): Observable<Account[]> {
+    let params = new HttpParams();
+    if (visibleOnly) {
+      params = params.set('visibleOnly', 'true');
+    }
+    return this._http.get<Account[]>(`${this.baseUrl}/finances/accounts`, {
+      params,
+    });
+  }
+
+  getAccountsByInstitution(): Observable<AccountsByInstitution[]> {
+    return this._http.get<AccountsByInstitution[]>(
+      `${this.baseUrl}/finances/accounts/by-institution`
+    );
   }
 
   getAccountSummary(): Observable<AccountSummary> {
@@ -275,34 +394,50 @@ export class FinanceApiService {
     );
   }
 
-  createAccount(account: AccountInput): Observable<Account> {
-    return this._http.post<Account>(
-      `${this.baseUrl}/finances/accounts`,
-      account
-    );
+  getAccount(id: string): Observable<Account> {
+    return this._http.get<Account>(`${this.baseUrl}/finances/accounts/${id}`);
   }
 
-  updateAccount(id: string, account: AccountInput): Observable<Account> {
-    return this._http.put<Account>(
+  updateAccountVisibility(id: string, isVisible: boolean): Observable<Account> {
+    return this._http.patch<Account>(
       `${this.baseUrl}/finances/accounts/${id}`,
-      account
+      { isVisible }
     );
   }
 
-  deleteAccount(id: string): Observable<{ success: boolean }> {
-    return this._http.delete<{ success: boolean }>(
-      `${this.baseUrl}/finances/accounts/${id}`
-    );
-  }
+  // ==================== Transactions ====================
 
-  deleteAllAccounts(): Observable<any> {
-    return this._http.delete(`${this.baseUrl}/finances/accounts`);
-  }
-
-  // Transactions
-  getAllTransactions(): Observable<Transaction[]> {
+  getAllTransactions(filters?: TransactionFilters): Observable<Transaction[]> {
+    let params = new HttpParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params = params.set(key, value.toString());
+        }
+      });
+    }
     return this._http.get<Transaction[]>(
-      `${this.baseUrl}/finances/transactions`
+      `${this.baseUrl}/finances/transactions`,
+      { params }
+    );
+  }
+
+  getInboxTransactions(): Observable<Transaction[]> {
+    return this._http.get<Transaction[]>(
+      `${this.baseUrl}/finances/transactions/inbox`
+    );
+  }
+
+  getTransactionStats(
+    startDate?: string,
+    endDate?: string
+  ): Observable<TransactionStats> {
+    let params = new HttpParams();
+    if (startDate) params = params.set('startDate', startDate);
+    if (endDate) params = params.set('endDate', endDate);
+    return this._http.get<TransactionStats>(
+      `${this.baseUrl}/finances/transactions/stats`,
+      { params }
     );
   }
 
@@ -312,81 +447,55 @@ export class FinanceApiService {
     );
   }
 
-  createTransaction(transaction: TransactionInput): Observable<Transaction> {
-    return this._http.post<Transaction>(
-      `${this.baseUrl}/finances/transactions`,
-      transaction
-    );
-  }
-
   updateTransaction(
     id: string,
-    transaction: TransactionInput
+    update: TransactionUpdate
   ): Observable<Transaction> {
-    return this._http.put<Transaction>(
+    return this._http.patch<Transaction>(
       `${this.baseUrl}/finances/transactions/${id}`,
-      transaction
+      update
     );
   }
 
-  deleteTransaction(id: string): Observable<{ success: boolean }> {
-    return this._http.delete<{ success: boolean }>(
-      `${this.baseUrl}/finances/transactions/${id}`
+  markTransactionReviewed(id: string): Observable<Transaction> {
+    return this._http.post<Transaction>(
+      `${this.baseUrl}/finances/transactions/${id}/review`,
+      {}
     );
   }
 
-  deleteAllTransactions(): Observable<{
-    success: boolean;
-    deletedCount: number;
-  }> {
-    return this._http.delete<{ success: boolean; deletedCount: number }>(
-      `${this.baseUrl}/finances/transactions`
+  getLinkedTransfer(id: string): Observable<Transaction | null> {
+    return this._http.get<Transaction | null>(
+      `${this.baseUrl}/finances/transactions/${id}/linked-transfer`
     );
   }
 
-  // Transfers
-  getAllTransfers(): Observable<Transfer[]> {
-    return this._http.get<Transfer[]>(`${this.baseUrl}/finances/transfers`);
-  }
-
-  getTransfer(id: string): Observable<Transfer> {
-    return this._http.get<Transfer>(`${this.baseUrl}/finances/transfers/${id}`);
-  }
-
-  createTransfer(transfer: TransferInput): Observable<Transfer> {
-    return this._http.post<Transfer>(
-      `${this.baseUrl}/finances/transfers`,
-      transfer
+  bulkReviewTransactions(
+    transactionIds: string[],
+    update?: { category?: string | null; tags?: string[] }
+  ): Observable<{ updated: number }> {
+    return this._http.post<{ updated: number }>(
+      `${this.baseUrl}/finances/transactions/bulk/review`,
+      { transactionIds, ...update }
     );
   }
 
-  updateTransfer(id: string, transfer: TransferInput): Observable<Transfer> {
-    return this._http.put<Transfer>(
-      `${this.baseUrl}/finances/transfers/${id}`,
-      transfer
+  bulkMarkReviewed(transactionIds: string[]): Observable<{ updated: number }> {
+    return this._http.post<{ updated: number }>(
+      `${this.baseUrl}/finances/transactions/bulk/mark-reviewed`,
+      { transactionIds }
     );
   }
 
-  deleteTransfer(id: string): Observable<{ success: boolean }> {
-    return this._http.delete<{ success: boolean }>(
-      `${this.baseUrl}/finances/transfers/${id}`
-    );
+  // ==================== Categories ====================
+
+  getAllCategories(): Observable<Category[]> {
+    return this._http.get<Category[]>(`${this.baseUrl}/finances/categories`);
   }
 
-  deleteAllTransfers(): Observable<{ success: boolean; deletedCount: number }> {
-    return this._http.delete<{ success: boolean; deletedCount: number }>(
-      `${this.baseUrl}/finances/transfers`
-    );
-  }
-
-  // Categories
-  getAllCategories(): Observable<string[]> {
-    return this._http.get<string[]>(`${this.baseUrl}/finances/categories`);
-  }
-
-  getCategory(name: string): Observable<Category> {
-    return this._http.get<Category>(
-      `${this.baseUrl}/finances/categories/${name}`
+  getCategoryUsage(): Observable<CategoryUsage[]> {
+    return this._http.get<CategoryUsage[]>(
+      `${this.baseUrl}/finances/categories/usage`
     );
   }
 
@@ -397,54 +506,105 @@ export class FinanceApiService {
     );
   }
 
-  updateCategory(name: string, category: CategoryInput): Observable<Category> {
-    return this._http.put<Category>(
-      `${this.baseUrl}/finances/categories/${name}`,
+  seedDefaultCategories(): Observable<{ created: number }> {
+    return this._http.post<{ created: number }>(
+      `${this.baseUrl}/finances/categories/seed-defaults`,
+      {}
+    );
+  }
+
+  getCategory(id: string): Observable<Category> {
+    return this._http.get<Category>(
+      `${this.baseUrl}/finances/categories/${id}`
+    );
+  }
+
+  updateCategory(
+    id: string,
+    category: Partial<CategoryInput>
+  ): Observable<Category> {
+    return this._http.patch<Category>(
+      `${this.baseUrl}/finances/categories/${id}`,
       category
     );
   }
 
-  deleteCategory(name: string): Observable<Category> {
-    return this._http.delete<Category>(
-      `${this.baseUrl}/finances/categories/${name}`
+  deleteCategory(id: string): Observable<{ success: boolean }> {
+    return this._http.delete<{ success: boolean }>(
+      `${this.baseUrl}/finances/categories/${id}`
     );
   }
 
-  deleteAllCategories(): Observable<{ deletedCount: number }> {
-    return this._http.delete<{ deletedCount: number }>(
-      `${this.baseUrl}/finances/categories`
-    );
+  // ==================== Tags ====================
+
+  getAllTags(): Observable<Tag[]> {
+    return this._http.get<Tag[]>(`${this.baseUrl}/finances/tags`);
   }
 
-  // Tags
-  getAllTags(): Observable<string[]> {
-    return this._http.get<string[]>(`${this.baseUrl}/finances/tags`);
-  }
-
-  getTag(name: string): Observable<Tag> {
-    return this._http.get<Tag>(`${this.baseUrl}/finances/tags/${name}`);
+  getTagUsage(): Observable<TagUsage[]> {
+    return this._http.get<TagUsage[]>(`${this.baseUrl}/finances/tags/usage`);
   }
 
   createTag(tag: TagInput): Observable<Tag> {
     return this._http.post<Tag>(`${this.baseUrl}/finances/tags`, tag);
   }
 
-  updateTag(name: string, tag: TagInput): Observable<Tag> {
-    return this._http.put<Tag>(`${this.baseUrl}/finances/tags/${name}`, tag);
+  getTag(id: string): Observable<Tag> {
+    return this._http.get<Tag>(`${this.baseUrl}/finances/tags/${id}`);
   }
 
-  deleteTag(name: string): Observable<Tag> {
-    return this._http.delete<Tag>(`${this.baseUrl}/finances/tags/${name}`);
+  updateTag(id: string, tag: Partial<TagInput>): Observable<Tag> {
+    return this._http.patch<Tag>(`${this.baseUrl}/finances/tags/${id}`, tag);
   }
 
-  deleteAllTags(): Observable<{ deletedCount: number }> {
-    return this._http.delete<{ deletedCount: number }>(
-      `${this.baseUrl}/finances/tags`
+  deleteTag(id: string): Observable<{ success: boolean }> {
+    return this._http.delete<{ success: boolean }>(
+      `${this.baseUrl}/finances/tags/${id}`
     );
   }
 
-  // User Profile
-  getProfile() {
+  // ==================== Overview ====================
+
+  getDashboard(): Observable<DashboardSummary> {
+    return this._http.get<DashboardSummary>(
+      `${this.baseUrl}/finances/overview/dashboard`
+    );
+  }
+
+  getNetWorth(): Observable<NetWorthSummary> {
+    return this._http.get<NetWorthSummary>(
+      `${this.baseUrl}/finances/overview/net-worth`
+    );
+  }
+
+  getSpending(startDate: string, endDate: string): Observable<SpendingSummary> {
+    const params = new HttpParams()
+      .set('startDate', startDate)
+      .set('endDate', endDate);
+    return this._http.get<SpendingSummary>(
+      `${this.baseUrl}/finances/overview/spending`,
+      { params }
+    );
+  }
+
+  getMonthlyTrends(months?: number): Observable<MonthlyTrend[]> {
+    let params = new HttpParams();
+    if (months) {
+      params = params.set('months', months.toString());
+    }
+    return this._http.get<MonthlyTrend[]>(
+      `${this.baseUrl}/finances/overview/monthly-trends`,
+      { params }
+    );
+  }
+
+  // ==================== User Profile ====================
+
+  getProfile(): Observable<{
+    success: boolean;
+    user: User;
+    credentials: Array<any>;
+  }> {
     return this._http.get<{
       success: boolean;
       user: User;
@@ -462,47 +622,12 @@ export class FinanceApiService {
     );
   }
 
-  // Auth
   logout(
     refreshToken?: string
   ): Observable<{ success: boolean; message: string }> {
     return this._http.post<{ success: boolean; message: string }>(
       `${this.baseUrl}/users/logout`,
       { refreshToken }
-    );
-  }
-
-  // Overview APIs
-  getAllTimeOverview(): Observable<AllTimeOverview> {
-    return this._http.get<AllTimeOverview>(
-      `${this.baseUrl}/finances/overview/all-time`
-    );
-  }
-
-  getMonthlyHabitsOverview(
-    year: number,
-    month: number
-  ): Observable<MonthlyHabitsOverview> {
-    return this._http.get<MonthlyHabitsOverview>(
-      `${this.baseUrl}/finances/overview/monthly/${year}/${month + 1}` // Convert from 0-based to 1-based month
-    );
-  }
-
-  getCurrentMonthOverview(): Observable<MonthlyHabitsOverview> {
-    return this._http.get<MonthlyHabitsOverview>(
-      `${this.baseUrl}/finances/overview/monthly/current`
-    );
-  }
-
-  getNetWorth(): Observable<NetWorthData> {
-    return this._http.get<NetWorthData>(
-      `${this.baseUrl}/finances/overview/net-worth`
-    );
-  }
-
-  getFinancialHealthScore(): Observable<FinancialHealthScore> {
-    return this._http.get<FinancialHealthScore>(
-      `${this.baseUrl}/finances/overview/health-score`
     );
   }
 }

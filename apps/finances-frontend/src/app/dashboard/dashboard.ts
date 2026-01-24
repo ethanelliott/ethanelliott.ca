@@ -57,22 +57,25 @@ import { map } from 'rxjs/operators';
               <mat-nav-list class="nav-list">
                 <a
                   mat-list-item
-                  routerLink="/dashboard/all-time"
+                  routerLink="/dashboard/overview"
                   routerLinkActive="active-link"
                   (click)="closeSidenavOnMobile()"
                 >
-                  <mat-icon matListItemIcon>trending_up</mat-icon>
-                  <span matListItemTitle>All-Time Overview</span>
+                  <mat-icon matListItemIcon>dashboard</mat-icon>
+                  <span matListItemTitle>Overview</span>
                 </a>
 
                 <a
                   mat-list-item
-                  routerLink="/dashboard/monthly-habits"
+                  routerLink="/dashboard/inbox"
                   routerLinkActive="active-link"
                   (click)="closeSidenavOnMobile()"
                 >
-                  <mat-icon matListItemIcon>calendar_month ></mat-icon>
-                  <span matListItemTitle>Monthly Habits</span>
+                  <mat-icon matListItemIcon>inbox</mat-icon>
+                  <span matListItemTitle>Inbox</span>
+                  @if (unreviewedCount() > 0) {
+                  <span class="badge">{{ unreviewedCount() }}</span>
+                  }
                 </a>
 
                 <a
@@ -85,16 +88,6 @@ import { map } from 'rxjs/operators';
                   <span matListItemTitle>Transactions</span>
                 </a>
 
-                <a
-                  mat-list-item
-                  routerLink="/dashboard/transfers"
-                  routerLinkActive="active-link"
-                  (click)="closeSidenavOnMobile()"
-                >
-                  <mat-icon matListItemIcon>swap_horiz</mat-icon>
-                  <span matListItemTitle>Transfers</span>
-                </a>
-
                 <div class="nav-section-title">Manage</div>
 
                 <a
@@ -103,7 +96,7 @@ import { map } from 'rxjs/operators';
                   routerLinkActive="active-link"
                   (click)="closeSidenavOnMobile()"
                 >
-                  <mat-icon matListItemIcon>account_balance_wallet</mat-icon>
+                  <mat-icon matListItemIcon>account_balance</mat-icon>
                   <span matListItemTitle>Accounts</span>
                 </a>
 
@@ -302,6 +295,18 @@ import { map } from 'rxjs/operators';
       opacity: 0.7;
     }
 
+    .badge {
+      margin-left: auto;
+      background: var(--mat-sys-error);
+      color: var(--mat-sys-on-error);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      min-width: 20px;
+      text-align: center;
+    }
+
     .active-link {
       background: linear-gradient(90deg, rgba(var(--mat-sys-primary-rgb), 0.2), rgba(var(--mat-sys-tertiary-rgb), 0.1)) !important;
       color: var(--mat-sys-primary) !important;
@@ -375,11 +380,22 @@ export class Dashboard implements OnInit {
   );
 
   currentPageTitle = signal('Dashboard');
+  unreviewedCount = signal(0);
 
   ngOnInit() {
     this.updatePageTitle();
     this.router.events.subscribe(() => {
       this.updatePageTitle();
+    });
+    this.loadUnreviewedCount();
+  }
+
+  private loadUnreviewedCount() {
+    this.apiService.getTransactionStats().subscribe({
+      next: (stats) => {
+        this.unreviewedCount.set(stats.unreviewedCount);
+      },
+      error: (err) => console.error('Failed to load unreviewed count', err),
     });
   }
 
@@ -391,14 +407,12 @@ export class Dashboard implements OnInit {
 
   private updatePageTitle() {
     const url = this.router.url;
-    if (url.includes('/all-time')) {
-      this.currentPageTitle.set('All-Time Overview');
-    } else if (url.includes('/monthly-habits')) {
-      this.currentPageTitle.set('Monthly Habits');
+    if (url.includes('/overview')) {
+      this.currentPageTitle.set('Overview');
+    } else if (url.includes('/inbox')) {
+      this.currentPageTitle.set('Inbox');
     } else if (url.includes('/transactions')) {
       this.currentPageTitle.set('Transactions');
-    } else if (url.includes('/transfers')) {
-      this.currentPageTitle.set('Transfers');
     } else if (url.includes('/accounts')) {
       this.currentPageTitle.set('Accounts');
     } else if (url.includes('/categories')) {

@@ -23,40 +23,28 @@ export const appRoutes: Route[] = [
     children: [
       {
         path: '',
-        redirectTo: 'all-time',
+        redirectTo: 'overview',
         pathMatch: 'full',
       },
       {
         path: 'overview',
-        redirectTo: 'all-time',
-        pathMatch: 'full',
-      },
-      {
-        path: 'all-time',
         loadComponent: () =>
-          import('./dashboard/overview/all-time-overview.component').then(
-            (m) => m.AllTimeOverviewComponent
+          import('./dashboard/overview/overview.component').then(
+            (m) => m.OverviewComponent
           ),
       },
       {
-        path: 'monthly-habits',
+        path: 'inbox',
         loadComponent: () =>
-          import(
-            './dashboard/overview/monthly-habits/monthly-habits.component'
-          ).then((m) => m.MonthlyHabitsComponent),
+          import('./dashboard/inbox/inbox.component').then(
+            (m) => m.InboxComponent
+          ),
       },
       {
         path: 'transactions',
         loadComponent: () =>
           import('./dashboard/transactions/transactions.component').then(
             (m) => m.TransactionsComponent
-          ),
-      },
-      {
-        path: 'transfers',
-        loadComponent: () =>
-          import('./dashboard/transfers/transfers.component').then(
-            (m) => m.TransfersComponent
           ),
       },
       {

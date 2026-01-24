@@ -161,30 +161,6 @@ export const UserStore = signalStore(
         )
       ),
 
-      // Delete all transactions
-      deleteAllTransactions: rxMethod<void>(
-        pipe(
-          switchMap(() =>
-            apiService.deleteAllTransactions().pipe(
-              tap((result) => {
-                snackBar.open(
-                  `Successfully deleted ${result.deletedCount} transactions`,
-                  'Close',
-                  { duration: 5000 }
-                );
-              }),
-              catchError((error) => {
-                console.error('Error deleting transactions:', error);
-                snackBar.open('Error deleting transactions', 'Close', {
-                  duration: 3000,
-                });
-                return EMPTY;
-              })
-            )
-          )
-        )
-      ),
-
       // Logout user
       logout: rxMethod<string | undefined>(
         pipe(

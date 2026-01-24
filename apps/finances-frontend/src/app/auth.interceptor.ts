@@ -5,6 +5,7 @@ import {
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { environment } from '../environments/environment';
 import {
   BehaviorSubject,
   catchError,
@@ -16,7 +17,9 @@ import {
 
 // Global state to manage token refresh
 let isRefreshing = false;
-const refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+const refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(
+  null
+);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // Inject dependencies at the function level (within injection context)
@@ -76,7 +79,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
           return http
             .post<{ accessToken: string; refreshToken: string }>(
-              'https://finances-service.elliott.haus/users/token/refresh',
+              `${environment.apiUrl}/users/token/refresh`,
               {
                 refreshToken,
               }

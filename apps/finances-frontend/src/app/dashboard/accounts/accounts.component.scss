@@ -43,92 +43,99 @@
     @include loading-container;
   }
 
+  // Summary Grid
   .summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-2xl);
+
+    @media (max-width: 992px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 600px) {
+      grid-template-columns: 1fr;
+    }
 
     .summary-card {
       @include dashboard-card;
       padding: var(--spacing-xl);
-      background: linear-gradient(
-        135deg,
-        rgba(var(--mat-sys-primary-rgb), 0.15) 0%,
-        rgba(var(--mat-sys-secondary-rgb), 0.05) 100%
-      );
-      border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.3);
-      position: relative;
-      overflow: hidden;
 
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 200px;
-        height: 200px;
-        background: radial-gradient(
-          circle,
-          rgba(var(--mat-sys-primary-rgb), 0.1),
-          transparent
-        );
-        pointer-events: none;
-      }
+      mat-card-header {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+        padding: 0;
 
-      &.total-balance {
-        mat-card-header {
+        .summary-icon {
           display: flex;
           align-items: center;
-          gap: var(--spacing-lg);
-          margin-bottom: var(--spacing-lg);
+          justify-content: center;
+          width: 48px;
+          height: 48px;
+          border-radius: var(--border-radius-lg);
 
-          .summary-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 64px;
-            height: 64px;
-            background: var(--mat-sys-primary);
-            border-radius: var(--border-radius-xl);
-            box-shadow: 0 8px 24px rgba(var(--mat-sys-primary-rgb), 0.3);
+          mat-icon {
+            font-size: 1.5rem;
+            width: 1.5rem;
+            height: 1.5rem;
+          }
 
+          &.assets {
+            background: rgba(var(--mat-sys-primary-rgb), 0.2);
             mat-icon {
-              color: var(--mat-sys-on-primary);
-              font-size: 2rem;
-              width: 2rem;
-              height: 2rem;
+              color: var(--mat-sys-primary);
             }
           }
 
-          .summary-info {
-            mat-card-title {
-              font-size: 1.3rem;
-              font-weight: 700;
-              margin: 0;
-              color: var(--mat-sys-on-surface);
+          &.liabilities {
+            background: rgba(var(--mat-sys-error-rgb), 0.2);
+            mat-icon {
+              color: var(--mat-sys-error);
             }
+          }
 
-            mat-card-subtitle {
-              font-size: 0.95rem;
-              color: var(--mat-sys-on-surface-variant);
-              opacity: 0.9;
-              margin: 4px 0 0 0;
+          &.net-worth {
+            background: rgba(var(--mat-sys-tertiary-rgb), 0.2);
+            mat-icon {
+              color: var(--mat-sys-tertiary);
             }
           }
         }
 
-        .summary-value {
-          font-size: 2.8rem;
-          font-weight: 900;
+        .summary-info {
+          mat-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+          }
+
+          mat-card-subtitle {
+            font-size: 0.8rem;
+            margin: 2px 0 0;
+          }
+        }
+      }
+
+      .summary-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+
+        &.positive {
           color: var(--mat-sys-primary);
-          text-shadow: 0 2px 8px rgba(var(--mat-sys-primary-rgb), 0.2);
-          letter-spacing: -0.03em;
+        }
+
+        &.negative {
+          color: var(--mat-sys-error);
         }
       }
     }
   }
 
+  // Empty state
   .empty-state-card {
     @include dashboard-card;
     margin-bottom: var(--spacing-lg);
@@ -148,12 +155,14 @@
 
       h3 {
         font-size: 1.5rem;
+        margin: 0 0 8px;
       }
 
       p {
         margin: 0 0 var(--spacing-xl) 0;
         max-width: 400px;
         font-size: 1rem;
+        color: var(--mat-sys-on-surface-variant);
       }
 
       .get-started-button {
@@ -162,205 +171,274 @@
     }
   }
 
-  .accounts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  // Institutions Grid
+  .institutions-grid {
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
 
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-    }
-
-    .account-card {
+    .institution-card {
       @include dashboard-card;
-      padding: 0;
       overflow: hidden;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-      &:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
-        border-color: rgba(var(--mat-sys-primary-rgb), 0.5);
-      }
 
       mat-card-header {
-        background: rgba(255, 255, 255, 0.04);
-        padding: var(--spacing-xl);
+        padding: var(--spacing-lg);
+        background: rgba(255, 255, 255, 0.03);
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
-        .account-avatar {
+        .institution-header {
           display: flex;
           align-items: center;
-          justify-content: center;
-          width: 56px;
-          height: 56px;
-          background: linear-gradient(
-            135deg,
-            var(--mat-sys-primary),
-            var(--mat-sys-tertiary)
-          );
-          border-radius: var(--border-radius-lg);
-          margin-right: var(--spacing-lg);
-          box-shadow: 0 6px 16px rgba(var(--mat-sys-primary-rgb), 0.3);
+          justify-content: space-between;
+          width: 100%;
 
-          mat-icon {
-            color: var(--mat-sys-on-primary);
-            font-size: 1.75rem;
-            width: 1.75rem;
-            height: 1.75rem;
+          .institution-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+
+            .institution-logo {
+              width: 48px;
+              height: 48px;
+              border-radius: var(--border-radius-md);
+              object-fit: contain;
+              background: white;
+              padding: 4px;
+            }
+
+            .institution-logo-placeholder {
+              width: 48px;
+              height: 48px;
+              border-radius: var(--border-radius-md);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+
+              mat-icon {
+                color: white;
+              }
+            }
+
+            .institution-details {
+              mat-card-title {
+                font-size: 1.2rem;
+                font-weight: 700;
+                margin: 0;
+              }
+
+              mat-card-subtitle {
+                margin: 4px 0 0;
+              }
+            }
           }
-        }
 
-        .account-header-content {
-          flex: 1;
+          .institution-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
 
-          .account-name {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin: 0 0 6px 0;
-            color: var(--mat-sys-on-surface);
-            letter-spacing: -0.01em;
-          }
-
-          .account-currency {
-            font-size: 0.95rem;
-            color: var(--mat-sys-primary);
-            font-weight: 700;
-            margin: 0;
-            padding: 4px 12px;
-            background: rgba(var(--mat-sys-primary-rgb), 0.15);
-            border-radius: var(--border-radius-md);
-            display: inline-block;
-          }
-        }
-
-        .account-status {
-          .status-icon {
-            font-size: 1.5rem;
-            width: 1.5rem;
-            height: 1.5rem;
-            color: var(--mat-sys-tertiary);
+            .institution-total {
+              font-size: 1.25rem;
+              font-weight: 700;
+              font-variant-numeric: tabular-nums;
+            }
           }
         }
       }
 
       mat-card-content {
-        padding: var(--spacing-lg);
+        padding: var(--spacing-md);
 
-        .account-description {
-          font-size: 0.9rem;
-          color: var(--mat-sys-on-surface-variant);
-          margin-bottom: var(--spacing-lg);
-          line-height: 1.5;
-          font-style: italic;
-        }
-
-        .balance-section {
-          margin-bottom: var(--spacing-lg);
-
-          .current-balance {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xs);
-            padding: var(--spacing-md);
-            background: rgba(var(--mat-sys-primary-rgb), 0.1);
-            border-radius: var(--border-radius-md);
-            margin-bottom: var(--spacing-md);
-            border: 1px solid rgba(var(--mat-sys-primary-rgb), 0.2);
-
-            .balance-label {
-              font-size: 0.8rem;
-              color: var(--mat-sys-primary);
-              font-weight: 600;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-
-            .balance-amount {
-              font-size: 1.8rem;
-              font-weight: 800;
-              color: var(--mat-sys-on-surface);
-              display: flex;
-              align-items: baseline;
-              gap: 8px;
-
-              .currency {
-                font-size: 1rem;
-                font-weight: 600;
-                color: var(--mat-sys-on-surface-variant);
-              }
-            }
-          }
-
-          .balance-breakdown {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: var(--border-radius-md);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-
-            .breakdown-item {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              padding: 8px 0;
-              font-size: 0.9rem;
-
-              &:not(:last-child) {
-                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-              }
-
-              .breakdown-label {
-                color: var(--mat-sys-on-surface-variant);
-                font-weight: 500;
-              }
-
-              .breakdown-value {
-                font-weight: 600;
-                color: var(--mat-sys-on-surface);
-              }
-
-              &.positive .breakdown-value {
-                color: var(--success-color);
-              }
-
-              &.negative .breakdown-value {
-                color: var(--error-color);
-              }
-            }
-          }
-        }
-
-        .account-meta {
+        .accounts-list {
           display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          font-size: 0.8rem;
-          color: var(--mat-sys-on-surface-variant);
-          padding: var(--spacing-sm);
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: var(--border-radius-sm);
+          flex-direction: column;
 
-          mat-icon {
-            font-size: 1rem;
-            width: 1rem;
-            height: 1rem;
+          .account-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius-md);
+            transition: background 0.2s ease;
+
+            &:hover {
+              background: rgba(255, 255, 255, 0.03);
+            }
+
+            &.hidden {
+              opacity: 0.5;
+            }
+
+            .account-icon {
+              width: 40px;
+              height: 40px;
+              border-radius: var(--border-radius-md);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              flex-shrink: 0;
+
+              &.depository {
+                background: rgba(var(--mat-sys-primary-rgb), 0.2);
+                mat-icon {
+                  color: var(--mat-sys-primary);
+                }
+              }
+
+              &.credit {
+                background: rgba(var(--mat-sys-error-rgb), 0.2);
+                mat-icon {
+                  color: var(--mat-sys-error);
+                }
+              }
+
+              &.loan {
+                background: rgba(var(--mat-sys-tertiary-rgb), 0.2);
+                mat-icon {
+                  color: var(--mat-sys-tertiary);
+                }
+              }
+
+              &.investment,
+              &.brokerage {
+                background: rgba(var(--mat-sys-secondary-rgb), 0.2);
+                mat-icon {
+                  color: var(--mat-sys-secondary);
+                }
+              }
+            }
+
+            .account-details {
+              flex: 1;
+              min-width: 0;
+
+              .account-name {
+                display: block;
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
+              .account-type {
+                display: block;
+                font-size: 0.8rem;
+                color: var(--mat-sys-on-surface-variant);
+                text-transform: capitalize;
+              }
+            }
+
+            .account-balance-section {
+              text-align: right;
+              margin-right: var(--spacing-md);
+
+              .account-balance {
+                font-size: 1.1rem;
+                font-weight: 700;
+                font-variant-numeric: tabular-nums;
+
+                &.positive {
+                  color: var(--mat-sys-primary);
+                }
+
+                &.negative {
+                  color: var(--mat-sys-error);
+                }
+              }
+
+              .account-available {
+                font-size: 0.75rem;
+                color: var(--mat-sys-on-surface-variant);
+              }
+            }
           }
-        }
-      }
-
-      mat-card-actions {
-        padding: var(--spacing-md) var(--spacing-lg);
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(255, 255, 255, 0.02);
-        display: flex;
-        justify-content: flex-end;
-        gap: var(--spacing-sm);
-
-        button {
-          border-radius: var(--border-radius-lg);
         }
       }
     }
+  }
+
+  // Sync Status Card
+  .sync-status-card {
+    @include dashboard-card;
+
+    mat-card-header {
+      padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
+
+      mat-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+    }
+
+    mat-card-content {
+      padding: 0 var(--spacing-lg) var(--spacing-lg);
+
+      .sync-info {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+
+        .sync-item {
+          padding: var(--spacing-md);
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: var(--border-radius-md);
+
+          .sync-item-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-bottom: 4px;
+
+            .sync-institution {
+              font-weight: 600;
+            }
+
+            .sync-status {
+              font-size: 0.75rem;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-weight: 600;
+              text-transform: uppercase;
+
+              &.status-active {
+                background: rgba(var(--mat-sys-primary-rgb), 0.2);
+                color: var(--mat-sys-primary);
+              }
+
+              &.status-error {
+                background: rgba(var(--mat-sys-error-rgb), 0.2);
+                color: var(--mat-sys-error);
+              }
+
+              &.status-warning {
+                background: rgba(255, 193, 7, 0.2);
+                color: #ffc107;
+              }
+            }
+          }
+
+          .sync-time {
+            font-size: 0.85rem;
+            color: var(--mat-sys-on-surface-variant);
+          }
+
+          .sync-error {
+            font-size: 0.8rem;
+            color: var(--mat-sys-error);
+            margin-top: 4px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Menu danger item
+::ng-deep .danger-item {
+  color: var(--mat-sys-error) !important;
+
+  mat-icon {
+    color: var(--mat-sys-error) !important;
   }
 }

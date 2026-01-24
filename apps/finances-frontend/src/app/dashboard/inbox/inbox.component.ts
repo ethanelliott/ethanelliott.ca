@@ -1,0 +1,570 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import {
+  FinanceApiService,
+  Transaction,
+  Category,
+  Tag,
+  TransactionType,
+} from '../../services/finance-api.service';
+
+@Component({
+  selector: 'app-inbox',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatChipsModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatCheckboxModule,
+    MatTooltipModule,
+    MatSnackBarModule,
+  ],
+  template: `
+    <div class="inbox-container">
+      @if (loading()) {
+      <div class="loading-container">
+        <mat-spinner diameter="48"></mat-spinner>
+        <p>Loading transactions to review...</p>
+      </div>
+      } @else if (transactions().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">check_circle</mat-icon>
+        <h2>All caught up!</h2>
+        <p>You have no transactions to review.</p>
+      </div>
+      } @else {
+      <div class="inbox-header">
+        <div class="header-info">
+          <h2>{{ transactions().length }} transactions to review</h2>
+          <p>Categorize and tag your new transactions</p>
+        </div>
+        <div class="header-actions">
+          @if (selectedIds().size > 0) {
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="bulkMarkReviewed()"
+            [disabled]="processingBulk()"
+          >
+            <mat-icon>done_all</mat-icon>
+            Mark {{ selectedIds().size }} as Reviewed
+          </button>
+          }
+          <button mat-stroked-button (click)="toggleSelectAll()">
+            {{ allSelected() ? 'Deselect All' : 'Select All' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="transaction-list">
+        @for (tx of transactions(); track tx.id) {
+        <mat-card
+          class="transaction-card"
+          [class.selected]="selectedIds().has(tx.id)"
+        >
+          <div class="card-checkbox">
+            <mat-checkbox
+              [checked]="selectedIds().has(tx.id)"
+              (change)="toggleSelection(tx.id)"
+            ></mat-checkbox>
+          </div>
+
+          <div class="card-main">
+            <div class="tx-header">
+              <div class="tx-info">
+                <span class="tx-date">{{
+                  tx.date | date : 'MMM d, yyyy'
+                }}</span>
+                <span class="tx-account">{{ tx.accountName }}</span>
+                @if (tx.institutionName) {
+                <span class="tx-institution">{{ tx.institutionName }}</span>
+                }
+              </div>
+              <div
+                class="tx-amount"
+                [class.income]="tx.type === TransactionType.INCOME"
+                [class.expense]="tx.type === TransactionType.EXPENSE"
+              >
+                {{
+                  tx.type === TransactionType.INCOME
+                    ? '+'
+                    : tx.type === TransactionType.EXPENSE
+                    ? '-'
+                    : ''
+                }}{{ formatCurrency(Math.abs(tx.amount)) }}
+              </div>
+            </div>
+
+            <div class="tx-details">
+              <div class="tx-name">{{ tx.merchantName || tx.name }}</div>
+              @if (tx.plaidPersonalFinanceCategory) {
+              <span
+                class="tx-plaid-category"
+                matTooltip="Plaid suggested category"
+              >
+                <mat-icon>auto_awesome</mat-icon>
+                {{ tx.plaidPersonalFinanceCategory }}
+              </span>
+              }
+            </div>
+
+            <div class="tx-actions">
+              <mat-form-field appearance="outline" class="category-select">
+                <mat-label>Category</mat-label>
+                <mat-select
+                  [value]="tx.category"
+                  (selectionChange)="updateCategory(tx, $event.value)"
+                >
+                  <mat-option [value]="null">No category</mat-option>
+                  @for (cat of categories(); track cat.id) {
+                  <mat-option [value]="cat.id">
+                    {{ cat.name }}
+                  </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="tags-select">
+                <mat-label>Tags</mat-label>
+                <mat-select
+                  multiple
+                  [value]="tx.tags"
+                  (selectionChange)="updateTags(tx, $event.value)"
+                >
+                  @for (tag of tags(); track tag.id) {
+                  <mat-option [value]="tag.id">
+                    {{ tag.name }}
+                  </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <button
+                mat-icon-button
+                color="primary"
+                matTooltip="Mark as reviewed"
+                (click)="markReviewed(tx)"
+                [disabled]="processingIds().has(tx.id)"
+              >
+                @if (processingIds().has(tx.id)) {
+                <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                <mat-icon>check</mat-icon>
+                }
+              </button>
+            </div>
+          </div>
+        </mat-card>
+        }
+      </div>
+      }
+    </div>
+  `,
+  styles: `
+    .inbox-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px;
+      gap: 16px;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 72px;
+      width: 72px;
+      height: 72px;
+      color: var(--mat-sys-primary);
+      margin-bottom: 16px;
+    }
+
+    .empty-state h2 {
+      margin: 0 0 8px;
+      color: var(--mat-sys-on-surface);
+    }
+
+    .empty-state p {
+      margin: 0;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .inbox-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-info h2 {
+      margin: 0 0 4px;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .header-info p {
+      margin: 0;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .transaction-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .transaction-card {
+      display: flex;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s ease;
+    }
+
+    .transaction-card:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .transaction-card.selected {
+      border-color: var(--mat-sys-primary);
+      background: rgba(var(--mat-sys-primary-rgb), 0.08);
+    }
+
+    .card-checkbox {
+      display: flex;
+      align-items: flex-start;
+      padding-right: 12px;
+    }
+
+    .card-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tx-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .tx-info {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .tx-account {
+      font-weight: 500;
+    }
+
+    .tx-amount {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tx-amount.income {
+      color: var(--mat-sys-primary);
+    }
+
+    .tx-amount.expense {
+      color: var(--mat-sys-error);
+    }
+
+    .tx-details {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .tx-name {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--mat-sys-on-surface);
+    }
+
+    .tx-plaid-category {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      color: var(--mat-sys-tertiary);
+      background: rgba(var(--mat-sys-tertiary-rgb), 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .tx-plaid-category mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+
+    .tx-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .category-select, .tags-select {
+      flex: 1;
+      max-width: 200px;
+    }
+
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .inbox-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .tx-actions {
+        flex-wrap: wrap;
+      }
+
+      .category-select, .tags-select {
+        max-width: 100%;
+        min-width: 140px;
+      }
+    }
+  `,
+})
+export class InboxComponent implements OnInit {
+  private readonly api = inject(FinanceApiService);
+  private readonly snackBar = inject(MatSnackBar);
+
+  readonly TransactionType = TransactionType;
+  readonly Math = Math;
+
+  transactions = signal<Transaction[]>([]);
+  categories = signal<Category[]>([]);
+  tags = signal<Tag[]>([]);
+  loading = signal(true);
+  processingIds = signal<Set<string>>(new Set());
+  processingBulk = signal(false);
+  selectedIds = signal<Set<string>>(new Set());
+
+  allSelected = computed(() => {
+    const txs = this.transactions();
+    const selected = this.selectedIds();
+    return txs.length > 0 && txs.every((tx) => selected.has(tx.id));
+  });
+
+  ngOnInit() {
+    this.loadData();
+  }
+
+  private loadData() {
+    this.loading.set(true);
+
+    // Load categories and tags first
+    this.api.getAllCategories().subscribe({
+      next: (cats) => this.categories.set(cats),
+      error: (err) => console.error('Failed to load categories', err),
+    });
+
+    this.api.getAllTags().subscribe({
+      next: (tags) => this.tags.set(tags),
+      error: (err) => console.error('Failed to load tags', err),
+    });
+
+    // Load inbox transactions
+    this.api.getInboxTransactions().subscribe({
+      next: (txs) => {
+        this.transactions.set(txs);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load inbox transactions', err);
+        this.loading.set(false);
+      },
+    });
+  }
+
+  toggleSelection(id: string) {
+    const current = new Set(this.selectedIds());
+    if (current.has(id)) {
+      current.delete(id);
+    } else {
+      current.add(id);
+    }
+    this.selectedIds.set(current);
+  }
+
+  toggleSelectAll() {
+    if (this.allSelected()) {
+      this.selectedIds.set(new Set());
+    } else {
+      this.selectedIds.set(new Set(this.transactions().map((tx) => tx.id)));
+    }
+  }
+
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency: 'CAD',
+    }).format(amount);
+  }
+
+  updateCategory(tx: Transaction, categoryId: string | null) {
+    const processing = new Set(this.processingIds());
+    processing.add(tx.id);
+    this.processingIds.set(processing);
+
+    this.api.updateTransaction(tx.id, { category: categoryId }).subscribe({
+      next: (updated) => {
+        this.updateTransactionInList(updated);
+        this.removeFromProcessing(tx.id);
+      },
+      error: (err) => {
+        console.error('Failed to update category', err);
+        this.snackBar.open('Failed to update category', 'Dismiss', {
+          duration: 3000,
+        });
+        this.removeFromProcessing(tx.id);
+      },
+    });
+  }
+
+  updateTags(tx: Transaction, tagIds: string[]) {
+    const processing = new Set(this.processingIds());
+    processing.add(tx.id);
+    this.processingIds.set(processing);
+
+    this.api.updateTransaction(tx.id, { tags: tagIds }).subscribe({
+      next: (updated) => {
+        this.updateTransactionInList(updated);
+        this.removeFromProcessing(tx.id);
+      },
+      error: (err) => {
+        console.error('Failed to update tags', err);
+        this.snackBar.open('Failed to update tags', 'Dismiss', {
+          duration: 3000,
+        });
+        this.removeFromProcessing(tx.id);
+      },
+    });
+  }
+
+  markReviewed(tx: Transaction) {
+    const processing = new Set(this.processingIds());
+    processing.add(tx.id);
+    this.processingIds.set(processing);
+
+    this.api.markTransactionReviewed(tx.id).subscribe({
+      next: () => {
+        this.transactions.update((txs) => txs.filter((t) => t.id !== tx.id));
+        this.removeFromProcessing(tx.id);
+        this.snackBar.open('Transaction marked as reviewed', 'Dismiss', {
+          duration: 2000,
+        });
+      },
+      error: (err) => {
+        console.error('Failed to mark as reviewed', err);
+        this.snackBar.open('Failed to mark as reviewed', 'Dismiss', {
+          duration: 3000,
+        });
+        this.removeFromProcessing(tx.id);
+      },
+    });
+  }
+
+  bulkMarkReviewed() {
+    const ids = Array.from(this.selectedIds());
+    if (ids.length === 0) return;
+
+    this.processingBulk.set(true);
+
+    this.api.bulkMarkReviewed(ids).subscribe({
+      next: (result) => {
+        this.transactions.update((txs) =>
+          txs.filter((t) => !ids.includes(t.id))
+        );
+        this.selectedIds.set(new Set());
+        this.processingBulk.set(false);
+        this.snackBar.open(
+          `${result.updated} transactions marked as reviewed`,
+          'Dismiss',
+          { duration: 2000 }
+        );
+      },
+      error: (err) => {
+        console.error('Failed to bulk mark as reviewed', err);
+        this.snackBar.open(
+          'Failed to mark transactions as reviewed',
+          'Dismiss',
+          { duration: 3000 }
+        );
+        this.processingBulk.set(false);
+      },
+    });
+  }
+
+  private updateTransactionInList(updated: Transaction) {
+    this.transactions.update((txs) =>
+      txs.map((t) => (t.id === updated.id ? updated : t))
+    );
+  }
+
+  private removeFromProcessing(id: string) {
+    const processing = new Set(this.processingIds());
+    processing.delete(id);
+    this.processingIds.set(processing);
+  }
+}

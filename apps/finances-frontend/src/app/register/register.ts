@@ -1,5 +1,6 @@
 import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -130,13 +131,10 @@ export class UserRegister {
     try {
       // Step 1: Start registration
       const registerResponse: any = await firstValueFrom(
-        this._http.post(
-          'https://finances-service.elliott.haus/users/register',
-          {
-            name: this.name(),
-            username: this.username(),
-          }
-        )
+        this._http.post(`${environment.apiUrl}/users/register`, {
+          name: this.name(),
+          username: this.username(),
+        })
       );
 
       console.log('Registration started:', registerResponse);
@@ -150,13 +148,10 @@ export class UserRegister {
 
       // Step 3: Complete registration
       const completeResponse: any = await firstValueFrom(
-        this._http.post(
-          'https://finances-service.elliott.haus/users/register/complete',
-          {
-            sessionId: registerResponse.sessionId,
-            credential: passkeyCredential,
-          }
-        )
+        this._http.post(`${environment.apiUrl}/users/register/complete`, {
+          sessionId: registerResponse.sessionId,
+          credential: passkeyCredential,
+        })
       );
 
       console.log('Registration completed:', completeResponse);

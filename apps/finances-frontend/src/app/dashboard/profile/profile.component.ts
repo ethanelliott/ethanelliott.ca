@@ -35,8 +35,8 @@ import { DialogService } from '../../shared/dialogs';
     MatInputModule,
     MatProgressSpinnerModule,
     MatDividerModule,
-    MatListModule
-],
+    MatListModule,
+  ],
   styleUrl: './profile.component.scss',
   template: `
     <div class="profile-container">
@@ -174,16 +174,6 @@ import { DialogService } from '../../shared/dialogs';
                 </button>
 
                 <button
-                  mat-stroked-button
-                  color="warn"
-                  (click)="deleteAllTransactions()"
-                  class="action-button"
-                >
-                  <mat-icon>delete_sweep</mat-icon>
-                  Clear All Data
-                </button>
-
-                <button
                   mat-flat-button
                   color="warn"
                   (click)="deleteAccount()"
@@ -274,22 +264,6 @@ export class ProfileComponent implements OnInit {
       .subscribe((confirmed) => {
         if (confirmed) {
           this.userStore.deleteAccount();
-        }
-      });
-  }
-
-  deleteAllTransactions() {
-    this.dialogService
-      .confirmDangerous(
-        'This will permanently delete ALL your transactions. This action cannot be undone and will remove all your transaction history.',
-        'DELETE ALL',
-        'Delete All Transactions',
-        'Delete All Transactions',
-        'Cancel'
-      )
-      .subscribe((confirmed) => {
-        if (confirmed) {
-          this.userStore.deleteAllTransactions();
         }
       });
   }

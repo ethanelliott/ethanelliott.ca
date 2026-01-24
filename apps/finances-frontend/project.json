@@ -55,7 +55,13 @@
               "inline": false
             }
           },
-          "outputHashing": "all"
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/finances-frontend/src/environments/environment.ts",
+              "with": "apps/finances-frontend/src/environments/environment.prod.ts"
+            }
+          ]
         },
         "development": {
           "optimization": false,
@@ -68,6 +74,10 @@
     "serve": {
       "continuous": true,
       "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "ssl": true,
+        "open": true
+      },
       "configurations": {
         "production": {
           "buildTarget": "finances-frontend:build:production"
