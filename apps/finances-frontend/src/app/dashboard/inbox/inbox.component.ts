@@ -648,21 +648,6 @@ import {
         margin-bottom: 8px;
       }
       
-      ::ng-deep .editor-inputs .mat-mdc-form-field {
-        .mat-mdc-text-field-wrapper {
-          padding: 0 10px;
-        }
-        
-        .mat-mdc-form-field-infix {
-          padding: 6px 0;
-          min-height: 36px;
-        }
-        
-        input {
-          font-size: 0.9rem;
-        }
-      }
-      
       .tags-section {
         margin-bottom: 8px;
         

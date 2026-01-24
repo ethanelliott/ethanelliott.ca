@@ -5,6 +5,8 @@ import {
   OnInit,
   signal,
   computed,
+  ElementRef,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,6 +23,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 import {
   FinanceApiService,
   Transaction,
@@ -52,192 +61,393 @@ import { firstValueFrom } from 'rxjs';
     MatDatepickerModule,
     MatNativeDateModule,
     MatPaginatorModule,
+    MatMenuModule,
+    MatDividerModule,
+    MatSnackBarModule,
+    MatAutocompleteModule,
   ],
   styleUrl: './transactions.component.scss',
   template: `
     <div class="transactions-container">
       <div class="page-content">
-        <!-- Header -->
-        <div class="page-header">
-          <div class="header-stats">
-            <span>{{ filteredTransactions().length }} transactions</span>
-            @if (stats()) {
-              <span class="stat-income">+{{ formatCurrency(stats()!.totalIncome) }}</span>
-              <span class="stat-expense">-{{ formatCurrency(stats()!.totalExpenses) }}</span>
-            }
-          </div>
-          <div class="header-actions">
+        <!-- Search & Filters -->
+        <div class="filters-section">
+          <div class="search-row">
             @if (stats()?.unreviewedCount) {
-              <button mat-stroked-button routerLink="/dashboard/inbox">
-                <mat-icon>inbox</mat-icon>
-                {{ stats()!.unreviewedCount }} to review
-              </button>
+            <button
+              mat-flat-button
+              color="accent"
+              routerLink="/dashboard/inbox"
+              class="review-btn"
+            >
+              <mat-icon>inbox</mat-icon>
+              <span>{{ stats()!.unreviewedCount }} to review</span>
+            </button>
             }
+            <div class="search-wrapper">
+              <mat-icon class="search-icon">search</mat-icon>
+              <input
+                type="text"
+                class="search-input"
+                placeholder="Search transactions..."
+                [(ngModel)]="searchQuery"
+                (input)="applyFilters()"
+              />
+              @if (searchQuery) {
+              <button
+                mat-icon-button
+                class="clear-search"
+                (click)="searchQuery = ''; applyFilters()"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+              }
+            </div>
+            <button
+              mat-stroked-button
+              class="filter-toggle"
+              [class.active]="showFilters()"
+              (click)="showFilters.set(!showFilters())"
+            >
+              <mat-icon>tune</mat-icon>
+              <span>Filters</span>
+              @if (activeFilterCount() > 0) {
+              <span class="filter-badge">{{ activeFilterCount() }}</span>
+              }
+            </button>
           </div>
-        </div>
 
-        <!-- Filters -->
-        <mat-card class="filters-card">
-          <mat-card-content>
-            <div class="filters-row">
-              <mat-form-field appearance="outline" class="search-field">
-                <mat-label>Search</mat-label>
-                <mat-icon matPrefix>search</mat-icon>
-                <input matInput [(ngModel)]="searchQuery" (input)="applyFilters()" placeholder="Search transactions...">
-              </mat-form-field>
-
+          @if (showFilters()) {
+          <div class="filters-panel">
+            <div class="filters-grid">
               <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>Account</mat-label>
-                <mat-select [(ngModel)]="selectedAccountId" (selectionChange)="applyFilters()">
+                <mat-select
+                  [(ngModel)]="selectedAccountId"
+                  (selectionChange)="applyFilters()"
+                >
                   <mat-option [value]="null">All Accounts</mat-option>
                   @for (account of accounts(); track account.id) {
-                    <mat-option [value]="account.id">{{ account.name }}</mat-option>
+                  <mat-option [value]="account.id">{{
+                    account.name
+                  }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>Category</mat-label>
-                <mat-select [(ngModel)]="selectedCategoryId" (selectionChange)="applyFilters()">
+                <mat-select
+                  [(ngModel)]="selectedCategoryId"
+                  (selectionChange)="applyFilters()"
+                >
                   <mat-option [value]="null">All Categories</mat-option>
                   @for (category of categories(); track category.id) {
-                    <mat-option [value]="category.id">{{ category.name }}</mat-option>
+                  <mat-option [value]="category.id">{{
+                    category.name
+                  }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>Type</mat-label>
-                <mat-select [(ngModel)]="selectedType" (selectionChange)="applyFilters()">
+                <mat-select
+                  [(ngModel)]="selectedType"
+                  (selectionChange)="applyFilters()"
+                >
                   <mat-option [value]="null">All Types</mat-option>
-                  <mat-option [value]="TransactionType.INCOME">Income</mat-option>
-                  <mat-option [value]="TransactionType.EXPENSE">Expense</mat-option>
-                  <mat-option [value]="TransactionType.TRANSFER">Transfer</mat-option>
+                  <mat-option [value]="TransactionType.INCOME"
+                    >Income</mat-option
+                  >
+                  <mat-option [value]="TransactionType.EXPENSE"
+                    >Expense</mat-option
+                  >
+                  <mat-option [value]="TransactionType.TRANSFER"
+                    >Transfer</mat-option
+                  >
                 </mat-select>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="date-field">
+              <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>Start Date</mat-label>
-                <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate" (dateChange)="applyFilters()">
-                <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+                <input
+                  matInput
+                  [matDatepicker]="startPicker"
+                  [(ngModel)]="startDate"
+                  (dateChange)="applyFilters()"
+                />
+                <mat-datepicker-toggle
+                  matIconSuffix
+                  [for]="startPicker"
+                ></mat-datepicker-toggle>
                 <mat-datepicker #startPicker></mat-datepicker>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="date-field">
+              <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>End Date</mat-label>
-                <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate" (dateChange)="applyFilters()">
-                <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+                <input
+                  matInput
+                  [matDatepicker]="endPicker"
+                  [(ngModel)]="endDate"
+                  (dateChange)="applyFilters()"
+                />
+                <mat-datepicker-toggle
+                  matIconSuffix
+                  [for]="endPicker"
+                ></mat-datepicker-toggle>
                 <mat-datepicker #endPicker></mat-datepicker>
               </mat-form-field>
-
-              @if (hasActiveFilters()) {
-                <button mat-icon-button (click)="clearFilters()" matTooltip="Clear filters">
-                  <mat-icon>clear</mat-icon>
-                </button>
-              }
             </div>
-          </mat-card-content>
-        </mat-card>
+
+            @if (hasActiveFilters()) {
+            <button
+              mat-button
+              class="clear-filters-btn"
+              (click)="clearFilters()"
+            >
+              <mat-icon>clear_all</mat-icon>
+              Clear all filters
+            </button>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Edit Panel -->
+        @if (editingTransaction()) {
+        <div class="edit-panel">
+          <div class="edit-panel-header">
+            <div class="edit-tx-info">
+              <span class="edit-tx-date">{{
+                editingTransaction()!.date | date : 'MMM d, yyyy'
+              }}</span>
+              <span class="edit-tx-name">{{
+                editingTransaction()!.merchantName || editingTransaction()!.name
+              }}</span>
+              <span
+                class="edit-tx-amount"
+                [class]="getAmountClass(editingTransaction()!)"
+              >
+                {{ formatAmount(editingTransaction()!) }}
+              </span>
+            </div>
+            <button mat-icon-button (click)="cancelEdit()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="edit-panel-content">
+            <mat-form-field appearance="outline" class="edit-field">
+              <mat-label>Category</mat-label>
+              <input
+                matInput
+                [matAutocomplete]="categoryAuto"
+                [(ngModel)]="categoryInput"
+                (ngModelChange)="filterCategories($event)"
+                placeholder="Search or create category..."
+              />
+              <mat-autocomplete
+                #categoryAuto="matAutocomplete"
+                (optionSelected)="selectCategory($event)"
+              >
+                @if (categoryInput() && !categoryExists()) {
+                <mat-option [value]="'__new__:' + categoryInput()">
+                  <mat-icon>add</mat-icon> Create "{{ categoryInput() }}"
+                </mat-option>
+                } @for (cat of filteredCategories(); track cat.id) {
+                <mat-option [value]="cat.name">{{ cat.name }}</mat-option>
+                }
+              </mat-autocomplete>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="edit-field">
+              <mat-label>Tags</mat-label>
+              <mat-chip-grid #chipGrid aria-label="Tag selection">
+                @for (tagId of editingTransactionTags(); track tagId) {
+                <mat-chip-row (removed)="removeTagFromEditing(tagId)">
+                  {{ getTagName(tagId) }}
+                  <button
+                    matChipRemove
+                    [attr.aria-label]="'remove ' + getTagName(tagId)"
+                  >
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip-row>
+                }
+              </mat-chip-grid>
+              <input
+                #tagInputRef
+                [matChipInputFor]="chipGrid"
+                [matAutocomplete]="tagsAuto"
+                [(ngModel)]="tagInput"
+                (ngModelChange)="filterTags($event)"
+                placeholder="Add tags..."
+              />
+              <mat-autocomplete
+                #tagsAuto="matAutocomplete"
+                (optionSelected)="selectTag($event); tagInputRef.value = ''"
+              >
+                @if (tagInput() && !tagExists()) {
+                <mat-option [value]="'__new__:' + tagInput()">
+                  <mat-icon>add</mat-icon> Create "{{ tagInput() }}"
+                </mat-option>
+                } @for (tag of filteredTags(); track tag.id) {
+                <mat-option [value]="tag.name">{{ tag.name }}</mat-option>
+                }
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
+          <div class="edit-panel-actions">
+            <button mat-stroked-button (click)="cancelEdit()">Cancel</button>
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="saveEdit()"
+              [disabled]="saving()"
+            >
+              @if (saving()) {
+              <mat-spinner diameter="18"></mat-spinner>
+              } @else {
+              <mat-icon>check</mat-icon>
+              Save Changes }
+            </button>
+          </div>
+        </div>
+        }
 
         <!-- Transactions List -->
-        <mat-card class="transactions-card">
-          <mat-card-content>
-            @if (loading()) {
-              <div class="loading-container">
-                <mat-spinner></mat-spinner>
-                <h3>Loading transactions...</h3>
-              </div>
-            } @else if (paginatedTransactions().length === 0) {
-              <div class="empty-state">
-                <mat-icon>receipt</mat-icon>
-                <h3>No transactions found</h3>
-                <p>
-                  @if (hasActiveFilters()) {
-                    No transactions match your current filters
-                  } @else {
-                    Connect a bank account to start seeing your transactions
-                  }
-                </p>
-                @if (hasActiveFilters()) {
-                  <button mat-raised-button color="primary" (click)="clearFilters()">
-                    Clear Filters
-                  </button>
-                } @else {
-                  <button mat-raised-button color="primary" routerLink="/dashboard/accounts">
-                    Connect Bank Account
-                  </button>
-                }
-              </div>
+        <div class="transactions-section">
+          @if (loading()) {
+          <div class="loading-container">
+            <mat-spinner diameter="40"></mat-spinner>
+            <p>Loading transactions...</p>
+          </div>
+          } @else if (paginatedTransactions().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon">
+              <mat-icon>receipt_long</mat-icon>
+            </div>
+            <h3>No transactions found</h3>
+            <p>
+              @if (hasActiveFilters()) { No transactions match your current
+              filters } @else { Connect a bank account to start seeing your
+              transactions }
+            </p>
+            @if (hasActiveFilters()) {
+            <button mat-flat-button color="primary" (click)="clearFilters()">
+              Clear Filters
+            </button>
             } @else {
-              <div class="transactions-list">
-                @for (tx of paginatedTransactions(); track tx.id) {
-                  <div class="transaction-item" [class.pending]="tx.pending" [class.transfer]="tx.type === TransactionType.TRANSFER">
-                    <div class="tx-date">
-                      <span class="date-day">{{ formatDay(tx.date) }}</span>
-                      <span class="date-month">{{ formatMonth(tx.date) }}</span>
-                    </div>
-                    <div class="tx-icon" [class]="getTypeClass(tx)">
-                      <mat-icon>{{ getTypeIcon(tx) }}</mat-icon>
-                    </div>
-                    <div class="tx-details">
-                      <div class="tx-name">
-                        {{ tx.merchantName || tx.name }}
-                        @if (tx.pending) {
-                          <span class="pending-badge">Pending</span>
-                        }
-                      </div>
-                      <div class="tx-meta">
-                        <span class="tx-account">{{ tx.accountName }}</span>
-                        @if (tx.category) {
-                          <span class="tx-category" [style.background-color]="tx.categoryColor || '#666'">
-                            {{ getCategoryName(tx.category) }}
-                          </span>
-                        }
-                        @if (tx.tags && tx.tags.length > 0) {
-                          @for (tagId of tx.tags.slice(0, 2); track tagId) {
-                            <span class="tx-tag">{{ getTagName(tagId) }}</span>
-                          }
-                          @if (tx.tags.length > 2) {
-                            <span class="tx-tag-more">+{{ tx.tags.length - 2 }}</span>
-                          }
-                        }
-                      </div>
-                    </div>
-                    <div class="tx-amount" [class]="getAmountClass(tx)">
-                      {{ formatAmount(tx) }}
-                    </div>
-                    <div class="tx-status">
-                      @if (!tx.isReviewed) {
-                        <mat-icon class="unreviewed-icon" matTooltip="Not reviewed">fiber_new</mat-icon>
-                      }
-                      @if (tx.linkedTransferId) {
-                        <mat-icon class="transfer-icon" matTooltip="Transfer">swap_horiz</mat-icon>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-
-              <mat-paginator
-                [length]="filteredTransactions().length"
-                [pageSize]="pageSize"
-                [pageSizeOptions]="[25, 50, 100]"
-                [pageIndex]="pageIndex"
-                (page)="onPageChange($event)"
-              ></mat-paginator>
+            <button
+              mat-flat-button
+              color="primary"
+              routerLink="/dashboard/accounts"
+            >
+              Connect Bank Account
+            </button>
             }
-          </mat-card-content>
-        </mat-card>
+          </div>
+          } @else {
+          <div class="transactions-list">
+            @for (tx of paginatedTransactions(); track tx.id) {
+            <div
+              class="transaction-row"
+              [class.pending]="tx.pending"
+              [class.transfer]="tx.type === TransactionType.TRANSFER"
+              [class.editing]="editingTransaction()?.id === tx.id"
+              [class.unreviewed]="!tx.isReviewed"
+            >
+              <div class="tx-main" (click)="startEdit(tx)">
+                <div class="tx-date">
+                  <span class="date-day">{{ formatDay(tx.date) }}</span>
+                  <span class="date-month">{{ formatMonth(tx.date) }}</span>
+                </div>
+                <div class="tx-icon" [class]="getTypeClass(tx)">
+                  <mat-icon>{{ getTypeIcon(tx) }}</mat-icon>
+                </div>
+                <div class="tx-details">
+                  <div class="tx-name-row">
+                    <span class="tx-name">{{
+                      tx.merchantName || tx.name
+                    }}</span>
+                    @if (tx.pending) {
+                    <span class="pending-badge">Pending</span>
+                    } @if (!tx.isReviewed) {
+                    <span class="new-badge">New</span>
+                    }
+                  </div>
+                  <div class="tx-meta">
+                    <span class="tx-account">{{ tx.accountName }}</span>
+                    @if (tx.category) {
+                    <span
+                      class="tx-category"
+                      [style.background-color]="tx.categoryColor || '#666'"
+                    >
+                      {{ getCategoryName(tx.category) }}
+                    </span>
+                    } @else {
+                    <span class="tx-category uncategorized">Uncategorized</span>
+                    } @if (tx.tags && tx.tags.length > 0) { @for (tagId of
+                    tx.tags.slice(0, 2); track tagId) {
+                    <span class="tx-tag">{{ getTagName(tagId) }}</span>
+                    } @if (tx.tags.length > 2) {
+                    <span class="tx-tag-more">+{{ tx.tags.length - 2 }}</span>
+                    } }
+                  </div>
+                </div>
+                <div class="tx-amount" [class]="getAmountClass(tx)">
+                  {{ formatAmount(tx) }}
+                </div>
+              </div>
+              <div class="tx-actions">
+                <button
+                  mat-icon-button
+                  [matMenuTriggerFor]="txMenu"
+                  (click)="$event.stopPropagation()"
+                >
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #txMenu="matMenu">
+                  <button mat-menu-item (click)="startEdit(tx)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Edit</span>
+                  </button>
+                  @if (tx.linkedTransferId) {
+                  <button mat-menu-item disabled>
+                    <mat-icon>swap_horiz</mat-icon>
+                    <span>View Transfer</span>
+                  </button>
+                  }
+                </mat-menu>
+              </div>
+            </div>
+            }
+          </div>
+
+          <div class="pagination-wrapper">
+            <mat-paginator
+              [length]="filteredTransactions().length"
+              [pageSize]="pageSize"
+              [pageSizeOptions]="[25, 50, 100]"
+              [pageIndex]="pageIndex"
+              (page)="onPageChange($event)"
+              showFirstLastButtons
+            ></mat-paginator>
+          </div>
+          }
+        </div>
       </div>
     </div>
   `,
 })
 export class TransactionsComponent implements OnInit {
   private readonly apiService = inject(FinanceApiService);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly TransactionType = TransactionType;
 
   loading = signal(true);
+  saving = signal(false);
   transactions = signal<Transaction[]>([]);
   accounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
@@ -248,6 +458,11 @@ export class TransactionsComponent implements OnInit {
     unreviewedCount: number;
   } | null>(null);
 
+  // UI State
+  showFilters = signal(false);
+  editingTransaction = signal<Transaction | null>(null);
+  editingTransactionTags = signal<string[]>([]);
+
   // Filter state
   searchQuery = '';
   selectedAccountId: string | null = null;
@@ -255,6 +470,12 @@ export class TransactionsComponent implements OnInit {
   selectedType: TransactionType | null = null;
   startDate: Date | null = null;
   endDate: Date | null = null;
+
+  // Category/Tag editing
+  categoryInput = signal('');
+  tagInput = signal('');
+  filteredCategories = signal<Category[]>([]);
+  filteredTags = signal<Tag[]>([]);
 
   // Pagination
   pageIndex = 0;
@@ -269,6 +490,26 @@ export class TransactionsComponent implements OnInit {
     return filtered.slice(start, start + this.pageSize);
   });
 
+  activeFilterCount = computed(() => {
+    let count = 0;
+    if (this.selectedAccountId) count++;
+    if (this.selectedCategoryId) count++;
+    if (this.selectedType) count++;
+    if (this.startDate) count++;
+    if (this.endDate) count++;
+    return count;
+  });
+
+  categoryExists = computed(() => {
+    const input = this.categoryInput().toLowerCase();
+    return this.categories().some((c) => c.name.toLowerCase() === input);
+  });
+
+  tagExists = computed(() => {
+    const input = this.tagInput().toLowerCase();
+    return this.tags().some((t) => t.name.toLowerCase() === input);
+  });
+
   ngOnInit() {
     this.loadData();
   }
@@ -276,18 +517,21 @@ export class TransactionsComponent implements OnInit {
   private async loadData() {
     try {
       this.loading.set(true);
-      const [transactions, accounts, categories, tags, stats] = await Promise.all([
-        firstValueFrom(this.apiService.getAllTransactions()),
-        firstValueFrom(this.apiService.getAllAccounts()),
-        firstValueFrom(this.apiService.getAllCategories()),
-        firstValueFrom(this.apiService.getAllTags()),
-        firstValueFrom(this.apiService.getTransactionStats()),
-      ]);
+      const [transactions, accounts, categories, tags, stats] =
+        await Promise.all([
+          firstValueFrom(this.apiService.getAllTransactions()),
+          firstValueFrom(this.apiService.getAllAccounts()),
+          firstValueFrom(this.apiService.getAllCategories()),
+          firstValueFrom(this.apiService.getAllTags()),
+          firstValueFrom(this.apiService.getTransactionStats()),
+        ]);
       this.transactions.set(transactions);
       this.filteredTransactions.set(transactions);
       this.accounts.set(accounts);
       this.categories.set(categories);
+      this.filteredCategories.set(categories);
       this.tags.set(tags);
+      this.filteredTags.set(tags);
       this.stats.set({
         totalIncome: stats.totalIncome,
         totalExpenses: stats.totalExpenses,
@@ -305,33 +549,38 @@ export class TransactionsComponent implements OnInit {
 
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
-      filtered = filtered.filter(tx =>
-        tx.name.toLowerCase().includes(query) ||
-        (tx.merchantName && tx.merchantName.toLowerCase().includes(query)) ||
-        (tx.notes && tx.notes.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (tx) =>
+          tx.name.toLowerCase().includes(query) ||
+          (tx.merchantName && tx.merchantName.toLowerCase().includes(query)) ||
+          (tx.notes && tx.notes.toLowerCase().includes(query))
       );
     }
 
     if (this.selectedAccountId) {
-      filtered = filtered.filter(tx => tx.accountId === this.selectedAccountId);
+      filtered = filtered.filter(
+        (tx) => tx.accountId === this.selectedAccountId
+      );
     }
 
     if (this.selectedCategoryId) {
-      filtered = filtered.filter(tx => tx.category === this.selectedCategoryId);
+      filtered = filtered.filter(
+        (tx) => tx.category === this.selectedCategoryId
+      );
     }
 
     if (this.selectedType) {
-      filtered = filtered.filter(tx => tx.type === this.selectedType);
+      filtered = filtered.filter((tx) => tx.type === this.selectedType);
     }
 
     if (this.startDate) {
       const start = this.startDate.toISOString().split('T')[0];
-      filtered = filtered.filter(tx => tx.date >= start);
+      filtered = filtered.filter((tx) => tx.date >= start);
     }
 
     if (this.endDate) {
       const end = this.endDate.toISOString().split('T')[0];
-      filtered = filtered.filter(tx => tx.date <= end);
+      filtered = filtered.filter((tx) => tx.date <= end);
     }
 
     this.filteredTransactions.set(filtered);
@@ -365,14 +614,204 @@ export class TransactionsComponent implements OnInit {
     this.pageSize = event.pageSize;
   }
 
-  getCategoryName(categoryId: string): string {
-    const category = this.categories().find(c => c.id === categoryId);
-    return category?.name || 'Unknown';
+  // Edit functionality
+  startEdit(tx: Transaction) {
+    this.editingTransaction.set(tx);
+    // tx.tags already contains tag names, not IDs
+    this.editingTransactionTags.set(tx.tags ? [...tx.tags] : []);
+    // tx.category is already the category name, not an ID
+    this.categoryInput.set(tx.category ?? '');
+    this.tagInput.set('');
+    this.filteredCategories.set(this.categories());
+    // Filter out tags that are already on the transaction (by name)
+    this.filteredTags.set(
+      this.tags().filter((t) => !tx.tags?.includes(t.name))
+    );
   }
 
-  getTagName(tagId: string): string {
-    const tag = this.tags().find(t => t.id === tagId);
-    return tag?.name || 'Unknown';
+  cancelEdit() {
+    this.editingTransaction.set(null);
+    this.editingTransactionTags.set([]);
+    this.categoryInput.set('');
+    this.tagInput.set('');
+  }
+
+  async saveEdit() {
+    const tx = this.editingTransaction();
+    if (!tx) return;
+
+    try {
+      this.saving.set(true);
+
+      // Get category name from input (API expects names, not IDs)
+      const categoryName = this.categoryInput().trim() || null;
+      // Tags are already stored as names
+      const tagNames = this.editingTransactionTags();
+
+      // Update transaction - API expects category name and tag names
+      await firstValueFrom(
+        this.apiService.updateTransaction(tx.id, {
+          category: categoryName,
+          tags: tagNames,
+          isReviewed: true,
+        })
+      );
+
+      // Update local state
+      const updated = this.transactions().map((t) => {
+        if (t.id === tx.id) {
+          return {
+            ...t,
+            category: categoryName,
+            tags: tagNames,
+            isReviewed: true,
+          } as Transaction;
+        }
+        return t;
+      });
+      this.transactions.set(updated);
+      this.applyFilters();
+
+      this.snackBar.open('Transaction updated', 'Dismiss', { duration: 3000 });
+      this.cancelEdit();
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+      this.snackBar.open('Error saving transaction', 'Dismiss', {
+        duration: 3000,
+      });
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  // Category autocomplete
+  filterCategories(query: string) {
+    this.categoryInput.set(query);
+    if (!query) {
+      this.filteredCategories.set(this.categories());
+      return;
+    }
+    const lowerQuery = query.toLowerCase();
+    this.filteredCategories.set(
+      this.categories().filter((c) => c.name.toLowerCase().includes(lowerQuery))
+    );
+  }
+
+  async selectCategory(event: MatAutocompleteSelectedEvent) {
+    const value = event.option.value;
+
+    if (value.startsWith('__new__:')) {
+      // Create new category
+      const name = value.replace('__new__:', '');
+      try {
+        const newCategory = await firstValueFrom(
+          this.apiService.createCategory({ name, color: this.getRandomColor() })
+        );
+        this.categories.set([...this.categories(), newCategory]);
+        // Set the category name (not ID)
+        this.categoryInput.set(name);
+      } catch (error) {
+        console.error('Error creating category:', error);
+        this.snackBar.open('Error creating category', 'Dismiss', {
+          duration: 3000,
+        });
+      }
+    } else {
+      // value is the category name from the autocomplete
+      this.categoryInput.set(value);
+    }
+  }
+
+  // Tag autocomplete
+  filterTags(query: string) {
+    this.tagInput.set(query);
+    // currentTags contains tag names, not IDs
+    const currentTagNames = this.editingTransactionTags();
+    if (!query) {
+      this.filteredTags.set(
+        this.tags().filter((t) => !currentTagNames.includes(t.name))
+      );
+      return;
+    }
+    const lowerQuery = query.toLowerCase();
+    this.filteredTags.set(
+      this.tags().filter(
+        (t) =>
+          t.name.toLowerCase().includes(lowerQuery) &&
+          !currentTagNames.includes(t.name)
+      )
+    );
+  }
+
+  async selectTag(event: MatAutocompleteSelectedEvent) {
+    const value = event.option.value;
+
+    if (value.startsWith('__new__:')) {
+      // Create new tag
+      const name = value.replace('__new__:', '');
+      try {
+        const newTag = await firstValueFrom(
+          this.apiService.createTag({ name })
+        );
+        this.tags.set([...this.tags(), newTag]);
+        // Add the tag name, not the ID
+        this.editingTransactionTags.set([
+          ...this.editingTransactionTags(),
+          name,
+        ]);
+      } catch (error) {
+        console.error('Error creating tag:', error);
+        this.snackBar.open('Error creating tag', 'Dismiss', { duration: 3000 });
+      }
+    } else {
+      // value is the tag name from the autocomplete
+      this.editingTransactionTags.set([
+        ...this.editingTransactionTags(),
+        value,
+      ]);
+    }
+    this.tagInput.set('');
+    this.filterTags('');
+  }
+
+  removeTagFromEditing(tagName: string) {
+    this.editingTransactionTags.set(
+      this.editingTransactionTags().filter((name) => name !== tagName)
+    );
+    this.filterTags(this.tagInput());
+  }
+
+  private getRandomColor(): string {
+    const colors = [
+      '#ef4444',
+      '#f97316',
+      '#f59e0b',
+      '#eab308',
+      '#84cc16',
+      '#22c55e',
+      '#10b981',
+      '#14b8a6',
+      '#06b6d4',
+      '#0ea5e9',
+      '#3b82f6',
+      '#6366f1',
+      '#8b5cf6',
+      '#a855f7',
+      '#d946ef',
+      '#ec4899',
+      '#f43f5e',
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // tx.category is already the category name from the API
+  getCategoryName(categoryName: string): string {
+    return categoryName || 'Unknown';
+  }
+
+  // tx.tags already contains tag names from the API
+  getTagName(tagName: string): string {
+    return tagName || 'Unknown';
   }
 
   getTypeClass(tx: Transaction): string {
