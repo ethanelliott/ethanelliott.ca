@@ -7,16 +7,17 @@ import {
   PLATFORM_ID,
 } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatRippleModule } from '@angular/material/core';
 import {
   FinanceApiService,
   Account,
@@ -51,257 +52,293 @@ declare global {
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatDialogModule,
-    MatChipsModule,
     MatMenuModule,
     MatSlideToggleModule,
     MatSnackBarModule,
+    MatRippleModule,
   ],
   styleUrl: './accounts.component.scss',
   template: `
-    <div class="accounts-container">
+    <div class="accounts-page">
       <!-- Header -->
-      <div class="header">
-        <div class="header-row">
-          <div class="title-section">
-            <p class="page-subtitle">
-              Connect and manage your bank accounts
-            </p>
-          </div>
-          <div class="controls-section">
-            <div class="header-stats">
-              @if (accountSummary()) {
-                <div class="stat-chip">
-                  <mat-icon>account_balance</mat-icon>
-                  <span>{{ accountSummary()!.visibleAccounts }} Accounts</span>
-                </div>
-                <div class="stat-chip">
-                  <mat-icon>payments</mat-icon>
-                  <span>{{ formatCurrency(accountSummary()!.totalBalance) }}</span>
-                </div>
-              }
-            </div>
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="connectBank()"
-              [disabled]="connecting()"
-              class="add-button"
+      <div class="page-header">
+        <div class="header-left">
+          <p class="page-subtitle">Connect and manage your bank accounts</p>
+        </div>
+        <div class="header-right">
+          @if (accountSummary()) {
+          <div class="net-worth-display">
+            <span class="net-worth-label">Net Worth</span>
+            <span
+              class="net-worth-value"
+              [class.positive]="accountSummary()!.totalBalance >= 0"
+              [class.negative]="accountSummary()!.totalBalance < 0"
             >
-              @if (connecting()) {
-                <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-                <mat-icon>add_link</mat-icon>
-              }
-              Connect Bank
-            </button>
+              {{ formatCurrency(accountSummary()!.totalBalance) }}
+            </span>
           </div>
+          }
+          <button
+            mat-flat-button
+            color="primary"
+            (click)="connectBank()"
+            [disabled]="connecting()"
+            class="connect-btn"
+          >
+            @if (connecting()) {
+            <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+            <mat-icon>add_link</mat-icon>
+            }
+            <span>Connect Bank</span>
+          </button>
         </div>
       </div>
 
       @if (loading()) {
-        <div class="loading-container">
-          <mat-spinner></mat-spinner>
-          <h3>Loading Accounts</h3>
-          <p>Fetching your connected bank accounts...</p>
+      <div class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading your accounts...</p>
+      </div>
+      } @else if (accountsByInstitution().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <mat-icon>account_balance</mat-icon>
         </div>
-      } @else if (plaidItems().length === 0) {
-        <mat-card class="empty-state-card">
-          <mat-card-content>
-            <div class="empty-state">
-              <mat-icon>account_balance</mat-icon>
-              <h3>No Bank Accounts Connected</h3>
-              <p>Connect your first bank account to start tracking your finances automatically</p>
-              <button
-                mat-raised-button
-                color="primary"
-                (click)="connectBank()"
-                [disabled]="connecting()"
-                class="get-started-button"
-              >
-                @if (connecting()) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <mat-icon>add_link</mat-icon>
-                }
-                Connect Your First Bank
-              </button>
-            </div>
-          </mat-card-content>
-        </mat-card>
+        <h3>No banks connected</h3>
+        <p>Connect your first bank to start tracking your finances</p>
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="connectBank()"
+          [disabled]="connecting()"
+        >
+          @if (connecting()) {
+          <mat-spinner diameter="18"></mat-spinner>
+          } @else {
+          <mat-icon>add_link</mat-icon>
+          }
+          <span>Connect Your First Bank</span>
+        </button>
+      </div>
       } @else {
-        <!-- Summary Cards -->
-        @if (accountSummary()) {
-          <div class="summary-grid">
-            <mat-card class="summary-card">
-              <mat-card-header>
-                <div class="summary-icon assets">
-                  <mat-icon>trending_up</mat-icon>
-                </div>
-                <div class="summary-info">
-                  <mat-card-title>Total Assets</mat-card-title>
-                  <mat-card-subtitle>Cash & Investments</mat-card-subtitle>
-                </div>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="summary-value positive">
-                  {{ formatCurrency(getTotalAssets()) }}
-                </div>
-              </mat-card-content>
-            </mat-card>
-
-            <mat-card class="summary-card">
-              <mat-card-header>
-                <div class="summary-icon liabilities">
-                  <mat-icon>trending_down</mat-icon>
-                </div>
-                <div class="summary-info">
-                  <mat-card-title>Total Liabilities</mat-card-title>
-                  <mat-card-subtitle>Credit & Loans</mat-card-subtitle>
-                </div>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="summary-value negative">
-                  {{ formatCurrency(getTotalLiabilities()) }}
-                </div>
-              </mat-card-content>
-            </mat-card>
-
-            <mat-card class="summary-card">
-              <mat-card-header>
-                <div class="summary-icon net-worth">
-                  <mat-icon>account_balance_wallet</mat-icon>
-                </div>
-                <div class="summary-info">
-                  <mat-card-title>Net Worth</mat-card-title>
-                  <mat-card-subtitle>Assets - Liabilities</mat-card-subtitle>
-                </div>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="summary-value" [class.positive]="accountSummary()!.totalBalance >= 0" [class.negative]="accountSummary()!.totalBalance < 0">
-                  {{ formatCurrency(accountSummary()!.totalBalance) }}
-                </div>
-              </mat-card-content>
-            </mat-card>
+      <!-- Banks List -->
+      <div class="banks-list">
+        @for (institution of accountsByInstitution(); track
+        institution.institutionId) {
+        <div
+          class="bank-card"
+          [class.expanded]="
+            expandedInstitution() ===
+            (institution.institutionId || institution.institutionName)
+          "
+        >
+          <!-- Bank Header (clickable) -->
+          <div
+            class="bank-header"
+            matRipple
+            (click)="
+              toggleInstitution(
+                institution.institutionId || institution.institutionName
+              )
+            "
+          >
+            <div class="bank-info">
+              @if (institution.institutionLogo) {
+              <img
+                [src]="'data:image/png;base64,' + institution.institutionLogo"
+                class="bank-logo"
+                alt=""
+              />
+              } @else {
+              <div
+                class="bank-logo-placeholder"
+                [style.background]="institution.institutionColor || '#666'"
+              >
+                <mat-icon>account_balance</mat-icon>
+              </div>
+              }
+              <div class="bank-details">
+                <span class="bank-name">{{ institution.institutionName }}</span>
+                <span class="bank-meta">
+                  {{ institution.accounts.length }}
+                  {{
+                    institution.accounts.length === 1 ? 'account' : 'accounts'
+                  }}
+                  · {{ getSyncStatus(institution) }}
+                </span>
+              </div>
+            </div>
+            <div class="bank-right">
+              <span
+                class="bank-balance"
+                [class.positive]="getInstitutionNetBalance(institution) >= 0"
+                [class.negative]="getInstitutionNetBalance(institution) < 0"
+              >
+                {{ formatCurrency(getInstitutionNetBalance(institution)) }}
+              </span>
+              <mat-icon class="expand-icon">
+                {{
+                  expandedInstitution() ===
+                  (institution.institutionId || institution.institutionName)
+                    ? 'expand_less'
+                    : 'expand_more'
+                }}
+              </mat-icon>
+              <button
+                mat-icon-button
+                [matMenuTriggerFor]="bankMenu"
+                (click)="$event.stopPropagation()"
+                class="bank-menu-btn"
+              >
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #bankMenu="matMenu">
+                <button mat-menu-item (click)="syncInstitution(institution)">
+                  <mat-icon>sync</mat-icon>
+                  <span>Sync Now</span>
+                </button>
+                <button mat-menu-item (click)="updateConnection(institution)">
+                  <mat-icon>refresh</mat-icon>
+                  <span>Update Connection</span>
+                </button>
+                <button
+                  mat-menu-item
+                  (click)="disconnectInstitution(institution)"
+                  class="danger-item"
+                >
+                  <mat-icon>link_off</mat-icon>
+                  <span>Disconnect</span>
+                </button>
+              </mat-menu>
+            </div>
           </div>
-        }
 
-        <!-- Institutions and Accounts -->
-        <div class="institutions-grid">
-          @for (institution of accountsByInstitution(); track institution.institutionId) {
-            <mat-card class="institution-card">
-              <mat-card-header>
-                <div class="institution-header">
-                  <div class="institution-info">
-                    @if (institution.institutionLogo) {
-                      <img [src]="'data:image/png;base64,' + institution.institutionLogo" class="institution-logo" alt="">
-                    } @else {
-                      <div class="institution-logo-placeholder" [style.background]="institution.institutionColor || '#666'">
-                        <mat-icon>account_balance</mat-icon>
-                      </div>
-                    }
-                    <div class="institution-details">
-                      <mat-card-title>{{ institution.institutionName }}</mat-card-title>
-                      <mat-card-subtitle>{{ institution.accounts.length }} account(s)</mat-card-subtitle>
-                    </div>
-                  </div>
-                  <div class="institution-actions">
-                    <div class="institution-total">
-                      {{ formatCurrency(institution.totalBalance) }}
-                    </div>
-                    <button mat-icon-button [matMenuTriggerFor]="institutionMenu">
-                      <mat-icon>more_vert</mat-icon>
-                    </button>
-                    <mat-menu #institutionMenu="matMenu">
-                      <button mat-menu-item (click)="syncInstitution(institution)">
-                        <mat-icon>sync</mat-icon>
-                        <span>Sync Now</span>
-                      </button>
-                      <button mat-menu-item (click)="updateConnection(institution)">
-                        <mat-icon>refresh</mat-icon>
-                        <span>Update Connection</span>
-                      </button>
-                      <button mat-menu-item (click)="disconnectInstitution(institution)" class="danger-item">
-                        <mat-icon>link_off</mat-icon>
-                        <span>Disconnect</span>
-                      </button>
-                    </mat-menu>
-                  </div>
-                </div>
-              </mat-card-header>
-
-              <mat-card-content>
-                <div class="accounts-list">
-                  @for (account of institution.accounts; track account.id) {
-                    <div class="account-item" [class.hidden]="!account.isVisible">
-                      <div class="account-info">
-                        <div class="account-icon" [class]="account.type">
-                          <mat-icon>{{ getAccountIcon(account.type) }}</mat-icon>
-                        </div>
-                        <div class="account-details">
-                          <span class="account-name">{{ account.name }}</span>
-                          <span class="account-type">
-                            {{ account.subtype || account.type }}
-                            @if (account.mask) {
-                              •••• {{ account.mask }}
-                            }
-                          </span>
-                        </div>
-                      </div>
-                      <div class="account-balance-section">
-                        <div class="account-balance" [class.positive]="isAssetAccount(account)" [class.negative]="!isAssetAccount(account)">
-                          {{ formatCurrency(account.currentBalance ?? 0) }}
-                        </div>
-                        @if (account.availableBalance !== null && account.availableBalance !== account.currentBalance) {
-                          <div class="account-available">
-                            Available: {{ formatCurrency(account.availableBalance) }}
-                          </div>
-                        }
-                      </div>
-                      <div class="account-toggle">
-                        <mat-slide-toggle
-                          [checked]="account.isVisible"
-                          (change)="toggleAccountVisibility(account)"
-                          matTooltip="Show/hide this account"
-                        ></mat-slide-toggle>
-                      </div>
-                    </div>
+          <!-- Accounts List (expandable) -->
+          @if (expandedInstitution() === (institution.institutionId ||
+          institution.institutionName)) {
+          <div class="accounts-list">
+            @for (account of institution.accounts; track account.id) {
+            <div
+              class="account-row"
+              matRipple
+              [class.hidden-account]="!account.isVisible"
+              (click)="viewAccountDetails(account)"
+            >
+              <div class="account-icon" [class]="account.type">
+                <mat-icon>{{ getAccountIcon(account.type) }}</mat-icon>
+              </div>
+              <div class="account-info">
+                <span class="account-name">{{ account.name }}</span>
+                <span class="account-meta">
+                  {{ account.subtype || account.type | titlecase }}
+                  @if (account.mask) { · •••• {{ account.mask }} }
+                </span>
+              </div>
+              <div class="account-right">
+                <div class="account-balance-info">
+                  <span
+                    class="account-balance"
+                    [class.positive]="isAssetAccount(account)"
+                    [class.negative]="!isAssetAccount(account)"
+                  >
+                    {{ formatCurrency(account.currentBalance ?? 0) }}
+                  </span>
+                  @if (account.availableBalance !== null &&
+                  account.availableBalance !== account.currentBalance) {
+                  <span class="account-available">
+                    {{ formatCurrency(account.availableBalance) }} available
+                  </span>
                   }
                 </div>
-              </mat-card-content>
-            </mat-card>
+                <mat-slide-toggle
+                  [checked]="account.isVisible"
+                  (change)="toggleAccountVisibility(account, $event)"
+                  (click)="$event.stopPropagation()"
+                  matTooltip="Include in totals"
+                  class="visibility-toggle"
+                ></mat-slide-toggle>
+                <mat-icon class="chevron-icon">chevron_right</mat-icon>
+              </div>
+            </div>
+            }
+          </div>
           }
         </div>
+        }
+      </div>
+      }
 
-        <!-- Sync Status -->
-        <mat-card class="sync-status-card">
-          <mat-card-header>
-            <mat-card-title>Sync History</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="sync-info">
-              @for (item of plaidItems(); track item.id) {
-                <div class="sync-item">
-                  <div class="sync-item-info">
-                    <span class="sync-institution">{{ item.institutionName || 'Unknown' }}</span>
-                    <span class="sync-status" [class]="getStatusClass(item.status)">
-                      {{ item.status }}
-                    </span>
-                  </div>
-                  <div class="sync-time">
-                    @if (item.lastSyncAt) {
-                      Last synced {{ formatRelativeTime(item.lastSyncAt) }}
-                    } @else {
-                      Never synced
-                    }
-                  </div>
-                  @if (item.lastError) {
-                    <div class="sync-error">{{ item.lastError }}</div>
-                  }
-                </div>
-              }
+      <!-- Account Detail Panel -->
+      @if (selectedAccount()) {
+      <div class="account-detail-overlay" (click)="closeAccountDetails()"></div>
+      <div class="account-detail-panel">
+        <div class="detail-header">
+          <button mat-icon-button (click)="closeAccountDetails()">
+            <mat-icon>close</mat-icon>
+          </button>
+          <div class="detail-title">
+            <div class="detail-icon" [class]="selectedAccount()!.type">
+              <mat-icon>{{ getAccountIcon(selectedAccount()!.type) }}</mat-icon>
             </div>
-          </mat-card-content>
-        </mat-card>
+            <div class="detail-info">
+              <h2>{{ selectedAccount()!.name }}</h2>
+              <span class="detail-meta">
+                {{
+                  selectedAccount()!.subtype || selectedAccount()!.type
+                    | titlecase
+                }}
+                @if (selectedAccount()!.mask) { · ••••
+                {{ selectedAccount()!.mask }} }
+              </span>
+            </div>
+          </div>
+          <span
+            class="detail-balance"
+            [class.positive]="isAssetAccount(selectedAccount()!)"
+            [class.negative]="!isAssetAccount(selectedAccount()!)"
+          >
+            {{ formatCurrency(selectedAccount()!.currentBalance ?? 0) }}
+          </span>
+        </div>
+
+        <div class="detail-content">
+          <div class="detail-stats">
+            <div class="stat-item">
+              <span class="stat-label">Current Balance</span>
+              <span class="stat-value">
+                {{ formatCurrency(selectedAccount()!.currentBalance ?? 0) }}
+              </span>
+            </div>
+            @if (selectedAccount()!.availableBalance !== null) {
+            <div class="stat-item">
+              <span class="stat-label">Available Balance</span>
+              <span class="stat-value">
+                {{ formatCurrency(selectedAccount()!.availableBalance!) }}
+              </span>
+            </div>
+            } @if (selectedAccount()!.limitAmount) {
+            <div class="stat-item">
+              <span class="stat-label">Credit Limit</span>
+              <span class="stat-value">
+                {{ formatCurrency(selectedAccount()!.limitAmount!) }}
+              </span>
+            </div>
+            }
+          </div>
+
+          <div class="detail-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="viewTransactions(selectedAccount()!)"
+            >
+              <mat-icon>receipt_long</mat-icon>
+              View Transactions
+            </button>
+          </div>
+        </div>
+      </div>
       }
     </div>
   `,
@@ -311,12 +348,15 @@ export class AccountsComponent implements OnInit {
   private readonly apiService = inject(FinanceApiService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialogService = inject(DialogService);
+  private readonly router = inject(Router);
 
   loading = signal(true);
   connecting = signal(false);
   plaidItems = signal<PlaidItem[]>([]);
   accountsByInstitution = signal<AccountsByInstitution[]>([]);
   accountSummary = signal<AccountSummary | null>(null);
+  expandedInstitution = signal<string | null>(null);
+  selectedAccount = signal<Account | null>(null);
 
   private plaidHandler: any = null;
 
@@ -327,7 +367,7 @@ export class AccountsComponent implements OnInit {
 
   private loadPlaidScript() {
     if (!isPlatformBrowser(this.platformId)) return;
-    
+
     if (document.getElementById('plaid-link-script')) return;
 
     const script = document.createElement('script');
@@ -348,12 +388,56 @@ export class AccountsComponent implements OnInit {
       this.plaidItems.set(items);
       this.accountsByInstitution.set(accounts);
       this.accountSummary.set(summary);
+
+      // Auto-expand first institution if only one
+      if (accounts.length === 1) {
+        this.expandedInstitution.set(accounts[0].institutionId);
+      }
     } catch (error) {
-      this.snackBar.open('Failed to load accounts', 'Close', { duration: 3000 });
+      this.snackBar.open('Failed to load accounts', 'Close', {
+        duration: 3000,
+      });
       console.error('Error loading accounts:', error);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  toggleInstitution(institutionId: string | null) {
+    const id = institutionId || '';
+    if (this.expandedInstitution() === id) {
+      this.expandedInstitution.set(null);
+    } else {
+      this.expandedInstitution.set(id);
+    }
+  }
+
+  viewAccountDetails(account: Account) {
+    this.selectedAccount.set(account);
+  }
+
+  closeAccountDetails() {
+    this.selectedAccount.set(null);
+  }
+
+  viewTransactions(account: Account) {
+    this.closeAccountDetails();
+    this.router.navigate(['/dashboard/transactions'], {
+      queryParams: { accountId: account.id },
+    });
+  }
+
+  getSyncStatus(institution: AccountsByInstitution): string {
+    const item = this.plaidItems().find(
+      (i) =>
+        i.institutionId === institution.institutionId ||
+        i.institutionName === institution.institutionName
+    );
+    if (!item) return 'Unknown';
+    if (item.lastSyncAt) {
+      return `Synced ${this.formatRelativeTime(item.lastSyncAt)}`;
+    }
+    return 'Never synced';
   }
 
   async connectBank() {
@@ -361,7 +445,9 @@ export class AccountsComponent implements OnInit {
 
     try {
       this.connecting.set(true);
-      const { linkToken } = await firstValueFrom(this.apiService.createLinkToken());
+      const { linkToken } = await firstValueFrom(
+        this.apiService.createLinkToken()
+      );
 
       if (!window.Plaid) {
         throw new Error('Plaid SDK not loaded');
@@ -378,20 +464,26 @@ export class AccountsComponent implements OnInit {
                 metadata.institution?.name
               )
             );
-            this.snackBar.open('Bank connected successfully!', 'Close', { duration: 3000 });
+            this.snackBar.open('Bank connected successfully!', 'Close', {
+              duration: 3000,
+            });
             this.loadData();
           } catch (error) {
             console.error('Failed to exchange token:', error);
-            this.snackBar.open('Failed to connect bank', 'Close', { duration: 3000 });
+            this.snackBar.open('Failed to connect bank', 'Close', {
+              duration: 3000,
+            });
           } finally {
             this.connecting.set(false);
           }
         },
-        onExit: (err: any, metadata: any) => {
+        onExit: (err: any) => {
           this.connecting.set(false);
           if (err) {
             console.error('Plaid Link error:', err);
-            this.snackBar.open('Connection cancelled', 'Close', { duration: 3000 });
+            this.snackBar.open('Connection cancelled', 'Close', {
+              duration: 3000,
+            });
           }
         },
         onEvent: (eventName: string, metadata: any) => {
@@ -402,7 +494,9 @@ export class AccountsComponent implements OnInit {
       this.plaidHandler.open();
     } catch (error) {
       console.error('Failed to create link token:', error);
-      this.snackBar.open('Failed to initiate bank connection', 'Close', { duration: 3000 });
+      this.snackBar.open('Failed to initiate bank connection', 'Close', {
+        duration: 3000,
+      });
       this.connecting.set(false);
     }
   }
@@ -411,11 +505,15 @@ export class AccountsComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
 
     const item = this.plaidItems().find(
-      i => i.institutionId === institution.institutionId || i.institutionName === institution.institutionName
+      (i) =>
+        i.institutionId === institution.institutionId ||
+        i.institutionName === institution.institutionName
     );
 
     if (!item) {
-      this.snackBar.open('Could not find connection to update', 'Close', { duration: 3000 });
+      this.snackBar.open('Could not find connection to update', 'Close', {
+        duration: 3000,
+      });
       return;
     }
 
@@ -431,7 +529,9 @@ export class AccountsComponent implements OnInit {
       this.plaidHandler = window.Plaid.create({
         token: linkToken,
         onSuccess: async () => {
-          this.snackBar.open('Connection updated successfully!', 'Close', { duration: 3000 });
+          this.snackBar.open('Connection updated successfully!', 'Close', {
+            duration: 3000,
+          });
           this.loadData();
         },
         onExit: (err: any) => {
@@ -444,17 +544,23 @@ export class AccountsComponent implements OnInit {
       this.plaidHandler.open();
     } catch (error) {
       console.error('Failed to update connection:', error);
-      this.snackBar.open('Failed to update connection', 'Close', { duration: 3000 });
+      this.snackBar.open('Failed to update connection', 'Close', {
+        duration: 3000,
+      });
     }
   }
 
   async syncInstitution(institution: AccountsByInstitution) {
     const item = this.plaidItems().find(
-      i => i.institutionId === institution.institutionId || i.institutionName === institution.institutionName
+      (i) =>
+        i.institutionId === institution.institutionId ||
+        i.institutionName === institution.institutionName
     );
 
     if (!item) {
-      this.snackBar.open('Could not find connection to sync', 'Close', { duration: 3000 });
+      this.snackBar.open('Could not find connection to sync', 'Close', {
+        duration: 3000,
+      });
       return;
     }
 
@@ -485,33 +591,43 @@ export class AccountsComponent implements OnInit {
     if (!confirmed) return;
 
     const item = this.plaidItems().find(
-      i => i.institutionId === institution.institutionId || i.institutionName === institution.institutionName
+      (i) =>
+        i.institutionId === institution.institutionId ||
+        i.institutionName === institution.institutionName
     );
 
     if (!item) {
-      this.snackBar.open('Could not find connection to disconnect', 'Close', { duration: 3000 });
+      this.snackBar.open('Could not find connection to disconnect', 'Close', {
+        duration: 3000,
+      });
       return;
     }
 
     try {
       await firstValueFrom(this.apiService.removePlaidItem(item.id));
-      this.snackBar.open('Bank disconnected successfully', 'Close', { duration: 3000 });
+      this.snackBar.open('Bank disconnected successfully', 'Close', {
+        duration: 3000,
+      });
       this.loadData();
     } catch (error) {
       console.error('Failed to disconnect:', error);
-      this.snackBar.open('Failed to disconnect bank', 'Close', { duration: 3000 });
+      this.snackBar.open('Failed to disconnect bank', 'Close', {
+        duration: 3000,
+      });
     }
   }
 
-  async toggleAccountVisibility(account: Account) {
+  async toggleAccountVisibility(account: Account, event: any) {
     try {
       await firstValueFrom(
-        this.apiService.updateAccountVisibility(account.id, !account.isVisible)
+        this.apiService.updateAccountVisibility(account.id, event.checked)
       );
       this.loadData();
     } catch (error) {
       console.error('Failed to update visibility:', error);
-      this.snackBar.open('Failed to update account visibility', 'Close', { duration: 3000 });
+      this.snackBar.open('Failed to update account visibility', 'Close', {
+        duration: 3000,
+      });
     }
   }
 
@@ -535,45 +651,17 @@ export class AccountsComponent implements OnInit {
     return ['depository', 'investment', 'brokerage'].includes(account.type);
   }
 
-  getTotalAssets(): number {
-    const summary = this.accountSummary();
-    if (!summary) return 0;
-    
-    let total = 0;
-    for (const [type, data] of Object.entries(summary.byType)) {
-      if (['depository', 'investment', 'brokerage'].includes(type)) {
-        total += data.balance;
+  getInstitutionNetBalance(institution: AccountsByInstitution): number {
+    return institution.accounts.reduce((total, account) => {
+      const balance = account.currentBalance ?? 0;
+      // Asset accounts add to net worth, liability accounts subtract
+      if (this.isAssetAccount(account)) {
+        return total + balance;
+      } else {
+        // Credit/loan balances are typically positive but represent debt
+        return total - Math.abs(balance);
       }
-    }
-    return total;
-  }
-
-  getTotalLiabilities(): number {
-    const summary = this.accountSummary();
-    if (!summary) return 0;
-    
-    let total = 0;
-    for (const [type, data] of Object.entries(summary.byType)) {
-      if (['credit', 'loan'].includes(type)) {
-        total += Math.abs(data.balance);
-      }
-    }
-    return total;
-  }
-
-  getStatusClass(status: PlaidItemStatus): string {
-    switch (status) {
-      case PlaidItemStatus.ACTIVE:
-        return 'status-active';
-      case PlaidItemStatus.ERROR:
-        return 'status-error';
-      case PlaidItemStatus.PENDING_EXPIRATION:
-        return 'status-warning';
-      case PlaidItemStatus.REVOKED:
-        return 'status-error';
-      default:
-        return '';
-    }
+    }, 0);
   }
 
   formatCurrency(amount: number): string {
