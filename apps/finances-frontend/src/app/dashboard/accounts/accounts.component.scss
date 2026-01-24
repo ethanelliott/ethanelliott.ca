@@ -1,12 +1,48 @@
+// ===== ACCOUNTS COMPONENT STYLES =====
+// Professional dark theme redesign
+
+@import 'styles/variables';
 @import 'styles/mixins';
 
 .accounts-container {
-  @include dashboard-container;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 
+  // ===== PAGE HEADER =====
   .header {
-    @include page-header;
+    margin-bottom: var(--spacing-xl);
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--spacing-lg);
+
+      @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    .title-section {
+      .page-subtitle {
+        color: var(--mat-sys-on-surface-variant);
+        font-size: 0.95rem;
+        margin: 0;
+      }
+    }
 
     .controls-section {
+      display: flex;
+      gap: var(--spacing-lg);
+      align-items: center;
+
+      @media (max-width: 768px) {
+        width: 100%;
+        justify-content: space-between;
+      }
+
       .header-stats {
         display: flex;
         gap: var(--spacing-sm);
@@ -16,11 +52,12 @@
           align-items: center;
           gap: var(--spacing-sm);
           padding: var(--spacing-sm) var(--spacing-md);
-          @include glassmorphism(12px, 0.2);
+          background: var(--bg-card);
+          border: 1px solid var(--border-subtle);
           border-radius: var(--border-radius-lg);
           font-size: 0.85rem;
           font-weight: 600;
-          color: var(--mat-sys-on-surface-variant);
+          color: var(--mat-sys-on-surface);
 
           mat-icon {
             font-size: 1.1rem;
@@ -32,35 +69,36 @@
       }
 
       .add-button {
-        @include primary-action-button;
         height: 48px;
         padding: 0 24px;
+        border-radius: var(--border-radius-lg);
+        font-weight: 600;
       }
     }
   }
 
+  // ===== LOADING STATE =====
   .loading-container {
-    @include loading-container;
+    @include pro-loading-state;
+    min-height: 400px;
   }
 
-  // Summary Grid
+  // ===== SUMMARY GRID =====
   .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-lg);
+    @include pro-grid-3;
     margin-bottom: var(--spacing-2xl);
 
-    @media (max-width: 992px) {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    @media (max-width: 600px) {
-      grid-template-columns: 1fr;
-    }
-
     .summary-card {
-      @include dashboard-card;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-xl);
       padding: var(--spacing-xl);
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-default);
+      }
 
       mat-card-header {
         display: flex;
@@ -73,8 +111,8 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 48px;
-          height: 48px;
+          width: 52px;
+          height: 52px;
           border-radius: var(--border-radius-lg);
 
           mat-icon {
@@ -84,21 +122,21 @@
           }
 
           &.assets {
-            background: rgba(var(--mat-sys-primary-rgb), 0.2);
+            background: var(--income-light);
             mat-icon {
-              color: var(--mat-sys-primary);
+              color: var(--income-color);
             }
           }
 
           &.liabilities {
-            background: rgba(var(--mat-sys-error-rgb), 0.2);
+            background: var(--expense-light);
             mat-icon {
-              color: var(--mat-sys-error);
+              color: var(--expense-color);
             }
           }
 
           &.net-worth {
-            background: rgba(var(--mat-sys-tertiary-rgb), 0.2);
+            background: rgba(var(--mat-sys-tertiary-rgb), 0.12);
             mat-icon {
               color: var(--mat-sys-tertiary);
             }
@@ -110,24 +148,30 @@
             font-size: 1rem;
             font-weight: 600;
             margin: 0;
+            color: var(--mat-sys-on-surface);
           }
 
           mat-card-subtitle {
             font-size: 0.8rem;
-            margin: 2px 0 0;
+            margin: 4px 0 0;
+            color: var(--mat-sys-on-surface-variant);
           }
         }
       }
 
+      mat-card-content {
+        padding: 0;
+      }
+
       .summary-value {
-        font-size: 1.75rem;
+        font-size: 1.85rem;
         font-weight: 800;
         font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
 
         &.positive {
           color: var(--mat-sys-primary);
         }
-
         &.negative {
           color: var(--mat-sys-error);
         }
@@ -135,43 +179,49 @@
     }
   }
 
-  // Empty state
+  // ===== EMPTY STATE =====
   .empty-state-card {
-    @include dashboard-card;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--border-radius-xl);
     margin-bottom: var(--spacing-lg);
 
     .empty-state {
-      @include empty-state;
-      padding: 80px 48px;
+      @include pro-empty-state;
+      padding: 100px 48px;
 
-      mat-icon {
-        font-size: 5rem;
-        width: 5rem;
-        height: 5rem;
-        color: var(--mat-sys-primary);
-        margin-bottom: var(--spacing-lg);
-        opacity: 0.6;
+      .empty-icon {
+        width: 100px;
+        height: 100px;
+
+        mat-icon {
+          font-size: 50px;
+          width: 50px;
+          height: 50px;
+        }
       }
 
       h3 {
         font-size: 1.5rem;
-        margin: 0 0 8px;
+        font-weight: 700;
       }
 
       p {
-        margin: 0 0 var(--spacing-xl) 0;
-        max-width: 400px;
+        max-width: 420px;
         font-size: 1rem;
-        color: var(--mat-sys-on-surface-variant);
       }
 
       .get-started-button {
-        @include primary-action-button;
+        height: 52px;
+        padding: 0 28px;
+        border-radius: var(--border-radius-lg);
+        font-size: 1rem;
+        font-weight: 600;
       }
     }
   }
 
-  // Institutions Grid
+  // ===== INSTITUTIONS GRID =====
   .institutions-grid {
     display: flex;
     flex-direction: column;
@@ -179,13 +229,20 @@
     margin-bottom: var(--spacing-2xl);
 
     .institution-card {
-      @include dashboard-card;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-xl);
       overflow: hidden;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: var(--border-default);
+      }
 
       mat-card-header {
-        padding: var(--spacing-lg);
-        background: rgba(255, 255, 255, 0.03);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: var(--spacing-lg) var(--spacing-xl);
+        background: var(--bg-subtle);
+        border-bottom: 1px solid var(--border-subtle);
 
         .institution-header {
           display: flex;
@@ -199,17 +256,17 @@
             gap: var(--spacing-md);
 
             .institution-logo {
-              width: 48px;
-              height: 48px;
+              width: 52px;
+              height: 52px;
               border-radius: var(--border-radius-md);
               object-fit: contain;
               background: white;
-              padding: 4px;
+              padding: 6px;
             }
 
             .institution-logo-placeholder {
-              width: 48px;
-              height: 48px;
+              width: 52px;
+              height: 52px;
               border-radius: var(--border-radius-md);
               display: flex;
               align-items: center;
@@ -217,6 +274,9 @@
 
               mat-icon {
                 color: white;
+                font-size: 24px;
+                width: 24px;
+                height: 24px;
               }
             }
 
@@ -225,10 +285,12 @@
                 font-size: 1.2rem;
                 font-weight: 700;
                 margin: 0;
+                color: var(--mat-sys-on-surface);
               }
 
               mat-card-subtitle {
-                margin: 4px 0 0;
+                margin: 6px 0 0;
+                color: var(--mat-sys-on-surface-variant);
               }
             }
           }
@@ -236,12 +298,13 @@
           .institution-actions {
             display: flex;
             align-items: center;
-            gap: var(--spacing-md);
+            gap: var(--spacing-lg);
 
             .institution-total {
-              font-size: 1.25rem;
-              font-weight: 700;
+              font-size: 1.35rem;
+              font-weight: 800;
               font-variant-numeric: tabular-nums;
+              letter-spacing: -0.02em;
             }
           }
         }
@@ -258,12 +321,12 @@
             display: flex;
             align-items: center;
             gap: var(--spacing-md);
-            padding: var(--spacing-md);
+            padding: var(--spacing-md) var(--spacing-lg);
             border-radius: var(--border-radius-md);
             transition: background 0.2s ease;
 
             &:hover {
-              background: rgba(255, 255, 255, 0.03);
+              background: var(--bg-subtle);
             }
 
             &.hidden {
@@ -271,30 +334,36 @@
             }
 
             .account-icon {
-              width: 40px;
-              height: 40px;
+              width: 44px;
+              height: 44px;
               border-radius: var(--border-radius-md);
               display: flex;
               align-items: center;
               justify-content: center;
               flex-shrink: 0;
 
+              mat-icon {
+                font-size: 22px;
+                width: 22px;
+                height: 22px;
+              }
+
               &.depository {
-                background: rgba(var(--mat-sys-primary-rgb), 0.2);
+                background: var(--income-light);
                 mat-icon {
-                  color: var(--mat-sys-primary);
+                  color: var(--income-color);
                 }
               }
 
               &.credit {
-                background: rgba(var(--mat-sys-error-rgb), 0.2);
+                background: var(--expense-light);
                 mat-icon {
-                  color: var(--mat-sys-error);
+                  color: var(--expense-color);
                 }
               }
 
               &.loan {
-                background: rgba(var(--mat-sys-tertiary-rgb), 0.2);
+                background: rgba(var(--mat-sys-tertiary-rgb), 0.12);
                 mat-icon {
                   color: var(--mat-sys-tertiary);
                 }
@@ -302,9 +371,9 @@
 
               &.investment,
               &.brokerage {
-                background: rgba(var(--mat-sys-secondary-rgb), 0.2);
+                background: var(--info-light);
                 mat-icon {
-                  color: var(--mat-sys-secondary);
+                  color: var(--info-color);
                 }
               }
             }
@@ -319,6 +388,7 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                color: var(--mat-sys-on-surface);
               }
 
               .account-type {
@@ -326,6 +396,7 @@
                 font-size: 0.8rem;
                 color: var(--mat-sys-on-surface-variant);
                 text-transform: capitalize;
+                margin-top: 2px;
               }
             }
 
@@ -334,14 +405,13 @@
               margin-right: var(--spacing-md);
 
               .account-balance {
-                font-size: 1.1rem;
+                font-size: 1.15rem;
                 font-weight: 700;
                 font-variant-numeric: tabular-nums;
 
                 &.positive {
                   color: var(--mat-sys-primary);
                 }
-
                 &.negative {
                   color: var(--mat-sys-error);
                 }
@@ -350,6 +420,7 @@
               .account-available {
                 font-size: 0.75rem;
                 color: var(--mat-sys-on-surface-variant);
+                margin-top: 2px;
               }
             }
           }
@@ -358,21 +429,25 @@
     }
   }
 
-  // Sync Status Card
+  // ===== SYNC STATUS CARD =====
   .sync-status-card {
-    @include dashboard-card;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--border-radius-xl);
+    overflow: hidden;
 
     mat-card-header {
-      padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
+      padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
 
       mat-card-title {
         font-size: 1.1rem;
         font-weight: 600;
+        color: var(--mat-sys-on-surface);
       }
     }
 
     mat-card-content {
-      padding: 0 var(--spacing-lg) var(--spacing-lg);
+      padding: 0 var(--spacing-xl) var(--spacing-xl);
 
       .sync-info {
         display: flex;
@@ -381,39 +456,41 @@
 
         .sync-item {
           padding: var(--spacing-md);
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--bg-subtle);
           border-radius: var(--border-radius-md);
 
           .sync-item-info {
             display: flex;
             align-items: center;
             gap: var(--spacing-md);
-            margin-bottom: 4px;
+            margin-bottom: 6px;
 
             .sync-institution {
               font-weight: 600;
+              color: var(--mat-sys-on-surface);
             }
 
             .sync-status {
-              font-size: 0.75rem;
-              padding: 2px 8px;
-              border-radius: 4px;
-              font-weight: 600;
+              font-size: 0.7rem;
+              padding: 3px 8px;
+              border-radius: var(--border-radius-sm);
+              font-weight: 700;
               text-transform: uppercase;
+              letter-spacing: 0.02em;
 
               &.status-active {
-                background: rgba(var(--mat-sys-primary-rgb), 0.2);
-                color: var(--mat-sys-primary);
+                background: var(--success-light);
+                color: var(--success-color);
               }
 
               &.status-error {
-                background: rgba(var(--mat-sys-error-rgb), 0.2);
-                color: var(--mat-sys-error);
+                background: var(--error-light);
+                color: var(--error-color);
               }
 
               &.status-warning {
-                background: rgba(255, 193, 7, 0.2);
-                color: #ffc107;
+                background: var(--warning-light);
+                color: var(--warning-color);
               }
             }
           }
@@ -426,7 +503,7 @@
           .sync-error {
             font-size: 0.8rem;
             color: var(--mat-sys-error);
-            margin-top: 4px;
+            margin-top: 6px;
           }
         }
       }
