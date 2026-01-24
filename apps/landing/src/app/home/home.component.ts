@@ -1,4 +1,10 @@
-import { Component, signal, computed } from '@angular/core';
+import {
+  Component,
+  signal,
+  computed,
+  CUSTOM_ELEMENTS_SCHEMA,
+} from '@angular/core';
+import 'iconify-icon';
 
 interface AppLink {
   name: string;
@@ -10,11 +16,18 @@ interface AppLink {
 
 @Component({
   selector: 'app-home',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="page">
       <!-- Header -->
       <header class="header">
-        <h1>🏠 Elliott Haus</h1>
+        <h1>
+          <iconify-icon
+            icon="mdi:home"
+            style="vertical-align: middle;"
+          ></iconify-icon>
+          Elliott Haus
+        </h1>
       </header>
 
       <!-- Services Bento Grid -->
@@ -31,7 +44,12 @@ interface AppLink {
           >
             <div class="bento-glow"></div>
             <div class="bento-content">
-              <span class="bento-icon">{{ app.icon }}</span>
+              <span class="bento-icon"
+                ><iconify-icon
+                  [icon]="app.icon"
+                  [style.color]="app.color"
+                ></iconify-icon
+              ></span>
               <div class="bento-text">
                 <h3>{{ app.name }}</h3>
                 <p>{{ app.description }}</p>
@@ -170,7 +188,10 @@ interface AppLink {
     .bento-icon {
       font-size: 2.5rem;
       line-height: 1;
-      filter: saturate(1.1);
+    }
+
+    .bento-icon iconify-icon {
+      display: block;
     }
 
     .featured .bento-icon {
@@ -338,22 +359,43 @@ export class HomeComponent {
       name: 'Finances',
       url: 'https://finances.elliott.haus',
       description: 'Personal finance tracking and budgeting.',
-      icon: '💰',
+      icon: 'mdi:cash-multiple',
       color: '#22c55e',
     },
     {
       name: 'Wheel',
       url: 'https://wheel.elliott.haus',
       description: 'Spin the wheel for random decisions.',
-      icon: '🎡',
+      icon: 'mdi:ferris-wheel',
       color: '#8b5cf6',
     },
     {
       name: 'ArgoCD',
       url: 'https://argocd.elliott.haus',
       description: 'GitOps continuous deployment.',
-      icon: '🚀',
+      icon: 'simple-icons:argo',
       color: '#f97316',
+    },
+    {
+      name: 'Prometheus',
+      url: 'https://prometheus.elliott.haus',
+      description: 'Metrics collection and monitoring.',
+      icon: 'simple-icons:prometheus',
+      color: '#e6522c',
+    },
+    {
+      name: 'Grafana',
+      url: 'https://grafana.elliott.haus',
+      description: 'Analytics and monitoring dashboards.',
+      icon: 'simple-icons:grafana',
+      color: '#f46800',
+    },
+    {
+      name: 'Home Assistant',
+      url: 'https://home.elliott.haus',
+      description: 'Smart home automation and control.',
+      icon: 'simple-icons:homeassistant',
+      color: '#18bcf2',
     },
   ]);
 

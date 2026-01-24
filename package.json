@@ -82,6 +82,7 @@
     "fastify-plugin": "~5.0.1",
     "fastify-type-provider-zod": "^4.0.2",
     "http-errors": "^2.0.0",
+    "iconify-icon": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
     "ng2-charts": "^8.0.0",
     "node-cron": "^4.2.1",
