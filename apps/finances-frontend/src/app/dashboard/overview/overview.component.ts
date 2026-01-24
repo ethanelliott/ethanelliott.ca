@@ -170,16 +170,19 @@ import {
               @for (cat of dashboard()!.spending.byCategory.slice(0, 8); track
               cat.category) {
               <div class="category-item">
-                <div class="category-info">
-                  <span class="category-name">{{
-                    cat.category || 'Uncategorized'
-                  }}</span>
+                <div class="category-row">
+                  <div class="category-info">
+                    <span class="category-name">{{
+                      formatCategoryName(cat.category)
+                    }}</span>
+                    <span class="category-amount">{{
+                      formatCurrency(cat.amount)
+                    }}</span>
+                  </div>
                   <span class="category-count"
-                    >{{ cat.count }} transactions</span
+                    >{{ cat.count }}
+                    {{ cat.count === 1 ? 'transaction' : 'transactions' }}</span
                   >
-                </div>
-                <div class="category-amount">
-                  {{ formatCurrency(cat.amount) }}
                 </div>
                 <div class="category-bar">
                   <div
@@ -209,21 +212,25 @@ import {
               <div class="trend-item">
                 <div class="trend-month">{{ formatMonth(trend.month) }}</div>
                 <div class="trend-bars">
-                  <div
-                    class="trend-bar income"
-                    [style.width.%]="getBarWidth(trend.income, maxTrendValue())"
-                  >
-                    <span class="trend-label">{{
+                  <div class="trend-bar-row">
+                    <div
+                      class="trend-bar income"
+                      [style.width.%]="
+                        getBarWidth(trend.income, maxTrendValue())
+                      "
+                    ></div>
+                    <span class="trend-value">{{
                       formatCurrency(trend.income)
                     }}</span>
                   </div>
-                  <div
-                    class="trend-bar expenses"
-                    [style.width.%]="
-                      getBarWidth(trend.expenses, maxTrendValue())
-                    "
-                  >
-                    <span class="trend-label">{{
+                  <div class="trend-bar-row">
+                    <div
+                      class="trend-bar expenses"
+                      [style.width.%]="
+                        getBarWidth(trend.expenses, maxTrendValue())
+                      "
+                    ></div>
+                    <span class="trend-value">{{
                       formatCurrency(trend.expenses)
                     }}</span>
                   </div>
@@ -352,103 +359,87 @@ import {
     .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
+      gap: 12px;
     }
 
     mat-card {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
-      border-radius: 20px;
+      border-radius: 12px;
       overflow: hidden;
     }
 
     .stat-card {
-      padding: 24px;
+      padding: 12px 14px;
       cursor: pointer;
-      transition: all 0.25s ease;
-      position: relative;
+      transition: all 0.2s ease;
       
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(var(--mat-sys-primary-rgb), 0.3), transparent);
-        opacity: 0;
-        transition: opacity 0.25s ease;
+      mat-card-content {
+        padding: 0 !important;
       }
       
       &:hover {
         background: var(--bg-card-hover);
         border-color: rgba(var(--mat-sys-primary-rgb), 0.3);
-        transform: translateY(-4px);
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-        
-        &::before {
-          opacity: 1;
-        }
       }
     }
 
     .stat-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 6px;
       
       mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
         color: var(--mat-sys-primary);
       }
       
       span {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         font-weight: 500;
         color: var(--mat-sys-on-surface-variant);
-        letter-spacing: 0.01em;
       }
     }
 
     .stat-value {
-      font-size: 2.25rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
       font-variant-numeric: tabular-nums;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       
       &.positive { color: var(--mat-sys-primary); }
       &.negative { color: var(--mat-sys-error); }
     }
 
     .stat-subtitle {
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       color: var(--mat-sys-on-surface-variant);
     }
 
     .stat-breakdown {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      margin-top: 16px;
-      padding-top: 16px;
+      gap: 2px;
+      margin-top: 8px;
+      padding-top: 8px;
       border-top: 1px solid var(--border-subtle);
     }
 
     .breakdown-item {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.85rem;
+      gap: 4px;
+      font-size: 0.75rem;
       font-weight: 500;
       
       mat-icon {
-        font-size: 14px;
-        width: 14px;
-        height: 14px;
+        font-size: 12px;
+        width: 12px;
+        height: 12px;
       }
       
       &.positive { color: var(--mat-sys-primary); }
@@ -459,25 +450,26 @@ import {
     .negative { color: var(--mat-sys-error); }
 
     .stat-net {
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-top: 12px;
-    }
-
-    .stat-note {
       font-size: 0.8rem;
-      color: var(--mat-sys-tertiary);
+      font-weight: 600;
       margin-top: 6px;
     }
 
+    .stat-note {
+      font-size: 0.7rem;
+      color: var(--mat-sys-tertiary);
+      margin-top: 2px;
+    }
+
     .sync-button {
-      margin-top: 16px;
+      margin-top: 8px;
       width: 100%;
-      border-radius: 12px;
-      height: 40px;
+      border-radius: 6px;
+      height: 32px;
+      font-size: 0.85rem;
       
       mat-icon, mat-spinner {
-        margin-right: 6px;
+        margin-right: 4px;
       }
     }
 
@@ -501,159 +493,176 @@ import {
     }
 
     mat-card-header {
-      padding: 20px 24px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border-subtle);
       
       mat-card-title {
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-weight: 600;
         color: var(--mat-sys-on-surface);
       }
       
       mat-card-subtitle {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: var(--mat-sys-on-surface-variant);
         margin-top: 2px;
       }
     }
 
     mat-card-content {
-      padding: 24px;
+      padding: 16px;
     }
 
     .no-data {
       text-align: center;
       color: var(--mat-sys-on-surface-variant);
-      padding: 32px;
-      font-size: 0.9rem;
+      padding: 24px;
+      font-size: 0.85rem;
     }
 
     .category-list {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     .category-item {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
+    }
+
+    .category-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
     }
 
     .category-info {
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
+      flex-direction: column;
+      gap: 1px;
     }
 
     .category-name {
       font-weight: 600;
-      font-size: 0.95rem;
-    }
-
-    .category-count {
-      font-size: 0.8rem;
-      color: var(--mat-sys-on-surface-variant);
+      font-size: 0.85rem;
+      color: var(--mat-sys-on-surface);
     }
 
     .category-amount {
       font-weight: 700;
+      font-size: 0.95rem;
       font-variant-numeric: tabular-nums;
       color: var(--mat-sys-on-surface);
     }
 
+    .category-count {
+      font-size: 0.75rem;
+      color: var(--mat-sys-on-surface-variant);
+      text-align: right;
+    }
+
     .category-bar {
-      height: 8px;
+      height: 4px;
       background: var(--bg-muted);
-      border-radius: 4px;
+      border-radius: 2px;
       overflow: hidden;
     }
 
     .category-bar-fill {
       height: 100%;
       background: linear-gradient(90deg, var(--mat-sys-primary), var(--mat-sys-tertiary));
-      border-radius: 4px;
+      border-radius: 3px;
       transition: width 0.4s ease;
     }
 
     .trends-list {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 6px;
     }
 
     .trend-item {
       display: grid;
-      grid-template-columns: 80px 1fr 100px;
-      gap: 16px;
+      grid-template-columns: 50px 1fr 70px;
+      gap: 10px;
       align-items: center;
+      padding: 6px 10px;
+      background: var(--bg-subtle);
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
     }
 
     .trend-month {
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.75rem;
       color: var(--mat-sys-on-surface);
     }
 
     .trend-bars {
       display: flex;
       flex-direction: column;
+      gap: 2px;
+    }
+
+    .trend-bar-row {
+      display: flex;
+      align-items: center;
       gap: 6px;
+      height: 14px;
     }
 
     .trend-bar {
-      height: 20px;
-      border-radius: 6px;
-      min-width: 4px;
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
-      transition: width 0.4s ease;
+      height: 10px;
+      border-radius: 2px;
+      min-width: 3px;
+      transition: width 0.3s ease;
       
       &.income {
-        background: linear-gradient(90deg, var(--mat-sys-primary), rgba(var(--mat-sys-primary-rgb), 0.7));
+        background: var(--mat-sys-primary);
       }
       
       &.expenses {
-        background: linear-gradient(90deg, var(--mat-sys-error), rgba(var(--mat-sys-error-rgb), 0.7));
+        background: var(--mat-sys-error);
       }
     }
 
-    .trend-label {
-      font-size: 0.75rem;
+    .trend-value {
+      font-size: 0.65rem;
       font-weight: 600;
+      color: var(--mat-sys-on-surface-variant);
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     .trend-net {
       text-align: right;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
+      font-size: 0.8rem;
     }
 
     .trends-legend {
       display: flex;
-      gap: 24px;
-      margin-top: 20px;
+      gap: 12px;
+      margin-top: 10px;
       justify-content: center;
-      padding-top: 16px;
+      padding-top: 10px;
       border-top: 1px solid var(--border-subtle);
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
+      gap: 4px;
+      font-size: 0.75rem;
       color: var(--mat-sys-on-surface-variant);
     }
 
     .legend-color {
-      width: 14px;
-      height: 14px;
-      border-radius: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
       
       &.income { background: var(--mat-sys-primary); }
       &.expenses { background: var(--mat-sys-error); }
@@ -661,17 +670,17 @@ import {
 
     .accounts-list {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 8px;
     }
 
     .account-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 20px;
+      padding: 10px 14px;
       background: var(--bg-subtle);
-      border-radius: 12px;
+      border-radius: 8px;
       border: 1px solid var(--border-subtle);
       transition: all 0.2s ease;
       
@@ -684,23 +693,31 @@ import {
     .account-info {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
+      min-width: 0;
+      flex: 1;
     }
 
     .account-name {
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
+      color: var(--mat-sys-on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .account-institution {
-      font-size: 0.8rem;
+      font-size: 0.7rem;
       color: var(--mat-sys-on-surface-variant);
     }
 
     .account-balance {
       font-weight: 700;
       font-variant-numeric: tabular-nums;
-      font-size: 1.05rem;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      margin-left: 10px;
     }
 
     @media (max-width: 1200px) {
@@ -720,25 +737,148 @@ import {
 
     @media (max-width: 768px) {
       .dashboard-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
       }
       
-      .category-card, .trends-card, .accounts-card {
-        grid-column: span 1;
+      .stat-card {
+        padding: 10px 12px;
       }
       
-      .trend-item {
-        grid-template-columns: 60px 1fr 80px;
-        gap: 12px;
+      .stat-header {
+        margin-bottom: 4px;
+        
+        mat-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
+        
+        span {
+          font-size: 0.7rem;
+        }
       }
       
       .stat-value {
-        font-size: 1.75rem;
+        font-size: 1.25rem;
+      }
+      
+      .stat-subtitle {
+        font-size: 0.7rem;
+      }
+      
+      .stat-breakdown {
+        margin-top: 6px;
+        padding-top: 6px;
+        gap: 2px;
+      }
+      
+      .breakdown-item {
+        font-size: 0.7rem;
+      }
+      
+      .stat-net {
+        font-size: 0.75rem;
+        margin-top: 4px;
+      }
+      
+      .stat-note {
+        font-size: 0.65rem;
+      }
+      
+      .sync-button {
+        margin-top: 6px;
+        height: 28px;
+        font-size: 0.75rem;
+      }
+      
+      .category-card, .trends-card, .accounts-card {
+        grid-column: span 2;
+      }
+      
+      mat-card-header {
+        padding: 10px 12px;
+        
+        mat-card-title {
+          font-size: 0.85rem;
+        }
+        
+        mat-card-subtitle {
+          font-size: 0.7rem;
+        }
+      }
+      
+      mat-card-content {
+        padding: 12px;
+      }
+      
+      .category-list {
+        gap: 10px;
+      }
+      
+      .category-item {
+        gap: 4px;
+      }
+      
+      .category-name {
+        font-size: 0.8rem;
+      }
+      
+      .category-amount {
+        font-size: 0.85rem;
+      }
+      
+      .category-count {
+        font-size: 0.7rem;
+      }
+      
+      .trend-item {
+        padding: 5px 8px;
+        grid-template-columns: 45px 1fr 65px;
+        gap: 8px;
+      }
+      
+      .trend-month {
+        font-size: 0.7rem;
+      }
+      
+      .trend-value {
+        font-size: 0.6rem;
+      }
+      
+      .trend-net {
+        font-size: 0.7rem;
+      }
+      
+      .trends-legend {
+        margin-top: 8px;
+        padding-top: 8px;
+        gap: 10px;
+      }
+      
+      .legend-item {
+        font-size: 0.7rem;
       }
       
       .accounts-list {
         grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      
+      .account-item {
+        padding: 8px 10px;
+      }
+      
+      .account-name {
+        font-size: 0.8rem;
+      }
+      
+      .account-institution {
+        font-size: 0.65rem;
+      }
+      
+      .account-balance {
+        font-size: 0.85rem;
       }
     }
   `,
@@ -834,5 +974,14 @@ export class OverviewComponent implements OnInit {
   getBarWidth(value: number, max: number): number {
     if (max === 0) return 0;
     return Math.max((value / max) * 100, 2);
+  }
+
+  formatCategoryName(category: string): string {
+    if (!category) return 'Uncategorized';
+    return category
+      .toLowerCase()
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 }
