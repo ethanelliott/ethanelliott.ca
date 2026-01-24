@@ -25,8 +25,10 @@ RUN bun install --production
 # Add user so we don't need --no-sandbox
 RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
     && mkdir -p /home/pptruser/Downloads \
+    && mkdir -p /data \
     && chown -R pptruser:pptruser /home/pptruser \
-    && chown -R pptruser:pptruser /app
+    && chown -R pptruser:pptruser /app \
+    && chown -R pptruser:pptruser /data
 
 USER pptruser
 
