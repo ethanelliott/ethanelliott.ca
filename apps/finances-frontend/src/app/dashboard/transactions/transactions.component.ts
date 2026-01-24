@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -443,6 +443,7 @@ import { firstValueFrom } from 'rxjs';
 export class TransactionsComponent implements OnInit {
   private readonly apiService = inject(FinanceApiService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly route = inject(ActivatedRoute);
 
   readonly TransactionType = TransactionType;
 
@@ -511,6 +512,38 @@ export class TransactionsComponent implements OnInit {
   });
 
   ngOnInit() {
+    // Read query params and apply as filters
+    this.route.queryParams.subscribe((params) => {
+      if (params['accountId']) {
+        this.selectedAccountId = params['accountId'];
+        this.showFilters.set(true);
+      }
+      if (params['categoryId']) {
+        this.selectedCategoryId = params['categoryId'];
+        this.showFilters.set(true);
+      }
+      if (params['type']) {
+        this.selectedType = params['type'] as TransactionType;
+        this.showFilters.set(true);
+      }
+      if (params['search']) {
+        this.searchQuery = params['search'];
+      }
+      if (params['startDate']) {
+        this.startDate = new Date(params['startDate']);
+        this.showFilters.set(true);
+      }
+      if (params['endDate']) {
+        this.endDate = new Date(params['endDate']);
+        this.showFilters.set(true);
+      }
+
+      // Apply filters after data is loaded
+      if (this.transactions().length > 0) {
+        this.applyFilters();
+      }
+    });
+
     this.loadData();
   }
 
@@ -537,6 +570,9 @@ export class TransactionsComponent implements OnInit {
         totalExpenses: stats.totalExpenses,
         unreviewedCount: stats.unreviewedCount,
       });
+
+      // Apply any filters from query params
+      this.applyFilters();
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
