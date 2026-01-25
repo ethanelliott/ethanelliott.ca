@@ -15,8 +15,8 @@ ollama:
 
   resources:
     limits:
-      cpu: 4000m
-      memory: 10Gi
+      cpu: 6000m
+      memory: 14Gi
     requests:
       cpu: 1000m
       memory: 4Gi
