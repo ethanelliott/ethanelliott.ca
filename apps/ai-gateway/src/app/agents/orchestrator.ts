@@ -330,20 +330,22 @@ const defaultOrchestratorConfig: OrchestratorConfig = {
     {
       name: 'utility-assistant',
       description:
-        'Handles general utilities like time, calculations, and web requests',
+        'Handles general utilities like time, calculations, web requests, and sensitive actions requiring approval',
       capabilities: [
         'Get current time',
         'Perform calculations',
         'Fetch data from URLs',
+        'Execute sensitive actions (requires user approval)',
       ],
       agent: {
         name: 'utility-assistant',
         description: 'General utility assistant',
         systemPrompt: `You are a helpful assistant with access to utility tools.
-You can tell the time, perform calculations, and fetch data from the web.
+You can tell the time, perform calculations, fetch data from the web, and perform sensitive actions.
+For sensitive actions, the user will be asked for approval before execution.
 Be precise and accurate in your responses.`,
         model: 'llama3.2:3b',
-        tools: ['get_current_time', 'calculate', 'http_request'],
+        tools: ['get_current_time', 'calculate', 'http_request', 'sensitive_action'],
       },
     },
   ],

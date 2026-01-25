@@ -244,10 +244,93 @@ const httpRequest = createTool(
   }
 );
 
+/**
+ * Sensitive Action Tool - Example of a tool requiring human approval
+ *
+ * This demonstrates the human-in-the-loop pattern where:
+ * 1. The LLM decides to call this tool
+ * 2. The user is asked to approve with a justification
+ * 3. Only after approval does the tool execute
+ */
+const sensitiveAction = createTool(
+  {
+    name: 'sensitive_action',
+    description:
+      'Perform a sensitive action that requires user approval. Use this when the user asks to do something that has significant consequences.',
+    category: 'System',
+    tags: ['sensitive', 'approval', 'action'],
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: 'Description of the action to perform',
+        },
+        target: {
+          type: 'string',
+          description: 'The target of the action (e.g., a resource name)',
+        },
+        severity: {
+          type: 'string',
+          description: 'Severity level: low, medium, high',
+          enum: ['low', 'medium', 'high'],
+        },
+      },
+      required: ['action', 'target'],
+    },
+    // Approval configuration
+    approval: {
+      required: true,
+      message:
+        'This action requires your approval before proceeding. Please review the details and provide a justification if you approve.',
+      userParametersSchema: {
+        type: 'object',
+        properties: {
+          justification: {
+            type: 'string',
+            description:
+              'Please provide a business justification for this action',
+          },
+          acknowledgeRisks: {
+            type: 'boolean',
+            description: 'I acknowledge the risks of this action',
+          },
+        },
+        required: ['justification', 'acknowledgeRisks'],
+      },
+    },
+  },
+  async (params, userParams) => {
+    const action = params.action as string;
+    const target = params.target as string;
+    const severity = (params.severity as string) || 'medium';
+    const justification = userParams?.justification as string;
+    const acknowledgedRisks = userParams?.acknowledgeRisks as boolean;
+
+    // In a real implementation, this would perform some sensitive action
+    // For demo purposes, we just return the details
+    return {
+      success: true,
+      data: {
+        action,
+        target,
+        severity,
+        executedAt: new Date().toISOString(),
+        approval: {
+          justification,
+          acknowledgedRisks,
+        },
+        message: `Sensitive action "${action}" on "${target}" executed successfully.`,
+      },
+    };
+  }
+);
+
 // Register all system tools
 const registry = getToolRegistry();
 registry.register(getCurrentTime);
 registry.register(calculate);
 registry.register(httpRequest);
+registry.register(sensitiveAction);
 
-export { getCurrentTime, calculate, httpRequest };
+export { getCurrentTime, calculate, httpRequest, sensitiveAction };

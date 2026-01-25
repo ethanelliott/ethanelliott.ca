@@ -23,10 +23,23 @@ export interface MCPTool {
   parameters: MCPToolSchema;
   category?: string;
   tags?: string[];
+  approval?: ToolApprovalConfig;
+}
+
+/**
+ * Tool Approval Configuration - Human-in-the-loop support
+ */
+export interface ToolApprovalConfig {
+  required: boolean;
+  message?: string; // Message to display to user explaining why approval is needed
+  userParametersSchema?: MCPToolSchema; // Schema for additional user-provided parameters
 }
 
 export interface MCPToolWithExecutor extends MCPTool {
-  execute: (params: Record<string, unknown>) => Promise<MCPToolResult>;
+  execute: (
+    params: Record<string, unknown>,
+    userParams?: Record<string, unknown>
+  ) => Promise<MCPToolResult>;
 }
 
 export interface MCPToolResult {
@@ -227,7 +240,9 @@ export type StreamEventType =
   | 'agent_response'
   | 'content'
   | 'done'
-  | 'error';
+  | 'error'
+  | 'approval_required'
+  | 'approval_received';
 
 export interface StreamEvent {
   type: StreamEventType;
@@ -265,6 +280,35 @@ export interface StreamEventData {
 
   // Error event
   error?: string;
+
+  // Approval events
+  approvalId?: string;
+  approved?: boolean;
+  userParametersSchema?: MCPToolSchema;
+  userParameters?: Record<string, unknown>;
+  rejectionReason?: string;
+}
+
+/**
+ * Approval Request - What we send in the stream when approval is needed
+ */
+export interface ApprovalRequest {
+  approvalId: string;
+  tool: string;
+  input: Record<string, unknown>;
+  message?: string;
+  userParametersSchema?: MCPToolSchema;
+  agentName?: string;
+}
+
+/**
+ * Approval Response - What the client sends back
+ */
+export interface ApprovalResponse {
+  approvalId: string;
+  approved: boolean;
+  userParameters?: Record<string, unknown>;
+  rejectionReason?: string;
 }
 
 /**

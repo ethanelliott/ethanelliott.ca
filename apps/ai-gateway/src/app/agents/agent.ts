@@ -4,10 +4,12 @@ import {
   AgentToolCall,
   OllamaMessage,
   MCPToolResult,
+  ApprovalResponse,
 } from '../types';
 import { getOllamaClient, OllamaClient } from '../ollama';
 import { getToolRegistry } from '../mcp';
 import { StreamEmitter } from '../streaming';
+import { getApprovalManager } from '../approval';
 
 /**
  * Base Agent Class
@@ -120,20 +122,89 @@ export class Agent {
 
           console.log(`[${this.config.name}] Calling tool: ${toolName}`, args);
 
-          // Emit tool call start
-          emitter?.toolCallStart(toolName, args, this.config.name);
+          // Check if tool requires approval
+          const tool = registry.get(toolName);
+          let result: MCPToolResult;
+          let userParams: Record<string, unknown> | undefined;
 
-          const result = await registry.execute(toolName, args);
+          if (tool?.approval?.required && emitter) {
+            // Request approval and wait for response
+            const approvalManager = getApprovalManager();
+
+            // Emit approval required event
+            emitter.approvalRequired(toolName, toolName, args, {
+              message: tool.approval.message,
+              userParametersSchema: tool.approval.userParametersSchema,
+              agentName: this.config.name,
+            });
+
+            try {
+              // Wait for approval (this will block until user responds or timeout)
+              const approvalResponse = await approvalManager.requestApproval(
+                toolName,
+                args,
+                {
+                  message: tool.approval.message,
+                  userParametersSchema: tool.approval.userParametersSchema,
+                  agentName: this.config.name,
+                }
+              );
+
+              // Emit approval received
+              emitter.approvalReceived(
+                approvalResponse.approvalId,
+                approvalResponse.approved,
+                {
+                  userParameters: approvalResponse.userParameters,
+                  rejectionReason: approvalResponse.rejectionReason,
+                }
+              );
+
+              if (!approvalResponse.approved) {
+                // User rejected - add rejection to messages and continue
+                result = {
+                  success: false,
+                  error: `Tool execution rejected by user: ${
+                    approvalResponse.rejectionReason || 'No reason provided'
+                  }`,
+                };
+              } else {
+                // Approved - execute with user parameters
+                userParams = approvalResponse.userParameters;
+
+                // Emit tool call start after approval
+                emitter.toolCallStart(toolName, args, this.config.name);
+
+                result = await registry.execute(toolName, args, userParams);
+              }
+            } catch (error) {
+              // Approval timeout or error
+              result = {
+                success: false,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Approval request failed',
+              };
+            }
+          } else {
+            // No approval required - execute directly
+            emitter?.toolCallStart(toolName, args, this.config.name);
+            result = await registry.execute(toolName, args);
+          }
+
           const toolDurationMs = Date.now() - toolStartTime;
 
-          // Emit tool call end
-          emitter?.toolCallEnd(
-            toolName,
-            args,
-            result,
-            toolDurationMs,
-            this.config.name
-          );
+          // Emit tool call end (only if we actually executed)
+          if (result.success || !result.error?.includes('rejected by user')) {
+            emitter?.toolCallEnd(
+              toolName,
+              args,
+              result,
+              toolDurationMs,
+              this.config.name
+            );
+          }
 
           const agentToolCall: AgentToolCall = {
             tool: toolName,

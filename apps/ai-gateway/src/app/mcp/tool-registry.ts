@@ -133,10 +133,14 @@ class ToolRegistry {
 
   /**
    * Execute a tool by name
+   * @param name - Tool name
+   * @param params - Parameters from the LLM
+   * @param userParams - Optional user-provided parameters (from approval flow)
    */
   async execute(
     name: string,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
+    userParams?: Record<string, unknown>
   ): Promise<MCPToolResult> {
     const tool = this.tools.get(name);
     if (!tool) {
@@ -149,12 +153,13 @@ class ToolRegistry {
     const startTime = Date.now();
 
     try {
-      const result = await tool.execute(params);
+      const result = await tool.execute(params, userParams);
       return {
         ...result,
         metadata: {
           ...result.metadata,
           executionTimeMs: Date.now() - startTime,
+          hadUserParams: !!userParams,
         },
       };
     } catch (error) {

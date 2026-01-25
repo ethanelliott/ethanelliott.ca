@@ -5,6 +5,7 @@ import { getOrchestrator } from '../agents';
 import { Agent, getAgentRegistry } from '../agents/agent';
 import { getToolRouter } from '../agents/tool-router';
 import { StreamEmitter } from '../streaming';
+import { getApprovalManager } from '../approval';
 import { randomUUID } from 'crypto';
 
 // Store conversations by ID
@@ -300,4 +301,113 @@ export const ChatRouter: FastifyPluginAsync = async (
     getOrchestrator().reset();
     return { success: true, message: 'Orchestrator reset' };
   });
+
+  /**
+   * POST /chat/approve
+   * Submit an approval decision for a pending tool execution
+   *
+   * Used in human-in-the-loop workflows when a tool requires user approval
+   * before execution.
+   */
+  app.post(
+    '/approve',
+    {
+      schema: {
+        body: z.object({
+          approvalId: z.string().uuid(),
+          approved: z.boolean(),
+          userParameters: z.record(z.unknown()).optional(),
+          rejectionReason: z.string().optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { approvalId, approved, userParameters, rejectionReason } =
+        request.body;
+
+      const approvalManager = getApprovalManager();
+
+      // Check if approval exists
+      if (!approvalManager.hasPendingApproval(approvalId)) {
+        return reply.status(404).send({
+          error: 'Approval request not found or already processed',
+          approvalId,
+        });
+      }
+
+      // Submit the approval
+      const success = approvalManager.submitApproval({
+        approvalId,
+        approved,
+        userParameters,
+        rejectionReason,
+      });
+
+      if (!success) {
+        return reply.status(500).send({
+          error: 'Failed to process approval',
+          approvalId,
+        });
+      }
+
+      return {
+        success: true,
+        message: approved
+          ? 'Tool execution approved'
+          : 'Tool execution rejected',
+        approvalId,
+      };
+    }
+  );
+
+  /**
+   * GET /chat/approvals
+   * List all pending approval requests
+   */
+  app.get('/approvals', async () => {
+    const approvalManager = getApprovalManager();
+    const pending = approvalManager.getPendingApprovals();
+
+    return {
+      count: pending.length,
+      approvals: pending,
+    };
+  });
+
+  /**
+   * DELETE /chat/approvals/:approvalId
+   * Cancel a pending approval request
+   */
+  app.delete(
+    '/approvals/:approvalId',
+    {
+      schema: {
+        params: z.object({
+          approvalId: z.string().uuid(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { approvalId } = request.params;
+      const approvalManager = getApprovalManager();
+
+      const success = approvalManager.cancelApproval(
+        approvalId,
+        'Cancelled by user'
+      );
+
+      if (!success) {
+        return reply.status(404).send({
+          error: 'Approval request not found',
+          approvalId,
+        });
+      }
+
+      return {
+        success: true,
+        message: 'Approval request cancelled',
+        approvalId,
+      };
+    }
+  );
 };

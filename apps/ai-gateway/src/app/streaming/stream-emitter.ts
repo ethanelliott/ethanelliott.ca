@@ -1,4 +1,10 @@
-import { StreamEvent, StreamEventType, StreamEventData } from '../types';
+import {
+  StreamEvent,
+  StreamEventType,
+  StreamEventData,
+  MCPToolSchema,
+  ApprovalResponse,
+} from '../types';
 
 /**
  * Stream Event Emitter
@@ -119,6 +125,48 @@ export class StreamEmitter {
 
   error(error: string): void {
     this.emit('error', { error });
+  }
+
+  /**
+   * Emit approval required event
+   */
+  approvalRequired(
+    approvalId: string,
+    tool: string,
+    input: Record<string, unknown>,
+    options: {
+      message?: string;
+      userParametersSchema?: MCPToolSchema;
+      agentName?: string;
+    } = {}
+  ): void {
+    this.emit('approval_required', {
+      approvalId,
+      tool,
+      input,
+      message: options.message,
+      userParametersSchema: options.userParametersSchema,
+      agentName: options.agentName,
+    });
+  }
+
+  /**
+   * Emit approval received event
+   */
+  approvalReceived(
+    approvalId: string,
+    approved: boolean,
+    options: {
+      userParameters?: Record<string, unknown>;
+      rejectionReason?: string;
+    } = {}
+  ): void {
+    this.emit('approval_received', {
+      approvalId,
+      approved,
+      userParameters: options.userParameters,
+      rejectionReason: options.rejectionReason,
+    });
   }
 
   /**
