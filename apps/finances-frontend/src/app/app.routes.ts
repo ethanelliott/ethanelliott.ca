@@ -75,6 +75,13 @@ export const appRoutes: Route[] = [
             (m) => m.ProfileComponent
           ),
       },
+      {
+        path: 'chat',
+        loadComponent: () =>
+          import('./dashboard/chat/chat.component').then(
+            (m) => m.ChatComponent
+          ),
+      },
     ],
   },
   {

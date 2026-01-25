@@ -88,6 +88,16 @@ import { map } from 'rxjs/operators';
                   <span matListItemTitle>Transactions</span>
                 </a>
 
+                <a
+                  mat-list-item
+                  routerLink="/dashboard/chat"
+                  routerLinkActive="active-link"
+                  (click)="closeSidenavOnMobile()"
+                >
+                  <mat-icon matListItemIcon>smart_toy</mat-icon>
+                  <span matListItemTitle>AI Assistant</span>
+                </a>
+
                 <div class="nav-section-title">Manage</div>
 
                 <a
@@ -417,6 +427,8 @@ export class Dashboard implements OnInit {
       this.currentPageTitle.set('Inbox');
     } else if (url.includes('/transactions')) {
       this.currentPageTitle.set('Transactions');
+    } else if (url.includes('/chat')) {
+      this.currentPageTitle.set('AI Assistant');
     } else if (url.includes('/accounts')) {
       this.currentPageTitle.set('Accounts');
     } else if (url.includes('/categories')) {
