@@ -55,6 +55,13 @@ export class OrchestratorAgent {
   }
 
   /**
+   * Add a message to conversation history (for stateless API)
+   */
+  addToHistory(message: OllamaMessage): void {
+    this.conversationHistory.push(message);
+  }
+
+  /**
    * Stream a chat completion from the orchestrator, emitting tokens
    */
   private async streamOrchestratorChat(
@@ -279,19 +286,27 @@ export class OrchestratorAgent {
       )
       .join('\n');
 
-    return `You are an orchestrator. You MUST use the delegate_to_agent tool for ALL user requests.
+    return `You are a router that delegates ALL tasks to agents using the delegate_to_agent tool.
 
 ## Available Agents
 
 ${agentDescriptions}
 
-## RULES
+## Instructions
 
-1. ALWAYS use the delegate_to_agent tool - never respond directly
-2. For calculations, time, web requests, or any tasks → delegate to utility-assistant
-3. After receiving the agent's response, synthesize and respond to the user
+For EVERY user message, you MUST call delegate_to_agent with:
+- agent_name: "utility-assistant" 
+- task: the user's request
 
-You have NO capabilities yourself. You can ONLY delegate to agents using the tool.`;
+Examples:
+- User: "What time is it?" → delegate_to_agent(agent_name="utility-assistant", task="Get current time")
+- User: "Calculate 5+5" → delegate_to_agent(agent_name="utility-assistant", task="Calculate 5+5")
+- User: "Hello" → delegate_to_agent(agent_name="utility-assistant", task="Greet the user")
+- User: "What is the time now?" → delegate_to_agent(agent_name="utility-assistant", task="Get current time")
+- User: "Tell me the time" → delegate_to_agent(agent_name="utility-assistant", task="Get current time")
+
+You CANNOT tell time yourself. You MUST delegate ALL requests including time queries.
+ALWAYS delegate. NEVER respond directly.`;
   }
 
   /**
@@ -381,9 +396,16 @@ You have NO capabilities yourself. You can ONLY delegate to agents using the too
 }
 
 // Default orchestrator configuration
-const defaultOrchestratorConfig: OrchestratorConfig = {
+// Model Selection Notes (based on benchmarks):
+// - functiongemma: Ultra fast (~2-3s), great for tool routing, poor at complex reasoning
+// - llama3.2:3b: Good balance (~12-17s), decent tool calling and reasoning
+// - llama3.1:8b: Best reasoning (~33-38s), excellent for complex multi-step problems
+// - mistral:7b: Inconsistent tool calling, sometimes calls wrong tools
+// - command-r7b: Doesn't use tools at all
+// - gemma3: Doesn't support tool calling
+export const defaultOrchestratorConfig: OrchestratorConfig = {
   name: 'main-orchestrator',
-  model: 'functiongemma',
+  model: 'llama3.1:8b', // Best for complex reasoning and correct tool calling
   subAgents: [
     {
       name: 'utility-assistant',
@@ -398,11 +420,22 @@ const defaultOrchestratorConfig: OrchestratorConfig = {
       agent: {
         name: 'utility-assistant',
         description: 'General utility assistant',
-        systemPrompt: `You are a helpful assistant with access to utility tools.
-You can tell the time, perform calculations, fetch data from the web, and perform sensitive actions.
-For sensitive actions, the user will be asked for approval before execution.
-Be precise and accurate in your responses.`,
-        model: 'functiongemma',
+        systemPrompt: `You are an assistant that MUST use tools to answer questions.
+
+Available tools:
+- get_current_time: Use this for ANY time-related question
+- calculate: Use this for ANY math calculation. ALWAYS use numeric values, not variable names.
+- http_request: Use this to fetch data from URLs
+- sensitive_action: Use this for actions requiring approval
+
+ALWAYS use the appropriate tool. NEVER answer without using a tool first.
+When using calculate, break down complex problems into the correct mathematical expression with actual numbers.
+
+Examples:
+- "What time is it?" → use get_current_time
+- "Calculate 5+5" → use calculate with expression="5+5"
+- "4 apples at $2 with 10% discount" → use calculate with expression="(4 * 2) * 0.9"`,
+        model: 'llama3.1:8b', // Best for reasoning-heavy tool use
         tools: [
           'get_current_time',
           'calculate',

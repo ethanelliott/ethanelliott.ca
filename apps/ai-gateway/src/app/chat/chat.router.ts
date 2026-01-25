@@ -7,12 +7,63 @@ import { getToolRouter } from '../agents/tool-router';
 import { StreamEmitter } from '../streaming';
 import { getApprovalManager } from '../approval';
 import { randomUUID } from 'crypto';
+import { OllamaMessage, DelegationResult } from '../types';
 
 // Store conversations by ID
 const conversations = new Map<
   string,
   { orchestrator: ReturnType<typeof getOrchestrator> }
 >();
+
+// Tool call structure (matches Ollama's format)
+const ToolCallSchema = z.object({
+  id: z.string().optional(),
+  function: z.object({
+    name: z.string(),
+    arguments: z.record(z.unknown()),
+  }),
+});
+
+// Tool result structure
+const ToolResultSchema = z.object({
+  tool_call_id: z.string().optional(),
+  name: z.string(),
+  result: z.unknown(),
+});
+
+// Message schema - matches Ollama's native format for proper context
+// This allows the LLM to understand tool call history natively
+const MessageSchema = z.discriminatedUnion('role', [
+  // User message
+  z.object({
+    role: z.literal('user'),
+    content: z.string(),
+  }),
+  // Assistant message (may include tool calls)
+  z.object({
+    role: z.literal('assistant'),
+    content: z.string(),
+    tool_calls: z.array(ToolCallSchema).optional(),
+  }),
+  // Tool result message
+  z.object({
+    role: z.literal('tool'),
+    content: z.string(),
+    tool_call_id: z.string().optional(),
+    name: z.string().optional(), // Tool name for display
+  }),
+]);
+
+// Type for messages
+type ChatMessage = z.infer<typeof MessageSchema>;
+
+// Session configuration schema
+const SessionConfigSchema = z.object({
+  enabledTools: z.array(z.string()).optional(), // If provided, only these tools are available
+  disabledTools: z.array(z.string()).optional(), // If provided, these tools are disabled
+  model: z.string().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+});
 
 // Request/Response schemas
 const ChatRequestSchema = z.object({
@@ -111,17 +162,24 @@ export const ChatRouter: FastifyPluginAsync = async (
    * POST /chat/stream
    * Streaming chat endpoint with real-time status updates via newline-delimited JSON (NDJSON)
    *
+   * This is the recommended endpoint for building UIs:
+   * - Stateless: send full message history, no server-side conversation state
+   * - Supports tool enable/disable configuration
+   * - Returns updated message history in the done event
+   *
    * Returns NDJSON stream where each line is a JSON object:
    * { "event": "status", "timestamp": 123, "data": { ... } }
    *
    * Event types:
    * - status: General status messages
    * - thinking: Agent is processing
+   * - token: Real-time LLM output tokens
    * - delegation_start/end: Sub-agent delegation
    * - tool_call_start/end: Tool executions
    * - agent_thinking/response: Sub-agent activity
+   * - approval_required/received: Human-in-the-loop approval
    * - content: Response content (partial or final)
-   * - done: Final response with full context
+   * - done: Final response with full context including updated messages
    * - error: Error occurred
    */
   app.post(
@@ -129,13 +187,13 @@ export const ChatRouter: FastifyPluginAsync = async (
     {
       schema: {
         body: z.object({
-          message: z.string().min(1),
-          conversationId: z.string().optional(),
+          messages: z.array(MessageSchema).min(1),
+          config: SessionConfigSchema.optional(),
         }),
       },
     },
     async (request, reply) => {
-      const { message, conversationId } = request.body;
+      const { messages, config } = request.body;
 
       // Set up NDJSON streaming headers
       reply.raw.writeHead(200, {
@@ -145,21 +203,94 @@ export const ChatRouter: FastifyPluginAsync = async (
         'Access-Control-Allow-Origin': '*',
       });
 
-      // Get or create conversation
-      let convId = conversationId;
-      let orchestrator = getOrchestrator();
+      // Create a fresh orchestrator for this request (stateless)
+      const { createOrchestrator, defaultOrchestratorConfig } = await import(
+        '../agents/orchestrator'
+      );
 
-      if (convId && conversations.has(convId)) {
-        orchestrator = conversations.get(convId)!.orchestrator;
-      } else {
-        convId = randomUUID();
-        const { createOrchestrator } = await import('../agents/orchestrator');
-        orchestrator = createOrchestrator(getOrchestrator().getConfig());
-        conversations.set(convId, { orchestrator });
+      // Apply configuration
+      let orchestratorConfig = { ...defaultOrchestratorConfig };
+      if (config?.model) {
+        orchestratorConfig.model = config.model;
+      }
+
+      // Filter tools based on config
+      const { getToolRegistry } = await import('../mcp');
+      const toolRegistry = getToolRegistry();
+      const allTools = toolRegistry.getAll().map((t) => t.name);
+
+      let enabledTools = allTools;
+      if (config?.enabledTools) {
+        enabledTools = config.enabledTools.filter((t) => allTools.includes(t));
+      }
+      if (config?.disabledTools) {
+        enabledTools = enabledTools.filter(
+          (t) => !config.disabledTools!.includes(t)
+        );
+      }
+
+      // Update sub-agent tools based on filtered list
+      orchestratorConfig = {
+        ...orchestratorConfig,
+        subAgents: orchestratorConfig.subAgents.map(
+          (sa: (typeof orchestratorConfig.subAgents)[0]) => ({
+            ...sa,
+            agent: {
+              ...sa.agent,
+              tools: sa.agent.tools?.filter((t: string) =>
+                enabledTools.includes(t)
+              ),
+            },
+          })
+        ),
+      };
+
+      const orchestrator = createOrchestrator(orchestratorConfig);
+
+      // Inject conversation history from messages (skip last user message)
+      // Messages use Ollama's native format, so they can be passed directly
+      const historyMessages = messages.slice(0, -1);
+      for (const msg of historyMessages) {
+        // Convert to OllamaMessage format
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          orchestrator.addToHistory({
+            role: msg.role,
+            content: msg.content,
+            tool_calls:
+              msg.role === 'assistant' && 'tool_calls' in msg
+                ? msg.tool_calls
+                : undefined,
+          });
+        } else if (msg.role === 'tool') {
+          // Tool result messages - the model will see these as tool responses
+          orchestrator.addToHistory({
+            role: 'tool',
+            content: msg.content,
+          });
+        }
+      }
+
+      // Get the last user message
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role !== 'user') {
+        reply.raw.write(
+          JSON.stringify({
+            event: 'error',
+            timestamp: Date.now(),
+            data: { error: 'Last message must be from user' },
+          }) + '\n'
+        );
+        reply.raw.end();
+        return;
       }
 
       // Create stream emitter
       const emitter = new StreamEmitter();
+
+      // Send session info first
+      emitter.status(
+        `Session started with ${enabledTools.length} tools enabled`
+      );
 
       // Send events to client as NDJSON (one JSON object per line)
       const unsubscribe = emitter.on((event) => {
@@ -173,14 +304,59 @@ export const ChatRouter: FastifyPluginAsync = async (
 
       try {
         // Run the orchestrator with streaming
-        const result = await orchestrator.run(message, emitter);
+        const result = await orchestrator.run(lastMessage.content, emitter);
 
-        // Send final done event
-        emitter.done({
+        // Build the response messages in Ollama's native format
+        // This includes tool calls and tool results so the model can reference them
+        const newMessages: ChatMessage[] = [];
+
+        // If there were delegations with tool calls, emit them as proper tool messages
+        for (const delegation of result.delegations) {
+          // Emit an assistant message with the delegation as a "tool call"
+          // This represents "the assistant decided to use this tool"
+          const toolCalls =
+            delegation.result.toolCalls?.map((tc, idx) => ({
+              id: `${delegation.agentName}-${idx}`,
+              function: {
+                name: tc.tool,
+                arguments: tc.input,
+              },
+            })) ?? [];
+
+          if (toolCalls.length > 0) {
+            newMessages.push({
+              role: 'assistant' as const,
+              content: '', // Empty when making tool calls
+              tool_calls: toolCalls,
+            });
+
+            // Emit tool results for each tool call
+            for (const tc of delegation.result.toolCalls ?? []) {
+              newMessages.push({
+                role: 'tool' as const,
+                content: JSON.stringify(tc.output),
+                name: tc.tool,
+              });
+            }
+          }
+        }
+
+        // Final assistant response
+        newMessages.push({
+          role: 'assistant' as const,
+          content: result.response,
+        });
+
+        // Build complete updated history
+        const updatedHistory: ChatMessage[] = [...messages, ...newMessages];
+
+        // Send final done event with messages
+        emitter.emit('done', {
           response: result.response,
-          conversationId: convId,
+          messages: updatedHistory,
           delegations: result.delegations,
           totalDurationMs: result.totalDurationMs,
+          enabledTools,
         });
       } catch (error) {
         emitter.error(error instanceof Error ? error.message : 'Unknown error');
@@ -188,6 +364,29 @@ export const ChatRouter: FastifyPluginAsync = async (
         unsubscribe();
         reply.raw.end();
       }
+    }
+  );
+
+  /**
+   * POST /chat/stateless
+   * @deprecated Use /chat/stream instead - this is an alias for backwards compatibility
+   */
+  app.post(
+    '/stateless',
+    {
+      schema: {
+        body: z.object({
+          messages: z.array(MessageSchema).min(1),
+          config: SessionConfigSchema.optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      // Send deprecation warning header
+      reply.header('X-Deprecated', 'Use /chat/stream instead');
+
+      // HTTP redirect for client to follow (307 preserves POST method)
+      return reply.code(307).redirect('/chat/stream');
     }
   );
 
@@ -260,7 +459,7 @@ export const ChatRouter: FastifyPluginAsync = async (
 
       return {
         response,
-        model: model || 'functiongemma',
+        model: model || 'llama3.1:8b',
         durationMs: Date.now() - startTime,
       };
     }

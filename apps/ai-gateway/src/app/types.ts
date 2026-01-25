@@ -284,6 +284,21 @@ export interface StreamEventData {
   delegations?: DelegationResult[];
   totalDurationMs?: number;
 
+  // Stateless endpoint extensions - messages in Ollama's native format
+  messages?: Array<
+    | { role: 'user'; content: string }
+    | {
+        role: 'assistant';
+        content: string;
+        tool_calls?: Array<{
+          id?: string;
+          function: { name: string; arguments: Record<string, unknown> };
+        }>;
+      }
+    | { role: 'tool'; content: string; name?: string; tool_call_id?: string }
+  >;
+  enabledTools?: string[];
+
   // Error event
   error?: string;
 

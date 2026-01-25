@@ -31,7 +31,7 @@ export class Agent {
     this.config = {
       maxIterations: 10,
       temperature: 0.7,
-      model: 'functiongemma',
+      model: 'llama3.1:8b', // Best balance of tool calling and reasoning
       ...config,
     };
     this.ollama = getOllamaClient();
