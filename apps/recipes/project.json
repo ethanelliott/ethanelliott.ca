@@ -59,6 +59,21 @@
           "buildTarget": "recipes:build:production"
         }
       }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "TAG={args.tag} && docker build -f apps/recipes/Dockerfile -t ethanelliottio/recipes:$TAG . && docker push ethanelliottio/recipes:$TAG"
+        ],
+        "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
+      }
     }
   }
 }

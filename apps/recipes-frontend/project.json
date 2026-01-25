@@ -93,6 +93,21 @@
       "options": {
         "jestConfig": "apps/recipes-frontend/jest.config.ts"
       }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "TAG={args.tag} && docker build -f apps/recipes-frontend/Dockerfile -t ethanelliottio/recipes-frontend:$TAG . && docker push ethanelliottio/recipes-frontend:$TAG"
+        ],
+        "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
+      }
     }
   }
 }
