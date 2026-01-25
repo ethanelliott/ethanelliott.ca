@@ -4,6 +4,16 @@ import cors from '@fastify/cors';
 
 export const CorsPlugin = fp(async function (fastify: FastifyInstance) {
   await fastify.register(cors, {
-    methods: ['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: [
+      'GET',
+      'HEAD',
+      'PUT',
+      'POST',
+      'PATCH',
+      'DELETE',
+      'CONNECT',
+      'OPTIONS',
+      'TRACE',
+    ],
   });
 });

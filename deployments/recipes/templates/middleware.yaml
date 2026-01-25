@@ -9,10 +9,14 @@ spec:
   headers:
     accessControlAllowMethods:
       - "GET"
+      - "HEAD"
       - "POST"
       - "PUT"
+      - "PATCH"
       - "DELETE"
+      - "CONNECT"
       - "OPTIONS"
+      - "TRACE"
     accessControlAllowHeaders:
       - "Content-Type"
       - "Authorization"
