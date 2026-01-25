@@ -1,0 +1,22 @@
+{{- if .Values.ingress.enabled }}
+# Ollama API Ingress
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "ollama.fullname" . }}
+  labels:
+    {{- include "ollama.labels" . | nindent 4 }}
+  annotations:
+    link.argocd.argoproj.io/external-link: https://{{ .Values.ingress.ollamaHostname }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.ingress.ollamaHostname }}`)
+      services:
+        - name: {{ include "ollama.fullname" . }}
+          port: {{ .Values.ollama.service.port }}
+  tls:
+    certResolver: myresolver
+{{- end }}

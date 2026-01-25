@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ollama.fullname" . }}
+  labels:
+    {{- include "ollama.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ollama.replicaCount }}
+  strategy:
+    type: Recreate  # Important for GPU and persistent storage
+  selector:
+    matchLabels:
+      {{- include "ollama.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ollama.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.ollama.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.ollama.nodeSelector | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 11434
+              protocol: TCP
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+            # Allow connections from anywhere in cluster
+            - name: OLLAMA_ORIGINS
+              value: "*"
+            # Set models directory
+            - name: OLLAMA_MODELS
+              value: "/root/.ollama/models"
+            {{- if .Values.ollama.gpu }}
+            {{- if .Values.ollama.gpu.enabled }}
+            # GPU memory configuration
+            - name: OLLAMA_GPU_OVERHEAD
+              value: "256m"
+            {{- end }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.ollama.resources | nindent 12 }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+      volumes:
+        - name: ollama-data
+          persistentVolumeClaim:
+            claimName: {{ include "ollama.fullname" . }}-data
+      {{- if .Values.ollama.gpu }}
+      {{- if .Values.ollama.gpu.enabled }}
+      # GPU tolerations and node selection
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      {{- end }}
+      {{- end }}

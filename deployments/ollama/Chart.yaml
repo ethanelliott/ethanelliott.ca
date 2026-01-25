@@ -1,0 +1,9 @@
+apiVersion: v2
+name: ollama
+description: Ollama LLM server with Open WebUI
+type: application
+
+version: 0.0.1
+appVersion: '0.0.1'
+
+dependencies: []

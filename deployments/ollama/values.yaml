@@ -1,0 +1,38 @@
+ollama:
+  replicaCount: 1
+
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 11434
+
+  nodeSelector:
+    kubernetes.io/hostname: e-omni
+
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 10Gi
+    requests:
+      cpu: 1000m
+      memory: 4Gi
+
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: ''
+
+  # Models to pull on startup (optional)
+  models:
+    []
+    # - llama3.2
+    # - codellama
+    # - mistral
+
+ingress:
+  enabled: true
+  ollamaHostname: 'ollama.elliott.haus'
