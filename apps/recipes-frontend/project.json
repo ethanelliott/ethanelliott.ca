@@ -1,0 +1,98 @@
+{
+  "name": "recipes-frontend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/recipes-frontend/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/recipes-frontend",
+        "index": "apps/recipes-frontend/src/index.html",
+        "browser": "apps/recipes-frontend/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "apps/recipes-frontend/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/recipes-frontend/public"
+          }
+        ],
+        "styles": [
+          "node_modules/@fortawesome/fontawesome-free/css/all.css",
+          "apps/recipes-frontend/src/styles.scss"
+        ],
+        "stylePreprocessorOptions": {
+          "includePaths": ["apps/recipes-frontend/src"]
+        },
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "800kb",
+              "maximumError": "1.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            }
+          ],
+          "optimization": {
+            "scripts": true,
+            "styles": {
+              "minify": true,
+              "inlineCritical": false
+            },
+            "fonts": true
+          },
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/recipes-frontend/src/environments/environment.ts",
+              "with": "apps/recipes-frontend/src/environments/environment.prod.ts"
+            }
+          ]
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "recipes-frontend:build:production"
+        },
+        "development": {
+          "buildTarget": "recipes-frontend:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular-devkit/build-angular:extract-i18n"
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "apps/recipes-frontend/jest.config.ts"
+      }
+    }
+  }
+}

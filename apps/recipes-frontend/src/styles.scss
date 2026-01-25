@@ -1,0 +1,204 @@
+@use '@angular/material' as mat;
+
+// Import shared styles
+@import 'styles/variables';
+@import 'styles/mixins';
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$orange-palette,
+        tertiary: mat.$red-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+
+  @include mat.card-overrides(
+    (
+      elevated-container-elevation: 0px,
+    )
+  );
+}
+
+body {
+  color-scheme: dark;
+
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+
+  margin: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+// ===== GLOBAL UTILITIES =====
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+// ===== MATERIAL DESIGN OVERRIDES =====
+.mat-mdc-card {
+  @include base-card;
+}
+
+.mat-mdc-button {
+  transition: var(--transition-fast);
+}
+
+.mat-mdc-form-field {
+  width: 100%;
+
+  &.mat-form-field-appearance-outline {
+    .mat-mdc-form-field-outline {
+      border-radius: var(--border-radius-sm);
+    }
+  }
+}
+
+// ===== SIDENAV STYLING =====
+.mat-sidenav-container {
+  height: 100%;
+}
+
+.mat-sidenav {
+  width: var(--sidebar-width);
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.mat-sidenav-content {
+  background: var(--gradient-background);
+}
+
+// ===== NAV LIST STYLING =====
+.mat-mdc-nav-list {
+  .mat-mdc-list-item {
+    border-radius: var(--border-radius-sm);
+    margin: var(--spacing-xs) var(--spacing-sm);
+
+    &.active {
+      background: var(--bg-muted);
+    }
+  }
+}
+
+// ===== CHIP STYLING =====
+.category-chip {
+  @include category-chip;
+}
+
+.tag-chip {
+  @include tag-chip;
+}
+
+// ===== RECIPE CARDS =====
+.recipe-card {
+  @include clickable-card;
+
+  .recipe-thumbnail {
+    @include recipe-thumbnail;
+  }
+}
+
+// ===== FORM STYLING =====
+.form-section {
+  @include form-section;
+}
+
+.form-row {
+  @include form-row;
+}
+
+.form-actions {
+  @include form-actions;
+}
+
+// ===== EMPTY STATES =====
+.empty-state {
+  @include empty-state;
+}
+
+// ===== LOADING STATES =====
+.loading {
+  @include loading-state;
+}
+
+// ===== OVERLAY STYLING =====
+.overlay-backdrop {
+  @include overlay-backdrop;
+}
+
+.overlay-panel {
+  @include overlay-panel;
+}
+
+// ===== SCROLLBAR STYLING =====
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-emphasis);
+  border-radius: 4px;
+
+  &:hover {
+    background: var(--border-strong);
+  }
+}
+
+// ===== SELECTION STYLING =====
+::selection {
+  background: rgba(249, 115, 22, 0.3);
+  color: white;
+}

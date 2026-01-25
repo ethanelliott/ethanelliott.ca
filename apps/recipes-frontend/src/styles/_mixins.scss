@@ -1,0 +1,368 @@
+// ===== SHARED MIXINS FOR RECIPES APPLICATION =====
+// Reusable style patterns for consistent design
+
+// ===== LAYOUT MIXINS =====
+@mixin page-container {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-lg);
+}
+
+@mixin content-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+// ===== CARD MIXINS =====
+@mixin base-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-fast);
+}
+
+@mixin hover-card {
+  @include base-card;
+
+  &:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-default);
+  }
+}
+
+@mixin clickable-card {
+  @include hover-card;
+  cursor: pointer;
+}
+
+@mixin stat-card {
+  @include base-card;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 500;
+    color: var(--mat-sys-primary);
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+// ===== GRID LAYOUTS =====
+@mixin recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+@mixin stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+}
+
+// ===== FORM MIXINS =====
+@mixin form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+@mixin form-row {
+  display: flex;
+  gap: var(--spacing-md);
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+}
+
+@mixin form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  margin-top: var(--spacing-lg);
+}
+
+// ===== LIST MIXINS =====
+@mixin item-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+@mixin list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-muted);
+  }
+}
+
+// ===== CHIP/TAG MIXINS =====
+@mixin category-chip {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  background-color: var(--mat-sys-primary);
+}
+
+@mixin tag-chip {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid var(--mat-sys-tertiary);
+  color: var(--mat-sys-tertiary);
+}
+
+// ===== RECIPE PHOTO MIXINS =====
+@mixin recipe-thumbnail {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: var(--border-radius-md);
+  background: var(--bg-subtle);
+}
+
+@mixin recipe-photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+// ===== HEADER MIXINS =====
+@mixin page-header {
+  margin-bottom: var(--spacing-lg);
+
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-md);
+    }
+  }
+
+  .controls-section {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      width: 100%;
+      gap: var(--spacing-sm);
+    }
+
+    mat-form-field {
+      min-width: 120px;
+
+      @media (max-width: 768px) {
+        width: 100%;
+      }
+    }
+  }
+}
+
+// ===== EMPTY STATE MIXINS =====
+@mixin empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-3xl);
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 4rem;
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: var(--spacing-md);
+    opacity: 0.5;
+  }
+
+  h2,
+  h3 {
+    margin: 0 0 var(--spacing-sm);
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+// ===== OVERLAY MIXINS =====
+@mixin overlay-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-index-modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin overlay-panel {
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--surface-elevation-4);
+}
+
+// ===== INGREDIENT LIST MIXINS =====
+@mixin ingredient-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--border-subtle);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .quantity {
+      font-weight: 500;
+      min-width: 60px;
+    }
+
+    .unit {
+      color: var(--mat-sys-on-surface-variant);
+      min-width: 50px;
+    }
+
+    .name {
+      flex: 1;
+    }
+
+    .notes {
+      font-size: 0.875rem;
+      color: var(--mat-sys-on-surface-variant);
+      font-style: italic;
+    }
+  }
+}
+
+// ===== INSTRUCTION STEPS MIXINS =====
+@mixin instruction-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: step;
+
+  li {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    counter-increment: step;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &::before {
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      height: 32px;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+      border-radius: 50%;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+  }
+}
+
+// ===== META INFO MIXINS =====
+@mixin meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+@mixin meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+// ===== LOADING STATE MIXINS =====
+@mixin loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-3xl);
+}
+
+// ===== RESPONSIVE UTILITIES =====
+@mixin hide-mobile {
+  @media (max-width: 768px) {
+    display: none !important;
+  }
+}
+
+@mixin hide-desktop {
+  @media (min-width: 769px) {
+    display: none !important;
+  }
+}
+
+@mixin mobile-only {
+  @media (min-width: 769px) {
+    display: none;
+  }
+}
+
+@mixin tablet-and-up {
+  @media (min-width: 769px) {
+    display: block;
+  }
+}

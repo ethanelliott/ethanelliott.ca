@@ -1,0 +1,40 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/recipes
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  hostname: 'recipes-service.elliott.haus'
+  cors:
+    enabled: true
+    allowOrigins:
+      - https://recipes.elliott.haus
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+
+# No secrets needed for recipes app (no auth)
+secretEnv: []
+
+# Set to true to create the secret via Helm (for development/testing)
+createSecret: false
+
+storage:
+  size: 10Gi

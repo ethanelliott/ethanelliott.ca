@@ -1,0 +1,21 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "recipes-frontend.fullname" . }}
+  labels:
+    {{- include "recipes-frontend.labels" . | nindent 4 }}
+  annotations:
+    link.argocd.argoproj.io/external-link: https://{{ .Values.ingress.hostname }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.ingress.hostname }}`)
+      services:
+        - name: {{ include "recipes-frontend.fullname" . }}
+          port: {{ .Values.service.port }}
+  tls:
+    certResolver: myresolver
+{{- end }}
