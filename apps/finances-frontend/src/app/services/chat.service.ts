@@ -1,6 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, Subject, from, of, switchMap, concat, map, catchError, finalize } from 'rxjs';
+import {
+  Observable,
+  Subject,
+  from,
+  of,
+  switchMap,
+  concat,
+  map,
+  catchError,
+  finalize,
+} from 'rxjs';
 import { environment } from '../../environments/environment';
 import { FinanceApiService } from './finance-api.service';
 
@@ -39,7 +49,8 @@ const FINANCE_TOOLS = [
     type: 'function',
     function: {
       name: 'get_net_worth',
-      description: 'Get the user\'s current net worth including total assets, liabilities, and breakdown by account',
+      description:
+        "Get the user's current net worth including total assets, liabilities, and breakdown by account",
       parameters: {
         type: 'object',
         properties: {},
@@ -51,7 +62,8 @@ const FINANCE_TOOLS = [
     type: 'function',
     function: {
       name: 'get_spending_summary',
-      description: 'Get spending summary for a date range including income, expenses, and breakdown by category',
+      description:
+        'Get spending summary for a date range including income, expenses, and breakdown by category',
       parameters: {
         type: 'object',
         properties: {
@@ -72,7 +84,8 @@ const FINANCE_TOOLS = [
     type: 'function',
     function: {
       name: 'get_monthly_trends',
-      description: 'Get monthly income, expenses, and net cash flow trends over the past several months',
+      description:
+        'Get monthly income, expenses, and net cash flow trends over the past several months',
       parameters: {
         type: 'object',
         properties: {
@@ -89,7 +102,8 @@ const FINANCE_TOOLS = [
     type: 'function',
     function: {
       name: 'get_account_summary',
-      description: 'Get a summary of all accounts including count, total balance, and breakdown by account type',
+      description:
+        'Get a summary of all accounts including count, total balance, and breakdown by account type',
       parameters: {
         type: 'object',
         properties: {},
@@ -101,7 +115,8 @@ const FINANCE_TOOLS = [
     type: 'function',
     function: {
       name: 'get_transaction_stats',
-      description: 'Get transaction statistics including totals, counts, and breakdown by category',
+      description:
+        'Get transaction statistics including totals, counts, and breakdown by category',
       parameters: {
         type: 'object',
         properties: {
@@ -140,7 +155,8 @@ const FINANCE_TOOLS = [
         properties: {
           limit: {
             type: 'number',
-            description: 'Maximum number of transactions to return (default 20)',
+            description:
+              'Maximum number of transactions to return (default 20)',
           },
           category: {
             type: 'string',
@@ -148,7 +164,8 @@ const FINANCE_TOOLS = [
           },
           search: {
             type: 'string',
-            description: 'Search term to filter transactions by name or merchant',
+            description:
+              'Search term to filter transactions by name or merchant',
           },
         },
         required: [],
@@ -159,7 +176,8 @@ const FINANCE_TOOLS = [
     type: 'function',
     function: {
       name: 'get_dashboard',
-      description: 'Get the complete dashboard summary including net worth, spending, unreviewed count, and connected banks',
+      description:
+        'Get the complete dashboard summary including net worth, spending, unreviewed count, and connected banks',
       parameters: {
         type: 'object',
         properties: {},
@@ -194,10 +212,11 @@ Today's date is ${new Date().toISOString().split('T')[0]}.`;
 export class ChatService {
   private readonly _http = inject(HttpClient);
   private readonly _financeApi = inject(FinanceApiService);
-  private readonly ollamaUrl = environment.ollamaUrl || 'http://localhost:11434';
-  
+  private readonly ollamaUrl =
+    environment.ollamaUrl || 'http://localhost:11434';
+
   private conversationHistory: Array<{ role: string; content: string }> = [];
-  
+
   /**
    * Send a message to the chat and get a response
    */
@@ -244,7 +263,10 @@ export class ChatService {
           const assistantMessage = response.message;
 
           // Check if there are tool calls
-          if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+          if (
+            assistantMessage.tool_calls &&
+            assistantMessage.tool_calls.length > 0
+          ) {
             return this.executeToolCalls(assistantMessage.tool_calls).pipe(
               switchMap((toolResults) => {
                 // Add assistant message with tool calls to history
@@ -272,14 +294,17 @@ export class ChatService {
                 });
 
                 // Make another call to get the final response
-                return this._http.post<OllamaResponse>(`${this.ollamaUrl}/api/chat`, {
-                  model: 'llama3.2',
-                  messages: [
-                    { role: 'system', content: SYSTEM_PROMPT },
-                    ...this.conversationHistory,
-                  ],
-                  stream: false,
-                });
+                return this._http.post<OllamaResponse>(
+                  `${this.ollamaUrl}/api/chat`,
+                  {
+                    model: 'llama3.2',
+                    messages: [
+                      { role: 'system', content: SYSTEM_PROMPT },
+                      ...this.conversationHistory,
+                    ],
+                    stream: false,
+                  }
+                );
               }),
               map((finalResponse) => {
                 const finalContent = finalResponse.message.content;
@@ -315,7 +340,8 @@ export class ChatService {
         catchError((error) => {
           console.error('Chat error:', error);
           responseSubject.next({
-            content: 'Sorry, I encountered an error processing your request. Please try again.',
+            content:
+              'Sorry, I encountered an error processing your request. Please try again.',
             toolResults: [],
             done: true,
           });
@@ -332,17 +358,25 @@ export class ChatService {
     );
 
     // Execute all tool calls in parallel and collect results
-    return from(Promise.all(toolObservables.map((obs) => 
-      new Promise<ToolResult>((resolve) => {
-        obs.subscribe({
-          next: (result) => resolve(result),
-          error: (err) => resolve({ name: 'error', result: err.message }),
-        });
-      })
-    )));
+    return from(
+      Promise.all(
+        toolObservables.map(
+          (obs) =>
+            new Promise<ToolResult>((resolve) => {
+              obs.subscribe({
+                next: (result) => resolve(result),
+                error: (err) => resolve({ name: 'error', result: err.message }),
+              });
+            })
+        )
+      )
+    );
   }
 
-  private executeTool(name: string, args: Record<string, unknown>): Observable<ToolResult> {
+  private executeTool(
+    name: string,
+    args: Record<string, unknown>
+  ): Observable<ToolResult> {
     switch (name) {
       case 'get_net_worth':
         return this._financeApi.getNetWorth().pipe(
@@ -351,19 +385,20 @@ export class ChatService {
         );
 
       case 'get_spending_summary':
-        return this._financeApi.getSpending(
-          args['startDate'] as string,
-          args['endDate'] as string
-        ).pipe(
-          map((result) => ({ name, result })),
-          catchError((err) => of({ name, result: { error: err.message } }))
-        );
+        return this._financeApi
+          .getSpending(args['startDate'] as string, args['endDate'] as string)
+          .pipe(
+            map((result) => ({ name, result })),
+            catchError((err) => of({ name, result: { error: err.message } }))
+          );
 
       case 'get_monthly_trends':
-        return this._financeApi.getMonthlyTrends(args['months'] as number | undefined).pipe(
-          map((result) => ({ name, result })),
-          catchError((err) => of({ name, result: { error: err.message } }))
-        );
+        return this._financeApi
+          .getMonthlyTrends(args['months'] as number | undefined)
+          .pipe(
+            map((result) => ({ name, result })),
+            catchError((err) => of({ name, result: { error: err.message } }))
+          );
 
       case 'get_account_summary':
         return this._financeApi.getAccountSummary().pipe(
@@ -372,13 +407,15 @@ export class ChatService {
         );
 
       case 'get_transaction_stats':
-        return this._financeApi.getTransactionStats(
-          args['startDate'] as string | undefined,
-          args['endDate'] as string | undefined
-        ).pipe(
-          map((result) => ({ name, result })),
-          catchError((err) => of({ name, result: { error: err.message } }))
-        );
+        return this._financeApi
+          .getTransactionStats(
+            args['startDate'] as string | undefined,
+            args['endDate'] as string | undefined
+          )
+          .pipe(
+            map((result) => ({ name, result })),
+            catchError((err) => of({ name, result: { error: err.message } }))
+          );
 
       case 'get_categories':
         return this._financeApi.getAllCategories().pipe(
@@ -390,7 +427,7 @@ export class ChatService {
         const filters: Record<string, unknown> = {};
         if (args['search']) filters['search'] = args['search'];
         if (args['category']) filters['categoryId'] = args['category'];
-        
+
         return this._financeApi.getAllTransactions(filters as any).pipe(
           map((transactions) => {
             const limit = (args['limit'] as number) || 20;
