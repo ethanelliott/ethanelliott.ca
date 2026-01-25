@@ -93,7 +93,7 @@ export class OllamaClient {
    */
   async complete(
     prompt: string,
-    model: string = 'llama3.2:3b',
+    model: string = 'functiongemma',
     systemPrompt?: string
   ): Promise<string> {
     const messages: OllamaMessage[] = [];

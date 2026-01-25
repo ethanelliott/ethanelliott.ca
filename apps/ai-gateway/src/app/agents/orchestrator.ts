@@ -31,7 +31,7 @@ export class OrchestratorAgent {
   constructor(config: OrchestratorConfig) {
     this.config = {
       maxDelegations: 5,
-      model: 'llama3.2:3b',
+      model: 'functiongemma',
       ...config,
     };
 
@@ -71,7 +71,7 @@ export class OrchestratorAgent {
     let lastChunk: any = null;
 
     for await (const chunk of ollama.chatStream({
-      model: this.config.model || 'llama3.2:3b',
+      model: this.config.model || 'functiongemma',
       messages,
       tools,
     })) {
@@ -95,7 +95,7 @@ export class OrchestratorAgent {
     }
 
     return {
-      model: lastChunk?.model || this.config.model || 'llama3.2:3b',
+      model: lastChunk?.model || this.config.model || 'functiongemma',
       created_at: lastChunk?.created_at || new Date().toISOString(),
       message: {
         role: 'assistant',
@@ -165,7 +165,7 @@ export class OrchestratorAgent {
         // Don't stream when using tools - tool calls don't work reliably with streaming
         // The orchestrator needs tool calls to delegate, so we use non-streaming here
         const response = await ollama.chat({
-          model: this.config.model || 'llama3.2:3b',
+          model: this.config.model || 'functiongemma',
           messages,
           tools: delegateTools,
         });
@@ -236,7 +236,7 @@ export class OrchestratorAgent {
       emitter?.status('Generating final response...');
 
       const finalResponse = await ollama.chat({
-        model: this.config.model || 'llama3.2:3b',
+        model: this.config.model || 'functiongemma',
         messages: [
           ...messages,
           {
@@ -392,7 +392,7 @@ When you have all the information you need, provide a final response WITHOUT cal
 // Default orchestrator configuration
 const defaultOrchestratorConfig: OrchestratorConfig = {
   name: 'main-orchestrator',
-  model: 'llama3.2:3b',
+  model: 'functiongemma',
   subAgents: [
     {
       name: 'utility-assistant',
@@ -411,7 +411,7 @@ const defaultOrchestratorConfig: OrchestratorConfig = {
 You can tell the time, perform calculations, fetch data from the web, and perform sensitive actions.
 For sensitive actions, the user will be asked for approval before execution.
 Be precise and accurate in your responses.`,
-        model: 'llama3.2:3b',
+        model: 'functiongemma',
         tools: [
           'get_current_time',
           'calculate',

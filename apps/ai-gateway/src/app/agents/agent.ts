@@ -31,7 +31,7 @@ export class Agent {
     this.config = {
       maxIterations: 10,
       temperature: 0.7,
-      model: 'llama3.2:3b',
+      model: 'functiongemma',
       ...config,
     };
     this.ollama = getOllamaClient();
@@ -65,7 +65,7 @@ export class Agent {
     let lastChunk: any = null;
 
     for await (const chunk of this.ollama.chatStream({
-      model: this.config.model || 'llama3.2:3b',
+      model: this.config.model || 'functiongemma',
       messages,
       tools,
       options: {
@@ -93,7 +93,7 @@ export class Agent {
 
     // Construct the response
     return {
-      model: lastChunk?.model || this.config.model || 'llama3.2:3b',
+      model: lastChunk?.model || this.config.model || 'functiongemma',
       created_at: lastChunk?.created_at || new Date().toISOString(),
       message: {
         role: 'assistant',
@@ -142,7 +142,7 @@ export class Agent {
         // Tool calling doesn't work reliably with streaming in Ollama
         // Use non-streaming when tools are available
         const response = await this.ollama.chat({
-          model: this.config.model || 'llama3.2:3b',
+          model: this.config.model || 'functiongemma',
           messages,
           tools: tools.length > 0 ? tools : undefined,
           options: {
@@ -297,7 +297,7 @@ export class Agent {
       emitter?.status(`Max iterations reached, generating final response...`);
 
       const finalResponse = await this.ollama.chat({
-        model: this.config.model || 'llama3.2:3b',
+        model: this.config.model || 'functiongemma',
         messages: [
           ...messages,
           {

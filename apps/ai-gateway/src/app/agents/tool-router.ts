@@ -25,7 +25,7 @@ Given a user's request, output a JSON object with:
 
 Be selective - only choose tools that are directly relevant to the request.
 If no tools are needed, return an empty array for selectedTools.`,
-      model: 'llama3.2:3b', // Use fast model for routing
+      model: 'functiongemma', // Use fast model for routing
       tools: [], // Router doesn't use tools directly
     });
   }
@@ -57,7 +57,7 @@ Select the most relevant tools (up to ${maxTools}) for this request. Respond wit
     try {
       const response = await this.ollama.complete(
         prompt,
-        this.config.model || 'llama3.2:3b',
+        this.config.model || 'functiongemma',
         this.config.systemPrompt
       );
 
