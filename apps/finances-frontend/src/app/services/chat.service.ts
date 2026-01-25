@@ -43,6 +43,21 @@ export interface ToolCall {
   };
 }
 
+export interface OllamaModel {
+  name: string;
+  model: string;
+  modified_at: string;
+  size: number;
+  digest: string;
+  details?: {
+    parent_model?: string;
+    format?: string;
+    family?: string;
+    parameter_size?: string;
+    quantization_level?: string;
+  };
+}
+
 // Tool definitions for Ollama
 const FINANCE_TOOLS = [
   {
@@ -216,6 +231,36 @@ export class ChatService {
     environment.ollamaUrl || 'http://localhost:11434';
 
   private conversationHistory: Array<{ role: string; content: string }> = [];
+  private currentModel = 'llama3.2';
+
+  /**
+   * Get list of available models from Ollama
+   */
+  getAvailableModels(): Observable<OllamaModel[]> {
+    return this._http
+      .get<{ models: OllamaModel[] }>(`${this.ollamaUrl}/api/tags`)
+      .pipe(
+        map((response) => response.models || []),
+        catchError((err) => {
+          console.error('Failed to fetch models:', err);
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Set the current model to use for chat
+   */
+  setModel(model: string): void {
+    this.currentModel = model;
+  }
+
+  /**
+   * Get the current model
+   */
+  getModel(): string {
+    return this.currentModel;
+  }
 
   /**
    * Send a message to the chat and get a response
@@ -253,7 +298,7 @@ export class ChatService {
 
     this._http
       .post<OllamaResponse>(`${this.ollamaUrl}/api/chat`, {
-        model: 'llama3.2',
+        model: this.currentModel,
         messages,
         tools: FINANCE_TOOLS,
         stream: false,
@@ -297,7 +342,7 @@ export class ChatService {
                 return this._http.post<OllamaResponse>(
                   `${this.ollamaUrl}/api/chat`,
                   {
-                    model: 'llama3.2',
+                    model: this.currentModel,
                     messages: [
                       { role: 'system', content: SYSTEM_PROMPT },
                       ...this.conversationHistory,

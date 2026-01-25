@@ -17,10 +17,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
+import { MatSelectModule } from '@angular/material/select';
 import {
   ChatService,
   ChatMessage,
   ToolResult,
+  OllamaModel,
 } from '../../services/chat.service';
 
 @Component({
@@ -37,6 +39,7 @@ import {
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatCardModule,
+    MatSelectModule,
   ],
   template: `
     <div class="chat-container">
@@ -48,14 +51,31 @@ import {
             <p>Ask questions about your finances</p>
           </div>
         </div>
-        <button
-          mat-icon-button
-          (click)="clearChat()"
-          matTooltip="Clear conversation"
-          [disabled]="messages().length === 0 || isLoading()"
-        >
-          <mat-icon>delete_outline</mat-icon>
-        </button>
+        <div class="header-actions">
+          <mat-form-field appearance="outline" class="model-select">
+            <mat-label>Model</mat-label>
+            <mat-select
+              [value]="selectedModel()"
+              (selectionChange)="onModelChange($event.value)"
+            >
+              @for (model of availableModels(); track model.name) {
+              <mat-option [value]="model.name">
+                {{ model.name }}
+              </mat-option>
+              } @if (availableModels().length === 0) {
+              <mat-option disabled>Loading models...</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button
+            mat-icon-button
+            (click)="clearChat()"
+            matTooltip="Clear conversation"
+            [disabled]="messages().length === 0 || isLoading()"
+          >
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </div>
       </div>
 
       <div class="messages-container" #messagesContainer>
@@ -227,6 +247,31 @@ import {
       margin: 0;
       font-size: 0.85rem;
       color: var(--mat-sys-on-surface-variant);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .model-select {
+      width: 180px;
+      font-size: 0.85rem;
+    }
+
+    .model-select ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+
+    .model-select ::ng-deep .mat-mdc-text-field-wrapper {
+      padding: 0 12px;
+    }
+
+    .model-select ::ng-deep .mat-mdc-form-field-infix {
+      padding-top: 8px;
+      padding-bottom: 8px;
+      min-height: 40px;
     }
 
     .messages-container {
@@ -475,10 +520,18 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   inputMessage = signal('');
   isLoading = signal(false);
   pendingToolResults = signal<ToolResult[]>([]);
+  availableModels = signal<OllamaModel[]>([]);
+  selectedModel = signal('llama3.2');
 
   private shouldScrollToBottom = false;
 
   ngOnInit(): void {
+    // Load available models
+    this.loadModels();
+
+    // Set initial model from service
+    this.selectedModel.set(this.chatService.getModel());
+
     // Restore any existing conversation history
     const history = this.chatService.getHistory();
     if (history.length > 0) {
@@ -492,6 +545,28 @@ export class ChatComponent implements OnInit, AfterViewChecked {
         }));
       this.messages.set(restoredMessages);
     }
+  }
+
+  private loadModels(): void {
+    this.chatService.getAvailableModels().subscribe({
+      next: (models) => {
+        this.availableModels.set(models);
+        // If current model is not in the list, select the first one
+        if (
+          models.length > 0 &&
+          !models.find((m) => m.name === this.selectedModel())
+        ) {
+          this.selectedModel.set(models[0].name);
+          this.chatService.setModel(models[0].name);
+        }
+      },
+      error: (err) => console.error('Failed to load models:', err),
+    });
+  }
+
+  onModelChange(modelName: string): void {
+    this.selectedModel.set(modelName);
+    this.chatService.setModel(modelName);
   }
 
   ngAfterViewChecked(): void {
