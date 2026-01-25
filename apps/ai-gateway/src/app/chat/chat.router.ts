@@ -108,9 +108,12 @@ export const ChatRouter: FastifyPluginAsync = async (
 
   /**
    * POST /chat/stream
-   * Streaming chat endpoint with real-time status updates via Server-Sent Events
+   * Streaming chat endpoint with real-time status updates via newline-delimited JSON (NDJSON)
    *
-   * Returns SSE stream with events:
+   * Returns NDJSON stream where each line is a JSON object:
+   * { "event": "status", "timestamp": 123, "data": { ... } }
+   *
+   * Event types:
    * - status: General status messages
    * - thinking: Agent is processing
    * - delegation_start/end: Sub-agent delegation
@@ -133,9 +136,9 @@ export const ChatRouter: FastifyPluginAsync = async (
     async (request, reply) => {
       const { message, conversationId } = request.body;
 
-      // Set up SSE headers
+      // Set up NDJSON streaming headers
       reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
+        'Content-Type': 'application/x-ndjson',
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
         'Access-Control-Allow-Origin': '*',
@@ -157,11 +160,14 @@ export const ChatRouter: FastifyPluginAsync = async (
       // Create stream emitter
       const emitter = new StreamEmitter();
 
-      // Send events to client
+      // Send events to client as NDJSON (one JSON object per line)
       const unsubscribe = emitter.on((event) => {
-        const data = JSON.stringify(event);
-        reply.raw.write(`event: ${event.type}\n`);
-        reply.raw.write(`data: ${data}\n\n`);
+        const line = JSON.stringify({
+          event: event.type,
+          timestamp: event.timestamp,
+          data: event.data,
+        });
+        reply.raw.write(line + '\n');
       });
 
       try {
