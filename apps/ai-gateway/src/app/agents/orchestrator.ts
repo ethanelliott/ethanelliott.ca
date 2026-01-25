@@ -5,6 +5,7 @@ import {
   SubAgentDefinition,
   AgentResult,
   OllamaMessage,
+  OllamaChatResponse,
 } from '../types';
 import { Agent, registerAgent, getAgentRegistry } from './agent';
 import { getToolRouter } from './tool-router';
@@ -54,6 +55,59 @@ export class OrchestratorAgent {
   }
 
   /**
+   * Stream a chat completion from the orchestrator, emitting tokens
+   */
+  private async streamOrchestratorChat(
+    messages: OllamaMessage[],
+    tools: {
+      type: 'function';
+      function: { name: string; description: string; parameters: any };
+    }[],
+    emitter: StreamEmitter
+  ): Promise<OllamaChatResponse> {
+    const ollama = getOllamaClient();
+    let content = '';
+    let toolCalls: OllamaChatResponse['message']['tool_calls'] = undefined;
+    let lastChunk: any = null;
+
+    for await (const chunk of ollama.chatStream({
+      model: this.config.model || 'llama3.2:3b',
+      messages,
+      tools,
+    })) {
+      lastChunk = chunk;
+
+      // Emit token if there's content
+      if (chunk.message?.content) {
+        emitter.token(chunk.message.content, 'orchestrator', undefined, false);
+        content += chunk.message.content;
+      }
+
+      // Accumulate tool calls
+      if (chunk.message?.tool_calls) {
+        toolCalls = chunk.message.tool_calls;
+      }
+
+      // If done, emit final token event
+      if (chunk.done) {
+        emitter.token('', 'orchestrator', undefined, true);
+      }
+    }
+
+    return {
+      model: lastChunk?.model || this.config.model || 'llama3.2:3b',
+      created_at: lastChunk?.created_at || new Date().toISOString(),
+      message: {
+        role: 'assistant',
+        content,
+        tool_calls: toolCalls,
+      },
+      done: true,
+      done_reason: toolCalls?.length ? 'tool_calls' : 'stop',
+    };
+  }
+
+  /**
    * Run the orchestrator with a user query
    * @param query The user's question or request
    * @param emitter Optional stream emitter for real-time updates
@@ -90,6 +144,17 @@ export class OrchestratorAgent {
       let iterations = 0;
       const maxIterations = (this.config.maxDelegations || 5) + 2;
 
+      const delegateTools = [
+        {
+          type: 'function' as const,
+          function: {
+            name: delegateTool.name,
+            description: delegateTool.description,
+            parameters: delegateTool.parameters,
+          },
+        },
+      ];
+
       while (iterations < maxIterations) {
         iterations++;
 
@@ -97,20 +162,14 @@ export class OrchestratorAgent {
           `Orchestrator thinking (iteration ${iterations}/${maxIterations})...`
         );
 
-        const response = await ollama.chat({
-          model: this.config.model || 'llama3.2:3b',
-          messages,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: delegateTool.name,
-                description: delegateTool.description,
-                parameters: delegateTool.parameters,
-              },
-            },
-          ],
-        });
+        // Use streaming if emitter is present
+        const response = emitter
+          ? await this.streamOrchestratorChat(messages, delegateTools, emitter)
+          : await ollama.chat({
+              model: this.config.model || 'llama3.2:3b',
+              messages,
+              tools: delegateTools,
+            });
 
         messages.push(response.message);
 
@@ -345,7 +404,12 @@ You can tell the time, perform calculations, fetch data from the web, and perfor
 For sensitive actions, the user will be asked for approval before execution.
 Be precise and accurate in your responses.`,
         model: 'llama3.2:3b',
-        tools: ['get_current_time', 'calculate', 'http_request', 'sensitive_action'],
+        tools: [
+          'get_current_time',
+          'calculate',
+          'http_request',
+          'sensitive_action',
+        ],
       },
     },
   ],

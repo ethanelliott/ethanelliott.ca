@@ -232,6 +232,7 @@ export interface MCPEndpointToolsResponse {
 export type StreamEventType =
   | 'status'
   | 'thinking'
+  | 'token'
   | 'delegation_start'
   | 'delegation_end'
   | 'tool_call_start'
@@ -253,6 +254,11 @@ export interface StreamEvent {
 export interface StreamEventData {
   // Status events
   message?: string;
+
+  // Token events - streaming LLM output
+  token?: string;
+  role?: 'assistant' | 'orchestrator' | 'agent';
+  done?: boolean; // true when this is the final token for a generation
 
   // Delegation events
   agentName?: string;

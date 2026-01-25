@@ -67,6 +67,21 @@ export class StreamEmitter {
     this.emit('thinking', { message });
   }
 
+  /**
+   * Emit a token from streaming LLM output
+   * @param token - The token text
+   * @param role - Who is generating this token (orchestrator, agent name, etc.)
+   * @param done - Whether this is the final token
+   */
+  token(
+    token: string,
+    role: 'assistant' | 'orchestrator' | 'agent' = 'assistant',
+    agentName?: string,
+    done: boolean = false
+  ): void {
+    this.emit('token', { token, role, agentName, done });
+  }
+
   delegationStart(agentName: string, task: string): void {
     this.emit('delegation_start', { agentName, task });
   }

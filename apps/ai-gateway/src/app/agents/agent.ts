@@ -3,8 +3,10 @@ import {
   AgentResult,
   AgentToolCall,
   OllamaMessage,
+  OllamaTool,
   MCPToolResult,
   ApprovalResponse,
+  OllamaChatResponse,
 } from '../types';
 import { getOllamaClient, OllamaClient } from '../ollama';
 import { getToolRegistry } from '../mcp';
@@ -18,7 +20,7 @@ import { getApprovalManager } from '../approval';
  * - A system prompt defining its role
  * - Access to specific tools
  * - The ability to reason and call tools in a loop until task completion
- * - Optional streaming support for real-time updates
+ * - Optional streaming support for real-time token output
  */
 export class Agent {
   protected config: AgentConfig;
@@ -50,9 +52,66 @@ export class Agent {
   }
 
   /**
+   * Stream a chat completion, emitting tokens as they arrive
+   * Returns the final response once complete
+   */
+  protected async streamChat(
+    messages: OllamaMessage[],
+    tools: OllamaTool[] | undefined,
+    emitter: StreamEmitter
+  ): Promise<OllamaChatResponse> {
+    let content = '';
+    let toolCalls: OllamaChatResponse['message']['tool_calls'] = undefined;
+    let lastChunk: any = null;
+
+    for await (const chunk of this.ollama.chatStream({
+      model: this.config.model || 'llama3.2:3b',
+      messages,
+      tools,
+      options: {
+        temperature: this.config.temperature,
+      },
+    })) {
+      lastChunk = chunk;
+
+      // Emit token if there's content
+      if (chunk.message?.content) {
+        emitter.token(chunk.message.content, 'agent', this.config.name, false);
+        content += chunk.message.content;
+      }
+
+      // Accumulate tool calls
+      if (chunk.message?.tool_calls) {
+        toolCalls = chunk.message.tool_calls;
+      }
+
+      // If done, emit final token event
+      if (chunk.done) {
+        emitter.token('', 'agent', this.config.name, true);
+      }
+    }
+
+    // Construct the response
+    return {
+      model: lastChunk?.model || this.config.model || 'llama3.2:3b',
+      created_at: lastChunk?.created_at || new Date().toISOString(),
+      message: {
+        role: 'assistant',
+        content,
+        tool_calls: toolCalls,
+      },
+      done: true,
+      done_reason: toolCalls?.length ? 'tool_calls' : 'stop',
+      total_duration: lastChunk?.total_duration,
+      prompt_eval_count: lastChunk?.prompt_eval_count,
+      eval_count: lastChunk?.eval_count,
+    };
+  }
+
+  /**
    * Run the agent with a task/prompt
    * @param task The task or question to process
-   * @param emitter Optional stream emitter for real-time updates
+   * @param emitter Optional stream emitter for real-time updates including token streaming
    */
   async run(task: string, emitter?: StreamEmitter): Promise<AgentResult> {
     const startTime = Date.now();
@@ -80,14 +139,21 @@ export class Agent {
           this.config.maxIterations || 10
         );
 
-        const response = await this.ollama.chat({
-          model: this.config.model || 'llama3.2:3b',
-          messages,
-          tools: tools.length > 0 ? tools : undefined,
-          options: {
-            temperature: this.config.temperature,
-          },
-        });
+        // Use streaming if emitter is present, otherwise use regular chat
+        const response = emitter
+          ? await this.streamChat(
+              messages,
+              tools.length > 0 ? tools : undefined,
+              emitter
+            )
+          : await this.ollama.chat({
+              model: this.config.model || 'llama3.2:3b',
+              messages,
+              tools: tools.length > 0 ? tools : undefined,
+              options: {
+                temperature: this.config.temperature,
+              },
+            });
 
         messages.push(response.message);
 
@@ -99,7 +165,7 @@ export class Agent {
             response.message
           );
 
-          // Emit agent response
+          // Emit agent response (final content)
           emitter?.agentResponse(this.config.name, response.message.content);
 
           return {
