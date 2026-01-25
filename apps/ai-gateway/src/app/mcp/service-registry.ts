@@ -84,12 +84,14 @@ class ServiceRegistry {
     try {
       // Fetch tools from the service
       const response = await fetch(`${service.url}/mcp/tools`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
-        throw new Error(`Service returned ${response.status}: ${response.statusText}`);
+        throw new Error(
+          `Service returned ${response.status}: ${response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -120,12 +122,17 @@ class ServiceRegistry {
       service.error = undefined;
 
       console.log(
-        `[ServiceRegistry] Synced ${registeredTools.length} tools from ${name}: ${registeredTools.join(', ')}`
+        `[ServiceRegistry] Synced ${
+          registeredTools.length
+        } tools from ${name}: ${registeredTools.join(', ')}`
       );
     } catch (error) {
       service.status = 'error';
       service.error = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[ServiceRegistry] Failed to sync service ${name}:`, service.error);
+      console.error(
+        `[ServiceRegistry] Failed to sync service ${name}:`,
+        service.error
+      );
       throw error;
     }
   }
@@ -133,7 +140,10 @@ class ServiceRegistry {
   /**
    * Create a tool that proxies to the service's execute endpoint
    */
-  private createServiceTool(service: MCPService, tool: MCPTool): MCPToolWithExecutor {
+  private createServiceTool(
+    service: MCPService,
+    tool: MCPTool
+  ): MCPToolWithExecutor {
     return createTool(
       {
         name: tool.name,
@@ -146,15 +156,18 @@ class ServiceRegistry {
         const startTime = Date.now();
 
         try {
-          const response = await fetch(`${service.url}/mcp/tools/${tool.name}/execute`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify(params),
-            signal: AbortSignal.timeout(30000),
-          });
+          const response = await fetch(
+            `${service.url}/mcp/tools/${tool.name}/execute`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify(params),
+              signal: AbortSignal.timeout(30000),
+            }
+          );
 
           if (!response.ok) {
             return {
@@ -234,15 +247,14 @@ class ServiceRegistry {
       clearInterval(this.syncInterval);
     }
 
-    this.syncInterval = setInterval(
-      () => {
-        console.log('[ServiceRegistry] Running periodic sync...');
-        this.syncAll();
-      },
-      intervalMinutes * 60 * 1000
-    );
+    this.syncInterval = setInterval(() => {
+      console.log('[ServiceRegistry] Running periodic sync...');
+      this.syncAll();
+    }, intervalMinutes * 60 * 1000);
 
-    console.log(`[ServiceRegistry] Started periodic sync every ${intervalMinutes} minutes`);
+    console.log(
+      `[ServiceRegistry] Started periodic sync every ${intervalMinutes} minutes`
+    );
   }
 
   /**
@@ -258,7 +270,9 @@ class ServiceRegistry {
   /**
    * Check health of a service
    */
-  async checkHealth(name: string): Promise<{ healthy: boolean; latencyMs: number }> {
+  async checkHealth(
+    name: string
+  ): Promise<{ healthy: boolean; latencyMs: number }> {
     const service = this.services.get(name);
     if (!service) {
       throw new Error(`Service "${name}" not found`);
@@ -302,16 +316,24 @@ export async function initializeServiceRegistry(): Promise<void> {
   const preConfiguredServices = process.env.MCP_SERVICES;
   if (preConfiguredServices) {
     try {
-      const services: MCPServiceRegistration[] = JSON.parse(preConfiguredServices);
+      const services: MCPServiceRegistration[] = JSON.parse(
+        preConfiguredServices
+      );
       for (const service of services) {
         try {
           await serviceRegistry.register(service);
         } catch (err) {
-          console.error(`[ServiceRegistry] Failed to register pre-configured service ${service.name}:`, err);
+          console.error(
+            `[ServiceRegistry] Failed to register pre-configured service ${service.name}:`,
+            err
+          );
         }
       }
     } catch (err) {
-      console.error('[ServiceRegistry] Failed to parse MCP_SERVICES env var:', err);
+      console.error(
+        '[ServiceRegistry] Failed to parse MCP_SERVICES env var:',
+        err
+      );
     }
   }
 }

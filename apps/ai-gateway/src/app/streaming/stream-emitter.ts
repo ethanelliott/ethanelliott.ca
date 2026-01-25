@@ -65,11 +65,20 @@ export class StreamEmitter {
     this.emit('delegation_start', { agentName, task });
   }
 
-  delegationEnd(agentName: string, task: string, durationMs: number, response?: string): void {
+  delegationEnd(
+    agentName: string,
+    task: string,
+    durationMs: number,
+    response?: string
+  ): void {
     this.emit('delegation_end', { agentName, task, durationMs, response });
   }
 
-  toolCallStart(tool: string, input: Record<string, unknown>, agentName?: string): void {
+  toolCallStart(
+    tool: string,
+    input: Record<string, unknown>,
+    agentName?: string
+  ): void {
     this.emit('tool_call_start', { tool, input, agentName });
   }
 
@@ -83,7 +92,11 @@ export class StreamEmitter {
     this.emit('tool_call_end', { tool, input, output, durationMs, agentName });
   }
 
-  agentThinking(agentName: string, iteration: number, maxIterations: number): void {
+  agentThinking(
+    agentName: string,
+    iteration: number,
+    maxIterations: number
+  ): void {
     this.emit('agent_thinking', { agentName, iteration, maxIterations });
   }
 

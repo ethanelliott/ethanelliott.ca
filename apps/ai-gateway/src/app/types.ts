@@ -271,4 +271,3 @@ export interface StreamEventData {
  * Event Emitter for streaming
  */
 export type StreamEventHandler = (event: StreamEvent) => void;
-

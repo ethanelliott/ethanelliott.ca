@@ -127,7 +127,13 @@ export class Agent {
           const toolDurationMs = Date.now() - toolStartTime;
 
           // Emit tool call end
-          emitter?.toolCallEnd(toolName, args, result, toolDurationMs, this.config.name);
+          emitter?.toolCallEnd(
+            toolName,
+            args,
+            result,
+            toolDurationMs,
+            this.config.name
+          );
 
           const agentToolCall: AgentToolCall = {
             tool: toolName,

@@ -9,7 +9,9 @@ const ServiceRegistrationSchema = z.object({
   description: z.string().optional(),
 });
 
-export const ServicesRouter: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+export const ServicesRouter: FastifyPluginAsync = async (
+  fastify: FastifyInstance
+) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
   /**
@@ -65,7 +67,8 @@ export const ServicesRouter: FastifyPluginAsync = async (fastify: FastifyInstanc
           },
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
 
         if (message.includes('already registered')) {
           return reply.status(409).send({
@@ -187,7 +190,9 @@ export const ServicesRouter: FastifyPluginAsync = async (fastify: FastifyInstanc
       } catch (error) {
         return reply.status(502).send({
           success: false,
-          error: `Failed to sync: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error: `Failed to sync: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
         });
       }
     }

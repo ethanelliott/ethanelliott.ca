@@ -58,7 +58,10 @@ export class OrchestratorAgent {
    * @param query The user's question or request
    * @param emitter Optional stream emitter for real-time updates
    */
-  async run(query: string, emitter?: StreamEmitter): Promise<OrchestratorResult> {
+  async run(
+    query: string,
+    emitter?: StreamEmitter
+  ): Promise<OrchestratorResult> {
     const startTime = Date.now();
     const delegations: DelegationResult[] = [];
 
@@ -90,7 +93,9 @@ export class OrchestratorAgent {
       while (iterations < maxIterations) {
         iterations++;
 
-        emitter?.thinking(`Orchestrator thinking (iteration ${iterations}/${maxIterations})...`);
+        emitter?.thinking(
+          `Orchestrator thinking (iteration ${iterations}/${maxIterations})...`
+        );
 
         const response = await ollama.chat({
           model: this.config.model || 'llama3.2:3b',
@@ -129,7 +134,9 @@ export class OrchestratorAgent {
 
         // Check if we've hit max delegations
         if (delegations.length >= (this.config.maxDelegations || 5)) {
-          emitter?.status('Maximum delegations reached, generating final response...');
+          emitter?.status(
+            'Maximum delegations reached, generating final response...'
+          );
           messages.push({
             role: 'tool',
             content: JSON.stringify({
@@ -232,7 +239,10 @@ When you have all the information you need, provide a final response WITHOUT cal
   /**
    * Create the delegation tool
    */
-  private createDelegationTool(delegations: DelegationResult[], emitter?: StreamEmitter) {
+  private createDelegationTool(
+    delegations: DelegationResult[],
+    emitter?: StreamEmitter
+  ) {
     const agentNames = Array.from(this.subAgents.keys());
 
     return createTool(
@@ -278,7 +288,12 @@ When you have all the information you need, provide a final response WITHOUT cal
         const result = await agent.run(task, emitter);
         const delegationDuration = Date.now() - delegationStart;
 
-        emitter?.delegationEnd(agentName, task, delegationDuration, result.response);
+        emitter?.delegationEnd(
+          agentName,
+          task,
+          delegationDuration,
+          result.response
+        );
 
         const delegation: DelegationResult = {
           agentName,

@@ -109,7 +109,7 @@ export const ChatRouter: FastifyPluginAsync = async (
   /**
    * POST /chat/stream
    * Streaming chat endpoint with real-time status updates via Server-Sent Events
-   * 
+   *
    * Returns SSE stream with events:
    * - status: General status messages
    * - thinking: Agent is processing
@@ -137,7 +137,7 @@ export const ChatRouter: FastifyPluginAsync = async (
       reply.raw.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
         'Access-Control-Allow-Origin': '*',
       });
 
