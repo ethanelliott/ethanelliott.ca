@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-gateway
+  namespace: elliott-haus
+spec:
+  project: elliott-haus
+  source:
+    repoURL: https://github.com/ethanelliott/ethanelliott.ca.git
+    path: deployments/ai-gateway
+    targetRevision: main
+    helm:
+      releaseName: ai-gateway
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elliott-haus
+  syncPolicy:
+    automated: {}

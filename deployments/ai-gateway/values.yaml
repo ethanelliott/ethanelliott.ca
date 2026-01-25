@@ -1,0 +1,42 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/ai-gateway
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  hostname: 'ai-gateway.elliott.haus'
+  cors:
+    enabled: true
+    allowOrigins:
+      - https://recipes.elliott.haus
+      - https://finances.elliott.haus
+      - https://elliott.haus
+      - https://*.elliott.haus
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+  # Internal cluster URLs for services
+  OLLAMA_URL: 'https://ollama.elliott.haus'
+
+# No secrets needed for now
+secretEnv: []
+
+# Set to true to create the secret via Helm (for development/testing)
+createSecret: false

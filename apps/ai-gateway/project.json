@@ -1,0 +1,80 @@
+{
+  "name": "ai-gateway",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/ai-gateway/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/apps/ai-gateway",
+        "format": ["esm"],
+        "bundle": true,
+        "main": "apps/ai-gateway/src/main.ts",
+        "tsConfig": "apps/ai-gateway/tsconfig.app.json",
+        "assets": ["apps/ai-gateway/src/assets"],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {
+          "thirdParty": false
+        },
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "ai-gateway:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "ai-gateway:build:development",
+          "watch": true
+        },
+        "production": {
+          "buildTarget": "ai-gateway:build:production"
+        }
+      }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "TAG={args.tag} && docker build -f apps/ai-gateway/Dockerfile -t ethanelliottio/ai-gateway:$TAG . && docker push ethanelliottio/ai-gateway:$TAG"
+        ],
+        "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
+      }
+    }
+  }
+}
