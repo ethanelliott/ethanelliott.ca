@@ -139,31 +139,36 @@ export class Agent {
           this.config.maxIterations || 10
         );
 
-        // Use streaming if emitter is present, otherwise use regular chat
-        const response = emitter
-          ? await this.streamChat(
-              messages,
-              tools.length > 0 ? tools : undefined,
-              emitter
-            )
-          : await this.ollama.chat({
-              model: this.config.model || 'llama3.2:3b',
-              messages,
-              tools: tools.length > 0 ? tools : undefined,
-              options: {
-                temperature: this.config.temperature,
-              },
-            });
+        // Tool calling doesn't work reliably with streaming in Ollama
+        // Use non-streaming when tools are available
+        const response = await this.ollama.chat({
+          model: this.config.model || 'llama3.2:3b',
+          messages,
+          tools: tools.length > 0 ? tools : undefined,
+          options: {
+            temperature: this.config.temperature,
+          },
+        });
 
         messages.push(response.message);
 
-        // If no tool calls, we're done
+        // If no tool calls, we're done - stream the final response if we have content
         if (!response.message.tool_calls?.length) {
           // Save to conversation history
           this.conversationHistory.push(
             { role: 'user', content: task },
             response.message
           );
+
+          // Emit tokens for the final response content (simulated streaming)
+          if (emitter && response.message.content) {
+            // Emit content in small chunks to simulate streaming
+            const words = response.message.content.split(' ');
+            for (const word of words) {
+              emitter.token(word + ' ', 'agent', this.config.name, false);
+            }
+            emitter.token('', 'agent', this.config.name, true);
+          }
 
           // Emit agent response (final content)
           emitter?.agentResponse(this.config.name, response.message.content);

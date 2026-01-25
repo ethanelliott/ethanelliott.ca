@@ -162,14 +162,13 @@ export class OrchestratorAgent {
           `Orchestrator thinking (iteration ${iterations}/${maxIterations})...`
         );
 
-        // Use streaming if emitter is present
-        const response = emitter
-          ? await this.streamOrchestratorChat(messages, delegateTools, emitter)
-          : await ollama.chat({
-              model: this.config.model || 'llama3.2:3b',
-              messages,
-              tools: delegateTools,
-            });
+        // Don't stream when using tools - tool calls don't work reliably with streaming
+        // The orchestrator needs tool calls to delegate, so we use non-streaming here
+        const response = await ollama.chat({
+          model: this.config.model || 'llama3.2:3b',
+          messages,
+          tools: delegateTools,
+        });
 
         messages.push(response.message);
 
@@ -180,6 +179,15 @@ export class OrchestratorAgent {
             { role: 'user', content: query },
             response.message
           );
+
+          // Emit tokens for the final response (simulated streaming)
+          if (emitter && response.message.content) {
+            const words = response.message.content.split(' ');
+            for (const word of words) {
+              emitter.token(word + ' ', 'orchestrator', undefined, false);
+            }
+            emitter.token('', 'orchestrator', undefined, true);
+          }
 
           emitter?.content(response.message.content, false);
 
