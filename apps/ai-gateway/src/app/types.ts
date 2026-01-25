@@ -187,3 +187,88 @@ export interface StreamChunk {
   delegation?: DelegationResult;
   error?: string;
 }
+
+/**
+ * Service Registry Types
+ */
+
+export interface MCPService {
+  name: string;
+  url: string;
+  description?: string;
+  status: 'connected' | 'disconnected' | 'error';
+  tools: string[]; // Tool names registered from this service
+  lastSync?: string;
+  error?: string;
+}
+
+export interface MCPServiceRegistration {
+  name: string;
+  url: string; // Base URL of the service (will append /mcp/tools, /mcp/tools/:name/execute)
+  description?: string;
+}
+
+export interface MCPEndpointToolsResponse {
+  tools: MCPTool[];
+}
+
+/**
+ * Streaming Event Types - For real-time chat updates
+ */
+
+export type StreamEventType =
+  | 'status'
+  | 'thinking'
+  | 'delegation_start'
+  | 'delegation_end'
+  | 'tool_call_start'
+  | 'tool_call_end'
+  | 'agent_thinking'
+  | 'agent_response'
+  | 'content'
+  | 'done'
+  | 'error';
+
+export interface StreamEvent {
+  type: StreamEventType;
+  timestamp: number;
+  data: StreamEventData;
+}
+
+export interface StreamEventData {
+  // Status events
+  message?: string;
+
+  // Delegation events
+  agentName?: string;
+  task?: string;
+
+  // Tool call events
+  tool?: string;
+  input?: Record<string, unknown>;
+  output?: MCPToolResult;
+  durationMs?: number;
+
+  // Agent events
+  iteration?: number;
+  maxIterations?: number;
+
+  // Content/Response events
+  content?: string;
+  partial?: boolean;
+
+  // Done event
+  response?: string;
+  conversationId?: string;
+  delegations?: DelegationResult[];
+  totalDurationMs?: number;
+
+  // Error event
+  error?: string;
+}
+
+/**
+ * Event Emitter for streaming
+ */
+export type StreamEventHandler = (event: StreamEvent) => void;
+

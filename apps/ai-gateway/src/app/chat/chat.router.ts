@@ -4,6 +4,7 @@ import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { getOrchestrator } from '../agents';
 import { Agent, getAgentRegistry } from '../agents/agent';
 import { getToolRouter } from '../agents/tool-router';
+import { StreamEmitter } from '../streaming';
 import { randomUUID } from 'crypto';
 
 // Store conversations by ID
@@ -102,6 +103,84 @@ export const ChatRouter: FastifyPluginAsync = async (
         })),
         durationMs: result.totalDurationMs,
       };
+    }
+  );
+
+  /**
+   * POST /chat/stream
+   * Streaming chat endpoint with real-time status updates via Server-Sent Events
+   * 
+   * Returns SSE stream with events:
+   * - status: General status messages
+   * - thinking: Agent is processing
+   * - delegation_start/end: Sub-agent delegation
+   * - tool_call_start/end: Tool executions
+   * - agent_thinking/response: Sub-agent activity
+   * - content: Response content (partial or final)
+   * - done: Final response with full context
+   * - error: Error occurred
+   */
+  app.post(
+    '/stream',
+    {
+      schema: {
+        body: z.object({
+          message: z.string().min(1),
+          conversationId: z.string().optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { message, conversationId } = request.body;
+
+      // Set up SSE headers
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+      });
+
+      // Get or create conversation
+      let convId = conversationId;
+      let orchestrator = getOrchestrator();
+
+      if (convId && conversations.has(convId)) {
+        orchestrator = conversations.get(convId)!.orchestrator;
+      } else {
+        convId = randomUUID();
+        const { createOrchestrator } = await import('../agents/orchestrator');
+        orchestrator = createOrchestrator(getOrchestrator().getConfig());
+        conversations.set(convId, { orchestrator });
+      }
+
+      // Create stream emitter
+      const emitter = new StreamEmitter();
+
+      // Send events to client
+      const unsubscribe = emitter.on((event) => {
+        const data = JSON.stringify(event);
+        reply.raw.write(`event: ${event.type}\n`);
+        reply.raw.write(`data: ${data}\n\n`);
+      });
+
+      try {
+        // Run the orchestrator with streaming
+        const result = await orchestrator.run(message, emitter);
+
+        // Send final done event
+        emitter.done({
+          response: result.response,
+          conversationId: convId,
+          delegations: result.delegations,
+          totalDurationMs: result.totalDurationMs,
+        });
+      } catch (error) {
+        emitter.error(error instanceof Error ? error.message : 'Unknown error');
+      } finally {
+        unsubscribe();
+        reply.raw.end();
+      }
     }
   );
 

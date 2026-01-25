@@ -3,6 +3,7 @@ import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { ChatRouter } from './chat/chat.router';
 import { ToolsRouter } from './tools/tools.router';
 import { AgentsRouter } from './agents/agents.router';
+import { ServicesRouter } from './services/services.router';
 import { initializeToolRegistry } from './mcp/tool-registry';
 import { initializeAgents } from './agents';
 
@@ -26,4 +27,7 @@ export async function Application(fastify: FastifyInstance) {
   fastify
     .withTypeProvider<ZodTypeProvider>()
     .register(AgentsRouter, { prefix: '/agents' });
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(ServicesRouter, { prefix: '/services' });
 }

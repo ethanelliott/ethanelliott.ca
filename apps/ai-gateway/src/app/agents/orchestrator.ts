@@ -10,6 +10,7 @@ import { Agent, registerAgent, getAgentRegistry } from './agent';
 import { getToolRouter } from './tool-router';
 import { getOllamaClient } from '../ollama';
 import { getToolRegistry, createTool } from '../mcp';
+import { StreamEmitter } from '../streaming';
 
 /**
  * Orchestrator Agent
@@ -54,10 +55,14 @@ export class OrchestratorAgent {
 
   /**
    * Run the orchestrator with a user query
+   * @param query The user's question or request
+   * @param emitter Optional stream emitter for real-time updates
    */
-  async run(query: string): Promise<OrchestratorResult> {
+  async run(query: string, emitter?: StreamEmitter): Promise<OrchestratorResult> {
     const startTime = Date.now();
     const delegations: DelegationResult[] = [];
+
+    emitter?.status('Analyzing request...');
 
     // Build the orchestrator's system prompt
     const systemPrompt = this.buildOrchestratorPrompt();
@@ -69,8 +74,8 @@ export class OrchestratorAgent {
       { role: 'user', content: query },
     ];
 
-    // Create the delegation tool
-    const delegateTool = this.createDelegationTool(delegations);
+    // Create the delegation tool with emitter support
+    const delegateTool = this.createDelegationTool(delegations, emitter);
     const registry = getToolRegistry();
 
     // Temporarily register the delegation tool
@@ -84,6 +89,8 @@ export class OrchestratorAgent {
 
       while (iterations < maxIterations) {
         iterations++;
+
+        emitter?.thinking(`Orchestrator thinking (iteration ${iterations}/${maxIterations})...`);
 
         const response = await ollama.chat({
           model: this.config.model || 'llama3.2:3b',
@@ -110,6 +117,8 @@ export class OrchestratorAgent {
             response.message
           );
 
+          emitter?.content(response.message.content, false);
+
           return {
             success: true,
             response: response.message.content,
@@ -120,6 +129,7 @@ export class OrchestratorAgent {
 
         // Check if we've hit max delegations
         if (delegations.length >= (this.config.maxDelegations || 5)) {
+          emitter?.status('Maximum delegations reached, generating final response...');
           messages.push({
             role: 'tool',
             content: JSON.stringify({
@@ -149,6 +159,8 @@ export class OrchestratorAgent {
       }
 
       // Max iterations - get final response
+      emitter?.status('Generating final response...');
+
       const finalResponse = await ollama.chat({
         model: this.config.model || 'llama3.2:3b',
         messages: [
@@ -165,6 +177,8 @@ export class OrchestratorAgent {
         { role: 'user', content: query },
         finalResponse.message
       );
+
+      emitter?.content(finalResponse.message.content, false);
 
       return {
         success: true,
@@ -218,7 +232,7 @@ When you have all the information you need, provide a final response WITHOUT cal
   /**
    * Create the delegation tool
    */
-  private createDelegationTool(delegations: DelegationResult[]) {
+  private createDelegationTool(delegations: DelegationResult[], emitter?: StreamEmitter) {
     const agentNames = Array.from(this.subAgents.keys());
 
     return createTool(
@@ -257,8 +271,14 @@ When you have all the information you need, provide a final response WITHOUT cal
         }
 
         console.log(`[Orchestrator] Delegating to ${agentName}: "${task}"`);
+        emitter?.delegationStart(agentName, task);
 
-        const result = await agent.run(task);
+        // Run the sub-agent with the same emitter for full visibility
+        const delegationStart = Date.now();
+        const result = await agent.run(task, emitter);
+        const delegationDuration = Date.now() - delegationStart;
+
+        emitter?.delegationEnd(agentName, task, delegationDuration, result.response);
 
         const delegation: DelegationResult = {
           agentName,

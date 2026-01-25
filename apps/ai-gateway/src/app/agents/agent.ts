@@ -7,6 +7,7 @@ import {
 } from '../types';
 import { getOllamaClient, OllamaClient } from '../ollama';
 import { getToolRegistry } from '../mcp';
+import { StreamEmitter } from '../streaming';
 
 /**
  * Base Agent Class
@@ -15,6 +16,7 @@ import { getToolRegistry } from '../mcp';
  * - A system prompt defining its role
  * - Access to specific tools
  * - The ability to reason and call tools in a loop until task completion
+ * - Optional streaming support for real-time updates
  */
 export class Agent {
   protected config: AgentConfig;
@@ -47,8 +49,10 @@ export class Agent {
 
   /**
    * Run the agent with a task/prompt
+   * @param task The task or question to process
+   * @param emitter Optional stream emitter for real-time updates
    */
-  async run(task: string): Promise<AgentResult> {
+  async run(task: string, emitter?: StreamEmitter): Promise<AgentResult> {
     const startTime = Date.now();
     const toolCalls: AgentToolCall[] = [];
     let iterations = 0;
@@ -66,6 +70,13 @@ export class Agent {
     try {
       while (iterations < (this.config.maxIterations || 10)) {
         iterations++;
+
+        // Emit thinking event
+        emitter?.agentThinking(
+          this.config.name,
+          iterations,
+          this.config.maxIterations || 10
+        );
 
         const response = await this.ollama.chat({
           model: this.config.model || 'llama3.2:3b',
@@ -85,6 +96,9 @@ export class Agent {
             { role: 'user', content: task },
             response.message
           );
+
+          // Emit agent response
+          emitter?.agentResponse(this.config.name, response.message.content);
 
           return {
             success: true,
@@ -106,13 +120,20 @@ export class Agent {
 
           console.log(`[${this.config.name}] Calling tool: ${toolName}`, args);
 
+          // Emit tool call start
+          emitter?.toolCallStart(toolName, args, this.config.name);
+
           const result = await registry.execute(toolName, args);
+          const toolDurationMs = Date.now() - toolStartTime;
+
+          // Emit tool call end
+          emitter?.toolCallEnd(toolName, args, result, toolDurationMs, this.config.name);
 
           const agentToolCall: AgentToolCall = {
             tool: toolName,
             input: args,
             output: result,
-            durationMs: Date.now() - toolStartTime,
+            durationMs: toolDurationMs,
           };
           toolCalls.push(agentToolCall);
 
@@ -125,6 +146,8 @@ export class Agent {
       }
 
       // Max iterations reached - get final response without tools
+      emitter?.status(`Max iterations reached, generating final response...`);
+
       const finalResponse = await this.ollama.chat({
         model: this.config.model || 'llama3.2:3b',
         messages: [
@@ -142,6 +165,8 @@ export class Agent {
         finalResponse.message
       );
 
+      emitter?.agentResponse(this.config.name, finalResponse.message.content);
+
       return {
         success: true,
         response: finalResponse.message.content,
@@ -150,10 +175,13 @@ export class Agent {
         totalDurationMs: Date.now() - startTime,
       };
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      emitter?.error(`Agent error: ${errorMsg}`);
+
       return {
         success: false,
         response: '',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMsg,
         toolCalls,
         iterations,
         totalDurationMs: Date.now() - startTime,
