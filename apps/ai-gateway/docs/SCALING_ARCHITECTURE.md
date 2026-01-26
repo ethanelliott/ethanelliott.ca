@@ -449,12 +449,12 @@ User Request
 ## Capacity Planning
 
 ### Expected Throughput (per pod)
-| Metric | Single Pod | 3 Pods | 10 Pods |
-|--------|-----------|--------|---------|
-| Concurrent Users | 50-100 | 150-300 | 500-1000 |
-| Requests/min | 100-200 | 300-600 | 1000-2000 |
-| Memory (base) | 512MB | 1.5GB | 5GB |
-| LLM Latency | 2-30s | 2-30s | 2-30s |
+| Metric           | Single Pod | 3 Pods  | 10 Pods   |
+| ---------------- | ---------- | ------- | --------- |
+| Concurrent Users | 50-100     | 150-300 | 500-1000  |
+| Requests/min     | 100-200    | 300-600 | 1000-2000 |
+| Memory (base)    | 512MB      | 1.5GB   | 5GB       |
+| LLM Latency      | 2-30s      | 2-30s   | 2-30s     |
 
 ### Bottleneck Analysis
 1. **LLM Inference**: Primary bottleneck - scale Ollama workers
