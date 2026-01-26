@@ -187,11 +187,31 @@ export class OrchestratorAgent {
             response.message
           );
 
-          // Emit tokens for the final response (simulated streaming)
+          // Emit tokens for the final response (optimized chunking)
           if (emitter && response.message.content) {
-            const words = response.message.content.split(' ');
-            for (const word of words) {
-              emitter.token(word + ' ', 'orchestrator', undefined, false);
+            const content = response.message.content;
+            const chunkSize = 50;
+            let i = 0;
+            while (i < content.length) {
+              let end = Math.min(i + chunkSize, content.length);
+              if (end < content.length) {
+                const sentenceEnd = content
+                  .slice(i, end + 20)
+                  .search(/[.!?]\s/);
+                if (sentenceEnd > 0 && sentenceEnd < chunkSize + 20) {
+                  end = i + sentenceEnd + 2;
+                } else {
+                  const spacePos = content.lastIndexOf(' ', end);
+                  if (spacePos > i) end = spacePos + 1;
+                }
+              }
+              emitter.token(
+                content.slice(i, end),
+                'orchestrator',
+                undefined,
+                false
+              );
+              i = end;
             }
             emitter.token('', 'orchestrator', undefined, true);
           }

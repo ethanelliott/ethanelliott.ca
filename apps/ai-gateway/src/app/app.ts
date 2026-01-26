@@ -4,6 +4,7 @@ import { ChatRouter } from './chat/chat.router';
 import { ToolsRouter } from './tools/tools.router';
 import { AgentsRouter } from './agents/agents.router';
 import { ServicesRouter } from './services/services.router';
+import { MetricsRouter } from './metrics/metrics.router';
 import { initializeToolRegistry } from './mcp/tool-registry';
 import { initializeAgents } from './agents';
 
@@ -30,4 +31,7 @@ export async function Application(fastify: FastifyInstance) {
   fastify
     .withTypeProvider<ZodTypeProvider>()
     .register(ServicesRouter, { prefix: '/services' });
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(MetricsRouter, { prefix: '/metrics' });
 }

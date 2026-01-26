@@ -160,12 +160,35 @@ export class Agent {
             response.message
           );
 
-          // Emit tokens for the final response content (simulated streaming)
+          // Emit tokens for the final response content (optimized chunking)
           if (emitter && response.message.content) {
-            // Emit content in small chunks to simulate streaming
-            const words = response.message.content.split(' ');
-            for (const word of words) {
-              emitter.token(word + ' ', 'agent', this.config.name, false);
+            // Emit content in optimized chunks (sentences or ~50 char chunks)
+            // This balances UX responsiveness with event overhead
+            const content = response.message.content;
+            const chunkSize = 50;
+            let i = 0;
+            while (i < content.length) {
+              // Try to break at sentence boundaries or spaces
+              let end = Math.min(i + chunkSize, content.length);
+              if (end < content.length) {
+                // Look for natural break points
+                const sentenceEnd = content
+                  .slice(i, end + 20)
+                  .search(/[.!?]\s/);
+                if (sentenceEnd > 0 && sentenceEnd < chunkSize + 20) {
+                  end = i + sentenceEnd + 2;
+                } else {
+                  const spacePos = content.lastIndexOf(' ', end);
+                  if (spacePos > i) end = spacePos + 1;
+                }
+              }
+              emitter.token(
+                content.slice(i, end),
+                'agent',
+                this.config.name,
+                false
+              );
+              i = end;
             }
             emitter.token('', 'agent', this.config.name, true);
           }

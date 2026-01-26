@@ -154,21 +154,45 @@ class ToolRegistry {
 
     try {
       const result = await tool.execute(params, userParams);
+      const executionTimeMs = Date.now() - startTime;
+
+      // Record metrics (lazy import to avoid circular dependencies)
+      try {
+        const { getMetricsCollector } = await import('../metrics');
+        getMetricsCollector().recordToolCall(
+          name,
+          executionTimeMs,
+          result.success
+        );
+      } catch {
+        // Metrics not available, skip
+      }
+
       return {
         ...result,
         metadata: {
           ...result.metadata,
-          executionTimeMs: Date.now() - startTime,
+          executionTimeMs,
           hadUserParams: !!userParams,
         },
       };
     } catch (error) {
+      const executionTimeMs = Date.now() - startTime;
+
+      // Record failed metrics
+      try {
+        const { getMetricsCollector } = await import('../metrics');
+        getMetricsCollector().recordToolCall(name, executionTimeMs, false);
+      } catch {
+        // Metrics not available, skip
+      }
+
       return {
         success: false,
         error:
           error instanceof Error ? error.message : 'Unknown error occurred',
         metadata: {
-          executionTimeMs: Date.now() - startTime,
+          executionTimeMs,
         },
       };
     }

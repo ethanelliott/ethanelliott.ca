@@ -9,11 +9,100 @@ import { getApprovalManager } from '../approval';
 import { randomUUID } from 'crypto';
 import { OllamaMessage, DelegationResult } from '../types';
 
-// Store conversations by ID
-const conversations = new Map<
-  string,
-  { orchestrator: ReturnType<typeof getOrchestrator> }
->();
+/**
+ * LRU Cache with TTL for conversation management
+ * Prevents unbounded memory growth in long-running servers
+ */
+class ConversationCache<T> {
+  private cache = new Map<string, { value: T; lastAccess: number }>();
+  private maxSize: number;
+  private ttlMs: number;
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  constructor(maxSize = 1000, ttlMs = 30 * 60 * 1000) {
+    // 30 min default TTL
+    this.maxSize = maxSize;
+    this.ttlMs = ttlMs;
+    this.startCleanup();
+  }
+
+  private startCleanup() {
+    // Run cleanup every minute
+    this.cleanupInterval = setInterval(() => this.evictExpired(), 60000);
+  }
+
+  private evictExpired() {
+    const now = Date.now();
+    const expired: string[] = [];
+    for (const [key, entry] of this.cache) {
+      if (now - entry.lastAccess > this.ttlMs) {
+        expired.push(key);
+      }
+    }
+    for (const key of expired) {
+      this.cache.delete(key);
+    }
+    if (expired.length > 0) {
+      console.log(
+        `[ConversationCache] Evicted ${expired.length} expired conversations`
+      );
+    }
+  }
+
+  private evictLRU() {
+    if (this.cache.size <= this.maxSize) return;
+
+    // Find and remove oldest entries
+    const entries = Array.from(this.cache.entries()).sort(
+      (a, b) => a[1].lastAccess - b[1].lastAccess
+    );
+
+    const toRemove = entries.slice(0, this.cache.size - this.maxSize);
+    for (const [key] of toRemove) {
+      this.cache.delete(key);
+    }
+    console.log(
+      `[ConversationCache] Evicted ${toRemove.length} LRU conversations`
+    );
+  }
+
+  get(key: string): T | undefined {
+    const entry = this.cache.get(key);
+    if (!entry) return undefined;
+    entry.lastAccess = Date.now();
+    return entry.value;
+  }
+
+  set(key: string, value: T): void {
+    this.cache.set(key, { value, lastAccess: Date.now() });
+    this.evictLRU();
+  }
+
+  has(key: string): boolean {
+    return this.cache.has(key);
+  }
+
+  delete(key: string): boolean {
+    return this.cache.delete(key);
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+
+  destroy() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.cache.clear();
+  }
+}
+
+// Store conversations with LRU + TTL (max 1000 conversations, 30 min TTL)
+const conversations = new ConversationCache<{
+  orchestrator: ReturnType<typeof getOrchestrator>;
+}>(1000, 30 * 60 * 1000);
 
 // Tool call structure (matches Ollama's format)
 const ToolCallSchema = z.object({

@@ -7,30 +7,112 @@ import {
 } from '../types';
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'https://ollama.elliott.haus';
+const DEFAULT_TIMEOUT_MS = 120000; // 2 minutes default
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+export interface OllamaRequestOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+/**
+ * Retry helper with exponential backoff
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = MAX_RETRIES,
+  baseDelay: number = RETRY_DELAY_MS
+): Promise<T> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      // Don't retry on abort or client errors
+      if (lastError.name === 'AbortError' || lastError.message.includes('4')) {
+        throw lastError;
+      }
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
+}
 
 export class OllamaClient {
   private baseUrl: string;
+  private defaultTimeoutMs: number;
 
-  constructor(baseUrl?: string) {
+  constructor(baseUrl?: string, defaultTimeoutMs?: number) {
     this.baseUrl = baseUrl || OLLAMA_URL;
+    this.defaultTimeoutMs = defaultTimeoutMs || DEFAULT_TIMEOUT_MS;
+  }
+
+  /**
+   * Create a combined abort signal from timeout and optional external signal
+   */
+  private createTimeoutSignal(
+    timeoutMs: number,
+    externalSignal?: AbortSignal
+  ): { signal: AbortSignal; cleanup: () => void } {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort('Request timeout'),
+      timeoutMs
+    );
+
+    // Link external signal if provided
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        controller.abort(externalSignal.reason);
+      } else {
+        externalSignal.addEventListener('abort', () => {
+          controller.abort(externalSignal.reason);
+        });
+      }
+    }
+
+    return {
+      signal: controller.signal,
+      cleanup: () => clearTimeout(timeoutId),
+    };
   }
 
   /**
    * Send a chat request to Ollama (non-streaming)
    */
-  async chat(request: OllamaChatRequest): Promise<OllamaChatResponse> {
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...request, stream: false }),
-    });
+  async chat(
+    request: OllamaChatRequest,
+    options?: OllamaRequestOptions
+  ): Promise<OllamaChatResponse> {
+    const { signal, cleanup } = this.createTimeoutSignal(
+      options?.timeoutMs || this.defaultTimeoutMs,
+      options?.signal
+    );
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Ollama chat failed: ${response.status} - ${error}`);
+    try {
+      return await withRetry(async () => {
+        const response = await fetch(`${this.baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...request, stream: false }),
+          signal,
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`Ollama chat failed: ${response.status} - ${error}`);
+        }
+
+        return response.json();
+      });
+    } finally {
+      cleanup();
     }
-
-    return response.json();
   }
 
   /**
@@ -38,53 +120,68 @@ export class OllamaClient {
    * Returns an async generator of chunks
    */
   async *chatStream(
-    request: OllamaChatRequest
+    request: OllamaChatRequest,
+    options?: OllamaRequestOptions
   ): AsyncGenerator<OllamaStreamChunk> {
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...request, stream: true }),
-    });
+    const { signal, cleanup } = this.createTimeoutSignal(
+      options?.timeoutMs || this.defaultTimeoutMs * 2, // Longer timeout for streaming
+      options?.signal
+    );
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(
-        `Ollama chat stream failed: ${response.status} - ${error}`
-      );
-    }
+    try {
+      const response = await fetch(`${this.baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...request, stream: true }),
+        signal,
+      });
 
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('No response body');
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(
+          `Ollama chat stream failed: ${response.status} - ${error}`
+        );
+      }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      for (const line of lines) {
-        if (line.trim()) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                yield JSON.parse(line) as OllamaStreamChunk;
+              } catch {
+                // Skip malformed JSON
+              }
+            }
+          }
+        }
+
+        // Process remaining buffer
+        if (buffer.trim()) {
           try {
-            yield JSON.parse(line) as OllamaStreamChunk;
+            yield JSON.parse(buffer) as OllamaStreamChunk;
           } catch {
             // Skip malformed JSON
           }
         }
+      } finally {
+        reader.releaseLock();
       }
-    }
-
-    // Process remaining buffer
-    if (buffer.trim()) {
-      try {
-        yield JSON.parse(buffer) as OllamaStreamChunk;
-      } catch {
-        // Skip malformed JSON
-      }
+    } finally {
+      cleanup();
     }
   }
 

@@ -16,6 +16,18 @@ interface PendingApproval {
 }
 
 /**
+ * Approval Manager Metrics
+ */
+interface ApprovalMetrics {
+  totalRequested: number;
+  totalApproved: number;
+  totalRejected: number;
+  totalTimedOut: number;
+  totalCancelled: number;
+  currentPending: number;
+}
+
+/**
  * Approval Manager
  *
  * Manages pending tool approval requests for human-in-the-loop workflows.
@@ -25,6 +37,15 @@ interface PendingApproval {
 class ApprovalManager {
   private pendingApprovals: Map<string, PendingApproval> = new Map();
   private defaultTimeoutMs = 5 * 60 * 1000; // 5 minutes default timeout
+  private maxPendingApprovals = 100; // Prevent memory exhaustion
+  private metrics: ApprovalMetrics = {
+    totalRequested: 0,
+    totalApproved: 0,
+    totalRejected: 0,
+    totalTimedOut: 0,
+    totalCancelled: 0,
+    currentPending: 0,
+  };
 
   /**
    * Request approval for a tool execution
@@ -47,6 +68,11 @@ class ApprovalManager {
       timeoutMs?: number;
     } = {}
   ): Promise<ApprovalResponse> {
+    // Prevent memory exhaustion
+    if (this.pendingApprovals.size >= this.maxPendingApprovals) {
+      throw new Error('Too many pending approvals. Please try again later.');
+    }
+
     const approvalId = randomUUID();
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
 
@@ -59,10 +85,15 @@ class ApprovalManager {
       agentName: options.agentName,
     };
 
+    this.metrics.totalRequested++;
+    this.metrics.currentPending++;
+
     return new Promise((resolve, reject) => {
       // Set up timeout
       const timeoutId = setTimeout(() => {
         this.pendingApprovals.delete(approvalId);
+        this.metrics.totalTimedOut++;
+        this.metrics.currentPending--;
         reject(new Error(`Approval request timed out after ${timeoutMs}ms`));
       }, timeoutMs);
 
@@ -106,6 +137,14 @@ class ApprovalManager {
 
     // Remove from pending
     this.pendingApprovals.delete(response.approvalId);
+    this.metrics.currentPending--;
+
+    // Track approval/rejection
+    if (response.approved) {
+      this.metrics.totalApproved++;
+    } else {
+      this.metrics.totalRejected++;
+    }
 
     // Resolve the waiting promise
     pending.resolve(response);
@@ -128,6 +167,8 @@ class ApprovalManager {
     }
 
     this.pendingApprovals.delete(approvalId);
+    this.metrics.currentPending--;
+    this.metrics.totalCancelled++;
     pending.reject(new Error(reason || 'Approval cancelled'));
 
     return true;
@@ -155,6 +196,13 @@ class ApprovalManager {
   }
 
   /**
+   * Get metrics for monitoring
+   */
+  getMetrics(): ApprovalMetrics {
+    return { ...this.metrics, currentPending: this.pendingApprovals.size };
+  }
+
+  /**
    * Clear all pending approvals (cancels them)
    */
   clearAll(): void {
@@ -162,8 +210,10 @@ class ApprovalManager {
       if (pending.timeoutId) {
         clearTimeout(pending.timeoutId);
       }
+      this.metrics.totalCancelled++;
       pending.reject(new Error('All approvals cleared'));
     }
+    this.metrics.currentPending = 0;
     this.pendingApprovals.clear();
   }
 }
@@ -178,4 +228,4 @@ export function getApprovalManager(): ApprovalManager {
   return approvalManager;
 }
 
-export { ApprovalManager };
+export { ApprovalManager, ApprovalMetrics };
