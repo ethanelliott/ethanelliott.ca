@@ -16,6 +16,9 @@ spec:
       labels:
         {{- include "ollama.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.ollama.runtimeClassName }}
+      runtimeClassName: {{ .Values.ollama.runtimeClassName }}
+      {{- end }}
       {{- if .Values.ollama.nodeSelector }}
       nodeSelector:
         {{- toYaml .Values.ollama.nodeSelector | nindent 8 }}

@@ -11,7 +11,10 @@ ollama:
     port: 11434
 
   nodeSelector:
-    kubernetes.io/hostname: e-omni
+    kubernetes.io/hostname: e-wsl
+
+  # GPU configuration for WSL2 node
+  runtimeClassName: nvidia
 
   resources:
     limits:
