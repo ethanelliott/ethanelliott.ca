@@ -10,9 +10,37 @@ import {
   TransactionsSyncRequest,
   AccountsGetRequest,
   InstitutionsGetByIdRequest,
+  ItemGetRequest,
   Transaction as PlaidTransaction,
   RemovedTransaction,
+  PlaidError,
 } from 'plaid';
+import { AxiosError } from 'axios';
+
+// Plaid error codes that require user re-authentication
+const REAUTH_ERROR_CODES = [
+  'ITEM_LOGIN_REQUIRED',
+  'INVALID_CREDENTIALS',
+  'INVALID_MFA',
+  'ITEM_LOCKED',
+  'USER_SETUP_REQUIRED',
+  'MFA_NOT_SUPPORTED',
+  'INSUFFICIENT_CREDENTIALS',
+];
+
+// Plaid error codes that indicate consent expiration
+const CONSENT_ERROR_CODES = [
+  'ITEM_CONSENT_REVOKED',
+  'ITEM_PRODUCT_NOT_READY',
+  'ITEM_NOT_FOUND',
+];
+
+interface PlaidApiError {
+  error_type: string;
+  error_code: string;
+  error_message: string;
+  display_message: string | null;
+}
 import { Database } from '../data-source';
 import { PlaidItem, PlaidItemStatus } from './plaid-item.entity';
 import { Account, AccountType } from './account.entity';
@@ -43,6 +71,33 @@ export interface SyncResult {
   removed: number;
   accountsUpdated: number;
   hasMore: boolean;
+}
+
+/**
+ * Parse a Plaid API error from an Axios error response
+ */
+function parsePlaidError(error: unknown): PlaidApiError | null {
+  if (error instanceof AxiosError && error.response?.data) {
+    const data = error.response.data as PlaidApiError;
+    if (data.error_code && data.error_type) {
+      return data;
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if a Plaid error requires user re-authentication
+ */
+function isReauthRequired(error: PlaidApiError): boolean {
+  return REAUTH_ERROR_CODES.includes(error.error_code);
+}
+
+/**
+ * Check if a Plaid error indicates consent was revoked
+ */
+function isConsentRevoked(error: PlaidApiError): boolean {
+  return CONSENT_ERROR_CODES.includes(error.error_code);
 }
 
 export class PlaidService {
@@ -143,6 +198,25 @@ export class PlaidService {
     const accessToken = exchangeResponse.data.access_token;
     const itemId = exchangeResponse.data.item_id;
 
+    // Fetch item details to get consent expiration
+    let consentExpiresAt: Date | undefined;
+    try {
+      const itemRequest: ItemGetRequest = {
+        access_token: accessToken,
+      };
+      const itemResponse = await this._plaidClient.itemGet(itemRequest);
+      if (itemResponse.data.item.consent_expiration_time) {
+        consentExpiresAt = new Date(
+          itemResponse.data.item.consent_expiration_time
+        );
+      }
+    } catch (error) {
+      console.warn(
+        'Failed to fetch item details for consent expiration:',
+        error
+      );
+    }
+
     // Get institution details if we have the ID
     let institutionLogo: string | undefined;
     let institutionColor: string | undefined;
@@ -181,6 +255,7 @@ export class PlaidService {
       plaidItem.institutionName = institutionName;
       plaidItem.institutionLogo = institutionLogo;
       plaidItem.institutionColor = institutionColor;
+      plaidItem.consentExpiresAt = consentExpiresAt;
     } else {
       // Create new item
       plaidItem = this._plaidItemRepository.create({
@@ -190,6 +265,7 @@ export class PlaidService {
         institutionName,
         institutionLogo,
         institutionColor,
+        consentExpiresAt,
         status: PlaidItemStatus.ACTIVE,
         user: { id: userId } as any,
       });
@@ -365,15 +441,47 @@ export class PlaidService {
         hasMore: false,
       };
     } catch (error: any) {
+      // Parse Plaid-specific error information
+      const plaidError = parsePlaidError(error);
+
       // Update sync log with error
       syncLog.status = SyncStatus.FAILED;
-      syncLog.error = error.message || 'Unknown error';
+      syncLog.error = plaidError
+        ? `${plaidError.error_code}: ${plaidError.error_message}`
+        : error.message || 'Unknown error';
       syncLog.durationMs = Date.now() - startTime;
       await this._syncLogRepository.save(syncLog);
 
-      // Update plaid item status
-      plaidItem.status = PlaidItemStatus.ERROR;
-      plaidItem.lastError = error.message || 'Sync failed';
+      // Determine appropriate item status based on error type
+      if (plaidError && isReauthRequired(plaidError)) {
+        // User needs to re-authenticate with their bank
+        plaidItem.status = PlaidItemStatus.PENDING_EXPIRATION;
+        plaidItem.lastError = `Re-authentication required: ${
+          plaidError.display_message || plaidError.error_message
+        }`;
+        console.log(
+          `🔑 Item ${
+            plaidItem.institutionName || plaidItem.itemId
+          } requires re-authentication (${plaidError.error_code})`
+        );
+      } else if (plaidError && isConsentRevoked(plaidError)) {
+        // Consent was revoked, item needs to be reconnected
+        plaidItem.status = PlaidItemStatus.REVOKED;
+        plaidItem.lastError = `Consent revoked: ${
+          plaidError.display_message || plaidError.error_message
+        }`;
+        console.log(
+          `❌ Item ${
+            plaidItem.institutionName || plaidItem.itemId
+          } consent was revoked (${plaidError.error_code})`
+        );
+      } else {
+        // Generic error
+        plaidItem.status = PlaidItemStatus.ERROR;
+        plaidItem.lastError = plaidError
+          ? plaidError.error_message
+          : error.message || 'Sync failed';
+      }
       await this._plaidItemRepository.save(plaidItem);
 
       throw error;

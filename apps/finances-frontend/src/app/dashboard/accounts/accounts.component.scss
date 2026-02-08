@@ -170,6 +170,98 @@
       color: var(--mat-sys-primary);
     }
   }
+
+  &.needs-attention {
+    border-color: var(--warning-color, #f59e0b);
+
+    .bank-header .bank-meta {
+      color: var(--warning-color, #f59e0b);
+    }
+  }
+
+  &.revoked {
+    border-color: var(--expense-color);
+
+    .bank-header .bank-meta {
+      color: var(--expense-color);
+    }
+  }
+}
+
+// ===== STATUS BANNER =====
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-top: 1px solid rgba(245, 158, 11, 0.3);
+
+    > mat-icon {
+      color: #f59e0b;
+    }
+  }
+
+  &.error {
+    background: rgba(239, 68, 68, 0.1);
+    border-top: 1px solid rgba(239, 68, 68, 0.3);
+    cursor: default;
+
+    > mat-icon {
+      color: #ef4444;
+    }
+  }
+
+  &:hover {
+    background: rgba(245, 158, 11, 0.15);
+  }
+
+  > mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .status-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .status-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--mat-sys-on-surface);
+    }
+
+    .status-message {
+      font-size: 0.8rem;
+      color: var(--mat-sys-on-surface-variant);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .reauth-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.85rem;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
 }
 
 .bank-header {

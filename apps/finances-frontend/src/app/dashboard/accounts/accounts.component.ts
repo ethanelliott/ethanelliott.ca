@@ -125,13 +125,18 @@ declare global {
       <!-- Banks List -->
       <div class="banks-list">
         @for (institution of accountsByInstitution(); track
-        institution.institutionId) {
+        institution.institutionId) { @let itemStatus =
+        getItemStatus(institution);
         <div
           class="bank-card"
           [class.expanded]="
             expandedInstitution() ===
             (institution.institutionId || institution.institutionName)
           "
+          [class.needs-attention]="
+            itemStatus === 'PENDING_EXPIRATION' || itemStatus === 'ERROR'
+          "
+          [class.revoked]="itemStatus === 'REVOKED'"
         >
           <!-- Bank Header (clickable) -->
           <div
@@ -213,6 +218,47 @@ declare global {
               </mat-menu>
             </div>
           </div>
+
+          <!-- Status Alert Banner -->
+          @if (itemStatus === 'PENDING_EXPIRATION' || itemStatus === 'ERROR') {
+          <div
+            class="status-banner warning"
+            (click)="updateConnection(institution)"
+          >
+            <mat-icon>warning</mat-icon>
+            <div class="status-content">
+              <span class="status-title">Re-authentication Required</span>
+              <span class="status-message">{{
+                getItemError(institution) ||
+                  'Please reconnect to continue syncing'
+              }}</span>
+            </div>
+            <button mat-flat-button color="warn" class="reauth-btn">
+              <mat-icon>refresh</mat-icon>
+              Re-authenticate
+            </button>
+          </div>
+          } @else if (itemStatus === 'REVOKED') {
+          <div class="status-banner error">
+            <mat-icon>error</mat-icon>
+            <div class="status-content">
+              <span class="status-title">Connection Revoked</span>
+              <span class="status-message">{{
+                getItemError(institution) ||
+                  'Please disconnect and reconnect this bank'
+              }}</span>
+            </div>
+            <button
+              mat-flat-button
+              color="warn"
+              (click)="disconnectInstitution(institution)"
+              class="reauth-btn"
+            >
+              <mat-icon>link_off</mat-icon>
+              Disconnect
+            </button>
+          </div>
+          }
 
           <!-- Accounts List (expandable) -->
           @if (expandedInstitution() === (institution.institutionId ||
@@ -434,10 +480,40 @@ export class AccountsComponent implements OnInit {
         i.institutionName === institution.institutionName
     );
     if (!item) return 'Unknown';
+
+    // Show status-specific messages
+    if (item.status === PlaidItemStatus.PENDING_EXPIRATION) {
+      return 'Re-authentication required';
+    }
+    if (item.status === PlaidItemStatus.ERROR) {
+      return 'Sync error';
+    }
+    if (item.status === PlaidItemStatus.REVOKED) {
+      return 'Connection revoked';
+    }
+
     if (item.lastSyncAt) {
       return `Synced ${this.formatRelativeTime(item.lastSyncAt)}`;
     }
     return 'Never synced';
+  }
+
+  getItemStatus(institution: AccountsByInstitution): PlaidItemStatus | null {
+    const item = this.plaidItems().find(
+      (i) =>
+        i.institutionId === institution.institutionId ||
+        i.institutionName === institution.institutionName
+    );
+    return item?.status || null;
+  }
+
+  getItemError(institution: AccountsByInstitution): string | null {
+    const item = this.plaidItems().find(
+      (i) =>
+        i.institutionId === institution.institutionId ||
+        i.institutionName === institution.institutionName
+    );
+    return item?.lastError || null;
   }
 
   async connectBank() {
