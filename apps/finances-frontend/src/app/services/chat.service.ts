@@ -231,7 +231,7 @@ export class ChatService {
     environment.ollamaUrl || 'http://localhost:11434';
 
   private conversationHistory: Array<{ role: string; content: string }> = [];
-  private currentModel = 'llama3.2';
+  private currentModel = 'qwen3:4b';
 
   /**
    * Get list of available models from Ollama
