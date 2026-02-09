@@ -120,7 +120,11 @@ import {
 
             <div class="color-picker">
               <label>Color</label>
-              <div class="color-preview" [style.border-color]="formData.color" [style.color]="formData.color">
+              <div
+                class="color-preview"
+                [style.border-color]="formData.color"
+                [style.color]="formData.color"
+              >
                 <mat-icon>label</mat-icon>
               </div>
               <input type="color" [(ngModel)]="formData.color" />
@@ -363,6 +367,45 @@ import {
       gap: var(--spacing-sm);
       padding: var(--spacing-md) var(--spacing-lg);
       border-top: 1px solid var(--border-subtle);
+    }
+
+    @media (max-width: 640px) {
+      .page-header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        align-items: stretch;
+      }
+
+      .page-header button {
+        width: 100%;
+      }
+
+      .header-text h1 {
+        font-size: 1.75rem;
+      }
+
+      .tags-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tag-card {
+        padding: var(--spacing-md);
+      }
+
+      .tag-actions {
+        opacity: 1;
+      }
+
+      .form-card {
+        margin: var(--spacing-md);
+        max-width: calc(100% - var(--spacing-xl));
+        border-radius: var(--border-radius-lg);
+      }
+
+      .form-header,
+      .form-body {
+        padding: var(--spacing-md);
+      }
     }
   `,
 })

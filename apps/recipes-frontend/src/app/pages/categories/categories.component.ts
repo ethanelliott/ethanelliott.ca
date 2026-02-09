@@ -64,8 +64,18 @@ import {
       <div class="categories-grid">
         @for (category of categories(); track category.id; let i = $index) {
         <div class="category-card" [style.--delay]="i">
-          <div class="category-glow" [style.background]="'linear-gradient(90deg, transparent, ' + (category.color || '#666') + ', transparent)'"></div>
-          <div class="category-indicator" [style.background]="category.color || '#666'"></div>
+          <div
+            class="category-glow"
+            [style.background]="
+              'linear-gradient(90deg, transparent, ' +
+              (category.color || '#666') +
+              ', transparent)'
+            "
+          ></div>
+          <div
+            class="category-indicator"
+            [style.background]="category.color || '#666'"
+          ></div>
           <div class="category-content">
             <h3>{{ category.name }}</h3>
             @if (category.description) {
@@ -76,7 +86,11 @@ import {
             <button mat-icon-button (click)="openForm(category)">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button color="warn" (click)="deleteCategory(category)">
+            <button
+              mat-icon-button
+              color="warn"
+              (click)="deleteCategory(category)"
+            >
               <mat-icon>delete</mat-icon>
             </button>
           </div>
@@ -117,7 +131,10 @@ import {
 
             <div class="color-picker">
               <label>Color</label>
-              <div class="color-preview" [style.background]="formData.color"></div>
+              <div
+                class="color-preview"
+                [style.background]="formData.color"
+              ></div>
               <input type="color" [(ngModel)]="formData.color" />
             </div>
           </div>
@@ -362,6 +379,57 @@ import {
       gap: var(--spacing-sm);
       padding: var(--spacing-md) var(--spacing-lg);
       border-top: 1px solid var(--border-subtle);
+    }
+
+    @media (max-width: 640px) {
+      .page-header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        align-items: stretch;
+      }
+
+      .page-header button {
+        width: 100%;
+      }
+
+      .header-text h1 {
+        font-size: 1.75rem;
+      }
+
+      .categories-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+
+      .category-card {
+        padding: var(--spacing-md);
+      }
+
+      .category-actions {
+        opacity: 1;
+        position: static;
+        margin-top: var(--spacing-sm);
+      }
+
+      .category-content {
+        flex: 1;
+      }
+
+      .category-card {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .form-card {
+        margin: var(--spacing-md);
+        max-width: calc(100% - var(--spacing-xl));
+        border-radius: var(--border-radius-lg);
+      }
+
+      .form-header,
+      .form-body {
+        padding: var(--spacing-md);
+      }
     }
   `,
 })

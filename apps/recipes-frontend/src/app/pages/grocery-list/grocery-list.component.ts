@@ -73,8 +73,12 @@ interface RecipeSelection {
             </p>
             } @else {
             <div class="recipe-selection-list">
-              @for (selection of recipeSelections(); track selection.recipe.id) {
-              <div class="recipe-selection-item" [class.selected]="selection.selected">
+              @for (selection of recipeSelections(); track selection.recipe.id)
+              {
+              <div
+                class="recipe-selection-item"
+                [class.selected]="selection.selected"
+              >
                 <mat-checkbox
                   [(ngModel)]="selection.selected"
                   (ngModelChange)="onSelectionChange()"
@@ -100,7 +104,8 @@ interface RecipeSelection {
           </div>
           <div class="section-actions">
             <button
-              mat-fab extended
+              mat-fab
+              extended
               color="primary"
               (click)="generateList()"
               [disabled]="!hasSelection() || generating()"
@@ -109,8 +114,7 @@ interface RecipeSelection {
               <mat-spinner diameter="24"></mat-spinner>
               } @else {
               <mat-icon>shopping_cart</mat-icon>
-              Generate List
-              }
+              Generate List }
             </button>
           </div>
         </div>
@@ -130,7 +134,9 @@ interface RecipeSelection {
             @if (!groceryList()) {
             <div class="empty-list-state">
               <mat-icon>shopping_basket</mat-icon>
-              <p>Select recipes and generate a list to see your groceries here.</p>
+              <p>
+                Select recipes and generate a list to see your groceries here.
+              </p>
             </div>
             } @else if (groceryList()!.items.length === 0) {
             <p class="empty-message">
@@ -139,10 +145,15 @@ interface RecipeSelection {
             } @else {
             <div class="grocery-items">
               @for (item of groceryList()!.items; track item.name + item.unit) {
-              <div class="grocery-item" [class.checked]="checkedItems[item.name + item.unit]">
+              <div
+                class="grocery-item"
+                [class.checked]="checkedItems[item.name + item.unit]"
+              >
                 <mat-checkbox [(ngModel)]="checkedItems[item.name + item.unit]">
                   <span class="item-content">
-                    <span class="quantity">{{ formatQuantity(item.quantity) }}</span>
+                    <span class="quantity">{{
+                      formatQuantity(item.quantity)
+                    }}</span>
                     <span class="unit">{{ item.unit }}</span>
                     <span class="name">{{ item.name }}</span>
                   </span>
@@ -207,6 +218,36 @@ interface RecipeSelection {
     @media (max-width: 900px) {
       .content-grid {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .header-text h1 {
+        font-size: 1.75rem;
+      }
+
+      .section-header {
+        padding: var(--spacing-md);
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+      }
+
+      .section-body {
+        padding: var(--spacing-md);
+        max-height: 350px;
+      }
+
+      .section-actions {
+        padding: var(--spacing-sm) var(--spacing-md);
+        flex-wrap: wrap;
+      }
+
+      .recipe-selection-item {
+        flex-wrap: wrap;
+      }
+
+      .servings-field {
+        width: 80px;
       }
     }
 

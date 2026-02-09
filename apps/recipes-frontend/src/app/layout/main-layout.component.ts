@@ -1,11 +1,25 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  signal,
+  HostListener,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, RouterLink, RouterLinkActive } from '@angular/router';
+import {
+  RouterModule,
+  RouterLink,
+  RouterLinkActive,
+  NavigationEnd,
+  Router,
+} from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-main-layout',
@@ -24,7 +38,13 @@ import { MatListModule } from '@angular/material/list';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-sidenav-container class="sidenav-container">
-      <mat-sidenav #sidenav mode="side" opened class="sidenav">
+      <mat-sidenav
+        #sidenav
+        [mode]="isMobile() ? 'over' : 'side'"
+        [opened]="!isMobile()"
+        class="sidenav"
+        [class.mobile]="isMobile()"
+      >
         <div class="sidenav-header">
           <div class="logo-container">
             <div class="logo-icon-wrapper">
@@ -36,15 +56,30 @@ import { MatListModule } from '@angular/material/list';
         <nav class="nav-section">
           <span class="nav-label">Main</span>
           <mat-nav-list>
-            <a mat-list-item routerLink="/recipes" routerLinkActive="active">
+            <a
+              mat-list-item
+              routerLink="/recipes"
+              routerLinkActive="active"
+              (click)="onNavClick()"
+            >
               <mat-icon matListItemIcon>menu_book</mat-icon>
               <span matListItemTitle>Recipes</span>
             </a>
-            <a mat-list-item routerLink="/random" routerLinkActive="active">
+            <a
+              mat-list-item
+              routerLink="/random"
+              routerLinkActive="active"
+              (click)="onNavClick()"
+            >
               <mat-icon matListItemIcon>casino</mat-icon>
               <span matListItemTitle>Random Recipe</span>
             </a>
-            <a mat-list-item routerLink="/grocery-list" routerLinkActive="active">
+            <a
+              mat-list-item
+              routerLink="/grocery-list"
+              routerLinkActive="active"
+              (click)="onNavClick()"
+            >
               <mat-icon matListItemIcon>shopping_cart</mat-icon>
               <span matListItemTitle>Grocery List</span>
             </a>
@@ -53,11 +88,21 @@ import { MatListModule } from '@angular/material/list';
         <nav class="nav-section">
           <span class="nav-label">Organize</span>
           <mat-nav-list>
-            <a mat-list-item routerLink="/categories" routerLinkActive="active">
+            <a
+              mat-list-item
+              routerLink="/categories"
+              routerLinkActive="active"
+              (click)="onNavClick()"
+            >
               <mat-icon matListItemIcon>category</mat-icon>
               <span matListItemTitle>Categories</span>
             </a>
-            <a mat-list-item routerLink="/tags" routerLinkActive="active">
+            <a
+              mat-list-item
+              routerLink="/tags"
+              routerLinkActive="active"
+              (click)="onNavClick()"
+            >
               <mat-icon matListItemIcon>label</mat-icon>
               <span matListItemTitle>Tags</span>
             </a>
@@ -65,8 +110,21 @@ import { MatListModule } from '@angular/material/list';
         </nav>
       </mat-sidenav>
 
-      <mat-sidenav-content class="content">
-        <router-outlet />
+      <mat-sidenav-content class="content" [class.mobile]="isMobile()">
+        @if (isMobile()) {
+        <div class="mobile-header">
+          <button mat-icon-button (click)="sidenav.toggle()" class="menu-btn">
+            <mat-icon>menu</mat-icon>
+          </button>
+          <div class="mobile-logo">
+            <mat-icon>restaurant_menu</mat-icon>
+            <span>Recipe Book</span>
+          </div>
+        </div>
+        }
+        <div class="content-wrapper" [class.mobile]="isMobile()">
+          <router-outlet />
+        </div>
       </mat-sidenav-content>
     </mat-sidenav-container>
   `,
@@ -79,6 +137,10 @@ import { MatListModule } from '@angular/material/list';
       width: 260px;
       background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
       border-right: 1px solid var(--border-subtle);
+    }
+
+    .sidenav.mobile {
+      width: 280px;
     }
 
     .sidenav-header {
@@ -136,7 +198,51 @@ import { MatListModule } from '@angular/material/list';
 
     .content {
       background: var(--gradient-background);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-wrapper {
+      flex: 1;
       padding: var(--spacing-xl);
+      overflow-y: auto;
+    }
+
+    .content-wrapper.mobile {
+      padding: var(--spacing-md);
+    }
+
+    .mobile-header {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md);
+      background: rgba(0, 0, 0, 0.5);
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .menu-btn {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mobile-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .mobile-logo mat-icon {
+      color: #f97316;
+    }
+
+    .mobile-logo span {
+      font-weight: 600;
+      font-size: 1rem;
     }
 
     mat-nav-list {
@@ -146,7 +252,7 @@ import { MatListModule } from '@angular/material/list';
     mat-nav-list a {
       border-radius: var(--border-radius-sm);
       margin: var(--spacing-xs) 0;
-      height: 44px;
+      height: 48px;
       transition: all 0.2s ease;
     }
 
@@ -168,4 +274,37 @@ import { MatListModule } from '@angular/material/list';
     }
   `,
 })
-export class MainLayout {}
+export class MainLayout implements OnInit {
+  @ViewChild('sidenav') sidenav!: MatSidenav;
+
+  isMobile = signal(false);
+
+  constructor(private router: Router) {}
+
+  ngOnInit() {
+    this.checkScreenSize();
+    // Close sidenav on navigation when on mobile
+    this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd))
+      .subscribe(() => {
+        if (this.isMobile() && this.sidenav?.opened) {
+          this.sidenav.close();
+        }
+      });
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    this.checkScreenSize();
+  }
+
+  private checkScreenSize() {
+    this.isMobile.set(window.innerWidth < 768);
+  }
+
+  onNavClick() {
+    if (this.isMobile()) {
+      this.sidenav.close();
+    }
+  }
+}

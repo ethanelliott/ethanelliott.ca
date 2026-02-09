@@ -61,11 +61,20 @@ import {
           </div>
         </div>
         <div class="header-actions">
-          <button mat-button [routerLink]="['/recipes', recipe()!.id, 'edit']" class="action-btn">
+          <button
+            mat-button
+            [routerLink]="['/recipes', recipe()!.id, 'edit']"
+            class="action-btn"
+          >
             <mat-icon>edit</mat-icon>
             Edit
           </button>
-          <button mat-button color="warn" (click)="deleteRecipe()" class="action-btn delete-btn">
+          <button
+            mat-button
+            color="warn"
+            (click)="deleteRecipe()"
+            class="action-btn delete-btn"
+          >
             <mat-icon>delete</mat-icon>
             Delete
           </button>
@@ -159,7 +168,9 @@ import {
           <ul class="ingredients-list">
             @for (ingredient of scaledIngredients(); track ingredient.id) {
             <li>
-              <span class="quantity">{{ formatQuantity(ingredient.quantity) }}</span>
+              <span class="quantity">{{
+                formatQuantity(ingredient.quantity)
+              }}</span>
               <span class="unit">{{ ingredient.unit }}</span>
               <span class="name">{{ ingredient.name }}</span>
               @if (ingredient.notes) {
@@ -193,9 +204,7 @@ import {
         </div>
         <p class="notes-content">{{ recipe()!.notes }}</p>
       </div>
-      }
-
-      @if (recipe()!.source) {
+      } @if (recipe()!.source) {
       <p class="source">
         <mat-icon>link</mat-icon>
         Source: {{ recipe()!.source }}
@@ -512,6 +521,10 @@ import {
         flex-direction: column;
       }
 
+      .header-text h1 {
+        font-size: 1.5rem;
+      }
+
       .header-actions {
         width: 100%;
       }
@@ -526,7 +539,44 @@ import {
 
       .meta-badge {
         flex: 1;
-        min-width: 120px;
+        min-width: 100px;
+        padding: var(--spacing-sm) var(--spacing-md);
+      }
+
+      .meta-value {
+        font-size: 1.1rem;
+      }
+
+      .section-card {
+        padding: var(--spacing-md);
+      }
+
+      .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+        padding-bottom: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+      }
+
+      .ingredients-list li {
+        flex-wrap: wrap;
+      }
+
+      .quantity {
+        min-width: 40px;
+      }
+
+      .unit {
+        min-width: 35px;
+      }
+
+      .photos-grid {
+        gap: var(--spacing-sm);
+      }
+
+      .recipe-photo {
+        max-height: 200px;
       }
     }
   `,

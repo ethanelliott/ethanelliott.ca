@@ -47,9 +47,17 @@ import {
       <div class="page-header">
         <div class="header-text">
           <h1>Recipes</h1>
-          <p class="subtitle">{{ filteredRecipes().length }} recipes in your collection</p>
+          <p class="subtitle">
+            {{ filteredRecipes().length }} recipes in your collection
+          </p>
         </div>
-        <a mat-fab extended color="primary" routerLink="/recipes/new" class="add-btn">
+        <a
+          mat-fab
+          extended
+          color="primary"
+          routerLink="/recipes/new"
+          class="add-btn"
+        >
           <mat-icon>add</mat-icon>
           Add Recipe
         </a>
@@ -127,7 +135,11 @@ import {
       } @else {
       <div class="recipes-grid">
         @for (recipe of filteredRecipes(); track recipe.id; let i = $index) {
-        <div class="recipe-card" [routerLink]="['/recipes', recipe.id]" [style.--delay]="i">
+        <div
+          class="recipe-card"
+          [routerLink]="['/recipes', recipe.id]"
+          [style.--delay]="i"
+        >
           <div class="card-glow"></div>
           <div class="card-content">
             <div class="card-header">
@@ -141,7 +153,11 @@ import {
               <div class="meta-item">
                 <mat-icon>schedule</mat-icon>
                 <span>
-                  {{ (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0) }} min
+                  {{
+                    (recipe.prepTimeMinutes || 0) +
+                      (recipe.cookTimeMinutes || 0)
+                  }}
+                  min
                 </span>
               </div>
               }
@@ -407,8 +423,16 @@ import {
         gap: var(--spacing-md);
       }
 
+      .header-text h1 {
+        font-size: 1.75rem;
+      }
+
       .add-btn {
         width: 100%;
+      }
+
+      .filters-card {
+        padding: var(--spacing-md);
       }
 
       .filters {
@@ -417,6 +441,24 @@ import {
 
       .filters mat-form-field {
         width: 100%;
+      }
+
+      .search-field {
+        min-width: auto;
+      }
+
+      .recipes-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+
+      .recipe-card {
+        padding: var(--spacing-md);
+      }
+
+      .card-meta {
+        gap: var(--spacing-md);
+        flex-wrap: wrap;
       }
     }
   `,

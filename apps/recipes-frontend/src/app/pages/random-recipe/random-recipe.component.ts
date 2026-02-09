@@ -70,7 +70,8 @@ import {
         </div>
 
         <button
-          mat-fab extended
+          mat-fab
+          extended
           color="primary"
           (click)="pickRandom()"
           [disabled]="loading()"
@@ -80,8 +81,7 @@ import {
           <mat-spinner diameter="24"></mat-spinner>
           } @else {
           <mat-icon>casino</mat-icon>
-          Spin the Wheel
-          }
+          Spin the Wheel }
         </button>
       </div>
 
@@ -365,11 +365,50 @@ import {
     }
 
     @media (max-width: 640px) {
+      h1 {
+        font-size: 1.75rem;
+      }
+
+      .controls-card {
+        padding: var(--spacing-md);
+      }
+
       .filters {
         flex-direction: column;
       }
 
       .filters mat-form-field {
+        width: 100%;
+      }
+
+      .spin-btn {
+        width: 100%;
+      }
+
+      .result-card {
+        padding: var(--spacing-md);
+      }
+
+      .result-content h2 {
+        font-size: 1.25rem;
+      }
+
+      .meta-strip {
+        gap: var(--spacing-sm);
+      }
+
+      .meta-badge {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.8rem;
+      }
+
+      .result-actions {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+
+      .result-actions a,
+      .result-actions button {
         width: 100%;
       }
     }

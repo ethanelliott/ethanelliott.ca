@@ -478,18 +478,68 @@ import {
     }
 
     @media (max-width: 640px) {
+      .form-container {
+        padding: 0;
+      }
+
+      .header {
+        margin-bottom: var(--spacing-md);
+      }
+
+      .header-content h1 {
+        font-size: 1.5rem;
+      }
+
+      mat-card {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+
+      mat-card-content {
+        padding: var(--spacing-md) !important;
+      }
+
       .row {
         flex-direction: column;
       }
-      
+
       .ingredient-row {
         flex-wrap: wrap;
+        gap: var(--spacing-sm);
       }
-      
-      .quantity-field,
+
+      .quantity-field {
+        width: 70px;
+        flex: 0 0 auto;
+      }
+
       .unit-field {
-        flex: 1;
-        width: auto;
+        width: 80px;
+        flex: 0 0 auto;
+      }
+
+      .name-field {
+        flex: 1 1 100%;
+        width: 100%;
+        margin-top: var(--spacing-xs);
+      }
+
+      .ingredient-row button {
+        margin-top: var(--spacing-xs);
+      }
+
+      .actions {
+        flex-direction: column;
+        padding: var(--spacing-md) 0;
+      }
+
+      .actions button {
+        width: 100%;
+      }
+
+      .upload-area {
+        padding: var(--spacing-md);
       }
     }
   `,
