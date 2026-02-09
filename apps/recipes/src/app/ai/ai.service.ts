@@ -3,7 +3,95 @@ import HttpErrors from 'http-errors';
 import { RecipesService } from '../recipes/recipes.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TagsService } from '../tags/tags.service';
-import { OllamaClient, Message } from './ollama.client';
+import { OllamaClient, Message, JsonSchema } from './ollama.client';
+
+// JSON Schemas for structured output
+const PARSED_RECIPE_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    description: { type: 'string' },
+    ingredients: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          quantity: { type: 'number' },
+          unit: { type: 'string' },
+          notes: { type: 'string' },
+        },
+        required: ['name', 'quantity', 'unit'],
+      },
+    },
+    instructions: { type: 'string' },
+    servings: { type: 'number' },
+    prepTimeMinutes: { type: 'number' },
+    cookTimeMinutes: { type: 'number' },
+    source: { type: 'string' },
+  },
+  required: ['title', 'ingredients', 'instructions'],
+};
+
+const SUGGESTION_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    categories: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          confidence: { type: 'number' },
+        },
+        required: ['name', 'confidence'],
+      },
+    },
+    tags: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          confidence: { type: 'number' },
+        },
+        required: ['name', 'confidence'],
+      },
+    },
+  },
+  required: ['categories', 'tags'],
+};
+
+const COOKING_TIPS_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    tips: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    commonMistakes: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+  required: ['tips', 'commonMistakes'],
+};
+
+const FLAVOR_PROFILE_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    primaryFlavors: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    tasteProfile: { type: 'string' },
+    pairingRecommendations: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+  required: ['primaryFlavors', 'tasteProfile', 'pairingRecommendations'],
+};
 
 export interface SuggestionItem {
   id: string;
@@ -91,6 +179,7 @@ export class AiService {
 
     const response = await this._ollamaClient.chat(messages, {
       temperature: 0.3, // Lower temperature for more consistent classification
+      format: SUGGESTION_SCHEMA,
     });
 
     // Parse the response
@@ -292,6 +381,7 @@ Guidelines:
 
     const response = await this._ollamaClient.chat(messages, {
       temperature: 0.5,
+      format: COOKING_TIPS_SCHEMA,
     });
 
     return this.parseCookingTipsResponse(response);
@@ -339,6 +429,7 @@ Guidelines:
     const response = await this._ollamaClient.chat(messages, {
       temperature: 0.2, // Low temperature for accurate parsing
       timeoutMs: 180000, // 3 minutes for longer texts
+      format: PARSED_RECIPE_SCHEMA,
     });
 
     return this.parseRecipeResponse(response);
@@ -379,6 +470,7 @@ Guidelines:
 
     const response = await this._ollamaClient.chat(messages, {
       temperature: 0.6,
+      format: FLAVOR_PROFILE_SCHEMA,
     });
 
     return this.parseFlavorProfileResponse(response);

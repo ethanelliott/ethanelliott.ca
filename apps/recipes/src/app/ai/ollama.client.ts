@@ -7,16 +7,27 @@ export interface Message {
   content: string;
 }
 
+// JSON Schema type for structured output
+export interface JsonSchema {
+  type: 'object' | 'array' | 'string' | 'number' | 'boolean';
+  properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+  required?: string[];
+  enum?: string[];
+}
+
 export interface ChatOptions {
   model?: string;
   temperature?: number;
   timeoutMs?: number;
+  format?: JsonSchema;
 }
 
 interface OllamaChatRequest {
   model: string;
   messages: Message[];
   stream: false;
+  format?: JsonSchema;
   options?: {
     temperature?: number;
   };
@@ -67,6 +78,7 @@ export class OllamaClient {
         model,
         messages,
         stream: false,
+        ...(options?.format && { format: options.format }),
         ...(options?.temperature !== undefined && {
           options: { temperature: options.temperature },
         }),
