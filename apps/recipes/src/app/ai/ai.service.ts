@@ -244,15 +244,18 @@ Guidelines:
       temperature: 0.7,
     });
 
+    // Clean thinking blocks from the response
+    const cleanedAnswer = this.cleanThinkingBlocks(answer);
+
     // Build updated conversation history for follow-up questions
     const updatedMessages: Message[] = [
       ...conversationHistory,
       { role: 'user', content: question },
-      { role: 'assistant', content: answer },
+      { role: 'assistant', content: cleanedAnswer },
     ];
 
     return {
-      answer,
+      answer: cleanedAnswer,
       messages: updatedMessages,
     };
   }
@@ -518,10 +521,12 @@ ${recipe.instructions || 'No instructions provided'}`;
   }
 
   /**
-   * Clean JSON response from markdown code blocks
+   * Clean JSON response from markdown code blocks and model thinking blocks
    */
   private cleanJsonResponse(response: string): string {
-    let cleaned = response.trim();
+    let cleaned = this.cleanThinkingBlocks(response);
+
+    // Remove markdown code blocks
     if (cleaned.startsWith('```json')) {
       cleaned = cleaned.slice(7);
     } else if (cleaned.startsWith('```')) {
@@ -530,6 +535,19 @@ ${recipe.instructions || 'No instructions provided'}`;
     if (cleaned.endsWith('```')) {
       cleaned = cleaned.slice(0, -3);
     }
+
     return cleaned.trim();
+  }
+
+  /**
+   * Remove qwen3 thinking blocks from response
+   */
+  private cleanThinkingBlocks(response: string): string {
+    let cleaned = response.trim();
+    const thinkEndIndex = cleaned.indexOf('</think>');
+    if (thinkEndIndex !== -1) {
+      cleaned = cleaned.slice(thinkEndIndex + 8).trim();
+    }
+    return cleaned;
   }
 }
