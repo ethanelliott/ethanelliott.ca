@@ -394,7 +394,7 @@ Guidelines:
     const messages: Message[] = [
       {
         role: 'system',
-        content: `You are a recipe parsing expert. Your ONLY task is to extract structured data from the recipe text provided by the user. 
+        content: `/no_think You are a recipe parsing expert. Your ONLY task is to extract structured data from the recipe text provided by the user. 
 
 CRITICAL RULES:
 - Extract ONLY information that exists in the provided text
