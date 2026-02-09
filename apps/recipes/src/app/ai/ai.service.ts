@@ -400,7 +400,7 @@ CRITICAL RULES:
 - Extract ONLY information that exists in the provided text
 - Do NOT invent or hallucinate any ingredients, instructions, or details
 - Parse ingredient quantities as decimals (1/2 = 0.5, 1 1/2 = 1.5)
-- Format instructions as numbered steps in a single string
+- Format instructions as markdown with numbered list (1. Step one\\n2. Step two)
 - If information is not present, omit the field`,
       },
       {

@@ -5,6 +5,7 @@ import {
   signal,
   OnInit,
 } from '@angular/core';
+import { marked } from 'marked';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -665,8 +666,73 @@ import {
 
     .instructions-content {
       line-height: 1.8;
-      white-space: pre-wrap;
       color: rgba(255, 255, 255, 0.85);
+    }
+
+    .instructions-content ::ng-deep {
+      h1, h2, h3, h4, h5, h6 {
+        color: rgba(255, 255, 255, 0.95);
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        font-weight: 500;
+      }
+
+      h1 { font-size: 1.5rem; }
+      h2 { font-size: 1.25rem; }
+      h3 { font-size: 1.1rem; }
+
+      p {
+        margin-bottom: 1rem;
+      }
+
+      ul, ol {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+      }
+
+      li {
+        margin-bottom: 0.5rem;
+      }
+
+      ol {
+        list-style-type: decimal;
+      }
+
+      ol li::marker {
+        color: var(--accent-color);
+        font-weight: 600;
+      }
+
+      strong {
+        color: rgba(255, 255, 255, 0.95);
+        font-weight: 600;
+      }
+
+      em {
+        font-style: italic;
+      }
+
+      code {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-family: 'Fira Code', monospace;
+        font-size: 0.9em;
+      }
+
+      blockquote {
+        border-left: 3px solid var(--accent-color);
+        margin: 1rem 0;
+        padding-left: 1rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 1.5rem 0;
+      }
     }
 
     .no-instructions {
@@ -1065,8 +1131,9 @@ export class RecipeDetailComponent implements OnInit {
   }
 
   formatInstructions(instructions: string): string {
-    // Convert newlines to <br> tags
-    return instructions.replace(/\n/g, '<br>');
+    // Parse markdown to HTML
+    const html = marked.parse(instructions, { async: false }) as string;
+    return html;
   }
 
   getPhotoUrl(photoId: string): string {
