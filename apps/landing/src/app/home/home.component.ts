@@ -364,6 +364,13 @@ export class HomeComponent {
       color: '#8b5cf6',
     },
     {
+      name: 'Recipes',
+      url: 'https://recipes.elliott.haus',
+      description: 'Recipe collection and meal planning.',
+      icon: 'mdi:chef-hat',
+      color: '#ec4899',
+    },
+    {
       name: 'ArgoCD',
       url: 'https://argocd.elliott.haus',
       description: 'GitOps continuous deployment.',
