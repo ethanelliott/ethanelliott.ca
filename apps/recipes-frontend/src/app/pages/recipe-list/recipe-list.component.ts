@@ -45,55 +45,62 @@ import {
   template: `
     <div class="page-container">
       <div class="page-header">
-        <h1>Recipes</h1>
-        <a mat-fab extended color="primary" routerLink="/recipes/new">
+        <div class="header-text">
+          <h1>Recipes</h1>
+          <p class="subtitle">{{ filteredRecipes().length }} recipes in your collection</p>
+        </div>
+        <a mat-fab extended color="primary" routerLink="/recipes/new" class="add-btn">
           <mat-icon>add</mat-icon>
           Add Recipe
         </a>
       </div>
 
-      <div class="filters">
-        <mat-form-field appearance="outline">
-          <mat-label>Search recipes</mat-label>
-          <input
-            matInput
-            [ngModel]="searchQuery()"
-            (ngModelChange)="searchQuery.set($event)"
-            placeholder="Search by title or description..."
-          />
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
+      <div class="filters-card">
+        <div class="filters">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-label>Search recipes</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input
+              matInput
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              placeholder="Search by title or description..."
+            />
+          </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Categories</mat-label>
-          <mat-select
-            [ngModel]="selectedCategoryIds()"
-            (ngModelChange)="selectedCategoryIds.set($event)"
-            multiple
-          >
-            @for (category of categories(); track category.id) {
-            <mat-option [value]="category.id">{{ category.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Categories</mat-label>
+            <mat-select
+              [ngModel]="selectedCategoryIds()"
+              (ngModelChange)="selectedCategoryIds.set($event)"
+              multiple
+            >
+              @for (category of categories(); track category.id) {
+              <mat-option [value]="category.id">{{ category.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Tags</mat-label>
-          <mat-select
-            [ngModel]="selectedTagIds()"
-            (ngModelChange)="selectedTagIds.set($event)"
-            multiple
-          >
-            @for (tag of tags(); track tag.id) {
-            <mat-option [value]="tag.id">{{ tag.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Tags</mat-label>
+            <mat-select
+              [ngModel]="selectedTagIds()"
+              (ngModelChange)="selectedTagIds.set($event)"
+              multiple
+            >
+              @for (tag of tags(); track tag.id) {
+              <mat-option [value]="tag.id">{{ tag.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-        <button mat-button (click)="clearFilters()">
-          <mat-icon>clear</mat-icon>
-          Clear filters
-        </button>
+          @if (hasFilters()) {
+          <button mat-button (click)="clearFilters()" class="clear-btn">
+            <mat-icon>close</mat-icon>
+            Clear
+          </button>
+          }
+        </div>
       </div>
 
       @if (loading()) {
@@ -102,7 +109,9 @@ import {
       </div>
       } @else if (filteredRecipes().length === 0) {
       <div class="empty-state">
-        <mat-icon>restaurant_menu</mat-icon>
+        <div class="empty-icon-wrapper">
+          <mat-icon>restaurant_menu</mat-icon>
+        </div>
         <h2>No recipes found</h2>
         <p>
           @if (hasFilters()) { Try adjusting your filters or search query. }
@@ -117,31 +126,28 @@ import {
       </div>
       } @else {
       <div class="recipes-grid">
-        @for (recipe of filteredRecipes(); track recipe.id) {
-        <mat-card class="recipe-card" [routerLink]="['/recipes', recipe.id]">
-          <mat-card-header>
-            <mat-card-title>{{ recipe.title }}</mat-card-title>
-            @if (recipe.description) {
-            <mat-card-subtitle>{{ recipe.description }}</mat-card-subtitle>
-            }
-          </mat-card-header>
-          <mat-card-content>
-            <div class="recipe-meta">
+        @for (recipe of filteredRecipes(); track recipe.id; let i = $index) {
+        <div class="recipe-card" [routerLink]="['/recipes', recipe.id]" [style.--delay]="i">
+          <div class="card-glow"></div>
+          <div class="card-content">
+            <div class="card-header">
+              <h3>{{ recipe.title }}</h3>
+              @if (recipe.description) {
+              <p class="description">{{ recipe.description }}</p>
+              }
+            </div>
+            <div class="card-meta">
               @if (recipe.prepTimeMinutes || recipe.cookTimeMinutes) {
               <div class="meta-item">
                 <mat-icon>schedule</mat-icon>
                 <span>
-                  @if (recipe.prepTimeMinutes && recipe.cookTimeMinutes) {
-                  {{ recipe.prepTimeMinutes + recipe.cookTimeMinutes }} min }
-                  @else if (recipe.prepTimeMinutes) {
-                  {{ recipe.prepTimeMinutes }} min prep } @else {
-                  {{ recipe.cookTimeMinutes }} min cook }
+                  {{ (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0) }} min
                 </span>
               </div>
               }
               <div class="meta-item">
                 <mat-icon>people</mat-icon>
-                <span>{{ recipe.servings }} servings</span>
+                <span>{{ recipe.servings }}</span>
               </div>
               @if (recipe.photoCount > 0) {
               <div class="meta-item">
@@ -151,7 +157,7 @@ import {
               }
             </div>
             @if (recipe.categories.length > 0 || recipe.tags.length > 0) {
-            <div class="recipe-chips">
+            <div class="card-chips">
               @for (category of recipe.categories; track category.id) {
               <span
                 class="chip category-chip"
@@ -170,8 +176,8 @@ import {
               }
             </div>
             }
-          </mat-card-content>
-        </mat-card>
+          </div>
+        </div>
         }
       </div>
       }
@@ -186,45 +192,97 @@ import {
     .page-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
+      align-items: flex-start;
+      margin-bottom: var(--spacing-xl);
     }
 
-    h1 {
+    .header-text h1 {
       margin: 0;
-      font-size: 2rem;
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fafafa, #a1a1aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      margin: var(--spacing-xs) 0 0;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.875rem;
+    }
+
+    .add-btn {
+      flex-shrink: 0;
+    }
+
+    .filters-card {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
     }
 
     .filters {
       display: flex;
       gap: var(--spacing-md);
-      margin-bottom: var(--spacing-lg);
       flex-wrap: wrap;
       align-items: center;
     }
 
-    .filters mat-form-field {
+    .search-field {
+      flex: 2;
+      min-width: 280px;
+    }
+
+    .filters mat-form-field:not(.search-field) {
       flex: 1;
-      min-width: 200px;
+      min-width: 160px;
+    }
+
+    .clear-btn {
+      color: rgba(255, 255, 255, 0.6);
     }
 
     .loading {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-2xl);
+      padding: var(--spacing-3xl);
     }
 
     .empty-state {
       text-align: center;
       padding: var(--spacing-3xl);
-      color: var(--mat-sys-on-surface-variant);
     }
 
-    .empty-state mat-icon {
-      font-size: 4rem;
-      width: 4rem;
-      height: 4rem;
-      margin-bottom: var(--spacing-md);
+    .empty-icon-wrapper {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto var(--spacing-lg);
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(239, 68, 68, 0.1));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-icon-wrapper mat-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      color: #f97316;
+    }
+
+    .empty-state h2 {
+      margin: 0 0 var(--spacing-sm);
+      font-weight: 600;
+    }
+
+    .empty-state p {
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0 0 var(--spacing-lg);
     }
 
     .recipes-grid {
@@ -234,26 +292,84 @@ import {
     }
 
     .recipe-card {
+      position: relative;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-lg);
+      padding: var(--spacing-lg);
       cursor: pointer;
-      transition: var(--transition-fast);
+      transition: all 0.25s ease;
+      overflow: hidden;
+      animation: fadeIn 0.4s ease-out backwards;
+      animation-delay: calc(var(--delay, 0) * 40ms);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+    }
+
+    .card-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.5), transparent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
     }
 
     .recipe-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--surface-elevation-2);
+      transform: translateY(-4px);
+      border-color: var(--border-default);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
     }
 
-    .recipe-meta {
+    .recipe-card:hover .card-glow {
+      opacity: 1;
+    }
+
+    .card-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-header h3 {
+      margin: 0 0 var(--spacing-xs);
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #fafafa;
+      line-height: 1.3;
+    }
+
+    .card-header .description {
+      margin: 0;
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.5);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-meta {
       display: flex;
       gap: var(--spacing-lg);
-      margin-bottom: var(--spacing-md);
-      color: var(--mat-sys-on-surface-variant);
+      margin: var(--spacing-md) 0;
+      padding: var(--spacing-md) 0;
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
     }
 
     .meta-item {
       display: flex;
       align-items: center;
       gap: var(--spacing-xs);
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.8rem;
     }
 
     .meta-item mat-icon {
@@ -262,16 +378,18 @@ import {
       height: 1rem;
     }
 
-    .recipe-chips {
+    .card-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--spacing-xs);
+      gap: 6px;
+      margin-top: var(--spacing-md);
     }
 
     .chip {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: var(--border-radius-full);
+      font-size: 0.7rem;
+      font-weight: 500;
     }
 
     .category-chip {
@@ -281,6 +399,25 @@ import {
     .tag-chip {
       background: transparent;
       border: 1px solid;
+    }
+
+    @media (max-width: 640px) {
+      .page-header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+      }
+
+      .add-btn {
+        width: 100%;
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+
+      .filters mat-form-field {
+        width: 100%;
+      }
     }
   `,
 })

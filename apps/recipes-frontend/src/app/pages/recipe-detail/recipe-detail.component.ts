@@ -50,42 +50,52 @@ import {
     <div class="recipe-detail">
       <div class="header">
         <div class="header-content">
-          <button mat-icon-button routerLink="/recipes">
+          <button mat-icon-button routerLink="/recipes" class="back-btn">
             <mat-icon>arrow_back</mat-icon>
           </button>
-          <h1>{{ recipe()!.title }}</h1>
+          <div class="header-text">
+            <h1>{{ recipe()!.title }}</h1>
+            @if (recipe()!.description) {
+            <p class="description">{{ recipe()!.description }}</p>
+            }
+          </div>
         </div>
         <div class="header-actions">
-          <button mat-button [routerLink]="['/recipes', recipe()!.id, 'edit']">
+          <button mat-button [routerLink]="['/recipes', recipe()!.id, 'edit']" class="action-btn">
             <mat-icon>edit</mat-icon>
             Edit
           </button>
-          <button mat-button color="warn" (click)="deleteRecipe()">
+          <button mat-button color="warn" (click)="deleteRecipe()" class="action-btn delete-btn">
             <mat-icon>delete</mat-icon>
             Delete
           </button>
         </div>
       </div>
 
-      @if (recipe()!.description) {
-      <p class="description">{{ recipe()!.description }}</p>
-      }
-
-      <div class="meta-row">
+      <div class="meta-strip">
         @if (recipe()!.prepTimeMinutes) {
-        <div class="meta-item">
+        <div class="meta-badge prep">
           <mat-icon>hourglass_top</mat-icon>
-          <span>{{ recipe()!.prepTimeMinutes }} min prep</span>
+          <div class="meta-text">
+            <span class="meta-value">{{ recipe()!.prepTimeMinutes }}</span>
+            <span class="meta-label">min prep</span>
+          </div>
         </div>
         } @if (recipe()!.cookTimeMinutes) {
-        <div class="meta-item">
+        <div class="meta-badge cook">
           <mat-icon>local_fire_department</mat-icon>
-          <span>{{ recipe()!.cookTimeMinutes }} min cook</span>
+          <div class="meta-text">
+            <span class="meta-value">{{ recipe()!.cookTimeMinutes }}</span>
+            <span class="meta-label">min cook</span>
+          </div>
         </div>
         }
-        <div class="meta-item">
+        <div class="meta-badge servings">
           <mat-icon>people</mat-icon>
-          <span>{{ recipe()!.servings }} servings</span>
+          <div class="meta-text">
+            <span class="meta-value">{{ recipe()!.servings }}</span>
+            <span class="meta-label">servings</span>
+          </div>
         </div>
       </div>
 
@@ -113,7 +123,7 @@ import {
       <!-- Photos -->
       @if (recipe()!.photos && recipe()!.photos!.length > 0) {
       <div class="photos-section">
-        <h2>Photos</h2>
+        <h2><mat-icon>photo_library</mat-icon> Photos</h2>
         <div class="photos-grid">
           @for (photo of recipe()!.photos; track photo.id) {
           <img
@@ -128,70 +138,68 @@ import {
 
       <div class="content-grid">
         <!-- Ingredients -->
-        <mat-card class="ingredients-card">
-          <mat-card-header>
-            <mat-card-title>Ingredients</mat-card-title>
+        <div class="section-card ingredients-section">
+          <div class="section-header">
+            <h2><mat-icon>format_list_bulleted</mat-icon> Ingredients</h2>
             <div class="servings-adjuster">
               <button
-                mat-icon-button
+                mat-mini-fab
                 (click)="adjustServings(-1)"
                 [disabled]="currentServings() <= 1"
+                class="adj-btn"
               >
                 <mat-icon>remove</mat-icon>
               </button>
               <span class="servings-display">{{ currentServings() }}</span>
-              <button mat-icon-button (click)="adjustServings(1)">
+              <button mat-mini-fab (click)="adjustServings(1)" class="adj-btn">
                 <mat-icon>add</mat-icon>
               </button>
             </div>
-          </mat-card-header>
-          <mat-card-content>
-            <ul class="ingredients-list">
-              @for (ingredient of scaledIngredients(); track ingredient.id) {
-              <li>
-                <span class="quantity">{{
-                  formatQuantity(ingredient.quantity)
-                }}</span>
-                <span class="unit">{{ ingredient.unit }}</span>
-                <span class="name">{{ ingredient.name }}</span>
-                @if (ingredient.notes) {
-                <span class="notes">({{ ingredient.notes }})</span>
-                }
-              </li>
+          </div>
+          <ul class="ingredients-list">
+            @for (ingredient of scaledIngredients(); track ingredient.id) {
+            <li>
+              <span class="quantity">{{ formatQuantity(ingredient.quantity) }}</span>
+              <span class="unit">{{ ingredient.unit }}</span>
+              <span class="name">{{ ingredient.name }}</span>
+              @if (ingredient.notes) {
+              <span class="notes">({{ ingredient.notes }})</span>
               }
-            </ul>
-          </mat-card-content>
-        </mat-card>
+            </li>
+            }
+          </ul>
+        </div>
 
         <!-- Instructions -->
-        <mat-card class="instructions-card">
-          <mat-card-header>
-            <mat-card-title>Instructions</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            @if (recipe()!.instructions) {
-            <div
-              class="instructions"
-              [innerHTML]="formatInstructions(recipe()!.instructions!)"
-            ></div>
-            } @else {
-            <p class="no-instructions">No instructions provided.</p>
-            }
-          </mat-card-content>
-        </mat-card>
+        <div class="section-card instructions-section">
+          <div class="section-header">
+            <h2><mat-icon>menu_book</mat-icon> Instructions</h2>
+          </div>
+          @if (recipe()!.instructions) {
+          <div
+            class="instructions-content"
+            [innerHTML]="formatInstructions(recipe()!.instructions!)"
+          ></div>
+          } @else {
+          <p class="no-instructions">No instructions provided.</p>
+          }
+        </div>
       </div>
 
       @if (recipe()!.notes) {
-      <mat-card class="notes-card">
-        <mat-card-header>
-          <mat-card-title>Personal Notes</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <p>{{ recipe()!.notes }}</p>
-        </mat-card-content>
-      </mat-card>
-      } @if (recipe()!.source) {
-      <p class="source">Source: {{ recipe()!.source }}</p>
+      <div class="section-card notes-section">
+        <div class="section-header">
+          <h2><mat-icon>note</mat-icon> Personal Notes</h2>
+        </div>
+        <p class="notes-content">{{ recipe()!.notes }}</p>
+      </div>
+      }
+
+      @if (recipe()!.source) {
+      <p class="source">
+        <mat-icon>link</mat-icon>
+        Source: {{ recipe()!.source }}
+      </p>
       }
     </div>
     }
@@ -200,7 +208,7 @@ import {
     .loading {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-2xl);
+      padding: var(--spacing-3xl);
     }
 
     .recipe-detail {
@@ -211,56 +219,107 @@ import {
     .header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
+      align-items: flex-start;
+      margin-bottom: var(--spacing-xl);
+      gap: var(--spacing-lg);
     }
 
     .header-content {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: var(--spacing-md);
+      flex: 1;
     }
 
-    h1 {
+    .back-btn {
+      margin-top: 4px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .header-text h1 {
       margin: 0;
       font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .description {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.6);
+      margin: var(--spacing-sm) 0 0;
+      line-height: 1.5;
     }
 
     .header-actions {
       display: flex;
       gap: var(--spacing-sm);
+      flex-shrink: 0;
     }
 
-    .description {
-      font-size: 1.125rem;
-      color: var(--mat-sys-on-surface-variant);
-      margin-bottom: var(--spacing-lg);
+    .action-btn {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-sm);
     }
 
-    .meta-row {
+    .delete-btn:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .meta-strip {
       display: flex;
-      gap: var(--spacing-xl);
-      margin-bottom: var(--spacing-lg);
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-xl);
     }
 
-    .meta-item {
+    .meta-badge {
       display: flex;
       align-items: center;
       gap: var(--spacing-sm);
-      color: var(--mat-sys-on-surface-variant);
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-md);
+    }
+
+    .meta-badge mat-icon {
+      opacity: 0.6;
+    }
+
+    .meta-badge.prep mat-icon { color: #3b82f6; opacity: 1; }
+    .meta-badge.cook mat-icon { color: #ef4444; opacity: 1; }
+    .meta-badge.servings mat-icon { color: #8b5cf6; opacity: 1; }
+
+    .meta-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-value {
+      font-size: 1.25rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .meta-label {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .chips-row {
       display: flex;
       flex-wrap: wrap;
       gap: var(--spacing-sm);
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
     }
 
     .chip {
-      padding: 4px 12px;
-      border-radius: 16px;
-      font-size: 0.875rem;
+      padding: 6px 14px;
+      border-radius: var(--border-radius-full);
+      font-size: 0.8rem;
+      font-weight: 500;
     }
 
     .category-chip {
@@ -273,11 +332,23 @@ import {
     }
 
     .photos-section {
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
     }
 
     .photos-section h2 {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
       margin-bottom: var(--spacing-md);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .photos-section h2 mat-icon {
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      color: #f97316;
     }
 
     .photos-grid {
@@ -288,40 +359,78 @@ import {
     }
 
     .recipe-photo {
-      max-height: 300px;
-      border-radius: var(--border-radius-md);
+      max-height: 280px;
+      border-radius: var(--border-radius-lg);
       object-fit: cover;
+      border: 1px solid var(--border-subtle);
     }
 
     .content-grid {
       display: grid;
       grid-template-columns: 1fr 2fr;
-      gap: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
+      gap: var(--spacing-xl);
+      margin-bottom: var(--spacing-xl);
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
       .content-grid {
         grid-template-columns: 1fr;
       }
     }
 
-    .ingredients-card mat-card-header {
+    .section-card {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-lg);
+      padding: var(--spacing-lg);
+    }
+
+    .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: var(--spacing-lg);
+      padding-bottom: var(--spacing-md);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .section-header h2 {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .section-header h2 mat-icon {
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      color: #f97316;
     }
 
     .servings-adjuster {
       display: flex;
       align-items: center;
-      gap: var(--spacing-xs);
+      gap: var(--spacing-sm);
+    }
+
+    .adj-btn {
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .adj-btn mat-icon {
+      font-size: 1rem;
     }
 
     .servings-display {
       min-width: 2rem;
       text-align: center;
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 1.125rem;
     }
 
     .ingredients-list {
@@ -331,6 +440,9 @@ import {
     }
 
     .ingredients-list li {
+      display: flex;
+      align-items: baseline;
+      gap: var(--spacing-sm);
       padding: var(--spacing-sm) 0;
       border-bottom: 1px solid var(--border-subtle);
     }
@@ -340,38 +452,82 @@ import {
     }
 
     .quantity {
-      font-weight: 500;
-      margin-right: var(--spacing-xs);
+      font-weight: 600;
+      color: #f97316;
+      min-width: 50px;
     }
 
     .unit {
-      color: var(--mat-sys-on-surface-variant);
-      margin-right: var(--spacing-sm);
+      color: rgba(255, 255, 255, 0.5);
+      min-width: 40px;
+    }
+
+    .name {
+      flex: 1;
     }
 
     .notes {
-      color: var(--mat-sys-on-surface-variant);
+      color: rgba(255, 255, 255, 0.5);
       font-style: italic;
-      margin-left: var(--spacing-xs);
+      font-size: 0.875rem;
     }
 
-    .instructions {
+    .instructions-content {
       line-height: 1.8;
       white-space: pre-wrap;
+      color: rgba(255, 255, 255, 0.85);
     }
 
     .no-instructions {
-      color: var(--mat-sys-on-surface-variant);
+      color: rgba(255, 255, 255, 0.4);
       font-style: italic;
     }
 
-    .notes-card {
-      margin-bottom: var(--spacing-lg);
+    .notes-section {
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .notes-content {
+      margin: 0;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.75);
     }
 
     .source {
-      color: var(--mat-sys-on-surface-variant);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      color: rgba(255, 255, 255, 0.5);
       font-size: 0.875rem;
+    }
+
+    .source mat-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .header {
+        flex-direction: column;
+      }
+
+      .header-actions {
+        width: 100%;
+      }
+
+      .header-actions button {
+        flex: 1;
+      }
+
+      .meta-strip {
+        flex-wrap: wrap;
+      }
+
+      .meta-badge {
+        flex: 1;
+        min-width: 120px;
+      }
     }
   `,
 })

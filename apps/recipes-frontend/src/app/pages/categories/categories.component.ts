@@ -38,7 +38,10 @@ import {
   template: `
     <div class="page-container">
       <div class="page-header">
-        <h1>Categories</h1>
+        <div class="header-text">
+          <h1>Categories</h1>
+          <p class="subtitle">Organize your recipes by meal type</p>
+        </div>
         <button mat-fab extended color="primary" (click)="openForm()">
           <mat-icon>add</mat-icon>
           Add Category
@@ -51,49 +54,48 @@ import {
       </div>
       } @else if (categories().length === 0) {
       <div class="empty-state">
-        <mat-icon>category</mat-icon>
+        <div class="empty-icon">
+          <mat-icon>category</mat-icon>
+        </div>
         <h2>No categories yet</h2>
         <p>Create categories to organize your recipes.</p>
       </div>
       } @else {
       <div class="categories-grid">
-        @for (category of categories(); track category.id) {
-        <mat-card class="category-card">
-          <div
-            class="category-color"
-            [style.background-color]="category.color || '#666'"
-          ></div>
-          <mat-card-content>
+        @for (category of categories(); track category.id; let i = $index) {
+        <div class="category-card" [style.--delay]="i">
+          <div class="category-glow" [style.background]="'linear-gradient(90deg, transparent, ' + (category.color || '#666') + ', transparent)'"></div>
+          <div class="category-indicator" [style.background]="category.color || '#666'"></div>
+          <div class="category-content">
             <h3>{{ category.name }}</h3>
             @if (category.description) {
             <p>{{ category.description }}</p>
             }
-          </mat-card-content>
-          <mat-card-actions align="end">
-            <button mat-button (click)="openForm(category)">
+          </div>
+          <div class="category-actions">
+            <button mat-icon-button (click)="openForm(category)">
               <mat-icon>edit</mat-icon>
-              Edit
             </button>
-            <button mat-button color="warn" (click)="deleteCategory(category)">
+            <button mat-icon-button color="warn" (click)="deleteCategory(category)">
               <mat-icon>delete</mat-icon>
-              Delete
             </button>
-          </mat-card-actions>
-        </mat-card>
+          </div>
+        </div>
         }
       </div>
       }
 
-      <!-- Inline Form -->
+      <!-- Form Modal -->
       @if (showForm()) {
       <div class="form-overlay" (click)="closeForm()">
-        <mat-card class="form-card" (click)="$event.stopPropagation()">
-          <mat-card-header>
-            <mat-card-title>{{
-              editingCategory() ? 'Edit Category' : 'New Category'
-            }}</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
+        <div class="form-card" (click)="$event.stopPropagation()">
+          <div class="form-header">
+            <h2>{{ editingCategory() ? 'Edit Category' : 'New Category' }}</h2>
+            <button mat-icon-button (click)="closeForm()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="form-body">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Name</mat-label>
               <input
@@ -113,12 +115,13 @@ import {
               ></textarea>
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Color</mat-label>
-              <input matInput type="color" [(ngModel)]="formData.color" />
-            </mat-form-field>
-          </mat-card-content>
-          <mat-card-actions align="end">
+            <div class="color-picker">
+              <label>Color</label>
+              <div class="color-preview" [style.background]="formData.color"></div>
+              <input type="color" [(ngModel)]="formData.color" />
+            </div>
+          </div>
+          <div class="form-actions">
             <button mat-button (click)="closeForm()">Cancel</button>
             <button
               mat-raised-button
@@ -128,47 +131,74 @@ import {
             >
               {{ editingCategory() ? 'Save' : 'Create' }}
             </button>
-          </mat-card-actions>
-        </mat-card>
+          </div>
+        </div>
       </div>
       }
     </div>
   `,
   styles: `
     .page-container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 0 auto;
     }
 
     .page-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
+      align-items: flex-start;
+      margin-bottom: var(--spacing-xl);
     }
 
-    h1 {
+    .header-text h1 {
       margin: 0;
-      font-size: 2rem;
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: var(--spacing-xs) 0 0;
+      color: rgba(255, 255, 255, 0.5);
     }
 
     .loading {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-2xl);
+      padding: var(--spacing-3xl);
     }
 
     .empty-state {
       text-align: center;
       padding: var(--spacing-3xl);
-      color: var(--mat-sys-on-surface-variant);
     }
 
-    .empty-state mat-icon {
-      font-size: 4rem;
-      width: 4rem;
-      height: 4rem;
-      margin-bottom: var(--spacing-md);
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto var(--spacing-lg);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-icon mat-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .empty-state h2 {
+      margin: 0 0 var(--spacing-sm);
+      font-weight: 600;
+    }
+
+    .empty-state p {
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0;
     }
 
     .categories-grid {
@@ -178,20 +208,80 @@ import {
     }
 
     .category-card {
+      position: relative;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-lg);
+      padding: var(--spacing-lg);
       overflow: hidden;
+      animation: fadeIn 0.4s ease-out backwards;
+      animation-delay: calc(var(--delay, 0) * 50ms);
+      transition: all 0.25s ease;
     }
 
-    .category-color {
-      height: 8px;
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
     }
 
-    .category-card h3 {
-      margin: 0 0 var(--spacing-sm);
+    .category-card:hover {
+      border-color: var(--border-default);
+      transform: translateY(-2px);
     }
 
-    .category-card p {
+    .category-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .category-card:hover .category-glow {
+      opacity: 0.8;
+    }
+
+    .category-indicator {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .category-content {
+      padding-left: var(--spacing-sm);
+    }
+
+    .category-content h3 {
+      margin: 0 0 var(--spacing-xs);
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .category-content p {
       margin: 0;
-      color: var(--mat-sys-on-surface-variant);
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.875rem;
+    }
+
+    .category-actions {
+      position: absolute;
+      top: var(--spacing-sm);
+      right: var(--spacing-sm);
+      display: flex;
+      gap: var(--spacing-xs);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .category-card:hover .category-actions {
+      opacity: 1;
     }
 
     .form-overlay {
@@ -200,20 +290,78 @@ import {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 1000;
+      animation: fadeIn 0.2s ease;
     }
 
     .form-card {
       width: 100%;
       max-width: 400px;
+      background: linear-gradient(145deg, #141414, #0a0a0a);
+      border: 1px solid var(--border-emphasis);
+      border-radius: var(--border-radius-xl);
+      overflow: hidden;
+    }
+
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .form-header h2 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .form-body {
+      padding: var(--spacing-lg);
     }
 
     .full-width {
       width: 100%;
+    }
+
+    .color-picker {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .color-picker label {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+    }
+
+    .color-preview {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--border-default);
+    }
+
+    .color-picker input[type="color"] {
+      width: 40px;
+      height: 32px;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-top: 1px solid var(--border-subtle);
     }
   `,
 })

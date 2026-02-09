@@ -19,24 +19,53 @@
 
 // ===== CARD MIXINS =====
 @mixin base-card {
-  background: var(--bg-card);
+  background: var(--gradient-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--border-radius-md);
-  transition: var(--transition-fast);
+  border-radius: var(--border-radius-lg);
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+
+  // Subtle top border glow
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gradient-border);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
 }
 
 @mixin hover-card {
   @include base-card;
 
   &:hover {
-    background: var(--bg-card-hover);
+    background: var(--gradient-card-hover);
     border-color: var(--border-default);
+    transform: translateY(-2px);
+    box-shadow: var(--surface-elevation-2);
+
+    &::before {
+      opacity: 0.6;
+    }
   }
 }
 
 @mixin clickable-card {
   @include hover-card;
   cursor: pointer;
+}
+
+@mixin glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
 }
 
 @mixin stat-card {

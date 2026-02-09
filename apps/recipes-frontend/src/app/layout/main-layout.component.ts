@@ -26,32 +26,43 @@ import { MatListModule } from '@angular/material/list';
     <mat-sidenav-container class="sidenav-container">
       <mat-sidenav #sidenav mode="side" opened class="sidenav">
         <div class="sidenav-header">
-          <mat-icon class="logo-icon">restaurant_menu</mat-icon>
-          <span class="logo-text">Recipe Book</span>
+          <div class="logo-container">
+            <div class="logo-icon-wrapper">
+              <mat-icon class="logo-icon">restaurant_menu</mat-icon>
+            </div>
+            <span class="logo-text">Recipe Book</span>
+          </div>
         </div>
-        <mat-nav-list>
-          <a mat-list-item routerLink="/recipes" routerLinkActive="active">
-            <mat-icon matListItemIcon>menu_book</mat-icon>
-            <span matListItemTitle>Recipes</span>
-          </a>
-          <a mat-list-item routerLink="/random" routerLinkActive="active">
-            <mat-icon matListItemIcon>casino</mat-icon>
-            <span matListItemTitle>Random Recipe</span>
-          </a>
-          <a mat-list-item routerLink="/grocery-list" routerLinkActive="active">
-            <mat-icon matListItemIcon>shopping_cart</mat-icon>
-            <span matListItemTitle>Grocery List</span>
-          </a>
-          <mat-divider></mat-divider>
-          <a mat-list-item routerLink="/categories" routerLinkActive="active">
-            <mat-icon matListItemIcon>category</mat-icon>
-            <span matListItemTitle>Categories</span>
-          </a>
-          <a mat-list-item routerLink="/tags" routerLinkActive="active">
-            <mat-icon matListItemIcon>label</mat-icon>
-            <span matListItemTitle>Tags</span>
-          </a>
-        </mat-nav-list>
+        <nav class="nav-section">
+          <span class="nav-label">Main</span>
+          <mat-nav-list>
+            <a mat-list-item routerLink="/recipes" routerLinkActive="active">
+              <mat-icon matListItemIcon>menu_book</mat-icon>
+              <span matListItemTitle>Recipes</span>
+            </a>
+            <a mat-list-item routerLink="/random" routerLinkActive="active">
+              <mat-icon matListItemIcon>casino</mat-icon>
+              <span matListItemTitle>Random Recipe</span>
+            </a>
+            <a mat-list-item routerLink="/grocery-list" routerLinkActive="active">
+              <mat-icon matListItemIcon>shopping_cart</mat-icon>
+              <span matListItemTitle>Grocery List</span>
+            </a>
+          </mat-nav-list>
+        </nav>
+        <nav class="nav-section">
+          <span class="nav-label">Organize</span>
+          <mat-nav-list>
+            <a mat-list-item routerLink="/categories" routerLinkActive="active">
+              <mat-icon matListItemIcon>category</mat-icon>
+              <span matListItemTitle>Categories</span>
+            </a>
+            <a mat-list-item routerLink="/tags" routerLinkActive="active">
+              <mat-icon matListItemIcon>label</mat-icon>
+              <span matListItemTitle>Tags</span>
+            </a>
+          </mat-nav-list>
+        </nav>
       </mat-sidenav>
 
       <mat-sidenav-content class="content">
@@ -66,45 +77,94 @@ import { MatListModule } from '@angular/material/list';
 
     .sidenav {
       width: 260px;
-      background: var(--bg-card);
+      background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
       border-right: 1px solid var(--border-subtle);
     }
 
     .sidenav-header {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
       padding: var(--spacing-lg);
       border-bottom: 1px solid var(--border-subtle);
     }
 
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .logo-icon-wrapper {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--border-radius-md);
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(239, 68, 68, 0.1));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(249, 115, 22, 0.2);
+    }
+
     .logo-icon {
-      font-size: 2rem;
-      width: 2rem;
-      height: 2rem;
-      color: var(--mat-sys-primary);
+      font-size: 1.5rem;
+      width: 1.5rem;
+      height: 1.5rem;
+      color: #f97316;
     }
 
     .logo-text {
-      font-size: 1.25rem;
-      font-weight: 500;
+      font-size: 1.125rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #fafafa, #a1a1aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-section {
+      padding: var(--spacing-md) var(--spacing-sm);
+    }
+
+    .nav-label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.35);
+      padding: 0 var(--spacing-md) var(--spacing-sm);
     }
 
     .content {
-      background: var(--bg-base);
-      padding: var(--spacing-lg);
+      background: var(--gradient-background);
+      padding: var(--spacing-xl);
     }
 
     mat-nav-list {
-      padding-top: var(--spacing-md);
+      padding: 0;
     }
 
-    .active {
-      background: var(--bg-muted) !important;
+    mat-nav-list a {
+      border-radius: var(--border-radius-sm);
+      margin: var(--spacing-xs) 0;
+      height: 44px;
+      transition: all 0.2s ease;
     }
 
-    mat-divider {
-      margin: var(--spacing-md) 0;
+    mat-nav-list a:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    mat-nav-list a.active {
+      background: rgba(249, 115, 22, 0.1);
+      border: 1px solid rgba(249, 115, 22, 0.15);
+    }
+
+    mat-nav-list a.active mat-icon {
+      color: #f97316;
+    }
+
+    mat-nav-list a.active span {
+      color: #fafafa;
     }
   `,
 })

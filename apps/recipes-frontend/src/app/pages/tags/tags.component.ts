@@ -36,7 +36,10 @@ import {
   template: `
     <div class="page-container">
       <div class="page-header">
-        <h1>Tags</h1>
+        <div class="header-text">
+          <h1>Tags</h1>
+          <p class="subtitle">Add extra labels to your recipes</p>
+        </div>
         <button mat-fab extended color="primary" (click)="openForm()">
           <mat-icon>add</mat-icon>
           Add Tag
@@ -49,51 +52,53 @@ import {
       </div>
       } @else if (tags().length === 0) {
       <div class="empty-state">
-        <mat-icon>label</mat-icon>
+        <div class="empty-icon">
+          <mat-icon>label</mat-icon>
+        </div>
         <h2>No tags yet</h2>
         <p>Create tags to add extra labels to your recipes.</p>
       </div>
       } @else {
-      <div class="tags-list">
-        @for (tag of tags(); track tag.id) {
-        <mat-card class="tag-card">
-          <mat-card-content>
+      <div class="tags-grid">
+        @for (tag of tags(); track tag.id; let i = $index) {
+        <div class="tag-card" [style.--delay]="i">
+          <div class="tag-content">
             <div
               class="tag-preview"
               [style.border-color]="tag.color || '#666'"
               [style.color]="tag.color || '#666'"
             >
+              <mat-icon>label</mat-icon>
               {{ tag.name }}
             </div>
             @if (tag.description) {
-            <p class="description">{{ tag.description }}</p>
+            <p class="tag-description">{{ tag.description }}</p>
             }
-          </mat-card-content>
-          <mat-card-actions align="end">
-            <button mat-button (click)="openForm(tag)">
+          </div>
+          <div class="tag-actions">
+            <button mat-icon-button (click)="openForm(tag)">
               <mat-icon>edit</mat-icon>
-              Edit
             </button>
-            <button mat-button color="warn" (click)="deleteTag(tag)">
+            <button mat-icon-button color="warn" (click)="deleteTag(tag)">
               <mat-icon>delete</mat-icon>
-              Delete
             </button>
-          </mat-card-actions>
-        </mat-card>
+          </div>
+        </div>
         }
       </div>
       }
 
-      <!-- Inline Form -->
+      <!-- Form Modal -->
       @if (showForm()) {
       <div class="form-overlay" (click)="closeForm()">
-        <mat-card class="form-card" (click)="$event.stopPropagation()">
-          <mat-card-header>
-            <mat-card-title>{{
-              editingTag() ? 'Edit Tag' : 'New Tag'
-            }}</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
+        <div class="form-card" (click)="$event.stopPropagation()">
+          <div class="form-header">
+            <h2>{{ editingTag() ? 'Edit Tag' : 'New Tag' }}</h2>
+            <button mat-icon-button (click)="closeForm()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="form-body">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Name</mat-label>
               <input
@@ -113,12 +118,15 @@ import {
               ></textarea>
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Color</mat-label>
-              <input matInput type="color" [(ngModel)]="formData.color" />
-            </mat-form-field>
-          </mat-card-content>
-          <mat-card-actions align="end">
+            <div class="color-picker">
+              <label>Color</label>
+              <div class="color-preview" [style.border-color]="formData.color" [style.color]="formData.color">
+                <mat-icon>label</mat-icon>
+              </div>
+              <input type="color" [(ngModel)]="formData.color" />
+            </div>
+          </div>
+          <div class="form-actions">
             <button mat-button (click)="closeForm()">Cancel</button>
             <button
               mat-raised-button
@@ -128,73 +136,144 @@ import {
             >
               {{ editingTag() ? 'Save' : 'Create' }}
             </button>
-          </mat-card-actions>
-        </mat-card>
+          </div>
+        </div>
       </div>
       }
     </div>
   `,
   styles: `
     .page-container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 0 auto;
     }
 
     .page-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
+      align-items: flex-start;
+      margin-bottom: var(--spacing-xl);
     }
 
-    h1 {
+    .header-text h1 {
       margin: 0;
-      font-size: 2rem;
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: var(--spacing-xs) 0 0;
+      color: rgba(255, 255, 255, 0.5);
     }
 
     .loading {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-2xl);
+      padding: var(--spacing-3xl);
     }
 
     .empty-state {
       text-align: center;
       padding: var(--spacing-3xl);
-      color: var(--mat-sys-on-surface-variant);
     }
 
-    .empty-state mat-icon {
-      font-size: 4rem;
-      width: 4rem;
-      height: 4rem;
-      margin-bottom: var(--spacing-md);
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto var(--spacing-lg);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .tags-list {
+    .empty-icon mat-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .empty-state h2 {
+      margin: 0 0 var(--spacing-sm);
+      font-weight: 600;
+    }
+
+    .empty-state p {
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0;
+    }
+
+    .tags-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: var(--spacing-lg);
+      gap: var(--spacing-md);
     }
 
-    .tag-card mat-card-content {
+    .tag-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-md);
+      padding: var(--spacing-md) var(--spacing-lg);
+      animation: fadeIn 0.4s ease-out backwards;
+      animation-delay: calc(var(--delay, 0) * 40ms);
+      transition: all 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+    }
+
+    .tag-card:hover {
+      border-color: var(--border-default);
+    }
+
+    .tag-content {
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-sm);
+      gap: var(--spacing-xs);
     }
 
     .tag-preview {
-      display: inline-block;
-      padding: 4px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: 6px 14px;
       border: 2px solid;
-      border-radius: 16px;
+      border-radius: var(--border-radius-full);
       font-weight: 500;
-      width: fit-content;
+      font-size: 0.875rem;
     }
 
-    .description {
+    .tag-preview mat-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .tag-description {
       margin: 0;
-      color: var(--mat-sys-on-surface-variant);
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.8rem;
+    }
+
+    .tag-actions {
+      display: flex;
+      gap: var(--spacing-xs);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .tag-card:hover .tag-actions {
+      opacity: 1;
     }
 
     .form-overlay {
@@ -203,20 +282,87 @@ import {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 1000;
+      animation: fadeIn 0.2s ease;
     }
 
     .form-card {
       width: 100%;
       max-width: 400px;
+      background: linear-gradient(145deg, #141414, #0a0a0a);
+      border: 1px solid var(--border-emphasis);
+      border-radius: var(--border-radius-xl);
+      overflow: hidden;
+    }
+
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .form-header h2 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .form-body {
+      padding: var(--spacing-lg);
     }
 
     .full-width {
       width: 100%;
+    }
+
+    .color-picker {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .color-picker label {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+    }
+
+    .color-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 2px solid;
+      border-radius: var(--border-radius-sm);
+    }
+
+    .color-preview mat-icon {
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .color-picker input[type="color"] {
+      width: 40px;
+      height: 32px;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-top: 1px solid var(--border-subtle);
     }
   `,
 })

@@ -50,7 +50,7 @@ import {
     <div class="form-container">
       <div class="header">
         <div class="header-content">
-          <button mat-icon-button routerLink="/recipes">
+          <button mat-icon-button routerLink="/recipes" class="back-btn">
             <mat-icon>arrow_back</mat-icon>
           </button>
           <h1>{{ isEditing() ? 'Edit Recipe' : 'New Recipe' }}</h1>
@@ -330,7 +330,7 @@ import {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
     }
 
     .header-content {
@@ -339,15 +339,21 @@ import {
       gap: var(--spacing-md);
     }
 
+    .back-btn {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
     h1 {
       margin: 0;
       font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }
 
     .loading {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-2xl);
+      padding: var(--spacing-3xl);
     }
 
     form {
@@ -356,10 +362,24 @@ import {
       gap: var(--spacing-lg);
     }
 
+    mat-card {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-lg);
+    }
+
     mat-card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding-bottom: var(--spacing-md);
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: var(--spacing-md);
+    }
+
+    mat-card-title {
+      font-size: 1rem;
+      font-weight: 600;
     }
 
     mat-card-content {
@@ -384,6 +404,9 @@ import {
       gap: var(--spacing-sm);
       align-items: flex-start;
       margin-bottom: var(--spacing-sm);
+      padding: var(--spacing-sm);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--border-radius-sm);
     }
 
     .quantity-field {
@@ -403,7 +426,7 @@ import {
     }
 
     .empty-message {
-      color: var(--mat-sys-on-surface-variant);
+      color: rgba(255, 255, 255, 0.5);
       text-align: center;
       padding: var(--spacing-lg);
     }
@@ -421,28 +444,53 @@ import {
 
     .photo-item img {
       max-height: 150px;
-      border-radius: var(--border-radius-sm);
+      border-radius: var(--border-radius-md);
+      border: 1px solid var(--border-subtle);
     }
 
     .delete-photo {
       position: absolute;
       top: 4px;
       right: 4px;
-      background: rgba(0, 0, 0, 0.5) !important;
+      background: rgba(0, 0, 0, 0.7) !important;
     }
 
     .upload-area {
-      padding: var(--spacing-md);
+      padding: var(--spacing-lg);
       text-align: center;
       border: 2px dashed var(--border-default);
       border-radius: var(--border-radius-md);
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.2s ease;
+    }
+
+    .upload-area:hover {
+      border-color: var(--border-emphasis);
+      background: rgba(255, 255, 255, 0.04);
     }
 
     .actions {
       display: flex;
       justify-content: flex-end;
       gap: var(--spacing-md);
-      padding: var(--spacing-md) 0;
+      padding: var(--spacing-lg) 0;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    @media (max-width: 640px) {
+      .row {
+        flex-direction: column;
+      }
+      
+      .ingredient-row {
+        flex-wrap: wrap;
+      }
+      
+      .quantity-field,
+      .unit-field {
+        flex: 1;
+        width: auto;
+      }
     }
   `,
 })
