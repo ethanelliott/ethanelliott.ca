@@ -10,6 +10,7 @@ import { AiRouter } from './ai/ai.router';
 import './recipes';
 import './categories';
 import './tags';
+import './ai';
 
 export async function Application(fastify: FastifyInstance) {
   fastify
