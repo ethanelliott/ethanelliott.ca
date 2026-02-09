@@ -13,7 +13,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
-import { RecipesApiService, ParsedRecipe } from '../../services/recipes-api.service';
+import {
+  RecipesApiService,
+  ParsedRecipe,
+} from '../../services/recipes-api.service';
 
 @Component({
   selector: 'app-import-recipe-dialog',
@@ -38,7 +41,10 @@ import { RecipesApiService, ParsedRecipe } from '../../services/recipes-api.serv
     <mat-dialog-content>
       @if (!parsedRecipe()) {
       <div class="import-intro">
-        <p>Paste a recipe from any source and our AI will automatically extract and structure it for you.</p>
+        <p>
+          Paste a recipe from any source and our AI will automatically extract
+          and structure it for you.
+        </p>
       </div>
 
       <mat-form-field appearance="outline" class="full-width">
@@ -51,7 +57,10 @@ import { RecipesApiService, ParsedRecipe } from '../../services/recipes-api.serv
           placeholder="Paste your recipe text here. Include ingredients, instructions, and any other details..."
           [disabled]="loading()"
         ></textarea>
-        <mat-hint>Supports most recipe formats - ingredients list, instructions, cook times, etc.</mat-hint>
+        <mat-hint
+          >Supports most recipe formats - ingredients list, instructions, cook
+          times, etc.</mat-hint
+        >
       </mat-form-field>
       } @else {
       <div class="parsed-preview">
@@ -70,11 +79,13 @@ import { RecipesApiService, ParsedRecipe } from '../../services/recipes-api.serv
           <div class="preview-section">
             <h4>Ingredients ({{ parsedRecipe()!.ingredients.length }})</h4>
             <ul>
-              @for (ing of parsedRecipe()!.ingredients.slice(0, 5); track $index) {
+              @for (ing of parsedRecipe()!.ingredients.slice(0, 5); track
+              $index) {
               <li>{{ formatIngredient(ing) }}</li>
-              }
-              @if (parsedRecipe()!.ingredients.length > 5) {
-              <li class="more">... and {{ parsedRecipe()!.ingredients.length - 5 }} more</li>
+              } @if (parsedRecipe()!.ingredients.length > 5) {
+              <li class="more">
+                ... and {{ parsedRecipe()!.ingredients.length - 5 }} more
+              </li>
               }
             </ul>
           </div>
@@ -87,24 +98,30 @@ import { RecipesApiService, ParsedRecipe } from '../../services/recipes-api.serv
             </p>
           </div>
 
-@if (parsedRecipe()!.prepTimeMinutes || parsedRecipe()!.cookTimeMinutes || parsedRecipe()!.servings) {
+          @if (parsedRecipe()!.prepTimeMinutes ||
+          parsedRecipe()!.cookTimeMinutes || parsedRecipe()!.servings) {
           <div class="preview-meta">
             @if (parsedRecipe()!.prepTimeMinutes) {
-            <span><mat-icon>schedule</mat-icon> Prep: {{ parsedRecipe()!.prepTimeMinutes }} min</span>
-            }
-            @if (parsedRecipe()!.cookTimeMinutes) {
-            <span><mat-icon>timer</mat-icon> Cook: {{ parsedRecipe()!.cookTimeMinutes }} min</span>
-            }
-            @if (parsedRecipe()!.servings) {
-            <span><mat-icon>restaurant</mat-icon> Serves {{ parsedRecipe()!.servings }}</span>
+            <span
+              ><mat-icon>schedule</mat-icon> Prep:
+              {{ parsedRecipe()!.prepTimeMinutes }} min</span
+            >
+            } @if (parsedRecipe()!.cookTimeMinutes) {
+            <span
+              ><mat-icon>timer</mat-icon> Cook:
+              {{ parsedRecipe()!.cookTimeMinutes }} min</span
+            >
+            } @if (parsedRecipe()!.servings) {
+            <span
+              ><mat-icon>restaurant</mat-icon> Serves
+              {{ parsedRecipe()!.servings }}</span
+            >
             }
           </div>
           }
         </div>
       </div>
-      }
-
-      @if (error()) {
+      } @if (error()) {
       <div class="error-message">
         <mat-icon>error_outline</mat-icon>
         {{ error() }}
@@ -113,7 +130,9 @@ import { RecipesApiService, ParsedRecipe } from '../../services/recipes-api.serv
     </mat-dialog-content>
 
     <mat-dialog-actions align="end">
-      <button mat-button (click)="dialogRef.close()" [disabled]="loading()">Cancel</button>
+      <button mat-button (click)="dialogRef.close()" [disabled]="loading()">
+        Cancel
+      </button>
 
       @if (!parsedRecipe()) {
       <button
@@ -124,11 +143,9 @@ import { RecipesApiService, ParsedRecipe } from '../../services/recipes-api.serv
       >
         @if (loading()) {
         <mat-spinner diameter="20"></mat-spinner>
-        Parsing...
-        } @else {
+        Parsing... } @else {
         <mat-icon>auto_fix_high</mat-icon>
-        Parse Recipe
-        }
+        Parse Recipe }
       </button>
       } @else {
       <button mat-button (click)="reset()">
@@ -321,7 +338,9 @@ export class ImportRecipeDialogComponent {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Failed to parse recipe. Please try again.');
+        this.error.set(
+          err.error?.message || 'Failed to parse recipe. Please try again.'
+        );
         this.loading.set(false);
       },
     });
@@ -370,7 +389,12 @@ export class ImportRecipeDialogComponent {
       });
   }
 
-  formatIngredient(ing: { name: string; quantity: number; unit: string; notes?: string }): string {
+  formatIngredient(ing: {
+    name: string;
+    quantity: number;
+    unit: string;
+    notes?: string;
+  }): string {
     let result = '';
     if (ing.quantity) {
       result += `${ing.quantity} `;

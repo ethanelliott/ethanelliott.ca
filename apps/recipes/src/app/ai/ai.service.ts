@@ -418,8 +418,16 @@ Guidelines:
 
 Description: ${recipe.description || 'No description'}
 Servings: ${recipe.servings}
-Prep Time: ${recipe.prepTimeMinutes ? `${recipe.prepTimeMinutes} minutes` : 'Not specified'}
-Cook Time: ${recipe.cookTimeMinutes ? `${recipe.cookTimeMinutes} minutes` : 'Not specified'}
+Prep Time: ${
+      recipe.prepTimeMinutes
+        ? `${recipe.prepTimeMinutes} minutes`
+        : 'Not specified'
+    }
+Cook Time: ${
+      recipe.cookTimeMinutes
+        ? `${recipe.cookTimeMinutes} minutes`
+        : 'Not specified'
+    }
 Categories: ${categories}
 Tags: ${tags}
 

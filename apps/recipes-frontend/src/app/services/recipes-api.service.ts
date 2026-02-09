@@ -381,10 +381,10 @@ export class RecipesApiService {
     question: string,
     history: Message[] = []
   ): Observable<ChatResponse> {
-    return this.http.post<ChatResponse>(
-      `${this.baseUrl}/ai/chat/${recipeId}`,
-      { question, history }
-    );
+    return this.http.post<ChatResponse>(`${this.baseUrl}/ai/chat/${recipeId}`, {
+      question,
+      history,
+    });
   }
 
   /**

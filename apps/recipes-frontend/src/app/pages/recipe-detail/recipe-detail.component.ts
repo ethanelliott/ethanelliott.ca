@@ -249,7 +249,10 @@ import {
                 <div class="chat-empty">
                   <mat-icon>lightbulb</mat-icon>
                   <p>Ask anything about this recipe!</p>
-                  <span class="examples">Try: "What can I substitute for...?" or "How do I know when it's done?"</span>
+                  <span class="examples"
+                    >Try: "What can I substitute for...?" or "How do I know when
+                    it's done?"</span
+                  >
                 </div>
                 }
 
@@ -293,7 +296,11 @@ import {
               <div class="load-prompt">
                 <mat-icon>tips_and_updates</mat-icon>
                 <p>Get expert cooking tips for this recipe</p>
-                <button mat-raised-button color="primary" (click)="loadCookingTips()">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="loadCookingTips()"
+                >
                   <mat-icon>auto_awesome</mat-icon>
                   Generate Tips
                 </button>
@@ -316,7 +323,8 @@ import {
                 <div class="tips-section mistakes">
                   <h4><mat-icon>warning</mat-icon> Common Mistakes to Avoid</h4>
                   <ul>
-                    @for (mistake of cookingTips()!.commonMistakes; track $index) {
+                    @for (mistake of cookingTips()!.commonMistakes; track
+                    $index) {
                     <li>{{ mistake }}</li>
                     }
                   </ul>
@@ -337,7 +345,11 @@ import {
               <div class="load-prompt">
                 <mat-icon>restaurant</mat-icon>
                 <p>Discover the flavor profile and pairings</p>
-                <button mat-raised-button color="primary" (click)="loadFlavorProfile()">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="loadFlavorProfile()"
+                >
                   <mat-icon>auto_awesome</mat-icon>
                   Analyze Flavors
                 </button>
@@ -350,15 +362,19 @@ import {
               } @else if (flavorProfile()) {
               <div class="flavor-content">
                 <div class="flavor-chips">
-                  @for (flavor of flavorProfile()!.primaryFlavors; track flavor) {
+                  @for (flavor of flavorProfile()!.primaryFlavors; track flavor)
+                  {
                   <span class="flavor-chip">{{ flavor }}</span>
                   }
                 </div>
-                <p class="taste-description">{{ flavorProfile()!.tasteProfile }}</p>
+                <p class="taste-description">
+                  {{ flavorProfile()!.tasteProfile }}
+                </p>
                 <div class="pairings">
                   <h4><mat-icon>wine_bar</mat-icon> Pairing Recommendations</h4>
                   <ul>
-                    @for (pairing of flavorProfile()!.pairingRecommendations; track $index) {
+                    @for (pairing of flavorProfile()!.pairingRecommendations;
+                    track $index) {
                     <li>{{ pairing }}</li>
                     }
                   </ul>
@@ -1077,23 +1093,34 @@ export class RecipeDetailComponent implements OnInit {
     if (!recipe || !question || this.chatLoading()) return;
 
     // Add user message
-    this.chatMessages.update((msgs) => [...msgs, { role: 'user' as const, content: question }]);
+    this.chatMessages.update((msgs) => [
+      ...msgs,
+      { role: 'user' as const, content: question },
+    ]);
     this.chatQuestion.set('');
     this.chatLoading.set(true);
 
-    this.api.chatAboutRecipe(recipe.id, question, this.chatMessages()).subscribe({
-      next: (response) => {
-        this.chatMessages.update((msgs) => [...msgs, { role: 'assistant' as const, content: response.answer }]);
-        this.chatLoading.set(false);
-      },
-      error: () => {
-        this.chatMessages.update((msgs) => [
-          ...msgs,
-          { role: 'assistant' as const, content: 'Sorry, I had trouble answering that. Please try again.' },
-        ]);
-        this.chatLoading.set(false);
-      },
-    });
+    this.api
+      .chatAboutRecipe(recipe.id, question, this.chatMessages())
+      .subscribe({
+        next: (response) => {
+          this.chatMessages.update((msgs) => [
+            ...msgs,
+            { role: 'assistant' as const, content: response.answer },
+          ]);
+          this.chatLoading.set(false);
+        },
+        error: () => {
+          this.chatMessages.update((msgs) => [
+            ...msgs,
+            {
+              role: 'assistant' as const,
+              content: 'Sorry, I had trouble answering that. Please try again.',
+            },
+          ]);
+          this.chatLoading.set(false);
+        },
+      });
   }
 
   loadCookingTips() {
