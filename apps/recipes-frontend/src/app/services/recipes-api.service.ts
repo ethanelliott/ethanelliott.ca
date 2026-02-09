@@ -153,6 +153,63 @@ export interface GroceryListRequest {
   }>;
 }
 
+// ==================== AI Types ====================
+
+export interface Message {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface SuggestionItem {
+  id: string;
+  name: string;
+  confidence: number;
+}
+
+export interface TagsAndCategoriesSuggestion {
+  suggestedCategories: SuggestionItem[];
+  suggestedTags: SuggestionItem[];
+}
+
+export interface ChatRequest {
+  question: string;
+  history?: Message[];
+}
+
+export interface ChatResponse {
+  answer: string;
+  messages: Message[];
+}
+
+export interface CookingTipsResponse {
+  tips: string[];
+  commonMistakes: string[];
+}
+
+export interface FlavorProfileResponse {
+  primaryFlavors: string[];
+  tasteProfile: string;
+  pairingRecommendations: string[];
+}
+
+export interface ParsedIngredient {
+  name: string;
+  quantity: number;
+  unit: string;
+  notes?: string;
+}
+
+export interface ParsedRecipe {
+  title: string;
+  description?: string;
+  ingredients: ParsedIngredient[];
+  instructions: string;
+  servings?: number;
+  prepTimeMinutes?: number;
+  cookTimeMinutes?: number;
+  source?: string;
+}
+
 // ==================== Service ====================
 
 @Injectable({
@@ -300,5 +357,62 @@ export class RecipesApiService {
       `${this.baseUrl}/grocery-list/generate`,
       request
     );
+  }
+
+  // ==================== AI Features ====================
+
+  /**
+   * Suggest categories and tags for a recipe based on its content
+   */
+  suggestTagsAndCategories(
+    recipeId: string
+  ): Observable<TagsAndCategoriesSuggestion> {
+    return this.http.post<TagsAndCategoriesSuggestion>(
+      `${this.baseUrl}/ai/suggest-tags/${recipeId}`,
+      {}
+    );
+  }
+
+  /**
+   * Chat with AI about a specific recipe
+   */
+  chatAboutRecipe(
+    recipeId: string,
+    question: string,
+    history: Message[] = []
+  ): Observable<ChatResponse> {
+    return this.http.post<ChatResponse>(
+      `${this.baseUrl}/ai/chat/${recipeId}`,
+      { question, history }
+    );
+  }
+
+  /**
+   * Get cooking tips and common mistakes for a recipe
+   */
+  getCookingTips(recipeId: string): Observable<CookingTipsResponse> {
+    return this.http.post<CookingTipsResponse>(
+      `${this.baseUrl}/ai/cooking-tips/${recipeId}`,
+      {}
+    );
+  }
+
+  /**
+   * Analyze flavor profile of a recipe
+   */
+  analyzeFlavorProfile(recipeId: string): Observable<FlavorProfileResponse> {
+    return this.http.post<FlavorProfileResponse>(
+      `${this.baseUrl}/ai/flavor-profile/${recipeId}`,
+      {}
+    );
+  }
+
+  /**
+   * Parse recipe from pasted text/webpage content
+   */
+  parseRecipeFromText(text: string): Observable<ParsedRecipe> {
+    return this.http.post<ParsedRecipe>(`${this.baseUrl}/ai/parse-recipe`, {
+      text,
+    });
   }
 }

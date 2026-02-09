@@ -17,12 +17,15 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   RecipesApiService,
   RecipeSummary,
   Category,
   Tag,
 } from '../../services/recipes-api.service';
+import { ImportRecipeDialogComponent } from '../../dialogs/import-recipe-dialog/import-recipe-dialog.component';
 
 @Component({
   selector: 'app-recipe-list',
@@ -40,6 +43,8 @@ import {
     MatChipsModule,
     MatSelectModule,
     MatProgressSpinnerModule,
+    MatDialogModule,
+    MatTooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -51,16 +56,27 @@ import {
             {{ filteredRecipes().length }} recipes in your collection
           </p>
         </div>
-        <a
-          mat-fab
-          extended
-          color="primary"
-          routerLink="/recipes/new"
-          class="add-btn"
-        >
-          <mat-icon>add</mat-icon>
-          Add Recipe
-        </a>
+        <div class="header-actions">
+          <button
+            mat-fab
+            color="accent"
+            (click)="openImportDialog()"
+            matTooltip="Import with AI"
+            class="import-btn"
+          >
+            <mat-icon>auto_fix_high</mat-icon>
+          </button>
+          <a
+            mat-fab
+            extended
+            color="primary"
+            routerLink="/recipes/new"
+            class="add-btn"
+          >
+            <mat-icon>add</mat-icon>
+            Add Recipe
+          </a>
+        </div>
       </div>
 
       <div class="filters-card">
@@ -231,6 +247,16 @@ import {
 
     .add-btn {
       flex-shrink: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .import-btn {
+      background: linear-gradient(135deg, #f97316, #ea580c) !important;
     }
 
     .filters-card {
@@ -536,5 +562,20 @@ export class RecipeListComponent implements OnInit {
     this.searchQuery.set('');
     this.selectedCategoryIds.set([]);
     this.selectedTagIds.set([]);
+  }
+
+  private readonly dialog = inject(MatDialog);
+
+  openImportDialog() {
+    const dialogRef = this.dialog.open(ImportRecipeDialogComponent, {
+      width: '600px',
+      maxWidth: '95vw',
+      panelClass: 'dark-dialog',
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      // Reload data in case a new recipe was created
+      this.loadData();
+    });
   }
 }

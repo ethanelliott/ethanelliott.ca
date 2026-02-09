@@ -4,6 +4,7 @@ import { RecipesRouter } from './recipes/recipes.router';
 import { CategoriesRouter } from './categories/categories.router';
 import { TagsRouter } from './tags/tags.router';
 import { GroceryListRouter } from './grocery-list/grocery-list.router';
+import { AiRouter } from './ai/ai.router';
 
 // Import entities to register them
 import './recipes';
@@ -26,4 +27,8 @@ export async function Application(fastify: FastifyInstance) {
   fastify
     .withTypeProvider<ZodTypeProvider>()
     .register(GroceryListRouter, { prefix: '/grocery-list' });
+
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(AiRouter, { prefix: '/ai' });
 }

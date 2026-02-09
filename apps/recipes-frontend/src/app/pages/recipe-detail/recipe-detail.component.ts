@@ -16,11 +16,16 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { FormsModule } from '@angular/forms';
 import {
   RecipesApiService,
   Recipe,
   Ingredient,
+  Message,
+  CookingTipsResponse,
+  FlavorProfileResponse,
 } from '../../services/recipes-api.service';
 
 @Component({
@@ -38,6 +43,8 @@ import {
     MatDialogModule,
     MatInputModule,
     MatFormFieldModule,
+    MatTabsModule,
+    MatExpansionModule,
     FormsModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -204,7 +211,166 @@ import {
         </div>
         <p class="notes-content">{{ recipe()!.notes }}</p>
       </div>
-      } @if (recipe()!.source) {
+      }
+
+      <!-- AI Assistant Section -->
+      <mat-expansion-panel class="ai-panel">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-icon class="ai-icon">auto_awesome</mat-icon>
+            AI Assistant
+          </mat-panel-title>
+          <mat-panel-description>
+            Get cooking tips, flavor analysis, and ask questions
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <mat-tab-group class="ai-tabs" animationDuration="200ms">
+          <!-- Chat Tab -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon>chat</mat-icon>
+              Ask
+            </ng-template>
+            <div class="ai-tab-content">
+              <div class="chat-container">
+                @if (chatMessages().length > 0) {
+                <div class="chat-messages">
+                  @for (msg of chatMessages(); track $index) { @if (msg.role !==
+                  'system') {
+                  <div class="chat-message" [class.user]="msg.role === 'user'">
+                    <div class="message-bubble">
+                      {{ msg.content }}
+                    </div>
+                  </div>
+                  } }
+                </div>
+                } @else {
+                <div class="chat-empty">
+                  <mat-icon>lightbulb</mat-icon>
+                  <p>Ask anything about this recipe!</p>
+                  <span class="examples">Try: "What can I substitute for...?" or "How do I know when it's done?"</span>
+                </div>
+                }
+
+                <div class="chat-input-row">
+                  <mat-form-field appearance="outline" class="chat-input">
+                    <input
+                      matInput
+                      [ngModel]="chatQuestion()"
+                      (ngModelChange)="chatQuestion.set($event)"
+                      placeholder="Ask a question about this recipe..."
+                      (keyup.enter)="askQuestion()"
+                      [disabled]="chatLoading()"
+                    />
+                  </mat-form-field>
+                  <button
+                    mat-fab
+                    color="primary"
+                    (click)="askQuestion()"
+                    [disabled]="!chatQuestion() || chatLoading()"
+                    class="send-btn"
+                  >
+                    @if (chatLoading()) {
+                    <mat-spinner diameter="24"></mat-spinner>
+                    } @else {
+                    <mat-icon>send</mat-icon>
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+
+          <!-- Cooking Tips Tab -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon>tips_and_updates</mat-icon>
+              Tips
+            </ng-template>
+            <div class="ai-tab-content">
+              @if (!cookingTips() && !tipsLoading()) {
+              <div class="load-prompt">
+                <mat-icon>tips_and_updates</mat-icon>
+                <p>Get expert cooking tips for this recipe</p>
+                <button mat-raised-button color="primary" (click)="loadCookingTips()">
+                  <mat-icon>auto_awesome</mat-icon>
+                  Generate Tips
+                </button>
+              </div>
+              } @else if (tipsLoading()) {
+              <div class="ai-loading">
+                <mat-spinner diameter="32"></mat-spinner>
+                <p>Analyzing recipe...</p>
+              </div>
+              } @else if (cookingTips()) {
+              <div class="tips-content">
+                <div class="tips-section">
+                  <h4><mat-icon>check_circle</mat-icon> Pro Tips</h4>
+                  <ul>
+                    @for (tip of cookingTips()!.tips; track $index) {
+                    <li>{{ tip }}</li>
+                    }
+                  </ul>
+                </div>
+                <div class="tips-section mistakes">
+                  <h4><mat-icon>warning</mat-icon> Common Mistakes to Avoid</h4>
+                  <ul>
+                    @for (mistake of cookingTips()!.commonMistakes; track $index) {
+                    <li>{{ mistake }}</li>
+                    }
+                  </ul>
+                </div>
+              </div>
+              }
+            </div>
+          </mat-tab>
+
+          <!-- Flavor Profile Tab -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon>restaurant</mat-icon>
+              Flavor
+            </ng-template>
+            <div class="ai-tab-content">
+              @if (!flavorProfile() && !flavorLoading()) {
+              <div class="load-prompt">
+                <mat-icon>restaurant</mat-icon>
+                <p>Discover the flavor profile and pairings</p>
+                <button mat-raised-button color="primary" (click)="loadFlavorProfile()">
+                  <mat-icon>auto_awesome</mat-icon>
+                  Analyze Flavors
+                </button>
+              </div>
+              } @else if (flavorLoading()) {
+              <div class="ai-loading">
+                <mat-spinner diameter="32"></mat-spinner>
+                <p>Analyzing flavors...</p>
+              </div>
+              } @else if (flavorProfile()) {
+              <div class="flavor-content">
+                <div class="flavor-chips">
+                  @for (flavor of flavorProfile()!.primaryFlavors; track flavor) {
+                  <span class="flavor-chip">{{ flavor }}</span>
+                  }
+                </div>
+                <p class="taste-description">{{ flavorProfile()!.tasteProfile }}</p>
+                <div class="pairings">
+                  <h4><mat-icon>wine_bar</mat-icon> Pairing Recommendations</h4>
+                  <ul>
+                    @for (pairing of flavorProfile()!.pairingRecommendations; track $index) {
+                    <li>{{ pairing }}</li>
+                    }
+                  </ul>
+                </div>
+              </div>
+              }
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-expansion-panel>
+
+      @if (recipe()!.source) {
       <p class="source">
         <mat-icon>link</mat-icon>
         Source: {{ recipe()!.source }}
@@ -579,6 +745,242 @@ import {
         max-height: 200px;
       }
     }
+
+    /* AI Assistant Styles */
+    .ai-panel {
+      margin-bottom: var(--spacing-xl);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-lg);
+    }
+
+    .ai-icon {
+      color: #f97316;
+      margin-right: var(--spacing-sm);
+    }
+
+    .ai-tabs {
+      margin-top: var(--spacing-md);
+    }
+
+    .ai-tab-content {
+      padding: var(--spacing-lg) 0;
+      min-height: 200px;
+    }
+
+    .load-prompt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: var(--spacing-xl);
+    }
+
+    .load-prompt mat-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      color: rgba(255, 255, 255, 0.3);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .load-prompt p {
+      color: rgba(255, 255, 255, 0.6);
+      margin: 0 0 var(--spacing-lg);
+    }
+
+    .ai-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--spacing-xl);
+    }
+
+    .ai-loading p {
+      color: rgba(255, 255, 255, 0.5);
+      margin: var(--spacing-md) 0 0;
+    }
+
+    /* Chat styles */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+
+    .chat-messages {
+      max-height: 300px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md);
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--border-radius-md);
+    }
+
+    .chat-message {
+      display: flex;
+    }
+
+    .chat-message.user {
+      justify-content: flex-end;
+    }
+
+    .message-bubble {
+      max-width: 80%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: var(--border-radius-md);
+      background: rgba(255, 255, 255, 0.08);
+      line-height: 1.5;
+    }
+
+    .chat-message.user .message-bubble {
+      background: rgba(249, 115, 22, 0.2);
+    }
+
+    .chat-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: var(--spacing-lg);
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--border-radius-md);
+    }
+
+    .chat-empty mat-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      color: rgba(255, 255, 255, 0.3);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .chat-empty p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .chat-empty .examples {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: var(--spacing-xs);
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: var(--spacing-sm);
+      align-items: flex-start;
+    }
+
+    .chat-input {
+      flex: 1;
+    }
+
+    .send-btn {
+      flex-shrink: 0;
+    }
+
+    /* Tips styles */
+    .tips-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+    }
+
+    .tips-section h4 {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin: 0 0 var(--spacing-md);
+      font-weight: 600;
+    }
+
+    .tips-section h4 mat-icon {
+      color: #22c55e;
+    }
+
+    .tips-section.mistakes h4 mat-icon {
+      color: #ef4444;
+    }
+
+    .tips-section ul {
+      margin: 0;
+      padding-left: var(--spacing-lg);
+    }
+
+    .tips-section li {
+      padding: var(--spacing-xs) 0;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Flavor profile styles */
+    .flavor-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+    }
+
+    .flavor-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+    }
+
+    .flavor-chip {
+      padding: 6px 16px;
+      border-radius: var(--border-radius-full);
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(239, 68, 68, 0.15));
+      border: 1px solid rgba(249, 115, 22, 0.3);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #fafafa;
+    }
+
+    .taste-description {
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.8);
+      margin: 0;
+    }
+
+    .pairings h4 {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin: 0 0 var(--spacing-md);
+      font-weight: 600;
+    }
+
+    .pairings h4 mat-icon {
+      color: #a855f7;
+    }
+
+    .pairings ul {
+      margin: 0;
+      padding-left: var(--spacing-lg);
+    }
+
+    .pairings li {
+      padding: var(--spacing-xs) 0;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    @media (max-width: 640px) {
+      .ai-tab-content {
+        padding: var(--spacing-md) 0;
+      }
+
+      .chat-messages {
+        max-height: 250px;
+      }
+
+      .message-bubble {
+        max-width: 90%;
+      }
+    }
   `,
 })
 export class RecipeDetailComponent implements OnInit {
@@ -590,6 +992,15 @@ export class RecipeDetailComponent implements OnInit {
   recipe = signal<Recipe | null>(null);
   currentServings = signal(4);
   scaledIngredients = signal<Ingredient[]>([]);
+
+  // AI Assistant state
+  chatMessages = signal<Message[]>([]);
+  chatQuestion = signal('');
+  chatLoading = signal(false);
+  cookingTips = signal<CookingTipsResponse | null>(null);
+  tipsLoading = signal(false);
+  flavorProfile = signal<FlavorProfileResponse | null>(null);
+  flavorLoading = signal(false);
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -657,5 +1068,63 @@ export class RecipeDetailComponent implements OnInit {
         },
       });
     }
+  }
+
+  // AI Assistant methods
+  askQuestion() {
+    const recipe = this.recipe();
+    const question = this.chatQuestion().trim();
+    if (!recipe || !question || this.chatLoading()) return;
+
+    // Add user message
+    this.chatMessages.update((msgs) => [...msgs, { role: 'user' as const, content: question }]);
+    this.chatQuestion.set('');
+    this.chatLoading.set(true);
+
+    this.api.chatAboutRecipe(recipe.id, question, this.chatMessages()).subscribe({
+      next: (response) => {
+        this.chatMessages.update((msgs) => [...msgs, { role: 'assistant' as const, content: response.answer }]);
+        this.chatLoading.set(false);
+      },
+      error: () => {
+        this.chatMessages.update((msgs) => [
+          ...msgs,
+          { role: 'assistant' as const, content: 'Sorry, I had trouble answering that. Please try again.' },
+        ]);
+        this.chatLoading.set(false);
+      },
+    });
+  }
+
+  loadCookingTips() {
+    const recipe = this.recipe();
+    if (!recipe || this.tipsLoading()) return;
+
+    this.tipsLoading.set(true);
+    this.api.getCookingTips(recipe.id).subscribe({
+      next: (tips) => {
+        this.cookingTips.set(tips);
+        this.tipsLoading.set(false);
+      },
+      error: () => {
+        this.tipsLoading.set(false);
+      },
+    });
+  }
+
+  loadFlavorProfile() {
+    const recipe = this.recipe();
+    if (!recipe || this.flavorLoading()) return;
+
+    this.flavorLoading.set(true);
+    this.api.analyzeFlavorProfile(recipe.id).subscribe({
+      next: (profile) => {
+        this.flavorProfile.set(profile);
+        this.flavorLoading.set(false);
+      },
+      error: () => {
+        this.flavorLoading.set(false);
+      },
+    });
   }
 }
