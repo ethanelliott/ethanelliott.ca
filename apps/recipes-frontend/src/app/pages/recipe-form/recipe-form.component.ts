@@ -235,7 +235,10 @@ import {
                 rows="10"
                 placeholder="Step-by-step instructions..."
               ></textarea>
-              <mat-hint>Supports Markdown: **bold**, *italic*, numbered lists (1. 2. 3.), bullet lists (- item)</mat-hint>
+              <mat-hint
+                >Supports Markdown: **bold**, *italic*, numbered lists (1. 2.
+                3.), bullet lists (- item)</mat-hint
+              >
             </mat-form-field>
           </mat-card-content>
         </mat-card>
