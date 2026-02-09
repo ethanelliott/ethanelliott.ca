@@ -391,43 +391,28 @@ Guidelines:
    * Feature 14: Parse recipe from pasted text/webpage content
    */
   async parseRecipeFromText(rawText: string): Promise<ParsedRecipe> {
-    const prompt = `Extract recipe information from the following text. The text may be messy, copied from a webpage, or poorly formatted.
-
-TEXT TO PARSE:
-${rawText}
-
-Extract and return a JSON object in this exact format:
-{
-  "title": "Recipe Title",
-  "description": "Brief description of the dish",
-  "ingredients": [
-    {"name": "ingredient name", "quantity": 1.5, "unit": "cups", "notes": "optional notes like 'diced'"}
-  ],
-  "instructions": "Step-by-step instructions as a single string with numbered steps",
-  "servings": 4,
-  "prepTimeMinutes": 15,
-  "cookTimeMinutes": 30,
-  "source": "website or attribution if found"
-}
-
-Guidelines:
-- Parse ingredient quantities as decimal numbers (e.g., "1/2" = 0.5, "1 1/2" = 1.5)
-- Common units: cups, tbsp, tsp, oz, lb, g, kg, ml, L, cloves, pieces, whole
-- If a field cannot be determined, omit it or use null
-- Clean up and format instructions with numbered steps
-- Extract any source/attribution if present in the text`;
-
     const messages: Message[] = [
       {
         role: 'system',
-        content:
-          'You are a recipe parsing expert. Extract structured recipe data from messy text. Always respond with valid JSON only.',
+        content: `You are a recipe parsing expert. Your ONLY task is to extract structured data from the recipe text provided by the user. 
+
+CRITICAL RULES:
+- Extract ONLY information that exists in the provided text
+- Do NOT invent or hallucinate any ingredients, instructions, or details
+- Parse ingredient quantities as decimals (1/2 = 0.5, 1 1/2 = 1.5)
+- Format instructions as numbered steps in a single string
+- If information is not present, omit the field`,
       },
-      { role: 'user', content: prompt },
+      {
+        role: 'user',
+        content: `Parse this recipe and extract the title, description, ingredients, instructions, servings, prep time, and cook time:
+
+${rawText}`,
+      },
     ];
 
     const response = await this._ollamaClient.chat(messages, {
-      temperature: 0.2, // Low temperature for accurate parsing
+      temperature: 0.1, // Very low temperature for accurate extraction
       timeoutMs: 180000, // 3 minutes for longer texts
       format: PARSED_RECIPE_SCHEMA,
     });
