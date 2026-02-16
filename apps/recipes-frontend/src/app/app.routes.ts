@@ -1,21 +1,17 @@
 import { Route } from '@angular/router';
-import { MainLayout } from './layout/main-layout.component';
 
 export const appRoutes: Route[] = [
   {
     path: '',
-    component: MainLayout,
+    loadComponent: () =>
+      import('./layout/layout.component').then((m) => m.LayoutComponent),
     children: [
-      {
-        path: '',
-        redirectTo: 'recipes',
-        pathMatch: 'full',
-      },
+      { path: '', redirectTo: 'recipes', pathMatch: 'full' },
       {
         path: 'recipes',
         loadComponent: () =>
-          import('./pages/recipe-list/recipe-list.component').then(
-            (m) => m.RecipeListComponent
+          import('./pages/recipes/recipes.component').then(
+            (m) => m.RecipesComponent
           ),
       },
       {
@@ -40,6 +36,20 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'random',
+        loadComponent: () =>
+          import('./pages/random/random.component').then(
+            (m) => m.RandomRecipeComponent
+          ),
+      },
+      {
+        path: 'grocery-list',
+        loadComponent: () =>
+          import('./pages/grocery-list/grocery-list.component').then(
+            (m) => m.GroceryListComponent
+          ),
+      },
+      {
         path: 'categories',
         loadComponent: () =>
           import('./pages/categories/categories.component').then(
@@ -51,20 +61,7 @@ export const appRoutes: Route[] = [
         loadComponent: () =>
           import('./pages/tags/tags.component').then((m) => m.TagsComponent),
       },
-      {
-        path: 'grocery-list',
-        loadComponent: () =>
-          import('./pages/grocery-list/grocery-list.component').then(
-            (m) => m.GroceryListComponent
-          ),
-      },
-      {
-        path: 'random',
-        loadComponent: () =>
-          import('./pages/random-recipe/random-recipe.component').then(
-            (m) => m.RandomRecipeComponent
-          ),
-      },
     ],
   },
+  { path: '**', redirectTo: 'recipes' },
 ];

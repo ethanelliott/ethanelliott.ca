@@ -2,24 +2,21 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  signal,
   OnInit,
+  signal,
+  computed,
 } from '@angular/core';
-import { marked } from 'marked';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { ChipModule } from 'primeng/chip';
+import { AccordionModule } from 'primeng/accordion';
+import { TabsModule } from 'primeng/tabs';
+import { InputTextModule } from 'primeng/inputtext';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import {
   RecipesApiService,
   Recipe,
@@ -28,108 +25,103 @@ import {
   CookingTipsResponse,
   FlavorProfileResponse,
 } from '../../services/recipes-api.service';
+import { marked } from 'marked';
 
 @Component({
   selector: 'app-recipe-detail',
   standalone: true,
   imports: [
-    CommonModule,
-    RouterLink,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatProgressSpinnerModule,
-    MatDividerModule,
-    MatDialogModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatTabsModule,
-    MatExpansionModule,
+    RouterModule,
     FormsModule,
+    ButtonModule,
+    ChipModule,
+    AccordionModule,
+    TabsModule,
+    InputTextModule,
+    ProgressSpinnerModule,
+    ConfirmDialogModule,
   ],
+  providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <p-confirmdialog />
+
     @if (loading()) {
-    <div class="loading">
-      <mat-spinner diameter="48"></mat-spinner>
+    <div class="loading-container">
+      <p-progress-spinner ariaLabel="Loading recipe" />
     </div>
     } @else if (recipe()) {
     <div class="recipe-detail">
-      <div class="header">
-        <div class="header-content">
-          <button mat-icon-button routerLink="/recipes" class="back-btn">
-            <mat-icon>arrow_back</mat-icon>
-          </button>
-          <div class="header-text">
-            <h1>{{ recipe()!.title }}</h1>
-            @if (recipe()!.description) {
-            <p class="description">{{ recipe()!.description }}</p>
-            }
-          </div>
-        </div>
+      <!-- Header -->
+      <div class="detail-header">
+        <p-button
+          icon="pi pi-arrow-left"
+          label="Back"
+          [text]="true"
+          severity="secondary"
+          (click)="router.navigate(['/recipes'])"
+        />
         <div class="header-actions">
-          <button
-            mat-button
-            [routerLink]="['/recipes', recipe()!.id, 'edit']"
-            class="action-btn"
-          >
-            <mat-icon>edit</mat-icon>
-            Edit
-          </button>
-          <button
-            mat-button
-            color="warn"
-            (click)="deleteRecipe()"
-            class="action-btn delete-btn"
-          >
-            <mat-icon>delete</mat-icon>
-            Delete
-          </button>
+          <p-button
+            icon="pi pi-pencil"
+            label="Edit"
+            severity="secondary"
+            [outlined]="true"
+            (click)="router.navigate(['/recipes', recipe()!.id, 'edit'])"
+          />
+          <p-button
+            icon="pi pi-trash"
+            label="Delete"
+            severity="danger"
+            [outlined]="true"
+            (click)="confirmDelete()"
+          />
         </div>
       </div>
 
+      <h1 class="recipe-title">{{ recipe()!.title }}</h1>
+      @if (recipe()!.description) {
+      <p class="recipe-description">{{ recipe()!.description }}</p>
+      }
+
+      <!-- Metadata -->
       <div class="meta-strip">
         @if (recipe()!.prepTimeMinutes) {
-        <div class="meta-badge prep">
-          <mat-icon>hourglass_top</mat-icon>
-          <div class="meta-text">
-            <span class="meta-value">{{ recipe()!.prepTimeMinutes }}</span>
-            <span class="meta-label">min prep</span>
-          </div>
+        <div class="meta-badge">
+          <i class="pi pi-stopwatch"></i>
+          <span class="meta-value">{{ recipe()!.prepTimeMinutes }}</span>
+          <span class="meta-label">min prep</span>
         </div>
         } @if (recipe()!.cookTimeMinutes) {
-        <div class="meta-badge cook">
-          <mat-icon>local_fire_department</mat-icon>
-          <div class="meta-text">
-            <span class="meta-value">{{ recipe()!.cookTimeMinutes }}</span>
-            <span class="meta-label">min cook</span>
-          </div>
+        <div class="meta-badge">
+          <i class="pi pi-clock"></i>
+          <span class="meta-value">{{ recipe()!.cookTimeMinutes }}</span>
+          <span class="meta-label">min cook</span>
         </div>
         }
-        <div class="meta-badge servings">
-          <mat-icon>people</mat-icon>
-          <div class="meta-text">
-            <span class="meta-value">{{ recipe()!.servings }}</span>
-            <span class="meta-label">servings</span>
-          </div>
+        <div class="meta-badge">
+          <i class="pi pi-users"></i>
+          <span class="meta-value">{{ recipe()!.servings }}</span>
+          <span class="meta-label">servings</span>
         </div>
       </div>
 
+      <!-- Categories & Tags -->
       @if (recipe()!.categories.length > 0 || recipe()!.tags.length > 0) {
-      <div class="chips-row">
-        @for (category of recipe()!.categories; track category.id) {
+      <div class="chips-section">
+        @for (cat of recipe()!.categories; track cat.id) {
         <span
-          class="chip category-chip"
-          [style.background-color]="category.color || '#666'"
+          class="category-chip"
+          [style.background]="cat.color || 'var(--p-primary-color)'"
+          [style.color]="'#000'"
         >
-          {{ category.name }}
+          {{ cat.name }}
         </span>
         } @for (tag of recipe()!.tags; track tag.id) {
         <span
-          class="chip tag-chip"
-          [style.border-color]="tag.color || '#666'"
-          [style.color]="tag.color || '#666'"
+          class="tag-chip"
+          [style.border-color]="tag.color || 'var(--p-primary-color)'"
+          [style.color]="tag.color || 'var(--p-primary-color)'"
         >
           {{ tag.name }}
         </span>
@@ -140,12 +132,12 @@ import {
       <!-- Photos -->
       @if (recipe()!.photos && recipe()!.photos!.length > 0) {
       <div class="photos-section">
-        <h2><mat-icon>photo_library</mat-icon> Photos</h2>
-        <div class="photos-grid">
-          @for (photo of recipe()!.photos; track photo.id) {
+        <h2 class="section-title">Photos</h2>
+        <div class="photos-scroll">
+          @for (photo of recipe()!.photos!; track photo.id) {
           <img
-            [src]="getPhotoUrl(photo.id)"
-            [alt]="photo.filename"
+            [src]="api.getPhotoUrl(photo.id)"
+            [alt]="recipe()!.title"
             class="recipe-photo"
           />
           }
@@ -153,1072 +145,677 @@ import {
       </div>
       }
 
-      <div class="content-grid">
-        <!-- Ingredients -->
-        <div class="section-card ingredients-section">
-          <div class="section-header">
-            <h2><mat-icon>format_list_bulleted</mat-icon> Ingredients</h2>
-            <div class="servings-adjuster">
-              <button
-                mat-mini-fab
-                (click)="adjustServings(-1)"
-                [disabled]="currentServings() <= 1"
-                class="adj-btn"
-              >
-                <mat-icon>remove</mat-icon>
-              </button>
-              <span class="servings-display">{{ currentServings() }}</span>
-              <button mat-mini-fab (click)="adjustServings(1)" class="adj-btn">
-                <mat-icon>add</mat-icon>
-              </button>
-            </div>
+      <!-- Ingredients -->
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">Ingredients</h2>
+          <div class="servings-adjuster">
+            <p-button
+              icon="pi pi-minus"
+              [rounded]="true"
+              [text]="true"
+              severity="secondary"
+              size="small"
+              (click)="adjustServings(-1)"
+              [disabled]="currentServings() <= 1"
+            />
+            <span class="servings-display">{{ currentServings() }}</span>
+            <p-button
+              icon="pi pi-plus"
+              [rounded]="true"
+              [text]="true"
+              severity="secondary"
+              size="small"
+              (click)="adjustServings(1)"
+            />
           </div>
-          <ul class="ingredients-list">
-            @for (ingredient of scaledIngredients(); track ingredient.id) {
-            <li>
-              <span class="quantity">{{
-                formatQuantity(ingredient.quantity)
-              }}</span>
-              <span class="unit">{{ ingredient.unit }}</span>
-              <span class="name">{{ ingredient.name }}</span>
-              @if (ingredient.notes) {
-              <span class="notes">({{ ingredient.notes }})</span>
-              }
-            </li>
+        </div>
+        @if (ingredientsLoading()) {
+        <p-progress-spinner
+          [style]="{ width: '30px', height: '30px' }"
+          ariaLabel="Loading"
+        />
+        } @else {
+        <ul class="ingredient-list">
+          @for (ing of displayIngredients(); track ing.id) {
+          <li class="ingredient-item">
+            <span class="ing-qty">{{ formatQuantity(ing.quantity) }}</span>
+            <span class="ing-unit">{{ ing.unit }}</span>
+            <span class="ing-name">{{ ing.name }}</span>
+            @if (ing.notes) {
+            <span class="ing-notes">({{ ing.notes }})</span>
             }
-          </ul>
-        </div>
-
-        <!-- Instructions -->
-        <div class="section-card instructions-section">
-          <div class="section-header">
-            <h2><mat-icon>menu_book</mat-icon> Instructions</h2>
-          </div>
-          @if (recipe()!.instructions) {
-          <div
-            class="instructions-content"
-            [innerHTML]="formatInstructions(recipe()!.instructions!)"
-          ></div>
-          } @else {
-          <p class="no-instructions">No instructions provided.</p>
+          </li>
           }
-        </div>
+        </ul>
+        }
       </div>
 
-      @if (recipe()!.notes) {
-      <div class="section-card notes-section">
-        <div class="section-header">
-          <h2><mat-icon>note</mat-icon> Personal Notes</h2>
-        </div>
-        <p class="notes-content">{{ recipe()!.notes }}</p>
+      <!-- Instructions -->
+      @if (recipe()!.instructions) {
+      <div class="section">
+        <h2 class="section-title">Instructions</h2>
+        <div
+          class="markdown-content"
+          [innerHTML]="renderedInstructions()"
+        ></div>
       </div>
       }
 
-      <!-- AI Assistant Section -->
-      <mat-expansion-panel class="ai-panel">
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-icon class="ai-icon">auto_awesome</mat-icon>
-            AI Assistant
-          </mat-panel-title>
-          <mat-panel-description>
-            Get cooking tips, flavor analysis, and ask questions
-          </mat-panel-description>
-        </mat-expansion-panel-header>
+      <!-- Notes -->
+      @if (recipe()!.notes) {
+      <div class="section">
+        <h2 class="section-title">Personal Notes</h2>
+        <p class="notes-text">{{ recipe()!.notes }}</p>
+      </div>
+      }
 
-        <mat-tab-group class="ai-tabs" animationDuration="200ms">
-          <!-- Chat Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <mat-icon>chat</mat-icon>
-              Ask
-            </ng-template>
-            <div class="ai-tab-content">
-              <div class="chat-container">
-                @if (chatMessages().length > 0) {
-                <div class="chat-messages">
-                  @for (msg of chatMessages(); track $index) { @if (msg.role !==
-                  'system') {
-                  <div class="chat-message" [class.user]="msg.role === 'user'">
-                    <div class="message-bubble">
-                      {{ msg.content }}
+      <!-- AI Assistant -->
+      <div class="section">
+        <p-accordion>
+          <p-accordion-panel value="ai">
+            <p-accordion-header>
+              <i
+                class="pi pi-sparkles"
+                style="margin-right: 8px; color: var(--p-primary-color)"
+              ></i>
+              AI Assistant
+            </p-accordion-header>
+            <p-accordion-content>
+              <p-tabs value="chat">
+                <p-tablist>
+                  <p-tab value="chat">Ask</p-tab>
+                  <p-tab value="tips">Tips</p-tab>
+                  <p-tab value="flavor">Flavor</p-tab>
+                </p-tablist>
+                <p-tabpanels>
+                  <!-- Chat Tab -->
+                  <p-tabpanel value="chat">
+                    <div class="chat-container">
+                      @if (chatMessages().length === 0) {
+                      <div class="chat-empty">
+                        <p>Ask me anything about this recipe!</p>
+                        <div class="example-prompts">
+                          @for (prompt of examplePrompts; track prompt) {
+                          <p-button
+                            [label]="prompt"
+                            severity="secondary"
+                            [outlined]="true"
+                            size="small"
+                            (click)="sendChat(prompt)"
+                          />
+                          }
+                        </div>
+                      </div>
+                      } @else {
+                      <div class="chat-messages">
+                        @for (msg of chatMessages(); track $index) {
+                        <div
+                          class="chat-bubble"
+                          [class.user]="msg.role === 'user'"
+                          [class.assistant]="msg.role === 'assistant'"
+                        >
+                          {{ msg.content }}
+                        </div>
+                        }
+                      </div>
+                      }
+                      <div class="chat-input">
+                        <input
+                          pInputText
+                          [(ngModel)]="chatInput"
+                          placeholder="Ask about this recipe..."
+                          (keydown.enter)="sendChat(chatInput)"
+                          [disabled]="chatLoading()"
+                        />
+                        <p-button
+                          icon="pi pi-send"
+                          [rounded]="true"
+                          (click)="sendChat(chatInput)"
+                          [loading]="chatLoading()"
+                          [disabled]="!chatInput.trim()"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  } }
-                </div>
-                } @else {
-                <div class="chat-empty">
-                  <mat-icon>lightbulb</mat-icon>
-                  <p>Ask anything about this recipe!</p>
-                  <span class="examples"
-                    >Try: "What can I substitute for...?" or "How do I know when
-                    it's done?"</span
-                  >
-                </div>
-                }
+                  </p-tabpanel>
 
-                <div class="chat-input-row">
-                  <mat-form-field appearance="outline" class="chat-input">
-                    <input
-                      matInput
-                      [ngModel]="chatQuestion()"
-                      (ngModelChange)="chatQuestion.set($event)"
-                      placeholder="Ask a question about this recipe..."
-                      (keyup.enter)="askQuestion()"
-                      [disabled]="chatLoading()"
-                    />
-                  </mat-form-field>
-                  <button
-                    mat-fab
-                    color="primary"
-                    (click)="askQuestion()"
-                    [disabled]="!chatQuestion() || chatLoading()"
-                    class="send-btn"
-                  >
-                    @if (chatLoading()) {
-                    <mat-spinner diameter="24"></mat-spinner>
+                  <!-- Tips Tab -->
+                  <p-tabpanel value="tips">
+                    @if (!tipsData()) {
+                    <div class="ai-generate">
+                      <p-button
+                        label="Generate Cooking Tips"
+                        icon="pi pi-sparkles"
+                        (click)="generateTips()"
+                        [loading]="tipsLoading()"
+                      />
+                    </div>
                     } @else {
-                    <mat-icon>send</mat-icon>
+                    <div class="tips-content">
+                      <h3>Pro Tips</h3>
+                      <ul>
+                        @for (tip of tipsData()!.tips; track $index) {
+                        <li>{{ tip }}</li>
+                        }
+                      </ul>
+                      <h3>Common Mistakes to Avoid</h3>
+                      <ul>
+                        @for (mistake of tipsData()!.commonMistakes; track
+                        $index) {
+                        <li>{{ mistake }}</li>
+                        }
+                      </ul>
+                    </div>
                     }
-                  </button>
-                </div>
-              </div>
-            </div>
-          </mat-tab>
+                  </p-tabpanel>
 
-          <!-- Cooking Tips Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <mat-icon>tips_and_updates</mat-icon>
-              Tips
-            </ng-template>
-            <div class="ai-tab-content">
-              @if (!cookingTips() && !tipsLoading()) {
-              <div class="load-prompt">
-                <mat-icon>tips_and_updates</mat-icon>
-                <p>Get expert cooking tips for this recipe</p>
-                <button
-                  mat-raised-button
-                  color="primary"
-                  (click)="loadCookingTips()"
-                >
-                  <mat-icon>auto_awesome</mat-icon>
-                  Generate Tips
-                </button>
-              </div>
-              } @else if (tipsLoading()) {
-              <div class="ai-loading">
-                <mat-spinner diameter="32"></mat-spinner>
-                <p>Analyzing recipe...</p>
-              </div>
-              } @else if (cookingTips()) {
-              <div class="tips-content">
-                <div class="tips-section">
-                  <h4><mat-icon>check_circle</mat-icon> Pro Tips</h4>
-                  <ul>
-                    @for (tip of cookingTips()!.tips; track $index) {
-                    <li>{{ tip }}</li>
+                  <!-- Flavor Tab -->
+                  <p-tabpanel value="flavor">
+                    @if (!flavorData()) {
+                    <div class="ai-generate">
+                      <p-button
+                        label="Analyze Flavor Profile"
+                        icon="pi pi-sparkles"
+                        (click)="generateFlavor()"
+                        [loading]="flavorLoading()"
+                      />
+                    </div>
+                    } @else {
+                    <div class="flavor-content">
+                      <div class="flavor-chips">
+                        @for (flavor of flavorData()!.primaryFlavors; track
+                        flavor) {
+                        <p-chip [label]="flavor" />
+                        }
+                      </div>
+                      <p class="flavor-description">
+                        {{ flavorData()!.tasteProfile }}
+                      </p>
+                      <h3>Pairing Recommendations</h3>
+                      <ul>
+                        @for (rec of flavorData()!.pairingRecommendations; track
+                        $index) {
+                        <li>{{ rec }}</li>
+                        }
+                      </ul>
+                    </div>
                     }
-                  </ul>
-                </div>
-                <div class="tips-section mistakes">
-                  <h4><mat-icon>warning</mat-icon> Common Mistakes to Avoid</h4>
-                  <ul>
-                    @for (mistake of cookingTips()!.commonMistakes; track
-                    $index) {
-                    <li>{{ mistake }}</li>
-                    }
-                  </ul>
-                </div>
-              </div>
-              }
-            </div>
-          </mat-tab>
+                  </p-tabpanel>
+                </p-tabpanels>
+              </p-tabs>
+            </p-accordion-content>
+          </p-accordion-panel>
+        </p-accordion>
+      </div>
 
-          <!-- Flavor Profile Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <mat-icon>restaurant</mat-icon>
-              Flavor
-            </ng-template>
-            <div class="ai-tab-content">
-              @if (!flavorProfile() && !flavorLoading()) {
-              <div class="load-prompt">
-                <mat-icon>restaurant</mat-icon>
-                <p>Discover the flavor profile and pairings</p>
-                <button
-                  mat-raised-button
-                  color="primary"
-                  (click)="loadFlavorProfile()"
-                >
-                  <mat-icon>auto_awesome</mat-icon>
-                  Analyze Flavors
-                </button>
-              </div>
-              } @else if (flavorLoading()) {
-              <div class="ai-loading">
-                <mat-spinner diameter="32"></mat-spinner>
-                <p>Analyzing flavors...</p>
-              </div>
-              } @else if (flavorProfile()) {
-              <div class="flavor-content">
-                <div class="flavor-chips">
-                  @for (flavor of flavorProfile()!.primaryFlavors; track flavor)
-                  {
-                  <span class="flavor-chip">{{ flavor }}</span>
-                  }
-                </div>
-                <p class="taste-description">
-                  {{ flavorProfile()!.tasteProfile }}
-                </p>
-                <div class="pairings">
-                  <h4><mat-icon>wine_bar</mat-icon> Pairing Recommendations</h4>
-                  <ul>
-                    @for (pairing of flavorProfile()!.pairingRecommendations;
-                    track $index) {
-                    <li>{{ pairing }}</li>
-                    }
-                  </ul>
-                </div>
-              </div>
-              }
-            </div>
-          </mat-tab>
-        </mat-tab-group>
-      </mat-expansion-panel>
-
+      <!-- Source -->
       @if (recipe()!.source) {
-      <p class="source">
-        <mat-icon>link</mat-icon>
-        Source: {{ recipe()!.source }}
-      </p>
+      <div class="source-section">
+        <span class="source-label">Source:</span>
+        <span class="source-value">{{ recipe()!.source }}</span>
+      </div>
       }
     </div>
     }
   `,
   styles: `
-    .loading {
+    .loading-container {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-3xl);
+      padding: 64px 0;
     }
 
     .recipe-detail {
-      max-width: 1200px;
+      max-width: 900px;
       margin: 0 auto;
     }
 
-    .header {
+    .detail-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: var(--spacing-xl);
-      gap: var(--spacing-lg);
-    }
-
-    .header-content {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--spacing-md);
-      flex: 1;
-    }
-
-    .back-btn {
-      margin-top: 4px;
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .header-text h1 {
-      margin: 0;
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-    }
-
-    .description {
-      font-size: 1rem;
-      color: rgba(255, 255, 255, 0.6);
-      margin: var(--spacing-sm) 0 0;
-      line-height: 1.5;
+      align-items: center;
+      margin-bottom: 16px;
     }
 
     .header-actions {
       display: flex;
-      gap: var(--spacing-sm);
-      flex-shrink: 0;
+      gap: 8px;
     }
 
-    .action-btn {
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--border-radius-sm);
+    .recipe-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: var(--p-text-color);
     }
 
-    .delete-btn:hover {
-      background: rgba(239, 68, 68, 0.1);
+    .recipe-description {
+      font-size: 1rem;
+      color: var(--p-text-muted-color);
+      margin: 0 0 20px;
+      line-height: 1.6;
     }
 
     .meta-strip {
       display: flex;
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-xl);
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
     }
 
     .meta-badge {
       display: flex;
       align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-md) var(--spacing-lg);
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--border-radius-md);
-    }
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--p-surface-800);
+      border: 1px solid var(--p-surface-700);
+      border-radius: 10px;
 
-    .meta-badge mat-icon {
-      opacity: 0.6;
-    }
-
-    .meta-badge.prep mat-icon { color: #3b82f6; opacity: 1; }
-    .meta-badge.cook mat-icon { color: #ef4444; opacity: 1; }
-    .meta-badge.servings mat-icon { color: #8b5cf6; opacity: 1; }
-
-    .meta-text {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .meta-value {
-      font-size: 1.25rem;
-      font-weight: 600;
-      line-height: 1;
-    }
-
-    .meta-label {
-      font-size: 0.7rem;
-      color: rgba(255, 255, 255, 0.5);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .chips-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--spacing-sm);
-      margin-bottom: var(--spacing-xl);
-    }
-
-    .chip {
-      padding: 6px 14px;
-      border-radius: var(--border-radius-full);
-      font-size: 0.8rem;
-      font-weight: 500;
-    }
-
-    .category-chip {
-      color: white;
-    }
-
-    .tag-chip {
-      background: transparent;
-      border: 1px solid;
-    }
-
-    .photos-section {
-      margin-bottom: var(--spacing-xl);
-    }
-
-    .photos-section h2 {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      margin-bottom: var(--spacing-md);
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .photos-section h2 mat-icon {
-      font-size: 1.25rem;
-      width: 1.25rem;
-      height: 1.25rem;
-      color: #f97316;
-    }
-
-    .photos-grid {
-      display: flex;
-      gap: var(--spacing-md);
-      overflow-x: auto;
-      padding-bottom: var(--spacing-sm);
-    }
-
-    .recipe-photo {
-      max-height: 280px;
-      border-radius: var(--border-radius-lg);
-      object-fit: cover;
-      border: 1px solid var(--border-subtle);
-    }
-
-    .content-grid {
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: var(--spacing-xl);
-      margin-bottom: var(--spacing-xl);
-    }
-
-    @media (max-width: 900px) {
-      .content-grid {
-        grid-template-columns: 1fr;
+      i {
+        color: var(--p-primary-color);
       }
     }
 
-    .section-card {
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--border-radius-lg);
-      padding: var(--spacing-lg);
+    .meta-value {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .meta-label {
+      font-size: 0.8rem;
+      color: var(--p-text-muted-color);
+    }
+
+    .chips-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .category-chip {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .tag-chip {
+      padding: 4px 12px;
+      border: 1.5px solid;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: transparent;
+    }
+
+    .section {
+      margin-bottom: 32px;
     }
 
     .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: var(--spacing-lg);
-      padding-bottom: var(--spacing-md);
-      border-bottom: 1px solid var(--border-subtle);
     }
 
-    .section-header h2 {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .section-header h2 mat-icon {
+    .section-title {
       font-size: 1.25rem;
-      width: 1.25rem;
-      height: 1.25rem;
-      color: #f97316;
+      font-weight: 600;
+      margin: 0 0 16px;
+      color: var(--p-text-color);
     }
 
     .servings-adjuster {
       display: flex;
       align-items: center;
-      gap: var(--spacing-sm);
-    }
-
-    .adj-btn {
-      width: 32px;
-      height: 32px;
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .adj-btn mat-icon {
-      font-size: 1rem;
+      gap: 8px;
     }
 
     .servings-display {
-      min-width: 2rem;
-      text-align: center;
+      font-size: 1.1rem;
       font-weight: 600;
-      font-size: 1.125rem;
+      min-width: 24px;
+      text-align: center;
     }
 
-    .ingredients-list {
+    .ingredient-list {
       list-style: none;
       padding: 0;
       margin: 0;
-    }
-
-    .ingredients-list li {
       display: flex;
-      align-items: baseline;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-sm) 0;
-      border-bottom: 1px solid var(--border-subtle);
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .ingredients-list li:last-child {
-      border-bottom: none;
+    .ingredient-item {
+      display: flex;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--p-surface-800);
+      border-radius: 8px;
+      font-size: 0.9rem;
     }
 
-    .quantity {
+    .ing-qty {
       font-weight: 600;
-      color: #f97316;
-      min-width: 50px;
+      color: var(--p-primary-color);
     }
 
-    .unit {
-      color: rgba(255, 255, 255, 0.5);
-      min-width: 40px;
+    .ing-unit {
+      color: var(--p-text-muted-color);
     }
 
-    .name {
-      flex: 1;
+    .ing-name {
+      color: var(--p-text-color);
     }
 
-    .notes {
-      color: rgba(255, 255, 255, 0.5);
+    .ing-notes {
+      color: var(--p-text-muted-color);
       font-style: italic;
-      font-size: 0.875rem;
     }
 
-    .instructions-content {
-      line-height: 1.8;
-      color: rgba(255, 255, 255, 0.85);
-    }
+    .markdown-content {
+      line-height: 1.7;
+      font-size: 0.95rem;
+      color: var(--p-text-color);
 
-    .instructions-content ::ng-deep {
-      h1, h2, h3, h4, h5, h6 {
-        color: rgba(255, 255, 255, 0.95);
-        margin-top: 1.5rem;
-        margin-bottom: 0.75rem;
-        font-weight: 500;
+      :deep(h1), :deep(h2), :deep(h3) {
+        margin-top: 1em;
+        margin-bottom: 0.5em;
       }
 
-      h1 { font-size: 1.5rem; }
-      h2 { font-size: 1.25rem; }
-      h3 { font-size: 1.1rem; }
-
-      p {
-        margin-bottom: 1rem;
+      :deep(ul), :deep(ol) {
+        padding-left: 24px;
       }
 
-      ul, ol {
-        margin: 1rem 0;
-        padding-left: 1.5rem;
+      :deep(blockquote) {
+        border-left: 3px solid var(--p-primary-color);
+        padding-left: 16px;
+        margin-left: 0;
+        color: var(--p-text-muted-color);
       }
 
-      li {
-        margin-bottom: 0.5rem;
-      }
-
-      ol {
-        list-style-type: decimal;
-      }
-
-      ol li::marker {
-        color: var(--accent-color);
-        font-weight: 600;
-      }
-
-      strong {
-        color: rgba(255, 255, 255, 0.95);
-        font-weight: 600;
-      }
-
-      em {
-        font-style: italic;
-      }
-
-      code {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 0.125rem 0.375rem;
+      :deep(code) {
+        background: var(--p-surface-800);
+        padding: 2px 6px;
         border-radius: 4px;
-        font-family: 'Fira Code', monospace;
-        font-size: 0.9em;
+        font-size: 0.85em;
       }
 
-      blockquote {
-        border-left: 3px solid var(--accent-color);
-        margin: 1rem 0;
-        padding-left: 1rem;
-        color: rgba(255, 255, 255, 0.7);
-        font-style: italic;
-      }
-
-      hr {
+      :deep(hr) {
         border: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
-        margin: 1.5rem 0;
+        border-top: 1px solid var(--p-surface-700);
+        margin: 1.5em 0;
       }
     }
 
-    .no-instructions {
-      color: rgba(255, 255, 255, 0.4);
-      font-style: italic;
-    }
-
-    .notes-section {
-      margin-bottom: var(--spacing-xl);
-    }
-
-    .notes-content {
-      margin: 0;
+    .notes-text {
+      font-size: 0.95rem;
       line-height: 1.6;
-      color: rgba(255, 255, 255, 0.75);
+      color: var(--p-text-muted-color);
+      margin: 0;
     }
 
-    .source {
+    .photos-section {
+      margin-bottom: 32px;
+    }
+
+    .photos-scroll {
       display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 0.875rem;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
     }
 
-    .source mat-icon {
-      font-size: 1rem;
-      width: 1rem;
-      height: 1rem;
+    .recipe-photo {
+      width: 200px;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 10px;
+      flex-shrink: 0;
     }
 
-    @media (max-width: 640px) {
-      .header {
-        flex-direction: column;
-      }
-
-      .header-text h1 {
-        font-size: 1.5rem;
-      }
-
-      .header-actions {
-        width: 100%;
-      }
-
-      .header-actions button {
-        flex: 1;
-      }
-
-      .meta-strip {
-        flex-wrap: wrap;
-      }
-
-      .meta-badge {
-        flex: 1;
-        min-width: 100px;
-        padding: var(--spacing-sm) var(--spacing-md);
-      }
-
-      .meta-value {
-        font-size: 1.1rem;
-      }
-
-      .section-card {
-        padding: var(--spacing-md);
-      }
-
-      .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-sm);
-        padding-bottom: var(--spacing-sm);
-        margin-bottom: var(--spacing-md);
-      }
-
-      .ingredients-list li {
-        flex-wrap: wrap;
-      }
-
-      .quantity {
-        min-width: 40px;
-      }
-
-      .unit {
-        min-width: 35px;
-      }
-
-      .photos-grid {
-        gap: var(--spacing-sm);
-      }
-
-      .recipe-photo {
-        max-height: 200px;
-      }
-    }
-
-    /* AI Assistant Styles */
-    .ai-panel {
-      margin-bottom: var(--spacing-xl);
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--border-radius-lg);
-    }
-
-    .ai-icon {
-      color: #f97316;
-      margin-right: var(--spacing-sm);
-    }
-
-    .ai-tabs {
-      margin-top: var(--spacing-md);
-    }
-
-    .ai-tab-content {
-      padding: var(--spacing-lg) 0;
-      min-height: 200px;
-    }
-
-    .load-prompt {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      padding: var(--spacing-xl);
-    }
-
-    .load-prompt mat-icon {
-      font-size: 3rem;
-      width: 3rem;
-      height: 3rem;
-      color: rgba(255, 255, 255, 0.3);
-      margin-bottom: var(--spacing-md);
-    }
-
-    .load-prompt p {
-      color: rgba(255, 255, 255, 0.6);
-      margin: 0 0 var(--spacing-lg);
-    }
-
-    .ai-loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: var(--spacing-xl);
-    }
-
-    .ai-loading p {
-      color: rgba(255, 255, 255, 0.5);
-      margin: var(--spacing-md) 0 0;
-    }
-
-    /* Chat styles */
     .chat-container {
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-md);
-    }
-
-    .chat-messages {
-      max-height: 300px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-md);
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: var(--border-radius-md);
-    }
-
-    .chat-message {
-      display: flex;
-    }
-
-    .chat-message.user {
-      justify-content: flex-end;
-    }
-
-    .message-bubble {
-      max-width: 80%;
-      padding: var(--spacing-sm) var(--spacing-md);
-      border-radius: var(--border-radius-md);
-      background: rgba(255, 255, 255, 0.08);
-      line-height: 1.5;
-    }
-
-    .chat-message.user .message-bubble {
-      background: rgba(249, 115, 22, 0.2);
+      gap: 12px;
+      min-height: 200px;
     }
 
     .chat-empty {
       display: flex;
       flex-direction: column;
       align-items: center;
-      text-align: center;
-      padding: var(--spacing-lg);
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: var(--border-radius-md);
+      gap: 12px;
+      padding: 24px;
+      color: var(--p-text-muted-color);
     }
 
-    .chat-empty mat-icon {
-      font-size: 2.5rem;
-      width: 2.5rem;
-      height: 2.5rem;
-      color: rgba(255, 255, 255, 0.3);
-      margin-bottom: var(--spacing-sm);
-    }
-
-    .chat-empty p {
-      margin: 0;
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    .chat-empty .examples {
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.4);
-      margin-top: var(--spacing-xs);
-    }
-
-    .chat-input-row {
+    .example-prompts {
       display: flex;
-      gap: var(--spacing-sm);
-      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .chat-bubble {
+      padding: 10px 14px;
+      border-radius: 12px;
+      max-width: 80%;
+      font-size: 0.9rem;
+      line-height: 1.5;
+
+      &.user {
+        align-self: flex-end;
+        background: var(--p-primary-color);
+        color: #000;
+      }
+
+      &.assistant {
+        align-self: flex-start;
+        background: var(--p-surface-700);
+        color: var(--p-text-color);
+      }
     }
 
     .chat-input {
-      flex: 1;
-    }
-
-    .send-btn {
-      flex-shrink: 0;
-    }
-
-    /* Tips styles */
-    .tips-content {
       display: flex;
-      flex-direction: column;
-      gap: var(--spacing-lg);
-    }
-
-    .tips-section h4 {
-      display: flex;
+      gap: 8px;
       align-items: center;
-      gap: var(--spacing-sm);
-      margin: 0 0 var(--spacing-md);
-      font-weight: 600;
+
+      input {
+        flex: 1;
+      }
     }
 
-    .tips-section h4 mat-icon {
-      color: #22c55e;
-    }
-
-    .tips-section.mistakes h4 mat-icon {
-      color: #ef4444;
-    }
-
-    .tips-section ul {
-      margin: 0;
-      padding-left: var(--spacing-lg);
-    }
-
-    .tips-section li {
-      padding: var(--spacing-xs) 0;
-      line-height: 1.5;
-      color: rgba(255, 255, 255, 0.8);
-    }
-
-    /* Flavor profile styles */
-    .flavor-content {
+    .ai-generate {
       display: flex;
-      flex-direction: column;
-      gap: var(--spacing-lg);
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .tips-content, .flavor-content {
+      padding: 8px 0;
+
+      h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 16px 0 8px;
+        color: var(--p-primary-color);
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+
+        li {
+          margin-bottom: 6px;
+          line-height: 1.5;
+        }
+      }
     }
 
     .flavor-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--spacing-sm);
+      gap: 8px;
+      margin-bottom: 12px;
     }
 
-    .flavor-chip {
-      padding: 6px 16px;
-      border-radius: var(--border-radius-full);
-      background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(239, 68, 68, 0.15));
-      border: 1px solid rgba(249, 115, 22, 0.3);
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: #fafafa;
+    .flavor-description {
+      line-height: 1.6;
+      color: var(--p-text-muted-color);
     }
 
-    .taste-description {
-      line-height: 1.7;
-      color: rgba(255, 255, 255, 0.8);
-      margin: 0;
+    .source-section {
+      padding: 16px 0;
+      border-top: 1px solid var(--p-surface-700);
+      font-size: 0.85rem;
     }
 
-    .pairings h4 {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      margin: 0 0 var(--spacing-md);
-      font-weight: 600;
+    .source-label {
+      color: var(--p-text-muted-color);
+      margin-right: 8px;
     }
 
-    .pairings h4 mat-icon {
-      color: #a855f7;
-    }
-
-    .pairings ul {
-      margin: 0;
-      padding-left: var(--spacing-lg);
-    }
-
-    .pairings li {
-      padding: var(--spacing-xs) 0;
-      line-height: 1.5;
-      color: rgba(255, 255, 255, 0.8);
+    .source-value {
+      color: var(--p-text-color);
     }
 
     @media (max-width: 640px) {
-      .ai-tab-content {
-        padding: var(--spacing-md) 0;
+      .recipe-title {
+        font-size: 1.5rem;
       }
 
-      .chat-messages {
-        max-height: 250px;
-      }
-
-      .message-bubble {
-        max-width: 90%;
+      .meta-strip {
+        flex-direction: column;
       }
     }
   `,
 })
 export class RecipeDetailComponent implements OnInit {
-  private readonly api = inject(RecipesApiService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private confirmationService = inject(ConfirmationService);
+  private sanitizer = inject(DomSanitizer);
+  api = inject(RecipesApiService);
+  router = inject(Router);
 
-  loading = signal(true);
   recipe = signal<Recipe | null>(null);
-  currentServings = signal(4);
-  scaledIngredients = signal<Ingredient[]>([]);
+  loading = signal(true);
+  currentServings = signal(1);
+  displayIngredients = signal<Ingredient[]>([]);
+  ingredientsLoading = signal(false);
 
-  // AI Assistant state
+  // AI State
   chatMessages = signal<Message[]>([]);
-  chatQuestion = signal('');
+  chatInput = '';
   chatLoading = signal(false);
-  cookingTips = signal<CookingTipsResponse | null>(null);
+  tipsData = signal<CookingTipsResponse | null>(null);
   tipsLoading = signal(false);
-  flavorProfile = signal<FlavorProfileResponse | null>(null);
+  flavorData = signal<FlavorProfileResponse | null>(null);
   flavorLoading = signal(false);
 
-  ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.loadRecipe(id);
-    }
-  }
+  renderedInstructions = computed(() => {
+    const r = this.recipe();
+    if (!r?.instructions) return '';
+    return this.sanitizer.bypassSecurityTrustHtml(
+      marked.parse(r.instructions, { async: false }) as string
+    );
+  });
 
-  loadRecipe(id: string) {
-    this.loading.set(true);
-    this.api.getRecipe(id).subscribe({
-      next: (recipe) => {
-        this.recipe.set(recipe);
-        this.currentServings.set(recipe.servings);
-        this.scaledIngredients.set(recipe.ingredients);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.router.navigate(['/recipes']);
-      },
+  examplePrompts = [
+    'Can I substitute an ingredient?',
+    'How do I store leftovers?',
+    'What side dishes go well with this?',
+  ];
+
+  ngOnInit() {
+    const id = this.route.snapshot.paramMap.get('id')!;
+    this.api.getRecipe(id).subscribe((recipe) => {
+      this.recipe.set(recipe);
+      this.currentServings.set(recipe.servings);
+      this.displayIngredients.set(recipe.ingredients);
+      this.loading.set(false);
     });
   }
 
   adjustServings(delta: number) {
     const newServings = this.currentServings() + delta;
     if (newServings < 1) return;
-
     this.currentServings.set(newServings);
-
-    const recipe = this.recipe();
-    if (recipe) {
-      this.api.getScaledIngredients(recipe.id, newServings).subscribe({
-        next: (ingredients) => {
-          this.scaledIngredients.set(ingredients);
-        },
-      });
-    }
-  }
-
-  formatQuantity(quantity: number): string {
-    // Round to reasonable precision
-    if (quantity === Math.floor(quantity)) {
-      return quantity.toString();
-    }
-    return quantity.toFixed(2).replace(/\.?0+$/, '');
-  }
-
-  formatInstructions(instructions: string): string {
-    // Parse markdown to HTML
-    const html = marked.parse(instructions, { async: false }) as string;
-    return html;
-  }
-
-  getPhotoUrl(photoId: string): string {
-    return this.api.getPhotoUrl(photoId);
-  }
-
-  deleteRecipe() {
-    const recipe = this.recipe();
-    if (!recipe) return;
-
-    if (confirm(`Are you sure you want to delete "${recipe.title}"?`)) {
-      this.api.deleteRecipe(recipe.id).subscribe({
-        next: () => {
-          this.router.navigate(['/recipes']);
-        },
-      });
-    }
-  }
-
-  // AI Assistant methods
-  askQuestion() {
-    const recipe = this.recipe();
-    const question = this.chatQuestion().trim();
-    if (!recipe || !question || this.chatLoading()) return;
-
-    // Add user message
-    this.chatMessages.update((msgs) => [
-      ...msgs,
-      { role: 'user' as const, content: question },
-    ]);
-    this.chatQuestion.set('');
-    this.chatLoading.set(true);
+    this.ingredientsLoading.set(true);
 
     this.api
-      .chatAboutRecipe(recipe.id, question, this.chatMessages())
-      .subscribe({
-        next: (response) => {
-          this.chatMessages.update((msgs) => [
-            ...msgs,
-            { role: 'assistant' as const, content: response.answer },
-          ]);
-          this.chatLoading.set(false);
-        },
-        error: () => {
-          this.chatMessages.update((msgs) => [
-            ...msgs,
-            {
-              role: 'assistant' as const,
-              content: 'Sorry, I had trouble answering that. Please try again.',
-            },
-          ]);
-          this.chatLoading.set(false);
-        },
+      .getScaledIngredients(this.recipe()!.id, newServings)
+      .subscribe((ingredients) => {
+        this.displayIngredients.set(ingredients);
+        this.ingredientsLoading.set(false);
       });
   }
 
-  loadCookingTips() {
-    const recipe = this.recipe();
-    if (!recipe || this.tipsLoading()) return;
+  formatQuantity(qty: number): string {
+    return qty % 1 === 0 ? qty.toString() : qty.toFixed(2).replace(/0+$/, '');
+  }
 
-    this.tipsLoading.set(true);
-    this.api.getCookingTips(recipe.id).subscribe({
-      next: (tips) => {
-        this.cookingTips.set(tips);
-        this.tipsLoading.set(false);
-      },
-      error: () => {
-        this.tipsLoading.set(false);
+  confirmDelete() {
+    this.confirmationService.confirm({
+      message: 'Are you sure you want to delete this recipe?',
+      header: 'Delete Recipe',
+      icon: 'pi pi-trash',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deleteRecipe(this.recipe()!.id).subscribe(() => {
+          this.router.navigate(['/recipes']);
+        });
       },
     });
   }
 
-  loadFlavorProfile() {
-    const recipe = this.recipe();
-    if (!recipe || this.flavorLoading()) return;
+  sendChat(message: string) {
+    if (!message.trim()) return;
+    this.chatInput = '';
 
+    const msgs = [
+      ...this.chatMessages(),
+      { role: 'user' as const, content: message },
+    ];
+    this.chatMessages.set(msgs);
+    this.chatLoading.set(true);
+
+    this.api
+      .chatAboutRecipe(this.recipe()!.id, message, this.chatMessages())
+      .subscribe((res) => {
+        this.chatMessages.set([
+          ...msgs,
+          { role: 'assistant' as const, content: res.answer },
+        ]);
+        this.chatLoading.set(false);
+      });
+  }
+
+  generateTips() {
+    this.tipsLoading.set(true);
+    this.api.getCookingTips(this.recipe()!.id).subscribe((tips) => {
+      this.tipsData.set(tips);
+      this.tipsLoading.set(false);
+    });
+  }
+
+  generateFlavor() {
     this.flavorLoading.set(true);
-    this.api.analyzeFlavorProfile(recipe.id).subscribe({
-      next: (profile) => {
-        this.flavorProfile.set(profile);
-        this.flavorLoading.set(false);
-      },
-      error: () => {
-        this.flavorLoading.set(false);
-      },
+    this.api.analyzeFlavorProfile(this.recipe()!.id).subscribe((flavor) => {
+      this.flavorData.set(flavor);
+      this.flavorLoading.set(false);
     });
   }
 }

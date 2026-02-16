@@ -2,18 +2,18 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  signal,
   OnInit,
+  signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { ColorPickerModule } from 'primeng/colorpicker';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import {
   RecipesApiService,
   Category,
@@ -24,138 +24,134 @@ import {
   selector: 'app-categories',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatProgressSpinnerModule,
-    MatDialogModule,
+    ButtonModule,
+    CardModule,
+    DialogModule,
+    InputTextModule,
+    ColorPickerModule,
+    ConfirmDialogModule,
+    ProgressSpinnerModule,
   ],
+  providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="page-container">
+    <p-confirmdialog />
+
+    <div class="categories-page">
       <div class="page-header">
-        <div class="header-text">
+        <div>
           <h1>Categories</h1>
-          <p class="subtitle">Organize your recipes by meal type</p>
+          <p class="subtitle">Organize your recipes into categories</p>
         </div>
-        <button mat-fab extended color="primary" (click)="openForm()">
-          <mat-icon>add</mat-icon>
-          Add Category
-        </button>
+        <p-button label="Add Category" icon="pi pi-plus" (click)="openForm()" />
       </div>
 
       @if (loading()) {
-      <div class="loading">
-        <mat-spinner diameter="48"></mat-spinner>
+      <div class="loading-container">
+        <p-progress-spinner ariaLabel="Loading" />
       </div>
       } @else if (categories().length === 0) {
       <div class="empty-state">
-        <div class="empty-icon">
-          <mat-icon>category</mat-icon>
-        </div>
-        <h2>No categories yet</h2>
-        <p>Create categories to organize your recipes.</p>
+        <i class="pi pi-th-large"></i>
+        <p>No categories yet. Create one to get started!</p>
       </div>
       } @else {
       <div class="categories-grid">
-        @for (category of categories(); track category.id; let i = $index) {
-        <div class="category-card" [style.--delay]="i">
+        @for (cat of categories(); track cat.id; let i = $index) {
+        <div class="category-card" [style.animation-delay]="i * 50 + 'ms'">
           <div
-            class="category-glow"
-            [style.background]="
-              'linear-gradient(90deg, transparent, ' +
-              (category.color || '#666') +
-              ', transparent)'
-            "
+            class="color-bar"
+            [style.background]="cat.color || 'var(--p-primary-color)'"
           ></div>
-          <div
-            class="category-indicator"
-            [style.background]="category.color || '#666'"
-          ></div>
-          <div class="category-content">
-            <h3>{{ category.name }}</h3>
-            @if (category.description) {
-            <p>{{ category.description }}</p>
+          <div class="card-body">
+            <h3 class="cat-name">{{ cat.name }}</h3>
+            @if (cat.description) {
+            <p class="cat-desc">{{ cat.description }}</p>
             }
-          </div>
-          <div class="category-actions">
-            <button mat-icon-button (click)="openForm(category)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              color="warn"
-              (click)="deleteCategory(category)"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
+            <div class="card-actions">
+              <p-button
+                icon="pi pi-pencil"
+                [text]="true"
+                [rounded]="true"
+                severity="secondary"
+                (click)="openForm(cat)"
+              />
+              <p-button
+                icon="pi pi-trash"
+                [text]="true"
+                [rounded]="true"
+                severity="danger"
+                (click)="confirmDelete(cat)"
+              />
+            </div>
           </div>
         </div>
         }
       </div>
       }
 
-      <!-- Form Modal -->
-      @if (showForm()) {
-      <div class="form-overlay" (click)="closeForm()">
-        <div class="form-card" (click)="$event.stopPropagation()">
-          <div class="form-header">
-            <h2>{{ editingCategory() ? 'Edit Category' : 'New Category' }}</h2>
-            <button mat-icon-button (click)="closeForm()">
-              <mat-icon>close</mat-icon>
-            </button>
+      <!-- Create/Edit Dialog -->
+      <p-dialog
+        [(visible)]="formVisible"
+        [header]="editing() ? 'Edit Category' : 'New Category'"
+        [modal]="true"
+        [style]="{ width: '400px' }"
+        [closable]="true"
+      >
+        <div class="form-fields">
+          <div class="form-field">
+            <label for="catName">Name</label>
+            <input
+              pInputText
+              id="catName"
+              [(ngModel)]="formName"
+              placeholder="Category name"
+            />
           </div>
-          <div class="form-body">
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Name</mat-label>
-              <input
-                matInput
-                [(ngModel)]="formData.name"
-                placeholder="Category name"
-              />
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Description</mat-label>
-              <textarea
-                matInput
-                [(ngModel)]="formData.description"
-                rows="2"
-                placeholder="Optional description"
-              ></textarea>
-            </mat-form-field>
-
-            <div class="color-picker">
-              <label>Color</label>
+          <div class="form-field">
+            <label for="catDesc">Description</label>
+            <textarea
+              pTextarea
+              id="catDesc"
+              [(ngModel)]="formDescription"
+              rows="3"
+              placeholder="Optional description"
+            ></textarea>
+          </div>
+          <div class="form-field">
+            <label>Color</label>
+            <div class="color-row">
+              <p-colorpicker [(ngModel)]="formColor" />
               <div
                 class="color-preview"
-                [style.background]="formData.color"
+                [style.background]="formColor || '#f97316'"
               ></div>
-              <input type="color" [(ngModel)]="formData.color" />
             </div>
           </div>
-          <div class="form-actions">
-            <button mat-button (click)="closeForm()">Cancel</button>
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="saveCategory()"
-              [disabled]="!formData.name"
-            >
-              {{ editingCategory() ? 'Save' : 'Create' }}
-            </button>
-          </div>
         </div>
-      </div>
-      }
+        <ng-template #footer>
+          <div class="dialog-footer">
+            <p-button
+              label="Cancel"
+              severity="secondary"
+              [outlined]="true"
+              (click)="formVisible = false"
+            />
+            <p-button
+              [label]="editing() ? 'Save' : 'Create'"
+              icon="pi pi-check"
+              (click)="save()"
+              [loading]="saving()"
+              [disabled]="!formName.trim()"
+            />
+          </div>
+        </ng-template>
+      </p-dialog>
     </div>
   `,
   styles: `
-    .page-container {
+    .categories-page {
       max-width: 1000px;
       margin: 0 auto;
     }
@@ -164,288 +160,156 @@ import {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: var(--spacing-xl);
+      margin-bottom: 24px;
+
+      h1 {
+        margin: 0 0 4px;
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--p-text-muted-color);
+        font-size: 0.9rem;
+      }
     }
 
-    .header-text h1 {
-      margin: 0;
-      font-size: 2.25rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .subtitle {
-      margin: var(--spacing-xs) 0 0;
-      color: rgba(255, 255, 255, 0.5);
-    }
-
-    .loading {
+    .loading-container {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-3xl);
+      padding: 64px 0;
     }
 
     .empty-state {
       text-align: center;
-      padding: var(--spacing-3xl);
-    }
+      padding: 64px 0;
+      color: var(--p-text-muted-color);
 
-    .empty-icon {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto var(--spacing-lg);
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.05);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .empty-icon mat-icon {
-      font-size: 2.5rem;
-      width: 2.5rem;
-      height: 2.5rem;
-      color: rgba(255, 255, 255, 0.3);
-    }
-
-    .empty-state h2 {
-      margin: 0 0 var(--spacing-sm);
-      font-weight: 600;
-    }
-
-    .empty-state p {
-      color: rgba(255, 255, 255, 0.5);
-      margin: 0;
+      i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+      }
     }
 
     .categories-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: var(--spacing-lg);
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
     }
 
     .category-card {
-      position: relative;
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--border-radius-lg);
-      padding: var(--spacing-lg);
+      display: flex;
+      background: var(--p-surface-800);
+      border-radius: 12px;
       overflow: hidden;
-      animation: fadeIn 0.4s ease-out backwards;
-      animation-delay: calc(var(--delay, 0) * 50ms);
-      transition: all 0.25s ease;
-    }
+      animation: fadeIn 0.3s ease-out both;
+      transition: transform 0.2s, box-shadow 0.2s;
 
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(12px);
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
       }
     }
 
-    .category-card:hover {
-      border-color: var(--border-default);
-      transform: translateY(-2px);
+    .color-bar {
+      width: 6px;
+      flex-shrink: 0;
     }
 
-    .category-glow {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      opacity: 0;
-      transition: opacity 0.25s ease;
+    .card-body {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
     }
 
-    .category-card:hover .category-glow {
-      opacity: 0.8;
-    }
-
-    .category-indicator {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 4px;
-      border-radius: 0 4px 4px 0;
-    }
-
-    .category-content {
-      padding-left: var(--spacing-sm);
-    }
-
-    .category-content h3 {
-      margin: 0 0 var(--spacing-xs);
-      font-size: 1.125rem;
+    .cat-name {
+      margin: 0 0 4px;
+      font-size: 1.05rem;
       font-weight: 600;
     }
 
-    .category-content p {
+    .cat-desc {
       margin: 0;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 0.875rem;
+      font-size: 0.85rem;
+      color: var(--p-text-muted-color);
+      flex: 1;
     }
 
-    .category-actions {
-      position: absolute;
-      top: var(--spacing-sm);
-      right: var(--spacing-sm);
+    .card-actions {
       display: flex;
-      gap: var(--spacing-xs);
-      opacity: 0;
-      transition: opacity 0.2s ease;
+      gap: 4px;
+      margin-top: 12px;
+      justify-content: flex-end;
     }
 
-    .category-card:hover .category-actions {
-      opacity: 1;
-    }
-
-    .form-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(4px);
+    .form-fields {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      animation: fadeIn 0.2s ease;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    .form-card {
-      width: 100%;
-      max-width: 400px;
-      background: linear-gradient(145deg, #141414, #0a0a0a);
-      border: 1px solid var(--border-emphasis);
-      border-radius: var(--border-radius-xl);
-      overflow: hidden;
-    }
-
-    .form-header {
+    .form-field {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--spacing-lg);
-      border-bottom: 1px solid var(--border-subtle);
+      flex-direction: column;
+      gap: 6px;
+
+      label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--p-text-muted-color);
+      }
+
+      input, textarea {
+        width: 100%;
+      }
     }
 
-    .form-header h2 {
-      margin: 0;
-      font-size: 1.125rem;
-      font-weight: 600;
-    }
-
-    .form-body {
-      padding: var(--spacing-lg);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    .color-picker {
+    .color-row {
       display: flex;
       align-items: center;
-      gap: var(--spacing-md);
-    }
-
-    .color-picker label {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 0.875rem;
+      gap: 12px;
     }
 
     .color-preview {
       width: 32px;
       height: 32px;
-      border-radius: var(--border-radius-sm);
-      border: 1px solid var(--border-default);
+      border-radius: 8px;
     }
 
-    .color-picker input[type="color"] {
-      width: 40px;
-      height: 32px;
-      border: none;
-      background: none;
-      cursor: pointer;
-    }
-
-    .form-actions {
+    .dialog-footer {
       display: flex;
+      gap: 8px;
       justify-content: flex-end;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-md) var(--spacing-lg);
-      border-top: 1px solid var(--border-subtle);
     }
 
-    @media (max-width: 640px) {
-      .page-header {
-        flex-direction: column;
-        gap: var(--spacing-md);
-        align-items: stretch;
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
       }
-
-      .page-header button {
-        width: 100%;
-      }
-
-      .header-text h1 {
-        font-size: 1.75rem;
-      }
-
-      .categories-grid {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-md);
-      }
-
-      .category-card {
-        padding: var(--spacing-md);
-      }
-
-      .category-actions {
+      to {
         opacity: 1;
-        position: static;
-        margin-top: var(--spacing-sm);
-      }
-
-      .category-content {
-        flex: 1;
-      }
-
-      .category-card {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .form-card {
-        margin: var(--spacing-md);
-        max-width: calc(100% - var(--spacing-xl));
-        border-radius: var(--border-radius-lg);
-      }
-
-      .form-header,
-      .form-body {
-        padding: var(--spacing-md);
+        transform: translateY(0);
       }
     }
   `,
 })
 export class CategoriesComponent implements OnInit {
-  private readonly api = inject(RecipesApiService);
+  private api = inject(RecipesApiService);
+  private confirmationService = inject(ConfirmationService);
 
-  loading = signal(true);
   categories = signal<Category[]>([]);
-  showForm = signal(false);
-  editingCategory = signal<Category | null>(null);
+  loading = signal(true);
+  saving = signal(false);
+  editing = signal(false);
+  formVisible = false;
+  editId = '';
 
-  formData = {
-    name: '',
-    description: '',
-    color: '#666666',
-  };
+  formName = '';
+  formDescription = '';
+  formColor = '#f97316';
 
   ngOnInit() {
     this.loadCategories();
@@ -453,63 +317,61 @@ export class CategoriesComponent implements OnInit {
 
   loadCategories() {
     this.loading.set(true);
-    this.api.getCategories().subscribe({
-      next: (categories) => {
-        this.categories.set(categories);
-        this.loading.set(false);
-      },
+    this.api.getCategories().subscribe((cats) => {
+      this.categories.set(cats);
+      this.loading.set(false);
     });
   }
 
-  openForm(category?: Category) {
-    if (category) {
-      this.editingCategory.set(category);
-      this.formData = {
-        name: category.name,
-        description: category.description || '',
-        color: category.color || '#666666',
-      };
+  openForm(cat?: Category) {
+    if (cat) {
+      this.editing.set(true);
+      this.editId = cat.id;
+      this.formName = cat.name;
+      this.formDescription = cat.description || '';
+      this.formColor = cat.color || '#f97316';
     } else {
-      this.editingCategory.set(null);
-      this.formData = {
-        name: '',
-        description: '',
-        color: '#666666',
-      };
+      this.editing.set(false);
+      this.editId = '';
+      this.formName = '';
+      this.formDescription = '';
+      this.formColor = '#f97316';
     }
-    this.showForm.set(true);
+    this.formVisible = true;
   }
 
-  closeForm() {
-    this.showForm.set(false);
-    this.editingCategory.set(null);
-  }
+  save() {
+    if (!this.formName.trim()) return;
+    this.saving.set(true);
 
-  saveCategory() {
     const input: CategoryInput = {
-      name: this.formData.name,
-      description: this.formData.description || undefined,
-      color: this.formData.color,
+      name: this.formName.trim(),
+      description: this.formDescription.trim() || undefined,
+      color: this.formColor || undefined,
     };
 
-    const editing = this.editingCategory();
-    const request = editing
-      ? this.api.updateCategory(editing.id, input)
+    const obs = this.editing()
+      ? this.api.updateCategory(this.editId, input)
       : this.api.createCategory(input);
 
-    request.subscribe({
-      next: () => {
-        this.closeForm();
-        this.loadCategories();
-      },
+    obs.subscribe(() => {
+      this.saving.set(false);
+      this.formVisible = false;
+      this.loadCategories();
     });
   }
 
-  deleteCategory(category: Category) {
-    if (confirm(`Delete category "${category.name}"?`)) {
-      this.api.deleteCategory(category.id).subscribe({
-        next: () => this.loadCategories(),
-      });
-    }
+  confirmDelete(cat: Category) {
+    this.confirmationService.confirm({
+      message: `Delete category "${cat.name}"?`,
+      header: 'Confirm',
+      icon: 'pi pi-trash',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deleteCategory(cat.id).subscribe(() => {
+          this.loadCategories();
+        });
+      },
+    });
   }
 }

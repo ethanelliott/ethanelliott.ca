@@ -2,24 +2,20 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  signal,
   OnInit,
+  signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDividerModule } from '@angular/material/divider';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { CheckboxModule } from 'primeng/checkbox';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import {
   RecipesApiService,
   RecipeSummary,
   GroceryList,
+  GroceryItem,
 } from '../../services/recipes-api.service';
 
 interface RecipeSelection {
@@ -32,427 +28,302 @@ interface RecipeSelection {
   selector: 'app-grocery-list',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
-    RouterLink,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatCheckboxModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatProgressSpinnerModule,
-    MatDividerModule,
+    ButtonModule,
+    CardModule,
+    CheckboxModule,
+    InputNumberModule,
+    ProgressSpinnerModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="page-container">
+    <div class="grocery-page">
       <div class="page-header">
-        <div class="header-text">
-          <h1>Grocery List</h1>
-          <p class="subtitle">Generate a shopping list from your recipes</p>
-        </div>
+        <h1>Grocery List</h1>
+        <p class="subtitle">Select recipes and generate a shopping list</p>
       </div>
 
-      @if (loading()) {
-      <div class="loading">
-        <mat-spinner diameter="48"></mat-spinner>
+      @if (loadingRecipes()) {
+      <div class="loading-container">
+        <p-progress-spinner ariaLabel="Loading" />
       </div>
       } @else {
-      <div class="content-grid">
-        <!-- Recipe Selection -->
-        <div class="section-card">
-          <div class="section-header">
-            <h2><mat-icon>menu_book</mat-icon> Select Recipes</h2>
-          </div>
-          <div class="section-body">
-            @if (recipeSelections().length === 0) {
-            <p class="empty-message">
-              No recipes available.
-              <a routerLink="/recipes/new">Add some recipes</a> first!
-            </p>
-            } @else {
-            <div class="recipe-selection-list">
-              @for (selection of recipeSelections(); track selection.recipe.id)
-              {
-              <div
-                class="recipe-selection-item"
-                [class.selected]="selection.selected"
-              >
-                <mat-checkbox
-                  [(ngModel)]="selection.selected"
-                  (ngModelChange)="onSelectionChange()"
-                >
-                  {{ selection.recipe.title }}
-                </mat-checkbox>
-                @if (selection.selected) {
-                <mat-form-field appearance="outline" class="servings-field">
-                  <mat-label>Servings</mat-label>
-                  <input
-                    matInput
-                    type="number"
-                    [(ngModel)]="selection.servings"
-                    min="1"
-                    (ngModelChange)="onSelectionChange()"
-                  />
-                </mat-form-field>
-                }
+      <div class="grocery-layout">
+        <!-- Recipe Selection Panel -->
+        <p-card header="Select Recipes" styleClass="panel-card">
+          @if (recipeSelections().length === 0) {
+          <p class="empty-msg">No recipes available.</p>
+          } @else {
+          <div class="recipe-selection-list">
+            @for (sel of recipeSelections(); track sel.recipe.id) {
+            <div class="recipe-selection-row">
+              <p-checkbox [(ngModel)]="sel.selected" [binary]="true" />
+              <label>{{ sel.recipe.title }}</label>
+              @if (sel.selected) {
+              <div class="servings-input">
+                <span class="servings-label">×</span>
+                <p-inputnumber
+                  [(ngModel)]="sel.servings"
+                  [min]="1"
+                  [showButtons]="true"
+                  size="small"
+                />
               </div>
               }
             </div>
             }
           </div>
-          <div class="section-actions">
-            <button
-              mat-fab
-              extended
-              color="primary"
-              (click)="generateList()"
-              [disabled]="!hasSelection() || generating()"
-            >
-              @if (generating()) {
-              <mat-spinner diameter="24"></mat-spinner>
-              } @else {
-              <mat-icon>shopping_cart</mat-icon>
-              Generate List }
-            </button>
-          </div>
-        </div>
-
-        <!-- Generated List -->
-        <div class="section-card list-card">
-          <div class="section-header">
-            <h2><mat-icon>checklist</mat-icon> Shopping List</h2>
-            @if (groceryList()) {
-            <span class="list-summary">
-              {{ groceryList()!.recipeCount }} recipes •
-              {{ groceryList()!.totalServings }} servings
-            </span>
-            }
-          </div>
-          <div class="section-body">
-            @if (!groceryList()) {
-            <div class="empty-list-state">
-              <mat-icon>shopping_basket</mat-icon>
-              <p>
-                Select recipes and generate a list to see your groceries here.
-              </p>
-            </div>
-            } @else if (groceryList()!.items.length === 0) {
-            <p class="empty-message">
-              No ingredients found for the selected recipes.
-            </p>
-            } @else {
-            <div class="grocery-items">
-              @for (item of groceryList()!.items; track item.name + item.unit) {
-              <div
-                class="grocery-item"
-                [class.checked]="checkedItems[item.name + item.unit]"
-              >
-                <mat-checkbox [(ngModel)]="checkedItems[item.name + item.unit]">
-                  <span class="item-content">
-                    <span class="quantity">{{
-                      formatQuantity(item.quantity)
-                    }}</span>
-                    <span class="unit">{{ item.unit }}</span>
-                    <span class="name">{{ item.name }}</span>
-                  </span>
-                </mat-checkbox>
-                <span class="recipes-used">{{ item.recipes.join(', ') }}</span>
-              </div>
-              }
-            </div>
-            }
-          </div>
-          @if (groceryList() && groceryList()!.items.length > 0) {
-          <div class="section-actions">
-            <button mat-button (click)="copyToClipboard()">
-              <mat-icon>content_copy</mat-icon>
-              Copy
-            </button>
-            <button mat-button (click)="clearChecked()">
-              <mat-icon>clear_all</mat-icon>
-              Uncheck All
-            </button>
+          <div class="generate-action">
+            <p-button
+              label="Generate List"
+              icon="pi pi-list"
+              (click)="generate()"
+              [loading]="generating()"
+              [disabled]="selectedCount() === 0"
+            />
           </div>
           }
-        </div>
+        </p-card>
+
+        <!-- Shopping List Panel -->
+        <p-card header="Shopping List" styleClass="panel-card">
+          @if (!groceryList()) {
+          <div class="empty-list">
+            <i class="pi pi-shopping-cart"></i>
+            <p>Select recipes and generate to see your list</p>
+          </div>
+          } @else {
+          <div class="list-summary">
+            {{ groceryList()!.recipeCount }} recipe(s) &middot;
+            {{ groceryList()!.totalServings }} total servings
+          </div>
+
+          <div class="grocery-items">
+            @for (item of checkedItems(); track item.name) {
+            <div class="grocery-item" [class.checked]="item.checked">
+              <p-checkbox [(ngModel)]="item.checked" [binary]="true" />
+              <div class="item-info">
+                <span class="item-text">
+                  {{ item.quantity }} {{ item.unit }} {{ item.name }}
+                </span>
+                <small class="item-recipes">
+                  {{ item.recipes.join(', ') }}
+                </small>
+              </div>
+            </div>
+            }
+          </div>
+
+          <div class="list-actions">
+            <p-button
+              label="Copy Unchecked"
+              icon="pi pi-copy"
+              severity="secondary"
+              [outlined]="true"
+              (click)="copyToClipboard()"
+            />
+            <p-button
+              label="Uncheck All"
+              icon="pi pi-refresh"
+              severity="secondary"
+              [text]="true"
+              (click)="uncheckAll()"
+            />
+          </div>
+          }
+        </p-card>
       </div>
       }
     </div>
   `,
   styles: `
-    .page-container {
-      max-width: 1200px;
+    .grocery-page {
+      max-width: 1100px;
       margin: 0 auto;
     }
 
     .page-header {
-      margin-bottom: var(--spacing-xl);
+      margin-bottom: 24px;
+
+      h1 {
+        margin: 0 0 4px;
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--p-text-muted-color);
+        font-size: 0.9rem;
+      }
     }
 
-    .header-text h1 {
-      margin: 0;
-      font-size: 2.25rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .subtitle {
-      margin: var(--spacing-xs) 0 0;
-      color: rgba(255, 255, 255, 0.5);
-    }
-
-    .loading {
+    .loading-container {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-3xl);
+      padding: 64px 0;
     }
 
-    .content-grid {
+    .grocery-layout {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: var(--spacing-xl);
+      gap: 20px;
     }
 
-    @media (max-width: 900px) {
-      .content-grid {
-        grid-template-columns: 1fr;
-      }
+    :host ::ng-deep .panel-card {
+      height: fit-content;
     }
 
-    @media (max-width: 640px) {
-      .header-text h1 {
-        font-size: 1.75rem;
-      }
-
-      .section-header {
-        padding: var(--spacing-md);
-        flex-wrap: wrap;
-        gap: var(--spacing-xs);
-      }
-
-      .section-body {
-        padding: var(--spacing-md);
-        max-height: 350px;
-      }
-
-      .section-actions {
-        padding: var(--spacing-sm) var(--spacing-md);
-        flex-wrap: wrap;
-      }
-
-      .recipe-selection-item {
-        flex-wrap: wrap;
-      }
-
-      .servings-field {
-        width: 80px;
-      }
-    }
-
-    .section-card {
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--border-radius-lg);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--spacing-lg);
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .section-header h2 {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .section-header h2 mat-icon {
-      font-size: 1.25rem;
-      width: 1.25rem;
-      height: 1.25rem;
-      color: #f97316;
-    }
-
-    .list-summary {
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 0.8rem;
-    }
-
-    .section-body {
-      flex: 1;
-      padding: var(--spacing-lg);
-      overflow-y: auto;
-      max-height: 450px;
-    }
-
-    .section-actions {
-      padding: var(--spacing-md) var(--spacing-lg);
-      border-top: 1px solid var(--border-subtle);
-      display: flex;
-      gap: var(--spacing-sm);
-    }
-
-    .empty-message {
-      color: rgba(255, 255, 255, 0.5);
+    .empty-msg {
+      color: var(--p-text-muted-color);
       text-align: center;
-    }
-
-    .empty-message a {
-      color: #f97316;
-    }
-
-    .empty-list-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: var(--spacing-xl);
-      text-align: center;
-    }
-
-    .empty-list-state mat-icon {
-      font-size: 3rem;
-      width: 3rem;
-      height: 3rem;
-      color: rgba(255, 255, 255, 0.2);
-      margin-bottom: var(--spacing-md);
-    }
-
-    .empty-list-state p {
-      color: rgba(255, 255, 255, 0.5);
       margin: 0;
     }
 
     .recipe-selection-list {
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-sm);
+      gap: 8px;
+      max-height: 500px;
+      overflow-y: auto;
     }
 
-    .recipe-selection-item {
+    .recipe-selection-row {
       display: flex;
       align-items: center;
-      gap: var(--spacing-md);
-      padding: var(--spacing-sm) var(--spacing-md);
-      border-radius: var(--border-radius-sm);
-      transition: background 0.2s ease;
+      justify-content: space-between;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background 0.15s;
+
+      &:hover {
+        background: var(--p-surface-700);
+      }
     }
 
-    .recipe-selection-item:hover {
-      background: rgba(255, 255, 255, 0.03);
+    .servings-input {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .servings-label {
+        color: var(--p-text-muted-color);
+        font-size: 0.85rem;
+      }
     }
 
-    .recipe-selection-item.selected {
-      background: rgba(249, 115, 22, 0.08);
+    :host ::ng-deep .servings-input .p-inputnumber {
+      width: 80px;
     }
 
-    .servings-field {
-      width: 90px;
-      margin-left: auto;
+    .generate-action {
+      margin-top: 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .empty-list {
+      text-align: center;
+      padding: 32px 0;
+      color: var(--p-text-muted-color);
+
+      i {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+      }
+    }
+
+    .list-summary {
+      font-size: 0.85rem;
+      color: var(--p-text-muted-color);
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--p-surface-700);
     }
 
     .grocery-items {
       display: flex;
       flex-direction: column;
+      gap: 6px;
+      max-height: 500px;
+      overflow-y: auto;
     }
 
     .grocery-item {
       display: flex;
-      flex-direction: column;
-      padding: var(--spacing-sm) 0;
-      border-bottom: 1px solid var(--border-subtle);
-      transition: opacity 0.2s ease;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      transition: opacity 0.2s;
+
+      &.checked {
+        opacity: 0.4;
+
+        .item-text {
+          text-decoration: line-through;
+        }
+      }
     }
 
-    .grocery-item:last-child {
-      border-bottom: none;
-    }
-
-    .grocery-item.checked {
-      opacity: 0.5;
-    }
-
-    .grocery-item.checked .item-content {
-      text-decoration: line-through;
-    }
-
-    .item-content {
+    .item-info {
       display: flex;
-      gap: var(--spacing-sm);
+      flex-direction: column;
     }
 
-    .item-content .quantity {
-      font-weight: 600;
-      color: #f97316;
-      min-width: 45px;
+    .item-text {
+      font-size: 0.95rem;
     }
 
-    .item-content .unit {
-      color: rgba(255, 255, 255, 0.5);
-      min-width: 40px;
+    .item-recipes {
+      color: var(--p-text-muted-color);
+      font-size: 0.75rem;
     }
 
-    .recipes-used {
-      font-size: 0.7rem;
-      color: rgba(255, 255, 255, 0.4);
-      margin-left: 28px;
-      margin-top: 2px;
+    .list-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--p-surface-700);
+    }
+
+    @media (max-width: 768px) {
+      .grocery-layout {
+        grid-template-columns: 1fr;
+      }
     }
   `,
 })
 export class GroceryListComponent implements OnInit {
-  private readonly api = inject(RecipesApiService);
+  private api = inject(RecipesApiService);
 
-  loading = signal(true);
+  loadingRecipes = signal(true);
   generating = signal(false);
   recipeSelections = signal<RecipeSelection[]>([]);
   groceryList = signal<GroceryList | null>(null);
-  checkedItems: Record<string, boolean> = {};
+  checkedItems = signal<Array<GroceryItem & { checked: boolean }>>([]);
+
+  selectedCount = signal(0);
 
   ngOnInit() {
-    this.loadRecipes();
-  }
-
-  loadRecipes() {
-    this.loading.set(true);
-    this.api.getRecipes().subscribe({
-      next: (recipes) => {
-        this.recipeSelections.set(
-          recipes.map((recipe) => ({
-            recipe,
-            selected: false,
-            servings: recipe.servings,
-          }))
-        );
-        this.loading.set(false);
-      },
+    this.api.getRecipes().subscribe((recipes) => {
+      this.recipeSelections.set(
+        recipes.map((r) => ({
+          recipe: r,
+          selected: false,
+          servings: r.servings,
+        }))
+      );
+      this.loadingRecipes.set(false);
     });
   }
 
-  hasSelection(): boolean {
-    return this.recipeSelections().some((s) => s.selected);
-  }
-
-  onSelectionChange() {
-    // Optionally auto-generate or just update state
-  }
-
-  generateList() {
+  generate() {
     const selected = this.recipeSelections().filter((s) => s.selected);
     if (selected.length === 0) return;
 
     this.generating.set(true);
-    this.checkedItems = {};
-
     this.api
       .generateGroceryList({
         recipes: selected.map((s) => ({
@@ -460,40 +331,26 @@ export class GroceryListComponent implements OnInit {
           servings: s.servings,
         })),
       })
-      .subscribe({
-        next: (list) => {
-          this.groceryList.set(list);
-          this.generating.set(false);
-        },
-        error: () => {
-          this.generating.set(false);
-        },
+      .subscribe((list) => {
+        this.groceryList.set(list);
+        this.checkedItems.set(
+          list.items.map((item) => ({ ...item, checked: false }))
+        );
+        this.generating.set(false);
       });
   }
 
-  formatQuantity(quantity: number): string {
-    if (quantity === Math.floor(quantity)) {
-      return quantity.toString();
-    }
-    return quantity.toFixed(2).replace(/\.?0+$/, '');
-  }
-
   copyToClipboard() {
-    const list = this.groceryList();
-    if (!list) return;
-
-    const text = list.items
-      .filter((item) => !this.checkedItems[item.name + item.unit])
-      .map(
-        (item) =>
-          `${this.formatQuantity(item.quantity)} ${item.unit} ${item.name}`
-      )
+    const unchecked = this.checkedItems().filter((i) => !i.checked);
+    const text = unchecked
+      .map((i) => `${i.quantity} ${i.unit} ${i.name}`)
       .join('\n');
-
     navigator.clipboard.writeText(text);
   }
 
-  clearChecked() {
-    this.checkedItems = {};
+  uncheckAll() {
+    this.checkedItems.set(
+      this.checkedItems().map((i) => ({ ...i, checked: false }))
+    );
   }
 }

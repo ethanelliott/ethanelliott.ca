@@ -2,743 +2,605 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  signal,
   OnInit,
+  signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import {
-  FormBuilder,
   FormArray,
+  FormBuilder,
+  FormGroup,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDividerModule } from '@angular/material/divider';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { CardModule } from 'primeng/card';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import {
   RecipesApiService,
   Recipe,
   Category,
   Tag,
-  IngredientInput,
+  RecipeInput,
 } from '../../services/recipes-api.service';
 
 @Component({
   selector: 'app-recipe-form',
   standalone: true,
   imports: [
-    CommonModule,
-    RouterLink,
+    RouterModule,
     ReactiveFormsModule,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatProgressSpinnerModule,
-    MatDividerModule,
+    ButtonModule,
+    InputTextModule,
+    InputNumberModule,
+    MultiSelectModule,
+    CardModule,
+    ConfirmDialogModule,
+    ProgressSpinnerModule,
   ],
+  providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="form-container">
-      <div class="header">
-        <div class="header-content">
-          <button mat-icon-button routerLink="/recipes" class="back-btn">
-            <mat-icon>arrow_back</mat-icon>
-          </button>
-          <h1>{{ isEditing() ? 'Edit Recipe' : 'New Recipe' }}</h1>
-        </div>
+    <p-confirmdialog />
+
+    <div class="recipe-form-page">
+      <!-- Header -->
+      <div class="form-header">
+        <p-button
+          icon="pi pi-arrow-left"
+          label="Back"
+          [text]="true"
+          severity="secondary"
+          (click)="router.navigate(['/recipes'])"
+        />
+        <h1 class="form-title">
+          {{ isEdit() ? 'Edit Recipe' : 'New Recipe' }}
+        </h1>
       </div>
 
-      @if (loading()) {
-      <div class="loading">
-        <mat-spinner diameter="48"></mat-spinner>
+      @if (formLoading()) {
+      <div class="loading-container">
+        <p-progress-spinner ariaLabel="Loading" />
       </div>
       } @else {
-      <form [formGroup]="form" (ngSubmit)="save()">
-        <mat-card>
-          <mat-card-header>
-            <mat-card-title>Basic Information</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Title</mat-label>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <!-- Basic Info -->
+        <p-card header="Basic Information" styleClass="form-card">
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="title">Title *</label>
               <input
-                matInput
+                pInputText
+                id="title"
                 formControlName="title"
                 placeholder="Recipe title"
               />
-              @if (form.get('title')?.hasError('required')) {
-              <mat-error>Title is required</mat-error>
-              }
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Description</mat-label>
+            </div>
+            <div class="form-field full-width">
+              <label for="description">Description</label>
               <textarea
-                matInput
+                pTextarea
+                id="description"
                 formControlName="description"
-                rows="2"
-                placeholder="Brief description of the dish"
+                rows="3"
+                placeholder="Brief description"
               ></textarea>
-            </mat-form-field>
-
-            <div class="row">
-              <mat-form-field appearance="outline">
-                <mat-label>Servings</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  formControlName="servings"
-                  min="1"
-                />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Prep Time (min)</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  formControlName="prepTimeMinutes"
-                  min="0"
-                />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Cook Time (min)</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  formControlName="cookTimeMinutes"
-                  min="0"
-                />
-              </mat-form-field>
             </div>
-
-            <div class="row">
-              <mat-form-field appearance="outline" class="flex-1">
-                <mat-label>Categories</mat-label>
-                <mat-select formControlName="categoryIds" multiple>
-                  @for (category of categories(); track category.id) {
-                  <mat-option [value]="category.id">{{
-                    category.name
-                  }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="flex-1">
-                <mat-label>Tags</mat-label>
-                <mat-select formControlName="tagIds" multiple>
-                  @for (tag of tags(); track tag.id) {
-                  <mat-option [value]="tag.id">{{ tag.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+            <div class="form-field">
+              <label for="servings">Servings *</label>
+              <p-inputnumber
+                id="servings"
+                formControlName="servings"
+                [min]="1"
+                [showButtons]="true"
+              />
             </div>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Source</mat-label>
+            <div class="form-field">
+              <label for="prepTime">Prep Time (min)</label>
+              <p-inputnumber
+                id="prepTime"
+                formControlName="prepTimeMinutes"
+                [min]="0"
+                [showButtons]="true"
+              />
+            </div>
+            <div class="form-field">
+              <label for="cookTime">Cook Time (min)</label>
+              <p-inputnumber
+                id="cookTime"
+                formControlName="cookTimeMinutes"
+                [min]="0"
+                [showButtons]="true"
+              />
+            </div>
+            <div class="form-field">
+              <label for="source">Source</label>
               <input
-                matInput
+                pInputText
+                id="source"
                 formControlName="source"
-                placeholder="Where did this recipe come from?"
+                placeholder="URL or reference"
               />
-            </mat-form-field>
-          </mat-card-content>
-        </mat-card>
+            </div>
+            <div class="form-field">
+              <label>Categories</label>
+              <p-multiselect
+                [options]="categories()"
+                formControlName="categoryIds"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Select categories"
+                display="chip"
+              />
+            </div>
+            <div class="form-field">
+              <label>Tags</label>
+              <p-multiselect
+                [options]="tags()"
+                formControlName="tagIds"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Select tags"
+                display="chip"
+              />
+            </div>
+          </div>
+        </p-card>
 
-        <mat-card>
-          <mat-card-header>
-            <mat-card-title>Ingredients</mat-card-title>
-            <button mat-button type="button" (click)="addIngredient()">
-              <mat-icon>add</mat-icon>
-              Add Ingredient
-            </button>
-          </mat-card-header>
-          <mat-card-content formArrayName="ingredients">
-            @for (ingredient of ingredientsArray.controls; track $index; let i =
-            $index) {
+        <!-- Ingredients -->
+        <p-card header="Ingredients" styleClass="form-card">
+          @if (ingredients.length === 0) {
+          <p class="empty-message">No ingredients added yet.</p>
+          }
+          <div class="ingredients-list" formArrayName="ingredients">
+            @for (ing of ingredients.controls; track $index; let i = $index) {
             <div class="ingredient-row" [formGroupName]="i">
-              <mat-form-field appearance="outline" class="quantity-field">
-                <mat-label>Qty</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  formControlName="quantity"
-                  step="0.25"
-                  min="0"
-                />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="unit-field">
-                <mat-label>Unit</mat-label>
-                <input
-                  matInput
-                  formControlName="unit"
-                  placeholder="cups, tsp, etc."
-                />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="name-field">
-                <mat-label>Ingredient</mat-label>
-                <input
-                  matInput
-                  formControlName="name"
-                  placeholder="Ingredient name"
-                />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="notes-field">
-                <mat-label>Notes</mat-label>
-                <input
-                  matInput
-                  formControlName="notes"
-                  placeholder="Optional notes"
-                />
-              </mat-form-field>
-
-              <button
-                mat-icon-button
-                type="button"
-                (click)="removeIngredient(i)"
-                color="warn"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-            } @if (ingredientsArray.length === 0) {
-            <p class="empty-message">
-              No ingredients added yet. Click "Add Ingredient" to start.
-            </p>
-            }
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card>
-          <mat-card-header>
-            <mat-card-title>Instructions</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Instructions</mat-label>
-              <textarea
-                matInput
-                formControlName="instructions"
-                rows="10"
-                placeholder="Step-by-step instructions..."
-              ></textarea>
-              <mat-hint
-                >Supports Markdown: **bold**, *italic*, numbered lists (1. 2.
-                3.), bullet lists (- item)</mat-hint
-              >
-            </mat-form-field>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card>
-          <mat-card-header>
-            <mat-card-title>Notes</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Personal Notes</mat-label>
-              <textarea
-                matInput
-                formControlName="notes"
-                rows="4"
-                placeholder="Tips, modifications, or personal notes..."
-              ></textarea>
-            </mat-form-field>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Photo Upload -->
-        @if (isEditing()) {
-        <mat-card>
-          <mat-card-header>
-            <mat-card-title>Photos</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            @if (existingPhotos().length > 0) {
-            <div class="photos-grid">
-              @for (photo of existingPhotos(); track photo.id) {
-              <div class="photo-item">
-                <img [src]="getPhotoUrl(photo.id)" [alt]="photo.filename" />
-                <button
-                  mat-icon-button
-                  class="delete-photo"
-                  (click)="deletePhoto(photo.id)"
-                  type="button"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-              }
-            </div>
-            }
-            <div class="upload-area">
-              <input
-                type="file"
-                #fileInput
-                accept="image/*"
-                (change)="onFileSelected($event)"
-                hidden
+              <p-inputnumber
+                formControlName="quantity"
+                placeholder="Qty"
+                [min]="0"
+                class="ing-qty-input"
               />
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="fileInput.click()"
-              >
-                <mat-icon>add_photo_alternate</mat-icon>
-                Add Photo
-              </button>
+              <input
+                pInputText
+                formControlName="unit"
+                placeholder="Unit"
+                class="ing-unit-input"
+              />
+              <input
+                pInputText
+                formControlName="name"
+                placeholder="Ingredient name"
+                class="ing-name-input"
+              />
+              <input
+                pInputText
+                formControlName="notes"
+                placeholder="Notes"
+                class="ing-notes-input"
+              />
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                [text]="true"
+                [rounded]="true"
+                (click)="removeIngredient(i)"
+              />
             </div>
-          </mat-card-content>
-        </mat-card>
+            }
+          </div>
+          <p-button
+            label="Add Ingredient"
+            icon="pi pi-plus"
+            severity="secondary"
+            [outlined]="true"
+            (click)="addIngredient()"
+            styleClass="mt-3"
+          />
+        </p-card>
+
+        <!-- Instructions -->
+        <p-card header="Instructions" styleClass="form-card">
+          <textarea
+            pTextarea
+            formControlName="instructions"
+            rows="10"
+            placeholder="Recipe instructions (Markdown supported)"
+            class="full-width-textarea"
+          ></textarea>
+          <small class="hint">Supports Markdown formatting</small>
+        </p-card>
+
+        <!-- Notes -->
+        <p-card header="Personal Notes" styleClass="form-card">
+          <textarea
+            pTextarea
+            formControlName="notes"
+            rows="4"
+            placeholder="Personal notes"
+            class="full-width-textarea"
+          ></textarea>
+        </p-card>
+
+        <!-- Photos (edit only) -->
+        @if (isEdit() && existingPhotos().length > 0) {
+        <p-card header="Photos" styleClass="form-card">
+          <div class="photos-grid">
+            @for (photo of existingPhotos(); track photo.id) {
+            <div class="photo-item">
+              <img [src]="api.getPhotoUrl(photo.id)" alt="Recipe photo" />
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                [rounded]="true"
+                size="small"
+                class="photo-delete-btn"
+                (click)="deletePhoto(photo.id)"
+              />
+            </div>
+            }
+          </div>
+        </p-card>
+        } @if (isEdit()) {
+        <p-card header="Upload Photo" styleClass="form-card">
+          <input
+            type="file"
+            accept="image/*"
+            (change)="onFileSelected($event)"
+            #fileInput
+            style="display: none"
+          />
+          <p-button
+            label="Choose Photo"
+            icon="pi pi-upload"
+            severity="secondary"
+            [outlined]="true"
+            (click)="fileInput.click()"
+            [loading]="uploadLoading()"
+          />
+        </p-card>
         }
 
-        <div class="actions">
-          <button mat-button type="button" routerLink="/recipes">Cancel</button>
-          <button
-            mat-raised-button
-            color="primary"
+        <!-- Actions -->
+        <div class="form-actions">
+          <p-button
+            label="Cancel"
+            severity="secondary"
+            [outlined]="true"
+            (click)="router.navigate(['/recipes'])"
+          />
+          <p-button
+            [label]="isEdit() ? 'Save Changes' : 'Create Recipe'"
+            icon="pi pi-check"
             type="submit"
-            [disabled]="saving() || !form.valid"
-          >
-            @if (saving()) {
-            <mat-spinner diameter="20"></mat-spinner>
-            } @else {
-            {{ isEditing() ? 'Save Changes' : 'Create Recipe' }}
-            }
-          </button>
+            [loading]="saving()"
+            [disabled]="form.invalid || saving()"
+          />
         </div>
       </form>
       }
     </div>
   `,
   styles: `
-    .form-container {
-      max-width: 900px;
+    .recipe-form-page {
+      max-width: 800px;
       margin: 0 auto;
     }
 
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-xl);
-    }
-
-    .header-content {
+    .form-header {
       display: flex;
       align-items: center;
-      gap: var(--spacing-md);
+      gap: 16px;
+      margin-bottom: 24px;
     }
 
-    .back-btn {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 2rem;
+    .form-title {
+      font-size: 1.5rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
+      margin: 0;
     }
 
-    .loading {
+    .loading-container {
       display: flex;
       justify-content: center;
-      padding: var(--spacing-3xl);
+      padding: 64px 0;
     }
 
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-lg);
+    :host ::ng-deep .form-card {
+      margin-bottom: 16px;
     }
 
-    mat-card {
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--border-radius-lg);
-    }
-
-    mat-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: var(--spacing-md);
-      border-bottom: 1px solid var(--border-subtle);
-      margin-bottom: var(--spacing-md);
-    }
-
-    mat-card-title {
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    mat-card-content {
-      padding-top: var(--spacing-md);
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
     }
 
     .full-width {
-      width: 100%;
+      grid-column: 1 / -1;
     }
 
-    .row {
+    .form-field {
       display: flex;
-      gap: var(--spacing-md);
+      flex-direction: column;
+      gap: 6px;
+
+      label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--p-text-muted-color);
+      }
+
+      input, textarea {
+        width: 100%;
+      }
     }
 
-    .flex-1 {
-      flex: 1;
+    .ingredients-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     .ingredient-row {
       display: flex;
-      gap: var(--spacing-sm);
-      align-items: flex-start;
-      margin-bottom: var(--spacing-sm);
-      padding: var(--spacing-sm);
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: var(--border-radius-sm);
+      gap: 8px;
+      align-items: center;
     }
 
-    .quantity-field {
+    .ing-qty-input {
       width: 80px;
+      flex-shrink: 0;
     }
 
-    .unit-field {
-      width: 100px;
+    .ing-unit-input {
+      width: 80px;
+      flex-shrink: 0;
     }
 
-    .name-field {
+    .ing-name-input {
       flex: 1;
     }
 
-    .notes-field {
-      flex: 1;
+    .ing-notes-input {
+      width: 120px;
+      flex-shrink: 0;
     }
 
     .empty-message {
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--p-text-muted-color);
       text-align: center;
-      padding: var(--spacing-lg);
+      padding: 16px;
+      margin: 0;
+    }
+
+    .full-width-textarea {
+      width: 100%;
+    }
+
+    .hint {
+      color: var(--p-text-muted-color);
+      font-size: 0.8rem;
+      margin-top: 6px;
     }
 
     .photos-grid {
-      display: flex;
-      gap: var(--spacing-md);
-      flex-wrap: wrap;
-      margin-bottom: var(--spacing-md);
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
     }
 
     .photo-item {
       position: relative;
+
+      img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 8px;
+      }
     }
 
-    .photo-item img {
-      max-height: 150px;
-      border-radius: var(--border-radius-md);
-      border: 1px solid var(--border-subtle);
-    }
-
-    .delete-photo {
+    .photo-delete-btn {
       position: absolute;
       top: 4px;
       right: 4px;
-      background: rgba(0, 0, 0, 0.7) !important;
     }
 
-    .upload-area {
-      padding: var(--spacing-lg);
-      text-align: center;
-      border: 2px dashed var(--border-default);
-      border-radius: var(--border-radius-md);
-      background: rgba(255, 255, 255, 0.02);
-      transition: all 0.2s ease;
-    }
-
-    .upload-area:hover {
-      border-color: var(--border-emphasis);
-      background: rgba(255, 255, 255, 0.04);
-    }
-
-    .actions {
+    .form-actions {
       display: flex;
       justify-content: flex-end;
-      gap: var(--spacing-md);
-      padding: var(--spacing-lg) 0;
-      border-top: 1px solid var(--border-subtle);
+      gap: 12px;
+      padding: 16px 0;
     }
 
     @media (max-width: 640px) {
-      .form-container {
-        padding: 0;
-      }
-
-      .header {
-        margin-bottom: var(--spacing-md);
-      }
-
-      .header-content h1 {
-        font-size: 1.5rem;
-      }
-
-      mat-card {
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-      }
-
-      mat-card-content {
-        padding: var(--spacing-md) !important;
-      }
-
-      .row {
-        flex-direction: column;
+      .form-grid {
+        grid-template-columns: 1fr;
       }
 
       .ingredient-row {
         flex-wrap: wrap;
-        gap: var(--spacing-sm);
       }
 
-      .quantity-field {
-        width: 70px;
-        flex: 0 0 auto;
-      }
-
-      .unit-field {
-        width: 80px;
-        flex: 0 0 auto;
-      }
-
-      .name-field {
-        flex: 1 1 100%;
+      .ing-notes-input {
         width: 100%;
-        margin-top: var(--spacing-xs);
-      }
-
-      .ingredient-row button {
-        margin-top: var(--spacing-xs);
-      }
-
-      .actions {
-        flex-direction: column;
-        padding: var(--spacing-md) 0;
-      }
-
-      .actions button {
-        width: 100%;
-      }
-
-      .upload-area {
-        padding: var(--spacing-md);
       }
     }
   `,
 })
 export class RecipeFormComponent implements OnInit {
-  private readonly api = inject(RecipesApiService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly fb = inject(FormBuilder);
+  private fb = inject(FormBuilder);
+  private route = inject(ActivatedRoute);
+  private confirmationService = inject(ConfirmationService);
+  api = inject(RecipesApiService);
+  router = inject(Router);
 
-  loading = signal(true);
+  isEdit = signal(false);
+  formLoading = signal(false);
   saving = signal(false);
-  isEditing = signal(false);
+  uploadLoading = signal(false);
   categories = signal<Category[]>([]);
   tags = signal<Tag[]>([]);
-  existingPhotos = signal<{ id: string; filename: string }[]>([]);
-  private recipeId: string | null = null;
+  existingPhotos = signal<Array<{ id: string }>>([]);
+  private recipeId = '';
 
-  form = this.fb.group({
+  form: FormGroup = this.fb.group({
     title: ['', Validators.required],
     description: [''],
-    instructions: [''],
     servings: [4, [Validators.required, Validators.min(1)]],
     prepTimeMinutes: [null as number | null],
     cookTimeMinutes: [null as number | null],
-    notes: [''],
     source: [''],
     categoryIds: [[] as string[]],
     tagIds: [[] as string[]],
-    ingredients: this.fb.array<any>([]),
+    ingredients: this.fb.array([]),
+    instructions: [''],
+    notes: [''],
   });
 
-  get ingredientsArray(): FormArray {
+  get ingredients(): FormArray {
     return this.form.get('ingredients') as FormArray;
   }
 
   ngOnInit() {
+    this.api.getCategories().subscribe((cats) => this.categories.set(cats));
+    this.api.getTags().subscribe((tags) => this.tags.set(tags));
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.isEditing.set(true);
+      this.isEdit.set(true);
       this.recipeId = id;
-      this.loadRecipe(id);
-    } else {
-      this.loadMetadata();
-    }
-  }
+      this.formLoading.set(true);
 
-  loadMetadata() {
-    Promise.all([
-      this.api.getCategories().toPromise(),
-      this.api.getTags().toPromise(),
-    ]).then(([categories, tags]) => {
-      this.categories.set(categories || []);
-      this.tags.set(tags || []);
-      this.loading.set(false);
-    });
-  }
-
-  loadRecipe(id: string) {
-    Promise.all([
-      this.api.getRecipe(id).toPromise(),
-      this.api.getCategories().toPromise(),
-      this.api.getTags().toPromise(),
-    ]).then(([recipe, categories, tags]) => {
-      this.categories.set(categories || []);
-      this.tags.set(tags || []);
-
-      if (recipe) {
+      this.api.getRecipe(id).subscribe((recipe) => {
         this.form.patchValue({
           title: recipe.title,
           description: recipe.description || '',
-          instructions: recipe.instructions || '',
           servings: recipe.servings,
           prepTimeMinutes: recipe.prepTimeMinutes,
           cookTimeMinutes: recipe.cookTimeMinutes,
-          notes: recipe.notes || '',
           source: recipe.source || '',
           categoryIds: recipe.categories.map((c) => c.id),
           tagIds: recipe.tags.map((t) => t.id),
+          instructions: recipe.instructions || '',
+          notes: recipe.notes || '',
         });
 
-        // Clear and add ingredients
-        this.ingredientsArray.clear();
-        for (const ing of recipe.ingredients) {
-          this.addIngredient({
-            name: ing.name,
-            quantity: ing.quantity,
-            unit: ing.unit,
-            notes: ing.notes ?? undefined,
-            orderIndex: ing.orderIndex,
-          });
-        }
-
-        if (recipe.photos) {
-          this.existingPhotos.set(
-            recipe.photos.map((p) => ({ id: p.id, filename: p.filename }))
+        this.ingredients.clear();
+        recipe.ingredients.forEach((ing) => {
+          this.ingredients.push(
+            this.fb.group({
+              quantity: [ing.quantity],
+              unit: [ing.unit],
+              name: [ing.name],
+              notes: [ing.notes || ''],
+            })
           );
-        }
-      }
+        });
 
-      this.loading.set(false);
-    });
+        this.existingPhotos.set(
+          (recipe.photos || []).map((p) => ({ id: p.id }))
+        );
+        this.formLoading.set(false);
+      });
+    }
   }
 
-  addIngredient(data?: IngredientInput) {
-    const group = this.fb.group({
-      name: [data?.name || '', Validators.required],
-      quantity: [data?.quantity || 1, [Validators.required, Validators.min(0)]],
-      unit: [data?.unit || ''],
-      notes: [data?.notes || ''],
-    });
-    this.ingredientsArray.push(group);
+  addIngredient() {
+    this.ingredients.push(
+      this.fb.group({
+        quantity: [1],
+        unit: [''],
+        name: [''],
+        notes: [''],
+      })
+    );
   }
 
   removeIngredient(index: number) {
-    this.ingredientsArray.removeAt(index);
+    this.ingredients.removeAt(index);
   }
 
-  save() {
-    if (!this.form.valid) return;
-
+  onSubmit() {
+    if (this.form.invalid) return;
     this.saving.set(true);
-    const value = this.form.value;
 
-    const input = {
-      title: value.title!,
-      description: value.description || undefined,
-      instructions: value.instructions || undefined,
-      servings: value.servings!,
-      prepTimeMinutes: value.prepTimeMinutes || undefined,
-      cookTimeMinutes: value.cookTimeMinutes || undefined,
-      notes: value.notes || undefined,
-      source: value.source || undefined,
-      categoryIds: value.categoryIds || [],
-      tagIds: value.tagIds || [],
-      ingredients: (value.ingredients || []).map((ing: any, index: number) => ({
-        name: ing.name,
-        quantity: ing.quantity,
-        unit: ing.unit || '',
-        notes: ing.notes || undefined,
-        orderIndex: index,
-      })),
+    const val = this.form.value;
+    const input: RecipeInput = {
+      title: val.title,
+      description: val.description || undefined,
+      servings: val.servings,
+      prepTimeMinutes: val.prepTimeMinutes || undefined,
+      cookTimeMinutes: val.cookTimeMinutes || undefined,
+      source: val.source || undefined,
+      categoryIds: val.categoryIds,
+      tagIds: val.tagIds,
+      ingredients: (val.ingredients || []).map(
+        (
+          i: { quantity: number; unit: string; name: string; notes: string },
+          idx: number
+        ) => ({
+          quantity: i.quantity,
+          unit: i.unit,
+          name: i.name,
+          notes: i.notes || undefined,
+          orderIndex: idx,
+        })
+      ),
+      instructions: val.instructions || undefined,
+      notes: val.notes || undefined,
     };
 
-    const request = this.isEditing()
-      ? this.api.updateRecipe(this.recipeId!, input)
+    const obs = this.isEdit()
+      ? this.api.updateRecipe(this.recipeId, input)
       : this.api.createRecipe(input);
 
-    request.subscribe({
-      next: (recipe) => {
-        this.router.navigate(['/recipes', recipe.id]);
-      },
-      error: () => {
-        this.saving.set(false);
-      },
+    obs.subscribe((recipe) => {
+      this.saving.set(false);
+      this.router.navigate(['/recipes', recipe.id]);
     });
   }
 
-  getPhotoUrl(photoId: string): string {
-    return this.api.getPhotoUrl(photoId);
-  }
-
   deletePhoto(photoId: string) {
-    if (confirm('Delete this photo?')) {
-      this.api.deletePhoto(photoId).subscribe({
-        next: () => {
-          this.existingPhotos.update((photos) =>
-            photos.filter((p) => p.id !== photoId)
+    this.confirmationService.confirm({
+      message: 'Delete this photo?',
+      header: 'Confirm',
+      icon: 'pi pi-trash',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deletePhoto(photoId).subscribe(() => {
+          this.existingPhotos.set(
+            this.existingPhotos().filter((p) => p.id !== photoId)
           );
-        },
-      });
-    }
+        });
+      },
+    });
   }
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file || !this.recipeId) return;
+    if (!file) return;
 
+    this.uploadLoading.set(true);
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = (reader.result as string).split(',')[1];
       this.api
-        .uploadPhoto(this.recipeId!, {
+        .uploadPhoto(this.recipeId, {
           filename: file.name,
           mimeType: file.type,
           data: base64,
         })
-        .subscribe({
-          next: (photo) => {
-            this.existingPhotos.update((photos) => [
-              ...photos,
-              { id: photo.id, filename: photo.filename },
-            ]);
-          },
+        .subscribe((photo) => {
+          this.existingPhotos.set([...this.existingPhotos(), { id: photo.id }]);
+          this.uploadLoading.set(false);
         });
     };
     reader.readAsDataURL(file);
