@@ -29,8 +29,7 @@ export async function starter<T extends FastifyPluginAsync>(
       };
 
   const server = Fastify({
-    logger:
-      appConfig.logger !== undefined ? appConfig.logger : defaultLogger,
+    logger: appConfig.logger !== undefined ? appConfig.logger : defaultLogger,
   });
 
   await server.register(MainPlugin);
