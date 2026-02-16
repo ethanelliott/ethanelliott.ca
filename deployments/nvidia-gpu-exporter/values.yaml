@@ -1,6 +1,6 @@
 image:
   repository: utkuozdemir/nvidia_gpu_exporter
-  tag: 1.2.1
+  tag: 1.4.1
   pullPolicy: IfNotPresent
 
 service:
