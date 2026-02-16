@@ -11,6 +11,7 @@ import { allPromise, closeDB, getDB, getPromise, setupDatabase } from './db';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { closeBrowser, updateDatabase } from './scraper';
+import aiRoutes from './ai-routes';
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
@@ -69,6 +70,7 @@ async function main() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
   app.use(express.static(path.join(__dirname, 'public')));
+  app.use(aiRoutes);
 
   // ==================== API ROUTES ====================
 
@@ -112,17 +114,33 @@ async function main() {
       [productId]
     );
 
-    for (const variant of variants) {
-      const images = await allPromise.call(
-        db,
-        `SELECT id, product_id, variant_id FROM images WHERE variant_id = ?`,
-        [`${variant.id}`]
-      );
-      variant.images = images.map((img: any) => ({
+    // Batch fetch all images for all variants in one query
+    const variantIds = variants.map((v: any) => v.id);
+    const allImages =
+      variantIds.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT id, product_id, variant_id FROM images WHERE variant_id IN (${variantIds
+              .map(() => '?')
+              .join(',')})`,
+            variantIds
+          )
+        : [];
+
+    // Group images by variant_id
+    const imagesByVariant = new Map<string, any[]>();
+    allImages.forEach((img: any) => {
+      if (!imagesByVariant.has(img.variant_id))
+        imagesByVariant.set(img.variant_id, []);
+      imagesByVariant.get(img.variant_id)!.push({
         id: img.id,
         product_id: img.product_id,
         variant_id: img.variant_id,
-      }));
+      });
+    });
+
+    for (const variant of variants) {
+      variant.images = imagesByVariant.get(variant.id) || [];
     }
 
     res.json({ ...product, variants });
@@ -143,7 +161,16 @@ async function main() {
       return;
     }
 
+    // Images are immutable BLOBs - cache aggressively
     res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('ETag', `"${imageId}"`);
+
+    if (req.headers['if-none-match'] === `"${imageId}"`) {
+      res.status(304).end();
+      return;
+    }
+
     res.send(imageRecord.image);
   });
 
@@ -210,6 +237,32 @@ async function main() {
     res.json(results);
   });
 
+  // Fetch variants by IDs (for wishlist)
+  app.get('/api/variants', async (req, res) => {
+    const ids = ((req.query.ids as string) || '').split(',').filter(Boolean);
+    if (ids.length === 0) {
+      res.json([]);
+      return;
+    }
+    const db = getDB();
+    const placeholders = ids.map(() => '?').join(',');
+    const variants = await allPromise.call(
+      db,
+      `SELECT v.id, v.color, v.color_id, v.length, v.price, v.list_price,
+              v.available_sizes, v.product_id,
+              p.name, p.display_name, p.brand, p.slug, p.rating, p.review_count,
+              COALESCE(
+                (SELECT id FROM images WHERE variant_id = v.id LIMIT 1),
+                (SELECT i.id FROM images i JOIN variants v2 ON i.variant_id = v2.id WHERE v2.product_id = v.product_id AND v2.color = v.color LIMIT 1)
+              ) as thumbnail_id
+       FROM variants v
+       JOIN products p ON v.product_id = p.id
+       WHERE v.id IN (${placeholders})`,
+      ids
+    );
+    res.json(variants);
+  });
+
   // ==================== WEB ROUTES ====================
 
   // Homepage - Newest variants with search, filters, sorting
@@ -227,9 +280,57 @@ async function main() {
     const maxPrice = req.query.maxPrice
       ? parseFloat(req.query.maxPrice as string)
       : null;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const perPage = 48;
 
     const lastScanTime = await getLastScanTime(db);
     const stats = await getStats(db);
+
+    let whereClauses = `WHERE v.last_seen_at = ?`;
+    const params: any[] = [lastScanTime];
+
+    if (searchQuery) {
+      whereClauses += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR v.color LIKE ?)`;
+      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
+    }
+
+    if (brandFilter) {
+      whereClauses += ` AND p.brand = ?`;
+      params.push(brandFilter);
+    }
+
+    if (fitFilter) {
+      whereClauses += ` AND p.fit LIKE ?`;
+      params.push(`%${fitFilter}%`);
+    }
+
+    if (categoryFilter) {
+      whereClauses += ` AND p.category LIKE ?`;
+      params.push(`%${categoryFilter}%`);
+    }
+
+    if (sizeFilter) {
+      whereClauses += ` AND v.available_sizes LIKE ?`;
+      params.push(`%${sizeFilter}%`);
+    }
+
+    if (minPrice !== null) {
+      whereClauses += ` AND v.price >= ?`;
+      params.push(minPrice);
+    }
+
+    if (maxPrice !== null) {
+      whereClauses += ` AND v.price <= ?`;
+      params.push(maxPrice);
+    }
+
+    // Count query for pagination
+    const countSql = `SELECT COUNT(*) as total FROM variants v JOIN products p ON v.product_id = p.id ${whereClauses}`;
+    const countResult = await getPromise.call(db, countSql, [...params]);
+    const totalCount = (countResult as any)?.total || 0;
+    const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * perPage;
 
     let sql = `
       SELECT v.id, v.color, v.color_id, v.length, v.added_at, v.price, v.list_price, 
@@ -242,44 +343,8 @@ async function main() {
              ) as thumbnail_id
       FROM variants v
       JOIN products p ON v.product_id = p.id
-      WHERE v.last_seen_at = ?
+      ${whereClauses}
     `;
-    const params: any[] = [lastScanTime];
-
-    if (searchQuery) {
-      sql += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR v.color LIKE ?)`;
-      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
-    }
-
-    if (brandFilter) {
-      sql += ` AND p.brand = ?`;
-      params.push(brandFilter);
-    }
-
-    if (fitFilter) {
-      sql += ` AND p.fit LIKE ?`;
-      params.push(`%${fitFilter}%`);
-    }
-
-    if (categoryFilter) {
-      sql += ` AND p.category LIKE ?`;
-      params.push(`%${categoryFilter}%`);
-    }
-
-    if (sizeFilter) {
-      sql += ` AND v.available_sizes LIKE ?`;
-      params.push(`%${sizeFilter}%`);
-    }
-
-    if (minPrice !== null) {
-      sql += ` AND v.price >= ?`;
-      params.push(minPrice);
-    }
-
-    if (maxPrice !== null) {
-      sql += ` AND v.price <= ?`;
-      params.push(maxPrice);
-    }
 
     // Sorting
     switch (sortBy) {
@@ -304,7 +369,8 @@ async function main() {
         break;
     }
 
-    sql += ` LIMIT 100`;
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(perPage, offset);
 
     const variants = await allPromise.call(db, sql, params);
 
@@ -380,6 +446,9 @@ async function main() {
       minPrice,
       maxPrice,
       stats,
+      page: safePage,
+      totalPages,
+      totalCount,
     });
   });
 
@@ -391,9 +460,42 @@ async function main() {
     const categoryFilter = req.query.category as string;
     const sortBy = (req.query.sort as string) || 'name';
     const searchQuery = req.query.q as string;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const perPage = 48;
 
     const lastScanTime = await getLastScanTime(db);
     const stats = await getStats(db);
+
+    let whereClauses = `WHERE 1=1`;
+    const params: any[] = [];
+
+    if (searchQuery) {
+      whereClauses += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR p.description LIKE ?)`;
+      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
+    }
+
+    if (brandFilter) {
+      whereClauses += ` AND p.brand = ?`;
+      params.push(brandFilter);
+    }
+
+    if (fitFilter) {
+      whereClauses += ` AND p.fit LIKE ?`;
+      params.push(`%${fitFilter}%`);
+    }
+
+    if (categoryFilter) {
+      whereClauses += ` AND p.category LIKE ?`;
+      params.push(`%${categoryFilter}%`);
+    }
+
+    // Count query for pagination
+    const countSql = `SELECT COUNT(DISTINCT p.id) as total FROM products p LEFT JOIN variants v ON p.id = v.product_id ${whereClauses}`;
+    const countResult = await getPromise.call(db, countSql, [...params]);
+    const totalCount = (countResult as any)?.total || 0;
+    const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * perPage;
 
     let sql = `
       SELECT p.id, p.name, p.display_name, p.slug, p.brand, p.rating, p.review_count, 
@@ -404,29 +506,9 @@ async function main() {
              MAX(v.list_price) as max_price
       FROM products p
       LEFT JOIN variants v ON p.id = v.product_id
-      WHERE 1=1
+      ${whereClauses}
     `;
-    const params: any[] = [lastScanTime];
-
-    if (searchQuery) {
-      sql += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR p.description LIKE ?)`;
-      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
-    }
-
-    if (brandFilter) {
-      sql += ` AND p.brand = ?`;
-      params.push(brandFilter);
-    }
-
-    if (fitFilter) {
-      sql += ` AND p.fit LIKE ?`;
-      params.push(`%${fitFilter}%`);
-    }
-
-    if (categoryFilter) {
-      sql += ` AND p.category LIKE ?`;
-      params.push(`%${categoryFilter}%`);
-    }
+    const queryParams: any[] = [lastScanTime, ...params];
 
     sql += ` GROUP BY p.id, p.name, p.slug`;
 
@@ -450,7 +532,10 @@ async function main() {
         break;
     }
 
-    const allProducts = await allPromise.call(db, sql, params);
+    sql += ` LIMIT ? OFFSET ?`;
+    queryParams.push(perPage, offset);
+
+    const allProducts = await allPromise.call(db, sql, queryParams);
 
     // Fetch filter options
     const brands = await allPromise.call(
@@ -518,6 +603,9 @@ async function main() {
       minPrice: null,
       maxPrice: null,
       stats,
+      page: safePage,
+      totalPages,
+      totalCount,
     });
   });
 
@@ -639,25 +727,50 @@ async function main() {
         allLengths.add(variant.length);
       }
       group.lastSeenAts.push(variant.last_seen_at);
+    }
 
-      const history = await getPromise.call(
-        db,
-        `SELECT MIN(price) as min_price FROM prices WHERE variant_id = ?`,
-        [variant.id]
-      );
-      if (history && history.min_price < group.lowest_price) {
-        group.lowest_price = history.min_price;
+    // Batch: get lowest prices for all variants at once
+    const variantIdsForProduct = variants.map((v: any) => v.id);
+    const lowestPrices =
+      variantIdsForProduct.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT variant_id, MIN(price) as min_price FROM prices WHERE variant_id IN (${variantIdsForProduct
+              .map(() => '?')
+              .join(',')}) GROUP BY variant_id`,
+            variantIdsForProduct
+          )
+        : [];
+    const lowestPriceMap = new Map<string, number>();
+    lowestPrices.forEach((r: any) =>
+      lowestPriceMap.set(r.variant_id, r.min_price)
+    );
+
+    // Batch: get first thumbnail image per variant
+    const thumbnailImages =
+      variantIdsForProduct.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT variant_id, MIN(id) as image_id FROM images WHERE variant_id IN (${variantIdsForProduct
+              .map(() => '?')
+              .join(',')}) GROUP BY variant_id`,
+            variantIdsForProduct
+          )
+        : [];
+    const thumbnailMap = new Map<string, string>();
+    thumbnailImages.forEach((r: any) =>
+      thumbnailMap.set(r.variant_id, r.image_id)
+    );
+
+    // Apply batch results to grouped variants
+    for (const variant of variants) {
+      const group = groupedVariants.get(variant.color);
+      const minPrice = lowestPriceMap.get(variant.id);
+      if (minPrice !== undefined && minPrice < group.lowest_price) {
+        group.lowest_price = minPrice;
       }
-
-      if (!group.thumbnail) {
-        const image = await getPromise.call(
-          db,
-          `SELECT id FROM images WHERE variant_id = ? LIMIT 1`,
-          [variant.id]
-        );
-        if (image) {
-          group.thumbnail = image.id;
-        }
+      if (!group.thumbnail && thumbnailMap.has(variant.id)) {
+        group.thumbnail = thumbnailMap.get(variant.id);
       }
     }
 
@@ -727,6 +840,41 @@ async function main() {
 
     const images = new Map<string, any>();
 
+    // Batch: get lowest prices for all variant IDs
+    const variantDetailIds = variants.map((v: any) => v.id);
+    const batchLowestPrices =
+      variantDetailIds.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT variant_id, MIN(price) as min_price FROM prices WHERE variant_id IN (${variantDetailIds
+              .map(() => '?')
+              .join(',')}) GROUP BY variant_id`,
+            variantDetailIds
+          )
+        : [];
+    const lowestPriceMapDetail = new Map<string, number>();
+    batchLowestPrices.forEach((r: any) =>
+      lowestPriceMapDetail.set(r.variant_id, r.min_price)
+    );
+
+    // Batch: get all images for all variants
+    const batchImages =
+      variantDetailIds.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT id, variant_id FROM images WHERE variant_id IN (${variantDetailIds
+              .map(() => '?')
+              .join(',')})`,
+            variantDetailIds
+          )
+        : [];
+
+    batchImages.forEach((img: any) => {
+      if (!images.has(img.id)) {
+        images.set(img.id, img);
+      }
+    });
+
     for (const variant of variants) {
       variant.added_at_formatted = dayjs.utc(variant.added_at).fromNow();
       variant.last_seen_at_formatted = dayjs
@@ -740,24 +888,8 @@ async function main() {
         ? JSON.parse(variant.all_sizes)
         : [];
 
-      const history = await getPromise.call(
-        db,
-        `SELECT MIN(price) as min_price FROM prices WHERE variant_id = ?`,
-        [variant.id]
-      );
-      variant.lowest_price = history ? history.min_price : variant.price;
-
-      const variantImages = await allPromise.call(
-        db,
-        `SELECT id FROM images WHERE variant_id = ?`,
-        [variant.id]
-      );
-
-      variantImages.forEach((img: any) => {
-        if (!images.has(img.id)) {
-          images.set(img.id, img);
-        }
-      });
+      const minPrice = lowestPriceMapDetail.get(variant.id);
+      variant.lowest_price = minPrice !== undefined ? minPrice : variant.price;
     }
 
     // Get store availability for this variant
@@ -1198,6 +1330,34 @@ async function main() {
       title: store.name !== 'Unknown' ? store.name : `Store #${storeId}`,
       stats,
     });
+  });
+
+  // ==================== FAVORITES ====================
+
+  app.get('/favorites', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('favorites', { stats });
+  });
+
+  // ==================== AI WEB ROUTES ====================
+
+  app.get('/ai/search', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('ai_search', { stats });
+  });
+
+  app.get('/ai/style', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('ai_style', { stats });
+  });
+
+  app.get('/ai/deals', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('ai_deals', { stats });
   });
 
   app.listen(PORT, () => {

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Style Advisor - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1>AI Style Advisor</h1>
+    <p class="ai-subtitle">
+      Describe an occasion, vibe, or style goal and get outfit recommendations
+    </p>
+
+    <form
+      id="style-form"
+      class="filters-form"
+      onsubmit="return handleStyle(event)"
+    >
+      <input
+        type="text"
+        id="style-input"
+        placeholder="e.g. business casual winter layering, weekend brunch, cozy work from home..."
+        class="filter-input filter-search ai-search-input"
+        autocomplete="off"
+      />
+      <button type="submit" class="filter-btn" id="style-btn">
+        Get Recommendations
+      </button>
+    </form>
+
+    <div class="ai-quick-prompts">
+      <button
+        class="quick-prompt"
+        onclick="setPrompt('casual weekend brunch outfit')"
+      >
+        Weekend Brunch
+      </button>
+      <button
+        class="quick-prompt"
+        onclick="setPrompt('professional office outfit that is warm for winter')"
+      >
+        Winter Office
+      </button>
+      <button
+        class="quick-prompt"
+        onclick="setPrompt('cozy work from home loungewear')"
+      >
+        WFH Cozy
+      </button>
+      <button
+        class="quick-prompt"
+        onclick="setPrompt('date night outfit, chic and elegant')"
+      >
+        Date Night
+      </button>
+      <button
+        class="quick-prompt"
+        onclick="setPrompt('athleisure for running errands in fall')"
+      >
+        Fall Errands
+      </button>
+      <button
+        class="quick-prompt"
+        onclick="setPrompt('sustainable and eco-friendly outfit')"
+      >
+        Sustainable
+      </button>
+    </div>
+
+    <div id="ai-stream" class="ai-stream-container" style="display: none">
+      <div class="ai-thinking-header">
+        <span class="ai-thinking-icon">👗</span>
+        <span id="stream-status">Curating recommendations...</span>
+      </div>
+      <div id="ai-reasoning" class="ai-reasoning" style="display: none"></div>
+      <div id="ai-content" class="ai-content"></div>
+    </div>
+
+    <div id="ai-picks" style="display: none">
+      <h2>Recommended Products</h2>
+      <div id="picks-grid" class="product-grid"></div>
+    </div>
+
+    <div id="ai-error" class="ai-error" style="display: none"></div>
+
+    <script>
+      function setPrompt(text) {
+        document.getElementById('style-input').value = text;
+        document
+          .getElementById('style-form')
+          .dispatchEvent(new Event('submit'));
+      }
+
+      function handleStyle(e) {
+        e.preventDefault();
+        const occasion = document.getElementById('style-input').value.trim();
+        if (occasion.length < 3) return false;
+
+        const btn = document.getElementById('style-btn');
+        btn.disabled = true;
+        btn.textContent = 'Thinking...';
+
+        document.getElementById('ai-stream').style.display = 'block';
+        document.getElementById('ai-picks').style.display = 'none';
+        document.getElementById('ai-error').style.display = 'none';
+        document.getElementById('ai-content').innerHTML = '';
+        document.getElementById('ai-reasoning').innerHTML = '';
+        document.getElementById('ai-reasoning').style.display = 'none';
+
+        const evtSource = new EventSource(
+          `/api/ai/style?occasion=${encodeURIComponent(occasion)}`
+        );
+
+        evtSource.addEventListener('status', (e) => {
+          const data = JSON.parse(e.data);
+          document.getElementById('stream-status').textContent = data.message;
+        });
+
+        evtSource.addEventListener('content', (e) => {
+          const data = JSON.parse(e.data);
+          const contentEl = document.getElementById('ai-content');
+          const reasoningEl = document.getElementById('ai-reasoning');
+
+          if (data.thinking) {
+            reasoningEl.style.display = 'block';
+            reasoningEl.innerHTML += escapeHtml(data.content);
+            reasoningEl.scrollTop = reasoningEl.scrollHeight;
+          } else {
+            // Convert **bold** to <strong> and handle newlines
+            let html = escapeHtml(data.content);
+            contentEl.innerHTML += html;
+            contentEl.scrollTop = contentEl.scrollHeight;
+          }
+        });
+
+        evtSource.addEventListener('picks', (e) => {
+          const data = JSON.parse(e.data);
+          if (data.products && data.products.length > 0) {
+            const picksEl = document.getElementById('ai-picks');
+            const gridEl = document.getElementById('picks-grid');
+            picksEl.style.display = 'block';
+
+            gridEl.innerHTML = data.products
+              .map(
+                (p) => `
+              <div class="product-card">
+                <div class="product-info">
+                  <a href="/product/${p.id}" class="product-name">${escapeHtml(
+                  p.name
+                )}</a>
+                  <div class="product-price-container">
+                    ${
+                      p.price < p.list_price
+                        ? `<span class="price-sale">$${p.price}</span> <span class="price-list">$${p.list_price}</span>`
+                        : `<span>$${p.price}</span>`
+                    }
+                  </div>
+                  ${
+                    p.brand
+                      ? `<div class="variant-details">${escapeHtml(
+                          p.brand
+                        )}</div>`
+                      : ''
+                  }
+                  ${
+                    p.rating
+                      ? `<div class="product-meta">${'★'.repeat(
+                          Math.round(p.rating)
+                        )}${'☆'.repeat(
+                          5 - Math.round(p.rating)
+                        )} ${p.rating.toFixed(1)}</div>`
+                      : ''
+                  }
+                </div>
+              </div>
+            `
+              )
+              .join('');
+          }
+        });
+
+        evtSource.addEventListener('done', () => {
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Get Recommendations';
+          document.getElementById('stream-status').textContent =
+            'Recommendations ready';
+
+          // Post-process: convert markdown bold in content
+          const contentEl = document.getElementById('ai-content');
+          let html = contentEl.innerHTML;
+          // Remove the <!--PICKS:...--> tag from visible content
+          html = html.replace(/&lt;!--PICKS:\[[\d,\s]*\]--&gt;/g, '');
+          // Convert **text** to bold
+          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          // Convert newlines to <br>
+          html = html.replace(/\n/g, '<br>');
+          contentEl.innerHTML = html;
+        });
+
+        evtSource.addEventListener('error', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            document.getElementById('ai-error').style.display = 'block';
+            document.getElementById('ai-error').textContent = data.error;
+          } catch {}
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Get Recommendations';
+        });
+
+        evtSource.onerror = () => {
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Get Recommendations';
+        };
+
+        return false;
+      }
+
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+      }
+    </script>
+  </body>
+</html>
