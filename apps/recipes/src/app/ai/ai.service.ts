@@ -501,7 +501,10 @@ Guidelines:
     }
 
     if (!recipeData) {
-      logger.warn({ url }, 'No JSON-LD recipe data found, falling back to content extraction + LLM');
+      logger.warn(
+        { url },
+        'No JSON-LD recipe data found, falling back to content extraction + LLM'
+      );
 
       // Fallback: extract readable content from the page and use LLM to parse
       const recipeText = this.extractRecipeContent(root);
