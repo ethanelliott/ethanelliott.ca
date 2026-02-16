@@ -540,14 +540,16 @@ import { marked } from 'marked';
       list-style: none;
       padding: 0;
       margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      display: grid;
+      grid-template-columns: max-content max-content 1fr max-content;
+      gap: 8px 0;
     }
 
     .ingredient-item {
-      display: flex;
-      gap: 6px;
+      display: grid;
+      grid-template-columns: subgrid;
+      grid-column: 1 / -1;
+      gap: 0 10px;
       padding: 8px 12px;
       background: var(--p-surface-800);
       border-radius: 8px;
@@ -557,6 +559,7 @@ import { marked } from 'marked';
     .ing-qty {
       font-weight: 600;
       color: var(--p-primary-color);
+      text-align: right;
     }
 
     .ing-unit {
@@ -565,6 +568,7 @@ import { marked } from 'marked';
 
     .ing-name {
       color: var(--p-text-color);
+      font-weight: 600;
     }
 
     .ing-notes {
