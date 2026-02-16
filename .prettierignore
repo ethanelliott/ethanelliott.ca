@@ -6,3 +6,6 @@
 .angular
 
 bun.lockb
+
+# Helm chart templates contain Go template syntax that Prettier breaks
+deployments/**/templates/**
