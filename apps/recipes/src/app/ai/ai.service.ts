@@ -1,6 +1,7 @@
 import { inject } from '@ee/di';
 import HttpErrors from 'http-errors';
 import { parse as parseHTML } from 'node-html-parser';
+import puppeteer, { Browser } from 'puppeteer';
 import { RecipesService } from '../recipes/recipes.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TagsService } from '../tags/tags.service';
@@ -58,6 +59,23 @@ const PARSED_INGREDIENTS_SCHEMA: JsonSchema = {
   },
   required: ['ingredients'],
 };
+
+// Singleton browser instance (same pattern as aritzia-scanner)
+let BROWSER: Browser | null = null;
+
+async function getBrowser(): Promise<Browser> {
+  if (!BROWSER) {
+    BROWSER = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-web-security',
+      ],
+    });
+  }
+  return BROWSER;
+}
 
 const SUGGESTION_SCHEMA: JsonSchema = {
   type: 'object',
@@ -456,31 +474,7 @@ Guidelines:
    * Parse recipe from a URL by fetching the page and extracting JSON-LD Recipe data
    */
   async parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
-    // Fetch the page HTML
-    let html: string;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml',
-        },
-        signal: controller.signal,
-        redirect: 'follow',
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      html = await response.text();
-    } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : 'Unknown fetch error';
-      throw HttpErrors.BadGateway(`Failed to fetch URL: ${msg}`);
-    }
+    const html = await this.fetchPageHtml(url);
 
     // Parse the HTML and look for JSON-LD Recipe data
     const root = parseHTML(html);
@@ -508,6 +502,83 @@ Guidelines:
 
     // Map schema.org Recipe to our format
     return this.mapJsonLdToRecipe(recipeData, url);
+  }
+
+  /**
+   * Fetch page HTML, trying plain fetch first, falling back to puppeteer
+   * for sites protected by Cloudflare or similar bot-detection services.
+   */
+  private async fetchPageHtml(url: string): Promise<string> {
+    // Try simple fetch first (fast, works for most sites)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: controller.signal,
+        redirect: 'follow',
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        return await response.text();
+      }
+
+      // If blocked (403/503), fall through to puppeteer
+      if (response.status !== 403 && response.status !== 503) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      console.log(
+        `Fetch returned ${response.status} for ${url}, retrying with puppeteer...`
+      );
+    } catch (error) {
+      // If it's a non-blocking error (timeout, network), throw immediately
+      if (
+        error instanceof Error &&
+        !error.message.includes('403') &&
+        !error.message.includes('503')
+      ) {
+        throw HttpErrors.BadGateway(`Failed to fetch URL: ${error.message}`);
+      }
+    }
+
+    // Fallback: use puppeteer to render the page like a real browser
+    // Uses singleton browser instance (same approach as aritzia-scanner)
+    let page;
+    try {
+      const browser = await getBrowser();
+      page = await browser.newPage();
+
+      // Set a common user agent to help mimic a regular browser
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      );
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9',
+      });
+
+      await page.goto(url, {
+        waitUntil: 'networkidle0',
+        timeout: 30000,
+      });
+
+      const html = await page.content();
+      return html;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      throw HttpErrors.BadGateway(
+        `Failed to fetch URL with browser fallback: ${msg}`
+      );
+    } finally {
+      await page?.close();
+    }
   }
 
   /**
