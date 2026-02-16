@@ -216,17 +216,14 @@ export class RecipesService {
       // Delete existing ingredients
       await this._ingredientRepository.delete({ recipe: { id: recipeId } });
 
-      // Create new ingredients
-      if (input.ingredients.length > 0) {
-        const ingredients = input.ingredients.map((ing, index) =>
-          this._ingredientRepository.create({
-            ...ing,
-            orderIndex: ing.orderIndex ?? index,
-            recipe: recipe,
-          })
-        );
-        await this._ingredientRepository.save(ingredients);
-      }
+      // Assign new ingredients to entity so cascade save doesn't re-insert stale ones
+      recipe.ingredients = input.ingredients.map((ing, index) =>
+        this._ingredientRepository.create({
+          ...ing,
+          orderIndex: ing.orderIndex ?? index,
+          recipe: recipe,
+        })
+      );
     }
 
     await this._recipeRepository.save(recipe);
