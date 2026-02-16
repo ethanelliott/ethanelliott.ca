@@ -313,30 +313,30 @@
 
         const evtSource = new EventSource(`/api/ai/summary/${productId}`);
 
-        evtSource.addEventListener('content', (e) => {
+        evtSource.addEventListener('html', (e) => {
           const data = JSON.parse(e.data);
           if (data.cached) {
-            content.innerHTML = data.content.replace(/\n/g, '<br>');
             document.getElementById('summary-status').textContent =
               'AI Summary (cached)';
-            return;
           }
-          if (data.thinking) {
-            reasoning.style.display = 'block';
-            reasoning.innerHTML += escapeHtml(data.content);
-            reasoning.scrollTop = reasoning.scrollHeight;
-          } else {
-            content.innerHTML += escapeHtml(data.content);
-          }
+          content.innerHTML = data.html;
+          content.scrollTop = content.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning', (e) => {
+          const data = JSON.parse(e.data);
+          reasoning.style.display = 'block';
+          reasoning.innerHTML += escapeHtml(data.content);
+          reasoning.scrollTop = reasoning.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning-done', () => {
+          reasoning.classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('done', () => {
           evtSource.close();
           document.getElementById('summary-status').textContent = 'AI Summary';
-          let html = content.innerHTML;
-          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-          html = html.replace(/\n/g, '<br>');
-          content.innerHTML = html;
         });
 
         evtSource.addEventListener('error', (e) => {
@@ -370,14 +370,21 @@
           ).message;
         });
 
-        evtSource.addEventListener('content', (e) => {
+        evtSource.addEventListener('html', (e) => {
           const data = JSON.parse(e.data);
-          if (data.thinking) {
-            reasoning.style.display = 'block';
-            reasoning.innerHTML += escapeHtml(data.content);
-          } else {
-            content.innerHTML += escapeHtml(data.content);
-          }
+          content.innerHTML = data.html;
+          content.scrollTop = content.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning', (e) => {
+          const data = JSON.parse(e.data);
+          reasoning.style.display = 'block';
+          reasoning.innerHTML += escapeHtml(data.content);
+          reasoning.scrollTop = reasoning.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning-done', () => {
+          reasoning.classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('picks', (e) => {
@@ -417,11 +424,6 @@
           evtSource.close();
           document.getElementById('outfit-status').textContent =
             'Outfit suggestions ready';
-          let html = content.innerHTML;
-          html = html.replace(/&lt;!--PICKS:\[[\d,\s]*\]--&gt;/g, '');
-          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-          html = html.replace(/\n/g, '<br>');
-          content.innerHTML = html;
         });
 
         evtSource.addEventListener('error', (e) => {

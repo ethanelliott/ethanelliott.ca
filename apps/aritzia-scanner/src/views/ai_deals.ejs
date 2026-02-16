@@ -53,19 +53,25 @@
           document.getElementById('stream-status').textContent = data.message;
         });
 
-        evtSource.addEventListener('content', (e) => {
+        evtSource.addEventListener('html', (e) => {
           const data = JSON.parse(e.data);
           const contentEl = document.getElementById('ai-content');
-          const reasoningEl = document.getElementById('ai-reasoning');
+          contentEl.innerHTML = data.html;
+          contentEl.scrollTop = contentEl.scrollHeight;
+        });
 
-          if (data.thinking) {
-            reasoningEl.style.display = 'block';
-            reasoningEl.innerHTML += escapeHtml(data.content);
-            reasoningEl.scrollTop = reasoningEl.scrollHeight;
-          } else {
-            contentEl.innerHTML += escapeHtml(data.content);
-            contentEl.scrollTop = contentEl.scrollHeight;
-          }
+        evtSource.addEventListener('reasoning', (e) => {
+          const data = JSON.parse(e.data);
+          const reasoningEl = document.getElementById('ai-reasoning');
+          reasoningEl.style.display = 'block';
+          reasoningEl.innerHTML += escapeHtml(data.content);
+          reasoningEl.scrollTop = reasoningEl.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning-done', () => {
+          document
+            .getElementById('ai-reasoning')
+            .classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('done', () => {
@@ -74,14 +80,6 @@
           btn.textContent = 'Regenerate Report';
           document.getElementById('stream-status').textContent =
             'Report complete';
-
-          // Post-process markdown
-          const contentEl = document.getElementById('ai-content');
-          let html = contentEl.innerHTML;
-          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-          html = html.replace(/\n/g, '<br>');
-          html = html.replace(/#{1,3}\s+(.+?)(<br>)/g, '<h3>$1</h3>');
-          contentEl.innerHTML = html;
         });
 
         evtSource.addEventListener('error', (e) => {

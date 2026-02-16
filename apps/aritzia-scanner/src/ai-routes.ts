@@ -1,9 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { getOllamaClient, Message } from './ollama';
 import { allPromise, getDB, getPromise, runPromise } from './db';
+import { marked } from 'marked';
 import dayjs from 'dayjs';
 
 const router = Router();
+
+// Configure marked for safe, clean HTML output
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 // ==================== HELPER: SSE Stream ====================
 
@@ -17,6 +24,42 @@ function setupSSE(res: Response) {
 
 function sendSSE(res: Response, event: string, data: any) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/**
+ * Stream AI content with incremental markdown-to-HTML rendering.
+ * Accumulates tokens and re-renders full HTML on each chunk,
+ * sending both raw content (for reasoning) and rendered HTML.
+ */
+async function streamAIWithMarkdown(
+  res: Response,
+  messages: Message[],
+  options: { temperature?: number } = {}
+): Promise<string> {
+  const ollama = getOllamaClient();
+  let fullContent = '';
+  let thinkingContent = '';
+  let isThinking = false;
+
+  for await (const chunk of ollama.chatStream(messages, options)) {
+    if (chunk.thinking) {
+      isThinking = true;
+      thinkingContent += chunk.content;
+      sendSSE(res, 'reasoning', { content: chunk.content });
+    } else {
+      if (isThinking) {
+        isThinking = false;
+        // Send a signal that reasoning is done
+        sendSSE(res, 'reasoning-done', {});
+      }
+      fullContent += chunk.content;
+      // Render accumulated markdown to HTML
+      const html = await marked.parse(fullContent);
+      sendSSE(res, 'html', { html });
+    }
+  }
+
+  return fullContent;
 }
 
 // Helper to get last scan time
@@ -49,12 +92,8 @@ router.get(
         const cacheAge = dayjs().diff(dayjs(cached.created_at), 'hour');
         if (cacheAge < 24) {
           setupSSE(res);
-          sendSSE(res, 'content', {
-            content: cached.summary,
-            done: false,
-            thinking: false,
-            cached: true,
-          });
+          const html = await marked.parse(cached.summary);
+          sendSSE(res, 'html', { html, cached: true });
           sendSSE(res, 'done', { done: true });
           res.end();
           return;
@@ -145,19 +184,9 @@ Give a quick, opinionated summary: is this worth buying? What's it best for? Any
       ];
 
       setupSSE(res);
-      const ollama = getOllamaClient();
-      let fullContent = '';
-
-      for await (const chunk of ollama.chatStream(messages, {
+      const fullContent = await streamAIWithMarkdown(res, messages, {
         temperature: 0.7,
-      })) {
-        fullContent += chunk.content;
-        sendSSE(res, 'content', {
-          content: chunk.content,
-          done: chunk.done,
-          thinking: chunk.thinking || false,
-        });
-      }
+      });
 
       // Cache the result (strip thinking blocks for cache)
       const cleanContent = fullContent
@@ -259,14 +288,24 @@ Return JSON:
     sendSSE(res, 'status', { message: 'Understanding your query...' });
 
     let fullResponse = '';
+    let inThinking = false;
     for await (const chunk of ollama.chatStream(messages, {
       temperature: 0.1,
     })) {
       fullResponse += chunk.content;
-      sendSSE(res, 'thinking', {
-        content: chunk.content,
-        thinking: chunk.thinking || false,
-      });
+      if (chunk.thinking) {
+        inThinking = true;
+        sendSSE(res, 'reasoning', { content: chunk.content });
+      } else {
+        if (inThinking) {
+          inThinking = false;
+          sendSSE(res, 'reasoning-done', {});
+        }
+        sendSSE(res, 'thinking', {
+          content: chunk.content,
+          thinking: false,
+        });
+      }
     }
 
     // Parse AI response to extract filters
@@ -469,16 +508,9 @@ Recommend 3-5 items that work together. Explain your styling choices.`;
       message: 'Curating your style recommendations...',
     });
 
-    for await (const chunk of ollama.chatStream(messages, {
+    fullResponse = await streamAIWithMarkdown(res, messages, {
       temperature: 0.8,
-    })) {
-      fullResponse += chunk.content;
-      sendSSE(res, 'content', {
-        content: chunk.content,
-        done: chunk.done,
-        thinking: chunk.thinking || false,
-      });
-    }
+    });
 
     // Extract product picks from response
     const picksMatch = fullResponse.match(/<!--PICKS:\[([\d,\s]+)\]-->/);
@@ -585,7 +617,6 @@ ${productList}`;
     ];
 
     setupSSE(res);
-    const ollama = getOllamaClient();
     let fullResponse = '';
 
     sendSSE(res, 'status', {
@@ -594,16 +625,9 @@ ${productList}`;
       }...`,
     });
 
-    for await (const chunk of ollama.chatStream(messages, {
+    fullResponse = await streamAIWithMarkdown(res, messages, {
       temperature: 0.8,
-    })) {
-      fullResponse += chunk.content;
-      sendSSE(res, 'content', {
-        content: chunk.content,
-        done: chunk.done,
-        thinking: chunk.thinking || false,
-      });
-    }
+    });
 
     // Extract picks
     const picksMatch = fullResponse.match(/<!--PICKS:\[([\d,\s]+)\]-->/);
@@ -711,19 +735,10 @@ Write an engaging summary highlighting the best values.`;
     ];
 
     setupSSE(res);
-    const ollama = getOllamaClient();
 
     sendSSE(res, 'status', { message: 'Analyzing current deals...' });
 
-    for await (const chunk of ollama.chatStream(messages, {
-      temperature: 0.7,
-    })) {
-      sendSSE(res, 'content', {
-        content: chunk.content,
-        done: chunk.done,
-        thinking: chunk.thinking || false,
-      });
-    }
+    await streamAIWithMarkdown(res, messages, { temperature: 0.7 });
 
     sendSSE(res, 'done', { done: true });
     res.end();

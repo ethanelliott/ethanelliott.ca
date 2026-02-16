@@ -119,21 +119,25 @@
           document.getElementById('stream-status').textContent = data.message;
         });
 
-        evtSource.addEventListener('content', (e) => {
+        evtSource.addEventListener('html', (e) => {
           const data = JSON.parse(e.data);
           const contentEl = document.getElementById('ai-content');
-          const reasoningEl = document.getElementById('ai-reasoning');
+          contentEl.innerHTML = data.html;
+          contentEl.scrollTop = contentEl.scrollHeight;
+        });
 
-          if (data.thinking) {
-            reasoningEl.style.display = 'block';
-            reasoningEl.innerHTML += escapeHtml(data.content);
-            reasoningEl.scrollTop = reasoningEl.scrollHeight;
-          } else {
-            // Convert **bold** to <strong> and handle newlines
-            let html = escapeHtml(data.content);
-            contentEl.innerHTML += html;
-            contentEl.scrollTop = contentEl.scrollHeight;
-          }
+        evtSource.addEventListener('reasoning', (e) => {
+          const data = JSON.parse(e.data);
+          const reasoningEl = document.getElementById('ai-reasoning');
+          reasoningEl.style.display = 'block';
+          reasoningEl.innerHTML += escapeHtml(data.content);
+          reasoningEl.scrollTop = reasoningEl.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning-done', () => {
+          document
+            .getElementById('ai-reasoning')
+            .classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('picks', (e) => {
@@ -188,17 +192,6 @@
           btn.textContent = 'Get Recommendations';
           document.getElementById('stream-status').textContent =
             'Recommendations ready';
-
-          // Post-process: convert markdown bold in content
-          const contentEl = document.getElementById('ai-content');
-          let html = contentEl.innerHTML;
-          // Remove the <!--PICKS:...--> tag from visible content
-          html = html.replace(/&lt;!--PICKS:\[[\d,\s]*\]--&gt;/g, '');
-          // Convert **text** to bold
-          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-          // Convert newlines to <br>
-          html = html.replace(/\n/g, '<br>');
-          contentEl.innerHTML = html;
         });
 
         evtSource.addEventListener('error', (e) => {

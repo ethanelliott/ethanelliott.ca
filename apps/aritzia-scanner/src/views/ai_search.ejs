@@ -77,17 +77,23 @@
         evtSource.addEventListener('thinking', (e) => {
           const data = JSON.parse(e.data);
           const reasoningEl = document.getElementById('ai-reasoning');
-          if (data.thinking) {
-            reasoningEl.style.display = 'block';
-            reasoningEl.classList.add('thinking-active');
-          } else if (
-            reasoningEl.classList.contains('thinking-active') &&
-            data.content
-          ) {
-            // Transition from thinking to regular output
-          }
           reasoningEl.innerHTML += escapeHtml(data.content);
           reasoningEl.scrollTop = reasoningEl.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning', (e) => {
+          const data = JSON.parse(e.data);
+          const reasoningEl = document.getElementById('ai-reasoning');
+          reasoningEl.style.display = 'block';
+          reasoningEl.classList.add('thinking-active');
+          reasoningEl.innerHTML += escapeHtml(data.content);
+          reasoningEl.scrollTop = reasoningEl.scrollHeight;
+        });
+
+        evtSource.addEventListener('reasoning-done', () => {
+          document
+            .getElementById('ai-reasoning')
+            .classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('filters', (e) => {
