@@ -54,7 +54,7 @@ spec:
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: utility
             - name: LD_LIBRARY_PATH
-              value: /usr/lib/wsl/drivers/nvdd.inf_amd64_1c978806815a7d2e
+              value: /usr/lib/wsl/lib:/usr/lib/wsl/drivers/nvdd.inf_amd64_1c978806815a7d2e
           volumeMounts:
             - name: nvidia-smi
               mountPath: /usr/bin/nvidia-smi
@@ -62,6 +62,11 @@ spec:
             - name: nvidia-drivers
               mountPath: /usr/lib/wsl/drivers
               readOnly: true
+            - name: wsl-lib
+              mountPath: /usr/lib/wsl/lib
+              readOnly: true
+            - name: dev-dxg
+              mountPath: /dev/dxg
       volumes:
         - name: nvidia-smi
           hostPath:
@@ -70,3 +75,11 @@ spec:
           hostPath:
             path: /usr/lib/wsl/drivers
             type: Directory
+        - name: wsl-lib
+          hostPath:
+            path: /usr/lib/wsl/lib
+            type: Directory
+        - name: dev-dxg
+          hostPath:
+            path: /dev/dxg
+            type: CharDevice
