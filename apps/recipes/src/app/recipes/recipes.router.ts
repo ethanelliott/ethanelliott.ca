@@ -277,20 +277,23 @@ export async function RecipesRouter(fastify: FastifyInstance) {
         try {
           const response = await fetch(url, {
             headers: {
-              'User-Agent':
-                'Mozilla/5.0 (compatible; RecipeImporter/1.0)',
+              'User-Agent': 'Mozilla/5.0 (compatible; RecipeImporter/1.0)',
               Accept: 'image/*',
             },
             signal: AbortSignal.timeout(15000),
           });
 
           if (!response.ok) {
-            logger.warn({ url, status: response.status }, 'Failed to download image');
+            logger.warn(
+              { url, status: response.status },
+              'Failed to download image'
+            );
             failed++;
             continue;
           }
 
-          const contentType = response.headers.get('content-type') || 'image/jpeg';
+          const contentType =
+            response.headers.get('content-type') || 'image/jpeg';
           const buffer = Buffer.from(await response.arrayBuffer());
 
           // Skip if too small (likely a placeholder/pixel)
@@ -304,11 +307,19 @@ export async function RecipesRouter(fastify: FastifyInstance) {
           const urlPath = new URL(url).pathname;
           const filename = urlPath.split('/').pop() || 'imported-photo.jpg';
 
-          await recipesService.addPhoto(recipeId, filename, contentType, buffer);
+          await recipesService.addPhoto(
+            recipeId,
+            filename,
+            contentType,
+            buffer
+          );
           imported++;
           logger.info({ url, filename }, 'Imported photo from URL');
         } catch (err) {
-          logger.warn({ url, error: String(err) }, 'Error importing photo from URL');
+          logger.warn(
+            { url, error: String(err) },
+            'Error importing photo from URL'
+          );
           failed++;
         }
       }
