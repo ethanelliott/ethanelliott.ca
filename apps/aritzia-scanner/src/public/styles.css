@@ -1657,9 +1657,15 @@ select {
   color: light-dark(#1a1a1a, #fff);
 }
 
-.ai-content h1 { font-size: 1.4em; }
-.ai-content h2 { font-size: 1.2em; }
-.ai-content h3 { font-size: 1.05em; }
+.ai-content h1 {
+  font-size: 1.4em;
+}
+.ai-content h2 {
+  font-size: 1.2em;
+}
+.ai-content h3 {
+  font-size: 1.05em;
+}
 
 .ai-content p {
   margin: 0.5em 0;
