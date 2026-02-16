@@ -33,5 +33,5 @@ export async function Application(fastify: FastifyInstance) {
     .register(ServicesRouter, { prefix: '/services' });
   fastify
     .withTypeProvider<ZodTypeProvider>()
-    .register(MetricsRouter, { prefix: '/metrics' });
+    .register(MetricsRouter, { prefix: '/app-metrics' });
 }
