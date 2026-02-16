@@ -66,6 +66,7 @@ const ParsedRecipeResponseSchema = z.object({
   prepTimeMinutes: z.number().optional(),
   cookTimeMinutes: z.number().optional(),
   source: z.string().optional(),
+  imageUrls: z.array(z.string()).optional(),
 });
 
 export async function AiRouter(fastify: FastifyInstance) {

@@ -208,6 +208,7 @@ export interface ParsedRecipe {
   prepTimeMinutes?: number;
   cookTimeMinutes?: number;
   source?: string;
+  imageUrls?: string[];
 }
 
 // ==================== Service ====================
@@ -337,6 +338,16 @@ export class RecipesApiService {
     return this.http.post<RecipePhoto>(
       `${this.baseUrl}/recipes/${recipeId}/photos`,
       photo
+    );
+  }
+
+  importPhotosFromUrls(
+    recipeId: string,
+    urls: string[]
+  ): Observable<{ imported: number; failed: number }> {
+    return this.http.post<{ imported: number; failed: number }>(
+      `${this.baseUrl}/recipes/${recipeId}/photos/import`,
+      { urls }
     );
   }
 

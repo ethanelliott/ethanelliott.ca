@@ -458,8 +458,22 @@ export class AiImportComponent {
         })),
       })
       .subscribe((created) => {
-        this.creating.set(false);
-        this.router.navigate(['/recipes', created.id]);
+        const navigateToRecipe = () => {
+          this.creating.set(false);
+          this.router.navigate(['/recipes', created.id]);
+        };
+
+        // Import photos from URLs if available
+        if (recipe.imageUrls?.length) {
+          this.api
+            .importPhotosFromUrls(created.id, recipe.imageUrls)
+            .subscribe({
+              next: () => navigateToRecipe(),
+              error: () => navigateToRecipe(),
+            });
+        } else {
+          navigateToRecipe();
+        }
       });
   }
 }

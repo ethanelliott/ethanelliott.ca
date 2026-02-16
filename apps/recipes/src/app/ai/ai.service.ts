@@ -179,6 +179,7 @@ export interface ParsedRecipe {
   prepTimeMinutes?: number;
   cookTimeMinutes?: number;
   source?: string;
+  imageUrls?: string[];
 }
 
 interface OllamaSuggestionResponse {
@@ -523,6 +524,11 @@ Guidelines:
       if (!parsed.source) {
         parsed.source = url;
       }
+      // Extract images from the HTML for the LLM fallback path
+      const imageUrls = this.extractImageUrlsFromHtml(root, url);
+      if (imageUrls.length > 0) {
+        parsed.imageUrls = imageUrls;
+      }
       return parsed;
     }
 
@@ -819,7 +825,16 @@ Guidelines:
     sourceUrl: string
   ): Promise<ParsedRecipe> {
     const title = data.name || 'Untitled Recipe';
-    const description = data.description || undefined;
+
+    // Description: use only if it's a genuine summary, not ingredient list
+    let description: string | undefined;
+    if (data.description && typeof data.description === 'string') {
+      const trimmed = data.description.trim();
+      // Skip if it looks like an ingredient list (lots of commas/newlines with short fragments)
+      if (trimmed.length > 0 && trimmed.length < 2000) {
+        description = trimmed;
+      }
+    }
 
     // Parse instructions
     let instructions = '';
@@ -851,6 +866,12 @@ Guidelines:
         .join('\n');
     }
 
+    // Strip HTML tags from instructions (ensure clean markdown)
+    instructions = instructions.replace(/<[^>]+>/g, '');
+
+    // Remove HelloFresh-style doubled-up portions: "1 tbsp (2 tbsp)" → "1 tbsp"
+    instructions = this.removeDoubledPortions(instructions);
+
     // Parse servings from recipeYield
     let servings: number | undefined;
     if (data.recipeYield) {
@@ -864,6 +885,9 @@ Guidelines:
     // Parse ISO 8601 durations (PT20M, PT1H30M, etc.)
     const prepTimeMinutes = this.parseIsoDuration(data.prepTime);
     const cookTimeMinutes = this.parseIsoDuration(data.cookTime);
+
+    // Extract image URLs from JSON-LD
+    const imageUrls = this.extractImageUrls(data, sourceUrl);
 
     // Parse ingredients using LLM (schema.org gives strings like "1 cup butter, softened")
     let ingredients: ParsedRecipe['ingredients'] = [];
@@ -899,6 +923,7 @@ Guidelines:
       prepTimeMinutes,
       cookTimeMinutes,
       source: sourceUrl,
+      ...(imageUrls.length > 0 && { imageUrls }),
     };
   }
 
@@ -913,6 +938,168 @@ Guidelines:
     const minutes = parseInt(match[2] || '0', 10);
     const total = hours * 60 + minutes;
     return total > 0 ? total : undefined;
+  }
+
+  /**
+   * Extract image URLs from JSON-LD Recipe data.
+   * The `image` field can be a string, array of strings, or ImageObject.
+   */
+  private extractImageUrls(data: any, sourceUrl: string): string[] {
+    const urls: string[] = [];
+
+    if (!data.image) return urls;
+
+    const resolveUrl = (u: string): string => {
+      try {
+        return new URL(u, sourceUrl).href;
+      } catch {
+        return u;
+      }
+    };
+
+    const processImage = (img: any) => {
+      if (typeof img === 'string') {
+        urls.push(resolveUrl(img));
+      } else if (img && typeof img === 'object') {
+        // ImageObject
+        if (img.url) urls.push(resolveUrl(img.url));
+        else if (img.contentUrl) urls.push(resolveUrl(img.contentUrl));
+      }
+    };
+
+    if (Array.isArray(data.image)) {
+      data.image.forEach(processImage);
+    } else {
+      processImage(data.image);
+    }
+
+    // Deduplicate
+    return [...new Set(urls)];
+  }
+
+  /**
+   * Extract likely recipe/food images from parsed HTML.
+   * Looks at img tags in recipe containers and main content,
+   * filtering out icons, logos, and tiny images.
+   */
+  private extractImageUrlsFromHtml(
+    root: ReturnType<typeof parseHTML>,
+    baseUrl: string
+  ): string[] {
+    const urls: string[] = [];
+
+    const resolveUrl = (u: string): string => {
+      try {
+        return new URL(u, baseUrl).href;
+      } catch {
+        return u;
+      }
+    };
+
+    // Skip patterns — icons, logos, avatars, tracking pixels, social media, ads
+    const skipPatterns =
+      /logo|icon|avatar|gravatar|sprite|badge|button|share|social|pinterest|facebook|twitter|instagram|ad[-_]|ads\/|advertisement|pixel|tracking|spacer|emoji|smiley|wp-includes/i;
+
+    const isLikelyRecipeImage = (src: string, alt: string): boolean => {
+      if (!src || skipPatterns.test(src) || skipPatterns.test(alt))
+        return false;
+      // Skip data URIs and SVGs
+      if (src.startsWith('data:') || src.endsWith('.svg')) return false;
+      // Skip tiny placeholder files
+      if (/1x1|blank\.|placeholder/i.test(src)) return false;
+      return true;
+    };
+
+    // Try recipe containers first for higher quality images
+    const recipeContainerSelectors = [
+      '.wprm-recipe-container',
+      '.wprm-recipe',
+      '.tasty-recipes',
+      '.recipe-card',
+      '[itemtype*="schema.org/Recipe"]',
+      '.recipe-content',
+      '.recipe',
+    ];
+
+    for (const selector of recipeContainerSelectors) {
+      const container = root.querySelector(selector);
+      if (container) {
+        container.querySelectorAll('img').forEach((img) => {
+          const src =
+            img.getAttribute('data-src') ||
+            img.getAttribute('data-lazy-src') ||
+            img.getAttribute('src') ||
+            '';
+          const alt = img.getAttribute('alt') || '';
+          if (isLikelyRecipeImage(src, alt)) {
+            urls.push(resolveUrl(src));
+          }
+        });
+        if (urls.length > 0) {
+          logger.debug(
+            { count: urls.length },
+            'Extracted images from recipe container'
+          );
+          return [...new Set(urls)].slice(0, 5);
+        }
+      }
+    }
+
+    // Fallback: look in main content area
+    const contentSelectors = [
+      'article',
+      '.entry-content',
+      '.post-content',
+      'main',
+      '[role="main"]',
+    ];
+
+    for (const selector of contentSelectors) {
+      const container = root.querySelector(selector);
+      if (container) {
+        container.querySelectorAll('img').forEach((img) => {
+          const src =
+            img.getAttribute('data-src') ||
+            img.getAttribute('data-lazy-src') ||
+            img.getAttribute('src') ||
+            '';
+          const alt = img.getAttribute('alt') || '';
+          // For main content, also check image dimensions if available
+          const width = parseInt(img.getAttribute('width') || '0', 10);
+          const height = parseInt(img.getAttribute('height') || '0', 10);
+          // Skip small images (likely icons/decorations)
+          if (width > 0 && width < 100) return;
+          if (height > 0 && height < 100) return;
+          if (isLikelyRecipeImage(src, alt)) {
+            urls.push(resolveUrl(src));
+          }
+        });
+        if (urls.length > 0) break;
+      }
+    }
+
+    // Limit to 5 images max
+    const deduped = [...new Set(urls)].slice(0, 5);
+    if (deduped.length > 0) {
+      logger.debug(
+        { count: deduped.length },
+        'Extracted images from main content'
+      );
+    }
+    return deduped;
+  }
+
+  /**
+   * Remove HelloFresh-style doubled-up portion amounts from text.
+   * e.g. "1 tbsp (2 tbsp) oil" → "1 tbsp oil"
+   * e.g. "½ cup (1 cup) water" → "½ cup water"
+   */
+  private removeDoubledPortions(text: string): string {
+    // Match patterns like "(2 tbsp)" or "(1 cup)" after a quantity+unit
+    return text.replace(
+      /(\d+[\s\/\u00BC-\u00BE\u2150-\u215E]*(?:tbsp|tsp|cup|oz|ml|g|lb|kg|teaspoon|tablespoon|ounce|pound|gram|kilogram|liter|litre|pinch|dash)s?)\s*\(\s*\d+[\s\/\u00BC-\u00BE\u2150-\u215E]*(?:tbsp|tsp|cup|oz|ml|g|lb|kg|teaspoon|tablespoon|ounce|pound|gram|kilogram|liter|litre|pinch|dash)s?\s*\)/gi,
+      '$1'
+    );
   }
 
   /**
@@ -933,13 +1120,18 @@ CRITICAL FIELD DEFINITIONS:
 - "unit": The unit of measurement (e.g. "cup", "teaspoon", "tablespoon", "lb", "oz"). Use "" (empty string) for items counted individually (e.g. "2 large eggs" → unit: "").
 - "notes": OPTIONAL preparation details, descriptors, or alternatives (e.g. "softened", "finely diced", "room temperature", "packed", "or substitute butter"). Only include if present.
 
+HELLOFRESH / MEAL KIT RULES:
+- Ingredients may include doubled-up portions in parentheses like "1 tbsp (2 tbsp)" — always use ONLY the base amount (before parentheses)
+- Ignore any text like "(Double for 4 servings)" or similar scaling notes
+
 Examples:
 - "1 cup butter, softened" → { quantity: 1, unit: "cup", name: "butter", notes: "softened" }
 - "2 large eggs" → { quantity: 2, unit: "", name: "eggs", notes: "large" }
 - "3 cups all-purpose flour" → { quantity: 3, unit: "cup", name: "all-purpose flour" }
 - "1 cup packed brown sugar" → { quantity: 1, unit: "cup", name: "brown sugar", notes: "packed" }
 - "½ teaspoon salt" → { quantity: 0.5, unit: "teaspoon", name: "salt" }
-- "1 cup chopped walnuts" → { quantity: 1, unit: "cup", name: "walnuts", notes: "chopped" }`,
+- "1 cup chopped walnuts" → { quantity: 1, unit: "cup", name: "walnuts", notes: "chopped" }
+- "1 tbsp (2 tbsp) olive oil" → { quantity: 1, unit: "tbsp", name: "olive oil" }`,
       },
       {
         role: 'user',
@@ -991,14 +1183,25 @@ CRITICAL RULES:
 - Extract ONLY information that exists in the provided text
 - Do NOT invent or hallucinate any ingredients, instructions, or details
 - Parse ingredient quantities as decimals (1/2 = 0.5, 1 1/2 = 1.5)
-- Format instructions as markdown with numbered list (1. Step one\\n2. Step two)
 - If information is not present, omit the field
+
+DESCRIPTION RULES:
+- The description should be a brief 1-2 sentence summary of the dish
+- If no clear description exists, leave it blank/empty — do NOT fabricate one
+- The description must NEVER list ingredients — that belongs only in the ingredients array
+
+INSTRUCTION RULES:
+- Format instructions as clean markdown with a numbered list (1. Step one\n2. Step two)
+- Instructions must be plain markdown text — no HTML tags
+- If the source has numbered steps, preserve the ordering
+- HelloFresh and similar meal kit recipes often include doubled portions in parentheses like "1 tbsp (2 tbsp) oil" or "½ cup (1 cup) water" — REMOVE the parenthesized doubled-up amount entirely, keeping only the base single-serving amount
 
 CRITICAL INGREDIENT FIELD DEFINITIONS:
 - "name": The ingredient itself (e.g. "butter", "all-purpose flour", "chicken breast"). This is the INGREDIENT name, NOT the recipe title.
 - "quantity": Numeric amount as a decimal.
 - "unit": Unit of measurement ("cup", "teaspoon", etc.). Use empty string for individually counted items.
-- "notes": OPTIONAL preparation details or descriptors (e.g. "softened", "diced", "room temperature"). Only include if present.`,
+- "notes": OPTIONAL preparation details or descriptors (e.g. "softened", "diced", "room temperature"). Only include if present.
+- For HelloFresh-style doubled amounts like "1 tbsp (2 tbsp)", use only the base amount (1 tbsp).`,
       },
       {
         role: 'user',

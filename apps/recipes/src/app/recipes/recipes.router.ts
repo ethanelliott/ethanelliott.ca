@@ -10,6 +10,7 @@ import {
 } from './recipe.entity';
 import { IngredientOutSchema } from './ingredient.entity';
 import { RecipePhotoOutSchema } from './recipe-photo.entity';
+import { logger } from '../logger';
 
 export async function RecipesRouter(fastify: FastifyInstance) {
   const recipesService = inject(RecipesService);
@@ -244,6 +245,75 @@ export async function RecipesRouter(fastify: FastifyInstance) {
     async (request) => {
       await recipesService.deletePhoto(request.params.photoId);
       return { success: true };
+    }
+  );
+
+  // Import photos from URLs (downloads and stores them)
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/:recipeId/photos/import',
+    {
+      schema: {
+        params: z.object({
+          recipeId: z.string().uuid(),
+        }),
+        body: z.object({
+          urls: z.array(z.string().url()).min(1).max(10),
+        }),
+        response: {
+          200: z.object({
+            imported: z.number(),
+            failed: z.number(),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const { recipeId } = request.params;
+      const { urls } = request.body;
+      let imported = 0;
+      let failed = 0;
+
+      for (const url of urls) {
+        try {
+          const response = await fetch(url, {
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (compatible; RecipeImporter/1.0)',
+              Accept: 'image/*',
+            },
+            signal: AbortSignal.timeout(15000),
+          });
+
+          if (!response.ok) {
+            logger.warn({ url, status: response.status }, 'Failed to download image');
+            failed++;
+            continue;
+          }
+
+          const contentType = response.headers.get('content-type') || 'image/jpeg';
+          const buffer = Buffer.from(await response.arrayBuffer());
+
+          // Skip if too small (likely a placeholder/pixel)
+          if (buffer.length < 1024) {
+            logger.debug({ url, size: buffer.length }, 'Skipping tiny image');
+            failed++;
+            continue;
+          }
+
+          // Extract filename from URL
+          const urlPath = new URL(url).pathname;
+          const filename = urlPath.split('/').pop() || 'imported-photo.jpg';
+
+          await recipesService.addPhoto(recipeId, filename, contentType, buffer);
+          imported++;
+          logger.info({ url, filename }, 'Imported photo from URL');
+        } catch (err) {
+          logger.warn({ url, error: String(err) }, 'Error importing photo from URL');
+          failed++;
+        }
+      }
+
+      return { imported, failed };
     }
   );
 }
