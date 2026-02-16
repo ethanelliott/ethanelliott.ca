@@ -53,3 +53,20 @@ spec:
               value: all
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: utility
+            - name: LD_LIBRARY_PATH
+              value: /usr/lib/wsl/drivers/nvdd.inf_amd64_1c978806815a7d2e
+          volumeMounts:
+            - name: nvidia-smi
+              mountPath: /usr/bin/nvidia-smi
+              readOnly: true
+            - name: nvidia-drivers
+              mountPath: /usr/lib/wsl/drivers
+              readOnly: true
+      volumes:
+        - name: nvidia-smi
+          hostPath:
+            path: /usr/bin/nvidia-smi
+        - name: nvidia-drivers
+          hostPath:
+            path: /usr/lib/wsl/drivers
+            type: Directory
