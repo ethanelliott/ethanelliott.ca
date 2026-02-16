@@ -124,13 +124,7 @@ import {
           </div>
           <div class="form-field">
             <label>Color</label>
-            <div class="color-row">
-              <p-colorpicker [(ngModel)]="formColor" />
-              <div
-                class="color-preview"
-                [style.background]="formColor || '#f97316'"
-              ></div>
-            </div>
+            <p-colorpicker [(ngModel)]="formColor" appendTo="body" />
           </div>
         </div>
         <ng-template #footer>
@@ -267,18 +261,6 @@ import {
       input, textarea {
         width: 100%;
       }
-    }
-
-    .color-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .color-preview {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
     }
 
     .dialog-footer {

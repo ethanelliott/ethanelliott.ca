@@ -127,7 +127,7 @@ import {
           <div class="form-field">
             <label>Color</label>
             <div class="color-row">
-              <p-colorpicker [(ngModel)]="formColor" />
+              <p-colorpicker [(ngModel)]="formColor" appendTo="body" />
               <div
                 class="tag-chip-demo"
                 [style.border-color]="formColor || '#f97316'"
