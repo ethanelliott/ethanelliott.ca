@@ -225,4 +225,80 @@ export async function AiRouter(fastify: FastifyInstance) {
       return aiService.parseRecipeFromUrl(request.body.url);
     }
   );
+
+  // Parse recipe from URL with streaming progress (SSE)
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/parse-recipe-url/stream',
+    {
+      schema: {
+        body: z.object({
+          url: z.string().url().max(2000),
+        }),
+      },
+    },
+    async (request, reply) => {
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      try {
+        for await (const event of aiService.parseRecipeFromUrlStream(
+          request.body.url
+        )) {
+          reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+        }
+        reply.raw.write('data: [DONE]\n\n');
+      } catch (error) {
+        reply.raw.write(
+          `data: ${JSON.stringify({
+            type: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })}\n\n`
+        );
+      } finally {
+        reply.raw.end();
+      }
+    }
+  );
+
+  // Parse recipe from text with streaming progress (SSE)
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/parse-recipe/stream',
+    {
+      schema: {
+        body: z.object({
+          text: z.string().min(10).max(50000),
+        }),
+      },
+    },
+    async (request, reply) => {
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      try {
+        for await (const event of aiService.parseRecipeFromTextStream(
+          request.body.text
+        )) {
+          reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+        }
+        reply.raw.write('data: [DONE]\n\n');
+      } catch (error) {
+        reply.raw.write(
+          `data: ${JSON.stringify({
+            type: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })}\n\n`
+        );
+      } finally {
+        reply.raw.end();
+      }
+    }
+  );
 }

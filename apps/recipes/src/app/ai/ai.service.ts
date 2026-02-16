@@ -182,6 +182,15 @@ export interface ParsedRecipe {
   imageUrls?: string[];
 }
 
+export interface ImportProgressEvent {
+  type: 'progress' | 'result' | 'error';
+  step?: string;
+  message?: string;
+  percent?: number;
+  result?: ParsedRecipe;
+  error?: string;
+}
+
 interface OllamaSuggestionResponse {
   categories: Array<{ name: string; confidence: number }>;
   tags: Array<{ name: string; confidence: number }>;
@@ -538,6 +547,148 @@ Guidelines:
       'Extracted recipe from JSON-LD'
     );
     return this.mapJsonLdToRecipe(recipeData, url);
+  }
+
+  /**
+   * Streaming version of parseRecipeFromUrl that yields progress events
+   */
+  async *parseRecipeFromUrlStream(
+    url: string
+  ): AsyncGenerator<ImportProgressEvent> {
+    yield {
+      type: 'progress',
+      step: 'fetch',
+      message: 'Fetching page...',
+      percent: 10,
+    };
+
+    const html = await this.fetchPageHtml(url);
+
+    yield {
+      type: 'progress',
+      step: 'parse-html',
+      message: 'Analyzing page structure...',
+      percent: 25,
+    };
+
+    const root = parseHTML(html);
+    const jsonLdScripts = root.querySelectorAll(
+      'script[type="application/ld+json"]'
+    );
+
+    let recipeData: any = null;
+    for (const script of jsonLdScripts) {
+      try {
+        const data = JSON.parse(script.textContent);
+        recipeData = this.findRecipeInJsonLd(data);
+        if (recipeData) break;
+      } catch {
+        // skip
+      }
+    }
+
+    if (!recipeData) {
+      yield {
+        type: 'progress',
+        step: 'extract-content',
+        message: 'No structured data found — extracting content...',
+        percent: 35,
+      };
+
+      const recipeText = this.extractRecipeContent(root);
+      if (!recipeText || recipeText.length < 50) {
+        yield {
+          type: 'error',
+          error:
+            'Could not find recipe content on this page. Try pasting the text instead.',
+        };
+        return;
+      }
+
+      yield {
+        type: 'progress',
+        step: 'llm-parse',
+        message: 'AI is reading the recipe...',
+        percent: 50,
+      };
+
+      const parsed = await this.parseRecipeFromText(recipeText);
+      if (!parsed.source) parsed.source = url;
+
+      yield {
+        type: 'progress',
+        step: 'extract-images',
+        message: 'Looking for photos...',
+        percent: 85,
+      };
+
+      const imageUrls = this.extractImageUrlsFromHtml(root, url);
+      if (imageUrls.length > 0) parsed.imageUrls = imageUrls;
+
+      yield {
+        type: 'progress',
+        step: 'done',
+        message: 'Recipe parsed!',
+        percent: 100,
+      };
+      yield { type: 'result', result: parsed };
+      return;
+    }
+
+    yield {
+      type: 'progress',
+      step: 'extract-recipe',
+      message: 'Found structured recipe data — extracting...',
+      percent: 40,
+    };
+
+    yield {
+      type: 'progress',
+      step: 'map-recipe',
+      message: 'Structuring recipe details...',
+      percent: 55,
+    };
+
+    const result = await this.mapJsonLdToRecipe(recipeData, url);
+
+    yield {
+      type: 'progress',
+      step: 'done',
+      message: 'Recipe parsed!',
+      percent: 100,
+    };
+    yield { type: 'result', result };
+  }
+
+  /**
+   * Streaming version of parseRecipeFromText that yields progress events
+   */
+  async *parseRecipeFromTextStream(
+    rawText: string
+  ): AsyncGenerator<ImportProgressEvent> {
+    yield {
+      type: 'progress',
+      step: 'analyze',
+      message: 'Analyzing recipe text...',
+      percent: 15,
+    };
+
+    yield {
+      type: 'progress',
+      step: 'llm-parse',
+      message: 'AI is reading the recipe...',
+      percent: 35,
+    };
+
+    const result = await this.parseRecipeFromText(rawText);
+
+    yield {
+      type: 'progress',
+      step: 'done',
+      message: 'Recipe parsed!',
+      percent: 100,
+    };
+    yield { type: 'result', result };
   }
 
   /**

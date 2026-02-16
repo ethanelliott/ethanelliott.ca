@@ -211,6 +211,15 @@ export interface ParsedRecipe {
   imageUrls?: string[];
 }
 
+export interface ImportProgressEvent {
+  type: 'progress' | 'result' | 'error';
+  step?: string;
+  message?: string;
+  percent?: number;
+  result?: ParsedRecipe;
+  error?: string;
+}
+
 // ==================== Service ====================
 
 @Injectable({
@@ -503,6 +512,90 @@ export class RecipesApiService {
   parseRecipeFromUrl(url: string): Observable<ParsedRecipe> {
     return this.http.post<ParsedRecipe>(`${this.baseUrl}/ai/parse-recipe-url`, {
       url,
+    });
+  }
+
+  /**
+   * Parse recipe from URL with streaming progress events (SSE)
+   */
+  parseRecipeFromUrlStream(url: string): Observable<ImportProgressEvent> {
+    return this.streamParseRequest(
+      `${this.baseUrl}/ai/parse-recipe-url/stream`,
+      { url }
+    );
+  }
+
+  /**
+   * Parse recipe from text with streaming progress events (SSE)
+   */
+  parseRecipeFromTextStream(text: string): Observable<ImportProgressEvent> {
+    return this.streamParseRequest(`${this.baseUrl}/ai/parse-recipe/stream`, {
+      text,
+    });
+  }
+
+  private streamParseRequest(
+    endpoint: string,
+    body: Record<string, string>
+  ): Observable<ImportProgressEvent> {
+    return new Observable((subscriber) => {
+      const abortController = new AbortController();
+
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: abortController.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`Import failed: ${response.status}`);
+          }
+          if (!response.body) {
+            throw new Error('Response body is null');
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const data = trimmed.slice(6);
+              if (data === '[DONE]') {
+                subscriber.complete();
+                return;
+              }
+              try {
+                const parsed: ImportProgressEvent = JSON.parse(data);
+                if (parsed.type === 'error') {
+                  subscriber.error(new Error(parsed.error || 'Unknown error'));
+                  return;
+                }
+                subscriber.next(parsed);
+              } catch {
+                // Skip malformed SSE data
+              }
+            }
+          }
+          subscriber.complete();
+        })
+        .catch((error) => {
+          if (error.name !== 'AbortError') {
+            subscriber.error(error);
+          }
+        });
+
+      return () => abortController.abort();
     });
   }
 }

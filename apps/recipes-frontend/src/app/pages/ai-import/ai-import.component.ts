@@ -10,12 +10,14 @@ import { ButtonModule } from 'primeng/button';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { InputTextModule } from 'primeng/inputtext';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ProgressBarModule } from 'primeng/progressbar';
 import { TextareaModule } from 'primeng/textarea';
 import {
   RecipesApiService,
   ParsedRecipe,
+  ImportProgressEvent,
 } from '../../services/recipes-api.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-ai-import',
@@ -27,7 +29,7 @@ import {
     InputGroupModule,
     InputGroupAddonModule,
     InputTextModule,
-    ProgressSpinnerModule,
+    ProgressBarModule,
     TextareaModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -45,7 +47,21 @@ import {
         <h1 class="page-title">Import Recipe with AI</h1>
       </div>
 
-      @if (!parsed()) {
+      @if (parsing() || creating()) {
+      <!-- Progress Phase -->
+      <div class="progress-section">
+        <div class="progress-icon">
+          <i class="pi pi-sparkles"></i>
+        </div>
+        <p class="progress-message">{{ progressMessage() }}</p>
+        <p-progressBar
+          [value]="progressPercent()"
+          [showValue]="false"
+          [style]="{ height: '6px' }"
+        />
+        <p class="progress-detail">{{ progressDetail() }}</p>
+      </div>
+      } @else if (!parsed()) {
       <!-- Input Phase -->
       <div class="input-section">
         <p class="intro-text">
@@ -108,7 +124,6 @@ import {
             [label]="mode() === 'url' ? 'Import Recipe' : 'Parse Recipe'"
             icon="pi pi-sparkles"
             (click)="mode() === 'url' ? parseUrl() : parse()"
-            [loading]="parsing()"
             [disabled]="mode() === 'url' ? !urlText.trim() : !inputText.trim()"
           />
         </div>
@@ -182,7 +197,6 @@ import {
             label="Create Recipe"
             icon="pi pi-check"
             (click)="create()"
-            [loading]="creating()"
           />
         </div>
       </div>
@@ -209,6 +223,40 @@ import {
       color: var(--p-text-muted-color);
       font-size: 0.95rem;
       margin: 0 0 16px;
+    }
+
+    .progress-section {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .progress-icon {
+      font-size: 2.5rem;
+      color: var(--p-primary-color);
+      margin-bottom: 16px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .progress-message {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 0 0 20px;
+    }
+
+    .progress-detail {
+      color: var(--p-text-muted-color);
+      font-size: 0.85rem;
+      margin: 12px 0 0;
     }
 
     .mode-toggle {
@@ -397,21 +445,39 @@ export class AiImportComponent {
   creating = signal(false);
   parsed = signal<ParsedRecipe | null>(null);
   error = signal('');
+  progressPercent = signal(0);
+  progressMessage = signal('Starting...');
+  progressDetail = signal('');
+
+  private streamSub?: Subscription;
+
+  private resetProgress() {
+    this.progressPercent.set(0);
+    this.progressMessage.set('Starting...');
+    this.progressDetail.set('');
+  }
 
   parseUrl() {
     if (!this.urlText.trim()) return;
     this.parsing.set(true);
     this.error.set('');
+    this.resetProgress();
 
-    this.api.parseRecipeFromUrl(this.urlText).subscribe({
-      next: (result) => {
-        this.parsed.set(result);
-        this.parsing.set(false);
+    this.streamSub?.unsubscribe();
+    this.streamSub = this.api.parseRecipeFromUrlStream(this.urlText).subscribe({
+      next: (event) => {
+        if (event.type === 'progress') {
+          this.progressPercent.set(event.percent ?? 0);
+          this.progressMessage.set(event.message ?? 'Processing...');
+        } else if (event.type === 'result' && event.result) {
+          this.parsed.set(event.result);
+          this.parsing.set(false);
+        }
       },
       error: (err) => {
         const message =
-          err?.error?.message ||
-          'Failed to import recipe from URL. The site may not have structured recipe data — try pasting the text instead.';
+          err?.message ||
+          'Failed to import recipe from URL. Try pasting the text instead.';
         this.error.set(message);
         this.parsing.set(false);
       },
@@ -422,17 +488,26 @@ export class AiImportComponent {
     if (!this.inputText.trim()) return;
     this.parsing.set(true);
     this.error.set('');
+    this.resetProgress();
 
-    this.api.parseRecipeFromText(this.inputText).subscribe({
-      next: (result) => {
-        this.parsed.set(result);
-        this.parsing.set(false);
-      },
-      error: () => {
-        this.error.set('Failed to parse recipe. Please try again.');
-        this.parsing.set(false);
-      },
-    });
+    this.streamSub?.unsubscribe();
+    this.streamSub = this.api
+      .parseRecipeFromTextStream(this.inputText)
+      .subscribe({
+        next: (event) => {
+          if (event.type === 'progress') {
+            this.progressPercent.set(event.percent ?? 0);
+            this.progressMessage.set(event.message ?? 'Processing...');
+          } else if (event.type === 'result' && event.result) {
+            this.parsed.set(event.result);
+            this.parsing.set(false);
+          }
+        },
+        error: () => {
+          this.error.set('Failed to parse recipe. Please try again.');
+          this.parsing.set(false);
+        },
+      });
   }
 
   create() {
@@ -440,6 +515,10 @@ export class AiImportComponent {
     if (!recipe) return;
 
     this.creating.set(true);
+    this.progressPercent.set(30);
+    this.progressMessage.set('Creating recipe...');
+    this.progressDetail.set('');
+
     this.api
       .createRecipe({
         title: recipe.title,
@@ -465,14 +544,33 @@ export class AiImportComponent {
 
         // Import photos from URLs if available
         if (recipe.imageUrls?.length) {
+          this.progressPercent.set(65);
+          this.progressMessage.set('Importing photos...');
+          this.progressDetail.set(
+            `Downloading ${recipe.imageUrls.length} image${
+              recipe.imageUrls.length > 1 ? 's' : ''
+            }...`
+          );
+
           this.api
             .importPhotosFromUrls(created.id, recipe.imageUrls)
             .subscribe({
-              next: () => navigateToRecipe(),
+              next: (result) => {
+                this.progressPercent.set(100);
+                this.progressMessage.set('Done!');
+                this.progressDetail.set(
+                  `Imported ${result.imported} photo${
+                    result.imported !== 1 ? 's' : ''
+                  }`
+                );
+                setTimeout(() => navigateToRecipe(), 400);
+              },
               error: () => navigateToRecipe(),
             });
         } else {
-          navigateToRecipe();
+          this.progressPercent.set(100);
+          this.progressMessage.set('Done!');
+          setTimeout(() => navigateToRecipe(), 300);
         }
       });
   }
