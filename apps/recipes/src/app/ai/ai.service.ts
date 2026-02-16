@@ -501,10 +501,26 @@ Guidelines:
     }
 
     if (!recipeData) {
-      logger.warn({ url }, 'No JSON-LD recipe data found');
-      throw HttpErrors.UnprocessableEntity(
-        'No structured recipe data (JSON-LD) found on this page. Try copying and pasting the recipe text instead.'
+      logger.warn({ url }, 'No JSON-LD recipe data found, falling back to content extraction + LLM');
+
+      // Fallback: extract readable content from the page and use LLM to parse
+      const recipeText = this.extractRecipeContent(root);
+      if (!recipeText || recipeText.length < 50) {
+        throw HttpErrors.UnprocessableEntity(
+          'Could not find recipe content on this page. Try copying and pasting the recipe text instead.'
+        );
+      }
+
+      logger.info(
+        { url, contentLength: recipeText.length },
+        'Extracted page content, sending to LLM for parsing'
       );
+      const parsed = await this.parseRecipeFromText(recipeText);
+      // Attach source URL if not already set
+      if (!parsed.source) {
+        parsed.source = url;
+      }
+      return parsed;
     }
 
     // Map schema.org Recipe to our format
@@ -633,6 +649,163 @@ Guidelines:
     }
 
     return null;
+  }
+
+  /**
+   * Extract readable recipe content from parsed HTML.
+   * Tries common recipe plugin selectors first, then falls back to
+   * stripping boilerplate and extracting the main content area.
+   */
+  private extractRecipeContent(root: ReturnType<typeof parseHTML>): string {
+    // Common CSS selectors used by popular WordPress recipe plugins and themes
+    const recipeSelectors = [
+      // WP Recipe Maker (WPRM) — most popular plugin
+      '.wprm-recipe-container',
+      '.wprm-recipe',
+      // Tasty Recipes
+      '.tasty-recipes',
+      '.tasty-recipe',
+      // Recipe Card Blocks (by developer theme)
+      '.recipe-card',
+      '.recipe-card-block',
+      // Zip Recipes
+      '.zip-recipe-plugin',
+      // EasyRecipe
+      '.easyrecipe',
+      // Yummly / Yumprint
+      '.yumprint-recipe',
+      // Generic recipe schema markup patterns
+      '[itemtype*="schema.org/Recipe"]',
+      '[itemtype*="Recipe"]',
+      // Common class patterns
+      '.recipe-content',
+      '.recipe',
+      '.recipe-box',
+      '.recipe-block',
+      '.entry-content .recipe',
+    ];
+
+    // Try each selector to find a dedicated recipe block
+    for (const selector of recipeSelectors) {
+      const el = root.querySelector(selector);
+      if (el) {
+        const text = this.htmlToCleanText(el);
+        if (text.length > 100) {
+          logger.debug(
+            { selector, textLength: text.length },
+            'Found recipe content via CSS selector'
+          );
+          return text;
+        }
+      }
+    }
+
+    // Fallback: extract from main content area after stripping boilerplate
+    logger.debug('No recipe selector matched, extracting main content');
+
+    // Remove known boilerplate elements
+    const boilerplateSelectors = [
+      'script',
+      'style',
+      'nav',
+      'header',
+      'footer',
+      '.sidebar',
+      '#sidebar',
+      'aside',
+      '.comments',
+      '#comments',
+      '.comment-form',
+      '.comment-respond',
+      '.widget',
+      '.advertisement',
+      '.ad',
+      '.social-share',
+      '.share-buttons',
+      '.related-posts',
+      '.post-navigation',
+      '.breadcrumbs',
+      '.site-footer',
+      '.site-header',
+      'noscript',
+      'iframe',
+    ];
+
+    for (const selector of boilerplateSelectors) {
+      root.querySelectorAll(selector).forEach((el) => el.remove());
+    }
+
+    // Try common main content containers
+    const contentSelectors = [
+      'article',
+      '.entry-content',
+      '.post-content',
+      '.article-content',
+      '.content-area',
+      'main',
+      '[role="main"]',
+      '.post',
+    ];
+
+    for (const selector of contentSelectors) {
+      const el = root.querySelector(selector);
+      if (el) {
+        const text = this.htmlToCleanText(el);
+        if (text.length > 200) {
+          logger.debug(
+            { selector, textLength: text.length },
+            'Extracted content from main area'
+          );
+          // Truncate to avoid hitting LLM token limits — 15k chars is plenty for a recipe
+          return text.slice(0, 15000);
+        }
+      }
+    }
+
+    // Last resort: body text
+    const bodyText = this.htmlToCleanText(root);
+    return bodyText.slice(0, 15000);
+  }
+
+  /**
+   * Convert an HTML element to clean readable text.
+   * Preserves basic structure (headings, list items, paragraphs)
+   * while stripping all markup.
+   */
+  private htmlToCleanText(element: ReturnType<typeof parseHTML>): string {
+    // Get text content, but try to preserve some structure
+    let html = element.innerHTML;
+
+    // Replace block-level elements with newlines to preserve structure
+    html = html.replace(/<\/?(h[1-6]|p|div|li|tr|br\s*\/?)[^>]*>/gi, '\n');
+    // Replace list markers
+    html = html.replace(/<\/?[uo]l[^>]*>/gi, '\n');
+
+    // Strip remaining HTML tags
+    html = html.replace(/<[^>]+>/g, ' ');
+
+    // Decode common HTML entities
+    html = html
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#8217;/g, "'")
+      .replace(/&#8211;/g, '–')
+      .replace(/&#8212;/g, '—')
+      .replace(/&frac12;/g, '1/2')
+      .replace(/&frac13;/g, '1/3')
+      .replace(/&frac14;/g, '1/4')
+      .replace(/&frac34;/g, '3/4');
+
+    // Collapse whitespace: multiple spaces → single, multiple newlines → double
+    html = html.replace(/[ \t]+/g, ' ');
+    html = html.replace(/\n[ \t]*/g, '\n');
+    html = html.replace(/\n{3,}/g, '\n\n');
+
+    return html.trim();
   }
 
   /**
