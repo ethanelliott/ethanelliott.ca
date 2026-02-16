@@ -1586,7 +1586,7 @@ select {
   top: 8px;
   left: 8px;
   z-index: 2;
-  background: light-dark(rgba(255,255,255,0.85), rgba(30,30,30,0.85));
+  background: light-dark(rgba(255, 255, 255, 0.85), rgba(30, 30, 30, 0.85));
   border: none;
   border-radius: 50%;
   width: 32px;

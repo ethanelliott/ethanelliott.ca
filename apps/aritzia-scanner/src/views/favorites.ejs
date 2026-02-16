@@ -11,18 +11,24 @@
 
     <h1>&#x2764; My Favorites</h1>
 
-    <div id="favorites-empty" class="favorites-empty" style="display: none;">
+    <div id="favorites-empty" class="favorites-empty" style="display: none">
       <p>You haven't saved any favorites yet.</p>
-      <p>Click the <span class="heart-icon-demo">&#x2661;</span> on any product to save it here!</p>
+      <p>
+        Click the <span class="heart-icon-demo">&#x2661;</span> on any product
+        to save it here!
+      </p>
       <a href="/" class="view-all-button">Browse Products</a>
     </div>
 
     <div id="favorites-loading" class="skeleton-container">
-      <div class="skeleton-shimmer" style="height: 200px; border-radius: 8px;"></div>
-      <p style="text-align: center; color: #999;">Loading your favorites...</p>
+      <div
+        class="skeleton-shimmer"
+        style="height: 200px; border-radius: 8px"
+      ></div>
+      <p style="text-align: center; color: #999">Loading your favorites...</p>
     </div>
 
-    <div id="favorites-grid" class="product-grid" style="display: none;"></div>
+    <div id="favorites-grid" class="product-grid" style="display: none"></div>
 
     <script>
       const FAVORITES_KEY = 'aritzia_favorites';
@@ -30,11 +36,13 @@
       function getFavorites() {
         try {
           return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
-        } catch { return []; }
+        } catch {
+          return [];
+        }
       }
 
       function removeFavorite(variantId) {
-        const favs = getFavorites().filter(id => id !== String(variantId));
+        const favs = getFavorites().filter((id) => id !== String(variantId));
         localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
         loadFavorites();
       }
@@ -66,34 +74,68 @@
             return;
           }
 
-          grid.innerHTML = variants.map(v => {
-            const link = '/product/' + v.product_id + '/variant/' + v.color_id;
-            const name = v.display_name || v.name;
-            const hasDiscount = v.price && v.list_price && v.price < v.list_price;
-            const discountPct = hasDiscount ? Math.round((1 - v.price / v.list_price) * 100) : 0;
-            return '<div class="product-card">' +
-              (hasDiscount ? '<span class="discount-overlay">' + discountPct + '% OFF</span>' : '') +
-              '<button class="favorite-btn favorited" onclick="removeFavorite(\'' + v.id + '\')" title="Remove from favorites">&#x2665;</button>' +
-              '<a href="' + link + '" class="product-image">' +
-              (v.thumbnail_id 
-                ? '<img src="/api/images/' + v.thumbnail_id + '" alt="' + name + '" loading="lazy" />'
-                : '<span class="no-image-placeholder">No Image</span>') +
-              '</a>' +
-              '<div class="product-info">' +
-              '<a href="' + link + '" class="product-name">' + name + '</a>' +
-              '<div class="product-price-container">' +
-              (hasDiscount 
-                ? '<span class="price-sale">$' + v.price + '</span><span class="price-list">$' + v.list_price + '</span>'
-                : (v.price ? '<span>$' + v.price + '</span>' : '')) +
-              '</div>' +
-              '<div class="variant-details">' + (v.color || '') + (v.length ? ' (' + v.length + ')' : '') + '</div>' +
-              '</div></div>';
-          }).join('');
+          grid.innerHTML = variants
+            .map((v) => {
+              const link =
+                '/product/' + v.product_id + '/variant/' + v.color_id;
+              const name = v.display_name || v.name;
+              const hasDiscount =
+                v.price && v.list_price && v.price < v.list_price;
+              const discountPct = hasDiscount
+                ? Math.round((1 - v.price / v.list_price) * 100)
+                : 0;
+              return (
+                '<div class="product-card">' +
+                (hasDiscount
+                  ? '<span class="discount-overlay">' +
+                    discountPct +
+                    '% OFF</span>'
+                  : '') +
+                '<button class="favorite-btn favorited" onclick="removeFavorite(\'' +
+                v.id +
+                '\')" title="Remove from favorites">&#x2665;</button>' +
+                '<a href="' +
+                link +
+                '" class="product-image">' +
+                (v.thumbnail_id
+                  ? '<img src="/api/images/' +
+                    v.thumbnail_id +
+                    '" alt="' +
+                    name +
+                    '" loading="lazy" />'
+                  : '<span class="no-image-placeholder">No Image</span>') +
+                '</a>' +
+                '<div class="product-info">' +
+                '<a href="' +
+                link +
+                '" class="product-name">' +
+                name +
+                '</a>' +
+                '<div class="product-price-container">' +
+                (hasDiscount
+                  ? '<span class="price-sale">$' +
+                    v.price +
+                    '</span><span class="price-list">$' +
+                    v.list_price +
+                    '</span>'
+                  : v.price
+                  ? '<span>$' + v.price + '</span>'
+                  : '') +
+                '</div>' +
+                '<div class="variant-details">' +
+                (v.color || '') +
+                (v.length ? ' (' + v.length + ')' : '') +
+                '</div>' +
+                '</div></div>'
+              );
+            })
+            .join('');
 
           loading.style.display = 'none';
           grid.style.display = 'grid';
         } catch (err) {
-          loading.innerHTML = '<p style="color: red;">Failed to load favorites.</p>';
+          loading.innerHTML =
+            '<p style="color: red;">Failed to load favorites.</p>';
         }
       }
 

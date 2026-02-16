@@ -239,7 +239,7 @@ async function main() {
 
   // Fetch variants by IDs (for wishlist)
   app.get('/api/variants', async (req, res) => {
-    const ids = (req.query.ids as string || '').split(',').filter(Boolean);
+    const ids = ((req.query.ids as string) || '').split(',').filter(Boolean);
     if (ids.length === 0) {
       res.json([]);
       return;
