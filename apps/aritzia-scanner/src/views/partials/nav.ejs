@@ -1,29 +1,39 @@
 <nav class="nav">
-  <div class="nav-links">
-    <a href="/">Newest</a>
-    <a href="/products">All Products</a>
-    <a href="/sale" class="nav-sale-link">Sale</a>
-    <a href="/categories">Categories</a>
-    <a href="/restocks">Restocks</a>
-    <a href="/colors">Colors</a>
-    <a href="/stores">Stores</a>
-    <a href="/discontinued">Discontinued</a>
-    <a href="/favorites" class="nav-fav-link"
-      >&#x2665; Favorites <span id="fav-count" class="fav-badge"></span
-    ></a>
+  <div class="nav-top-bar">
+    <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+    <% if (typeof stats !== 'undefined' && stats) { %>
+    <div class="nav-stats">
+      <span class="nav-stat"><%= stats.productCount %> products</span>
+      <span class="nav-stat"><%= stats.variantCount %> variants</span>
+      <span class="nav-stat">Scanned <%= stats.lastScanFormatted %></span>
+    </div>
+    <% } %>
+  </div>
+  <div class="nav-links" id="nav-links">
+    <div class="nav-group">
+      <a href="/">Newest</a>
+      <a href="/products">All Products</a>
+      <a href="/sale" class="nav-sale-link">Sale</a>
+      <a href="/categories">Categories</a>
+      <a href="/restocks">Restocks</a>
+      <a href="/colors">Colors</a>
+      <a href="/stores">Stores</a>
+      <a href="/discontinued">Discontinued</a>
+      <a href="/favorites" class="nav-fav-link"
+        >&#x2665; Favorites <span id="fav-count" class="fav-badge"></span
+      ></a>
+    </div>
     <span class="nav-divider">|</span>
-    <a href="/ai/search" class="nav-ai-link">🤖 AI Search</a>
-    <a href="/ai/style" class="nav-ai-link">👗 Style Advisor</a>
-    <a href="/ai/deals" class="nav-ai-link">💰 Deals Report</a>
+    <div class="nav-group nav-group-ai">
+      <a href="/ai/search" class="nav-ai-link">🤖 AI Search</a>
+      <a href="/ai/style" class="nav-ai-link">👗 Style Advisor</a>
+      <a href="/ai/deals" class="nav-ai-link">💰 Deals Report</a>
+    </div>
   </div>
-  <% if (typeof stats !== 'undefined' && stats) { %>
-  <div class="nav-stats">
-    <span class="nav-stat"><%= stats.productCount %> products</span>
-    <span class="nav-stat"><%= stats.variantCount %> variants</span>
-    <span class="nav-stat">Scanned <%= stats.lastScanFormatted %></span>
-  </div>
-  <% } %>
 </nav>
+<div class="nav-overlay" id="nav-overlay" onclick="closeMobileNav()"></div>
 <button
   class="theme-toggle"
   onclick="toggleTheme()"
@@ -56,4 +66,21 @@
     document.getElementById('theme-toggle').textContent =
       next === 'dark' ? '🌙' : '☀️';
   }
+
+  function toggleMobileNav() {
+    document.getElementById('nav-links').classList.toggle('nav-open');
+    document.getElementById('nav-hamburger').classList.toggle('open');
+    document.getElementById('nav-overlay').classList.toggle('visible');
+    document.body.classList.toggle('nav-locked');
+  }
+  function closeMobileNav() {
+    document.getElementById('nav-links').classList.remove('nav-open');
+    document.getElementById('nav-hamburger').classList.remove('open');
+    document.getElementById('nav-overlay').classList.remove('visible');
+    document.body.classList.remove('nav-locked');
+  }
+  // Auto-close drawer when a link is tapped
+  document.querySelectorAll('#nav-links a').forEach(function(a) {
+    a.addEventListener('click', closeMobileNav);
+  });
 </script>
