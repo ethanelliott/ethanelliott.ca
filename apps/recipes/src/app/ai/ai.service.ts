@@ -871,7 +871,20 @@ Guidelines:
       Array.isArray(data.recipeIngredient) &&
       data.recipeIngredient.length > 0
     ) {
-      ingredients = await this.parseIngredientStrings(data.recipeIngredient);
+      try {
+        ingredients = await this.parseIngredientStrings(data.recipeIngredient);
+      } catch (error) {
+        logger.warn(
+          { err: error instanceof Error ? error : undefined, ingredientCount: data.recipeIngredient.length },
+          'LLM ingredient parsing failed, using raw strings as fallback'
+        );
+        // Fallback: use raw ingredient strings as names
+        ingredients = data.recipeIngredient.map((s: string) => ({
+          name: s,
+          quantity: 1,
+          unit: '',
+        }));
+      }
     }
 
     return {

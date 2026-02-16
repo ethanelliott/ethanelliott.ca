@@ -136,7 +136,11 @@ export class OllamaClient {
         logger.error({ err: error, model }, 'Ollama chat request failed');
         throw new Error(`Ollama request failed: ${error.message}`);
       }
-      throw new Error('Ollama request failed: Unknown error');
+      logger.error(
+        { error: String(error), type: typeof error, model },
+        'Ollama chat request failed with non-Error'
+      );
+      throw new Error(`Ollama request failed: ${String(error)}`);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -231,7 +235,7 @@ export class OllamaClient {
         }
         throw new Error(`Ollama stream failed: ${error.message}`);
       }
-      throw new Error('Ollama stream failed: Unknown error');
+      throw new Error(`Ollama stream failed: ${String(error)}`);
     } finally {
       clearTimeout(timeoutId);
     }
