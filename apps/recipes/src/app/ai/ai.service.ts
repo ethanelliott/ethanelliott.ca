@@ -916,7 +916,7 @@ Guidelines:
 
     return {
       title,
-      description,
+      description: description || (await this.generateDescription(title)),
       ingredients,
       instructions,
       servings,
@@ -1103,6 +1103,34 @@ Guidelines:
   }
 
   /**
+   * Use the LLM to generate a short, appealing food-blog-style description
+   * for a recipe when one isn't provided by the source.
+   */
+  private async generateDescription(title: string): Promise<string> {
+    try {
+      const messages: Message[] = [
+        {
+          role: 'system',
+          content: `/no_think You are a food blogger. Write a single short, appealing description (1-2 sentences max) for the given recipe title. It should sound warm and appetizing, like what you'd read on a food blog. Do NOT list ingredients. Do NOT use quotation marks. Return ONLY the description text, nothing else.`,
+        },
+        {
+          role: 'user',
+          content: title,
+        },
+      ];
+      const response = await this._ollamaClient.chat(messages);
+      const desc = response.trim();
+      return desc || title;
+    } catch (err) {
+      logger.warn(
+        { error: String(err), title },
+        'Failed to generate description, using title as fallback'
+      );
+      return '';
+    }
+  }
+
+  /**
    * Use LLM to parse ingredient strings into structured objects.
    * Strings like "1 cup butter, softened" → { quantity: 1, unit: "cup", name: "butter", notes: "softened" }
    */
@@ -1186,9 +1214,11 @@ CRITICAL RULES:
 - If information is not present, omit the field
 
 DESCRIPTION RULES:
-- The description should be a brief 1-2 sentence summary of the dish
-- If no clear description exists, leave it blank/empty — do NOT fabricate one
+- ALWAYS provide a description — a short, appealing 1-2 sentence summary of the dish in the style of a food blog
+- If the source text includes a description, use it (cleaned up)
+- If no description exists in the source, write one yourself based on the dish name, ingredients, and cooking method
 - The description must NEVER list ingredients — that belongs only in the ingredients array
+- Keep it concise, warm, and appetizing (e.g. "A creamy one-pot pasta loaded with sun-dried tomatoes and fresh basil — ready in under 30 minutes.")
 
 INSTRUCTION RULES:
 - Format instructions as clean markdown with a numbered list (1. Step one\n2. Step two)
