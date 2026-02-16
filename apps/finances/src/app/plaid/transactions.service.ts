@@ -214,6 +214,23 @@ export class TransactionsService {
       transaction.isReviewed = update.isReviewed;
     }
 
+    // Update linked transfer if provided
+    if (update.linkedTransferId !== undefined) {
+      if (update.linkedTransferId === null) {
+        // Unlink — also clear the other side
+        if (transaction.linkedTransferId) {
+          await this._repository.update(
+            { id: transaction.linkedTransferId },
+            { linkedTransferId: undefined, linkedTransferConfidence: undefined }
+          );
+        }
+        transaction.linkedTransferId = undefined;
+        transaction.linkedTransferConfidence = undefined;
+      } else {
+        transaction.linkedTransferId = update.linkedTransferId;
+      }
+    }
+
     const saved = await this._repository.save(transaction);
 
     // Reload with relations
@@ -292,6 +309,8 @@ export class TransactionsService {
     totalIncome: number;
     totalExpenses: number;
     totalTransfers: number;
+    linkedTransferCount: number;
+    unlinkedTransferCount: number;
     byCategory: Array<{ category: string; amount: number; count: number }>;
   }> {
     const filters: TransactionFilters = { isPending: false };
@@ -307,14 +326,27 @@ export class TransactionsService {
     const totalExpenses = transactions
       .filter((t) => t.type === TransactionType.EXPENSE)
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    const totalTransfers = transactions
-      .filter((t) => t.type === TransactionType.TRANSFER)
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    // Group by category
+    const transfers = transactions.filter(
+      (t) => t.type === TransactionType.TRANSFER
+    );
+    const totalTransfers = transfers.reduce(
+      (sum, t) => sum + Math.abs(t.amount),
+      0
+    );
+    const linkedTransferCount = transfers.filter(
+      (t) => t.linkedTransferId
+    ).length;
+    const unlinkedTransferCount = transfers.filter(
+      (t) => !t.linkedTransferId
+    ).length;
+
+    // Group by category (exclude linked transfers from spending breakdown)
     const categoryMap = new Map<string, { amount: number; count: number }>();
     for (const t of transactions.filter(
-      (t) => t.type === TransactionType.EXPENSE
+      (t) =>
+        t.type === TransactionType.EXPENSE ||
+        (t.type === TransactionType.TRANSFER && !t.linkedTransferId)
     )) {
       const cat =
         t.category || t.plaidPersonalFinanceCategory || 'Uncategorized';
@@ -336,6 +368,8 @@ export class TransactionsService {
       totalIncome,
       totalExpenses,
       totalTransfers,
+      linkedTransferCount,
+      unlinkedTransferCount,
       byCategory,
     };
   }
@@ -367,6 +401,243 @@ export class TransactionsService {
     return linked ? this.mapToOut(linked) : null;
   }
 
+  /**
+   * Manually link two transactions as a transfer pair
+   */
+  async linkTransfer(
+    transactionId: string,
+    targetTransactionId: string,
+    userId: string
+  ): Promise<TransactionOut> {
+    if (transactionId === targetTransactionId) {
+      throw new HttpErrors.BadRequest('Cannot link a transaction to itself');
+    }
+
+    const [source, target] = await Promise.all([
+      this._repository.findOne({
+        where: { id: transactionId, user: { id: userId } },
+        relations: { account: { plaidItem: true }, category: true, tags: true },
+      }),
+      this._repository.findOne({
+        where: { id: targetTransactionId, user: { id: userId } },
+        relations: { account: { plaidItem: true }, category: true, tags: true },
+      }),
+    ]);
+
+    if (!source) throw new HttpErrors.NotFound('Source transaction not found');
+    if (!target) throw new HttpErrors.NotFound('Target transaction not found');
+
+    // If either already has a different link, clear the old link first
+    if (source.linkedTransferId && source.linkedTransferId !== target.id) {
+      await this._repository.update(
+        { id: source.linkedTransferId },
+        { linkedTransferId: undefined, linkedTransferConfidence: undefined }
+      );
+    }
+    if (target.linkedTransferId && target.linkedTransferId !== source.id) {
+      await this._repository.update(
+        { id: target.linkedTransferId },
+        { linkedTransferId: undefined, linkedTransferConfidence: undefined }
+      );
+    }
+
+    // Link bidirectionally with 100% confidence (manual)
+    source.linkedTransferId = target.id;
+    source.linkedTransferConfidence = 100;
+    source.type = TransactionType.TRANSFER;
+    target.linkedTransferId = source.id;
+    target.linkedTransferConfidence = 100;
+    target.type = TransactionType.TRANSFER;
+    await this._repository.save([source, target]);
+
+    const reloaded = await this._repository.findOne({
+      where: { id: source.id },
+      relations: { account: { plaidItem: true }, category: true, tags: true },
+    });
+    return this.mapToOut(reloaded!);
+  }
+
+  /**
+   * Unlink a transfer pair
+   */
+  async unlinkTransfer(
+    transactionId: string,
+    userId: string
+  ): Promise<TransactionOut> {
+    const transaction = await this._repository.findOne({
+      where: { id: transactionId, user: { id: userId } },
+      relations: { account: { plaidItem: true }, category: true, tags: true },
+    });
+
+    if (!transaction) {
+      throw new HttpErrors.NotFound('Transaction not found');
+    }
+
+    if (transaction.linkedTransferId) {
+      // Clear the other side
+      await this._repository.update(
+        { id: transaction.linkedTransferId },
+        { linkedTransferId: undefined, linkedTransferConfidence: undefined }
+      );
+    }
+
+    transaction.linkedTransferId = undefined;
+    transaction.linkedTransferConfidence = undefined;
+    const saved = await this._repository.save(transaction);
+
+    const reloaded = await this._repository.findOne({
+      where: { id: saved.id },
+      relations: { account: { plaidItem: true }, category: true, tags: true },
+    });
+    return this.mapToOut(reloaded!);
+  }
+
+  /**
+   * Get transfer suggestions for a transaction.
+   * Returns candidate transactions ranked by confidence score.
+   */
+  async getTransferSuggestions(
+    transactionId: string,
+    userId: string
+  ): Promise<Array<TransactionOut & { confidence: number }>> {
+    const transaction = await this._repository.findOne({
+      where: { id: transactionId, user: { id: userId } },
+      relations: { account: true },
+    });
+
+    if (!transaction) {
+      throw new HttpErrors.NotFound('Transaction not found');
+    }
+
+    const txAmount = parseFloat(transaction.amount.toString());
+    const txDate = transaction.date;
+
+    // Search for candidates: opposite polarity, different account, within ±5 days
+    const dateParts = txDate.split('-').map(Number);
+    const baseDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    const minDate = new Date(baseDate);
+    minDate.setDate(minDate.getDate() - 5);
+    const maxDate = new Date(baseDate);
+    maxDate.setDate(maxDate.getDate() + 5);
+    const minDateStr = minDate.toISOString().split('T')[0];
+    const maxDateStr = maxDate.toISOString().split('T')[0];
+
+    const candidates = await this._repository
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.account', 'account')
+      .leftJoinAndSelect('account.plaidItem', 'plaidItem')
+      .leftJoinAndSelect('t.category', 'category')
+      .leftJoinAndSelect('t.tags', 'tags')
+      .where('t.user.id = :userId', { userId })
+      .andWhere('t.id != :txnId', { txnId: transaction.id })
+      .andWhere('account.id != :accountId', {
+        accountId: transaction.account.id,
+      })
+      .andWhere('t.date >= :minDate', { minDate: minDateStr })
+      .andWhere('t.date <= :maxDate', { maxDate: maxDateStr })
+      .andWhere('t.pending = :pending', { pending: false })
+      .getMany();
+
+    // Score each candidate
+    const scored = candidates
+      .map((c) => {
+        const cAmount = parseFloat(c.amount.toString());
+        const confidence = this.computeTransferConfidence(
+          txAmount,
+          txDate,
+          transaction.account.id,
+          cAmount,
+          c.date,
+          c.account?.id || '',
+          transaction.name,
+          c.name
+        );
+        return { transaction: c, confidence };
+      })
+      .filter((s) => s.confidence > 20) // minimum threshold
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 10);
+
+    return scored.map((s) => ({
+      ...this.mapToOut(s.transaction),
+      confidence: s.confidence,
+    }));
+  }
+
+  /**
+   * Compute confidence score (0-100) that two transactions are a transfer pair
+   */
+  private computeTransferConfidence(
+    amountA: number,
+    dateA: string,
+    accountIdA: string,
+    amountB: number,
+    dateB: string,
+    accountIdB: string,
+    nameA: string,
+    nameB: string
+  ): number {
+    // Must be different accounts
+    if (accountIdA === accountIdB) return 0;
+
+    let score = 0;
+
+    // Amount matching: opposite polarity, same absolute value
+    const sumAmount = amountA + amountB;
+    const absA = Math.abs(amountA);
+    if (Math.abs(sumAmount) < 0.02) {
+      // Exact opposite amounts
+      score += 50;
+    } else if (absA > 0 && Math.abs(sumAmount) / absA < 0.01) {
+      // Within 1% tolerance
+      score += 40;
+    } else if (absA > 0 && Math.abs(sumAmount) / absA < 0.05) {
+      // Within 5%
+      score += 20;
+    } else {
+      // Amounts don't match well enough
+      return 0;
+    }
+
+    // Date proximity
+    const dateAMs = new Date(dateA).getTime();
+    const dateBMs = new Date(dateB).getTime();
+    const daysDiff = Math.abs(dateAMs - dateBMs) / (1000 * 60 * 60 * 24);
+    if (daysDiff === 0) {
+      score += 30;
+    } else if (daysDiff <= 1) {
+      score += 25;
+    } else if (daysDiff <= 2) {
+      score += 20;
+    } else if (daysDiff <= 3) {
+      score += 15;
+    } else if (daysDiff <= 5) {
+      score += 5;
+    }
+
+    // Name signals (transfer keywords in either transaction)
+    const transferKeywords = [
+      'transfer',
+      'e-transfer',
+      'payment',
+      'pymt',
+      'bill pay',
+      'online banking',
+      'internet banking',
+    ];
+    const nameALower = nameA.toLowerCase();
+    const nameBLower = nameB.toLowerCase();
+    for (const kw of transferKeywords) {
+      if (nameALower.includes(kw) || nameBLower.includes(kw)) {
+        score += 10;
+        break;
+      }
+    }
+
+    // Cap at 100
+    return Math.min(score, 100);
+  }
+
   private mapToOut(transaction: Transaction): TransactionOut {
     return {
       id: transaction.id,
@@ -390,6 +661,7 @@ export class TransactionsService {
       pending: transaction.pending,
       isReviewed: transaction.isReviewed,
       linkedTransferId: transaction.linkedTransferId || null,
+      linkedTransferConfidence: transaction.linkedTransferConfidence ?? null,
       paymentChannel: transaction.paymentChannel || null,
       locationCity: transaction.locationCity || null,
       locationRegion: transaction.locationRegion || null,

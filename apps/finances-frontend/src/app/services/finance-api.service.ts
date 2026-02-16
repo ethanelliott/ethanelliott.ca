@@ -138,6 +138,7 @@ export interface Transaction {
   pending: boolean;
   isReviewed: boolean;
   linkedTransferId: string | null;
+  linkedTransferConfidence: number | null;
   paymentChannel: string | null;
   locationCity: string | null;
   locationRegion: string | null;
@@ -151,6 +152,7 @@ export interface TransactionUpdate {
   tags?: string[];
   notes?: string | null;
   isReviewed?: boolean;
+  linkedTransferId?: string | null;
 }
 
 export interface TransactionFilters {
@@ -171,7 +173,13 @@ export interface TransactionStats {
   totalIncome: number;
   totalExpenses: number;
   totalTransfers: number;
+  linkedTransferCount: number;
+  unlinkedTransferCount: number;
   byCategory: Array<{ category: string; amount: number; count: number }>;
+}
+
+export interface TransferSuggestion extends Transaction {
+  confidence: number;
 }
 
 // ==================== Category Types ====================
@@ -467,6 +475,28 @@ export class FinanceApiService {
   getLinkedTransfer(id: string): Observable<Transaction | null> {
     return this._http.get<Transaction | null>(
       `${this.baseUrl}/finances/transactions/${id}/linked-transfer`
+    );
+  }
+
+  linkTransfer(
+    id: string,
+    targetTransactionId: string
+  ): Observable<Transaction> {
+    return this._http.post<Transaction>(
+      `${this.baseUrl}/finances/transactions/${id}/link-transfer`,
+      { targetTransactionId }
+    );
+  }
+
+  unlinkTransfer(id: string): Observable<Transaction> {
+    return this._http.delete<Transaction>(
+      `${this.baseUrl}/finances/transactions/${id}/link-transfer`
+    );
+  }
+
+  getTransferSuggestions(id: string): Observable<TransferSuggestion[]> {
+    return this._http.get<TransferSuggestion[]>(
+      `${this.baseUrl}/finances/transactions/${id}/transfer-suggestions`
     );
   }
 

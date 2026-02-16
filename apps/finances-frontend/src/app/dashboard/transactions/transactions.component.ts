@@ -38,6 +38,7 @@ import {
   Tag,
   TransactionType,
   TransactionFilters,
+  TransferSuggestion,
 } from '../../services/finance-api.service';
 import { firstValueFrom } from 'rxjs';
 
@@ -237,6 +238,88 @@ import { firstValueFrom } from 'rxjs';
             </button>
           </div>
           <div class="edit-panel-content">
+            <!-- Transfer Info Card -->
+            @if (linkedTransfer()) {
+            <div class="transfer-card">
+              <div class="transfer-card-header">
+                <mat-icon>swap_horiz</mat-icon>
+                <span>Linked Transfer</span>
+                @if (editingTransaction()?.linkedTransferConfidence) {
+                <span class="confidence-badge"
+                  >{{ editingTransaction()!.linkedTransferConfidence }}%
+                  confidence</span
+                >
+                }
+              </div>
+              <div class="transfer-card-body">
+                <div class="transfer-detail">
+                  <span class="transfer-label">Account</span>
+                  <span>{{ linkedTransfer()!.accountName }}</span>
+                </div>
+                <div class="transfer-detail">
+                  <span class="transfer-label">Date</span>
+                  <span>{{ linkedTransfer()!.date }}</span>
+                </div>
+                <div class="transfer-detail">
+                  <span class="transfer-label">Amount</span>
+                  <span>{{ formatAmount(linkedTransfer()!) }}</span>
+                </div>
+                <div class="transfer-detail">
+                  <span class="transfer-label">Name</span>
+                  <span>{{
+                    linkedTransfer()!.merchantName || linkedTransfer()!.name
+                  }}</span>
+                </div>
+              </div>
+              <button
+                mat-stroked-button
+                class="unlink-btn"
+                (click)="unlinkTransfer(editingTransaction()!)"
+              >
+                <mat-icon>link_off</mat-icon>
+                Unlink
+              </button>
+            </div>
+            } @else if (transferSuggestions().length > 0) {
+            <div class="transfer-suggestions">
+              <div class="transfer-suggestions-header">
+                <mat-icon>lightbulb</mat-icon>
+                <span>Transfer Suggestions</span>
+              </div>
+              @for (suggestion of transferSuggestions(); track suggestion.id) {
+              <div class="suggestion-row">
+                <div class="suggestion-info">
+                  <span class="suggestion-name">{{
+                    suggestion.merchantName || suggestion.name
+                  }}</span>
+                  <span class="suggestion-meta"
+                    >{{ suggestion.accountName }} · {{ suggestion.date }}</span
+                  >
+                </div>
+                <span class="suggestion-amount">{{
+                  formatAmount(suggestion)
+                }}</span>
+                <span class="confidence-badge"
+                  >{{ suggestion.confidence }}%</span
+                >
+                <button
+                  mat-icon-button
+                  (click)="linkTransfer(editingTransaction()!, suggestion)"
+                  matTooltip="Link as transfer"
+                >
+                  <mat-icon>link</mat-icon>
+                </button>
+              </div>
+              }
+            </div>
+            } @else if (!editingTransaction()?.linkedTransferId &&
+            loadingTransferInfo()) {
+            <div class="transfer-loading">
+              <mat-spinner diameter="20"></mat-spinner>
+              <span>Looking for matching transfers...</span>
+            </div>
+            }
+
             <mat-form-field appearance="outline" class="edit-field">
               <mat-label>Category</mat-label>
               <input
@@ -413,9 +496,18 @@ import { firstValueFrom } from 'rxjs';
                     <span>Edit</span>
                   </button>
                   @if (tx.linkedTransferId) {
-                  <button mat-menu-item disabled>
+                  <button mat-menu-item (click)="viewLinkedTransfer(tx)">
                     <mat-icon>swap_horiz</mat-icon>
                     <span>View Transfer</span>
+                  </button>
+                  <button mat-menu-item (click)="unlinkTransfer(tx)">
+                    <mat-icon>link_off</mat-icon>
+                    <span>Unlink Transfer</span>
+                  </button>
+                  } @else {
+                  <button mat-menu-item (click)="showTransferSuggestions(tx)">
+                    <mat-icon>swap_horiz</mat-icon>
+                    <span>Link as Transfer</span>
                   </button>
                   }
                 </mat-menu>
@@ -463,6 +555,9 @@ export class TransactionsComponent implements OnInit {
   showFilters = signal(false);
   editingTransaction = signal<Transaction | null>(null);
   editingTransactionTags = signal<string[]>([]);
+  linkedTransfer = signal<Transaction | null>(null);
+  transferSuggestions = signal<TransferSuggestion[]>([]);
+  loadingTransferInfo = signal(false);
 
   // Filter state
   searchQuery = '';
@@ -683,6 +778,11 @@ export class TransactionsComponent implements OnInit {
     this.filteredTags.set(
       this.tags().filter((t) => !tx.tags?.includes(t.name))
     );
+
+    // Load transfer info
+    this.linkedTransfer.set(null);
+    this.transferSuggestions.set([]);
+    this.loadTransferInfo(tx);
   }
 
   cancelEdit() {
@@ -690,6 +790,9 @@ export class TransactionsComponent implements OnInit {
     this.editingTransactionTags.set([]);
     this.categoryInput.set('');
     this.tagInput.set('');
+    this.linkedTransfer.set(null);
+    this.transferSuggestions.set([]);
+    this.loadingTransferInfo.set(false);
   }
 
   async saveEdit() {
@@ -902,8 +1005,90 @@ export class TransactionsComponent implements OnInit {
         return 'positive';
       case TransactionType.EXPENSE:
         return 'negative';
+      case TransactionType.TRANSFER:
+        return 'transfer-amount';
       default:
         return '';
+    }
+  }
+
+  // ── Transfer linking ──
+
+  private async loadTransferInfo(tx: Transaction) {
+    this.loadingTransferInfo.set(true);
+    try {
+      if (tx.linkedTransferId) {
+        const linked = await firstValueFrom(
+          this.apiService.getLinkedTransfer(tx.id)
+        );
+        this.linkedTransfer.set(linked);
+      } else {
+        const suggestions = await firstValueFrom(
+          this.apiService.getTransferSuggestions(tx.id)
+        );
+        this.transferSuggestions.set(suggestions);
+      }
+    } catch (error) {
+      console.error('Error loading transfer info:', error);
+    } finally {
+      this.loadingTransferInfo.set(false);
+    }
+  }
+
+  viewLinkedTransfer(tx: Transaction) {
+    if (!tx.linkedTransferId) return;
+    // Find the linked transaction in the list and scroll/open it
+    const linked = this.transactions().find(
+      (t) => t.id === tx.linkedTransferId
+    );
+    if (linked) {
+      this.startEdit(linked);
+    }
+  }
+
+  showTransferSuggestions(tx: Transaction) {
+    this.startEdit(tx);
+  }
+
+  async linkTransfer(source: Transaction, target: Transaction) {
+    try {
+      this.saving.set(true);
+      await firstValueFrom(this.apiService.linkTransfer(source.id, target.id));
+
+      // Refresh local state
+      await this.loadData();
+      this.cancelEdit();
+      this.snackBar.open('Transactions linked as transfer', 'Dismiss', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error linking transfer:', error);
+      this.snackBar.open('Error linking transfer', 'Dismiss', {
+        duration: 3000,
+      });
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async unlinkTransfer(tx: Transaction) {
+    try {
+      this.saving.set(true);
+      await firstValueFrom(this.apiService.unlinkTransfer(tx.id));
+
+      // Refresh local state
+      await this.loadData();
+      this.cancelEdit();
+      this.snackBar.open('Transfer unlinked', 'Dismiss', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error unlinking transfer:', error);
+      this.snackBar.open('Error unlinking transfer', 'Dismiss', {
+        duration: 3000,
+      });
+    } finally {
+      this.saving.set(false);
     }
   }
 
@@ -915,6 +1100,8 @@ export class TransactionsComponent implements OnInit {
         return '+' + formatted;
       case TransactionType.EXPENSE:
         return '-' + formatted;
+      case TransactionType.TRANSFER:
+        return tx.amount > 0 ? '-' + formatted : '+' + formatted;
       default:
         return formatted;
     }

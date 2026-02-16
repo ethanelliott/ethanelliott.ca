@@ -105,6 +105,10 @@ export class Transaction {
   @Column('uuid', { nullable: true })
   linkedTransferId?: string;
 
+  // Confidence score for auto-detected transfer links (0-100)
+  @Column('integer', { nullable: true })
+  linkedTransferConfidence?: number;
+
   // Payment metadata
   @Column('text', { nullable: true })
   paymentChannel?: string;
@@ -151,6 +155,7 @@ export const TransactionOutSchema = z.object({
   pending: z.boolean(),
   isReviewed: z.boolean(),
   linkedTransferId: z.string().uuid().nullable(),
+  linkedTransferConfidence: z.number().nullable(),
   paymentChannel: z.string().nullable(),
   locationCity: z.string().nullable(),
   locationRegion: z.string().nullable(),
@@ -166,6 +171,7 @@ export const TransactionUpdateSchema = z.object({
   tags: z.array(z.string()).optional(),
   notes: z.string().nullable().optional(),
   isReviewed: z.boolean().optional(),
+  linkedTransferId: z.string().uuid().nullable().optional(),
 });
 
 export type TransactionUpdate = z.infer<typeof TransactionUpdateSchema>;
