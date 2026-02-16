@@ -224,43 +224,53 @@ import { marked } from 'marked';
           </div>
         </div>
         @if (galleryImages().length > 0) {
+        <div class="photo-grid">
+          @for (img of galleryImages(); track img.photoId; let i = $index) {
+          <div class="photo-grid-item" (click)="openPreview(i)">
+            <img [src]="img.itemImageSrc" [alt]="img.alt" />
+            <div class="photo-grid-overlay">
+              <i class="pi pi-search-plus"></i>
+            </div>
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              [rounded]="true"
+              size="small"
+              class="photo-grid-delete"
+              pTooltip="Delete photo"
+              tooltipPosition="left"
+              (click)="
+                confirmDeletePhoto(img.photoId); $event.stopPropagation()
+              "
+            />
+          </div>
+          }
+        </div>
         <p-galleria
           [value]="galleryImages()"
-          [numVisible]="5"
+          [(visible)]="previewVisible"
+          [fullScreen]="true"
           [showItemNavigators]="true"
-          [showItemNavigatorsOnHover]="true"
           [circular]="true"
-          [showThumbnails]="galleryImages().length > 1"
-          [containerStyle]="{ 'max-width': '100%' }"
-          [responsiveOptions]="galleriaResponsiveOptions"
+          [showThumbnails]="true"
+          [numVisible]="5"
+          [(activeIndex)]="activeGalleryIndex"
         >
           <ng-template #item let-item>
-            <div class="galleria-item-wrapper">
-              <img
-                [src]="item.itemImageSrc"
-                [alt]="item.alt"
-                style="width: 100%; display: block; border-radius: 8px;"
-              />
-              <p-button
-                icon="pi pi-trash"
-                severity="danger"
-                [rounded]="true"
-                size="small"
-                class="galleria-delete-btn"
-                pTooltip="Delete photo"
-                tooltipPosition="left"
-                (click)="confirmDeletePhoto(item.photoId)"
-              />
-            </div>
+            <img
+              [src]="item.itemImageSrc"
+              [alt]="item.alt"
+              style="width: 100%; max-height: 80vh; object-fit: contain; display: block;"
+            />
           </ng-template>
           <ng-template #thumbnail let-item>
             <img
               [src]="item.thumbnailImageSrc"
               [alt]="item.alt"
-              style="display: block; width: 100%; border-radius: 4px;"
+              style="display: block; width: 100%; height: 60px; object-fit: cover; border-radius: 4px;"
             />
           </ng-template>
-          <ng-template #caption let-item>
+          <ng-template #caption>
             <div class="galleria-caption">
               {{ activeGalleryIndex() + 1 }} / {{ galleryImages().length }}
             </div>
@@ -924,32 +934,65 @@ import { marked } from 'marked';
       align-items: center;
     }
 
-    .galleria-item-wrapper {
-      position: relative;
-      width: 100%;
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
     }
 
-    .galleria-delete-btn {
+    .photo-grid-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid var(--p-surface-700);
+      transition: transform 0.15s, box-shadow 0.15s;
+
+      &:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+    }
+
+    .photo-grid-overlay {
       position: absolute;
-      top: 8px;
-      right: 8px;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       opacity: 0;
       transition: opacity 0.2s;
+
+      i {
+        font-size: 1.5rem;
+        color: white;
+      }
     }
 
-    .galleria-item-wrapper:hover .galleria-delete-btn {
+    .photo-grid-item:hover .photo-grid-overlay {
       opacity: 1;
     }
 
-    :host ::ng-deep .p-galleria {
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid var(--p-surface-700);
+    .photo-grid-delete {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 2;
     }
 
-    :host ::ng-deep .p-galleria-thumbnail-items img {
-      height: 60px;
-      object-fit: cover;
+    .photo-grid-item:hover .photo-grid-delete {
+      opacity: 1;
     }
 
     .galleria-caption {
@@ -1470,6 +1513,7 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
   // Photo state
   uploadLoading = signal(false);
   activeGalleryIndex = signal(0);
+  previewVisible = signal(false);
 
   // Categories & Tags editing state
   allCategories = signal<Category[]>([]);
@@ -1489,12 +1533,6 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
       photoId: photo.id,
     }));
   });
-
-  galleriaResponsiveOptions = [
-    { breakpoint: '1024px', numVisible: 5 },
-    { breakpoint: '768px', numVisible: 3 },
-    { breakpoint: '560px', numVisible: 2 },
-  ];
 
   // AI State
   aiPanelOpen = signal(false);
@@ -1638,6 +1676,11 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
     return this.sanitizer.bypassSecurityTrustHtml(
       marked.parse(content, { async: false }) as string
     );
+  }
+
+  openPreview(index: number) {
+    this.activeGalleryIndex.set(index);
+    this.previewVisible.set(true);
   }
 
   onFileSelected(event: Event) {
