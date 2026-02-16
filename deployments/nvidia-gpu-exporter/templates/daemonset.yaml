@@ -12,9 +12,6 @@ spec:
     metadata:
       labels:
         {{- include "nvidia-gpu-exporter.selectorLabels" . | nindent 8 }}
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "{{ .Values.service.port }}"
     spec:
       {{- with .Values.nodeSelector }}
       nodeSelector:
