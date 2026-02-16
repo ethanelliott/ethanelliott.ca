@@ -85,6 +85,9 @@
           : `https://www.aritzia.com/en/product/${product.slug}`;
       %>
       <div class="product-card">
+        <% if (product.price && product.list_price && product.price < product.list_price) { %>
+        <span class="discount-overlay"><%= Math.round((1 - product.price / product.list_price) * 100) %>% OFF</span>
+        <% } %>
         <a href="<%= link %>" class="product-image">
           <% if (product.thumbnail_id) { %>
           <img

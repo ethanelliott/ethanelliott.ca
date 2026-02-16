@@ -4,11 +4,13 @@
 
 /* Global Styles */
 body {
-  font-family: sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   margin: 0 auto;
   padding: 20px;
-  background-color: light-dark(#fff, #121212);
+  padding-top: 80px; /* Account for sticky nav */
+  background-color: light-dark(#fafafa, #121212);
   color: light-dark(#333, #e0e0e0);
+  max-width: 1600px;
 }
 
 h1 {
@@ -35,19 +37,70 @@ a:hover {
 }
 
 .nav {
-  margin-bottom: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: light-dark(rgba(255,255,255,0.92), rgba(18,18,18,0.92));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid light-dark(#e0e0e0, #333);
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
 }
 
-.nav a {
-  margin-right: 15px;
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 0 4px;
+  flex-wrap: wrap;
+}
+
+.nav-links a {
   text-decoration: none;
   color: light-dark(#333, #e0e0e0);
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 0.88em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+  white-space: nowrap;
 }
 
-.nav a:hover {
-  text-decoration: underline;
-  color: light-dark(#333, #fff);
+.nav-links a:hover {
+  background-color: light-dark(#f0f0f0, #2a2a2a);
+  text-decoration: none;
+  color: light-dark(#000, #fff);
+}
+
+.nav-divider {
+  color: light-dark(#ccc, #444);
+  margin: 0 4px;
+  user-select: none;
+}
+
+.nav-ai-link {
+  color: light-dark(#7c3aed, #a78bfa) !important;
+  font-weight: 700 !important;
+}
+
+.nav-ai-link:hover {
+  background-color: light-dark(#f3f0ff, #2d1b69) !important;
+}
+
+.nav-stats {
+  display: flex;
+  gap: 16px;
+  padding: 2px 0 8px;
+  font-size: 0.75em;
+  color: light-dark(#888, #777);
+}
+
+.nav-stat {
+  white-space: nowrap;
 }
 
 /* Product Grid */
@@ -1198,9 +1251,21 @@ select {
 /* ==================== */
 
 @media (max-width: 768px) {
-  .nav {
-    flex-wrap: wrap;
-    gap: 10px;
+  body {
+    padding-top: 110px;
+  }
+
+  .nav-links {
+    gap: 2px;
+  }
+
+  .nav-links a {
+    font-size: 0.8em;
+    padding: 3px 6px;
+  }
+
+  .nav-divider {
+    display: none;
   }
 
   .filter-search {
@@ -1215,4 +1280,269 @@ select {
     flex: none;
     width: 100%;
   }
+
+  .ai-search-input {
+    min-width: 0 !important;
+  }
+
+  .ai-quick-prompts {
+    flex-wrap: wrap;
+  }
+}
+
+/* ==================== */
+/* Skeleton Loading     */
+/* ==================== */
+
+.no-image-placeholder {
+  background: linear-gradient(
+    90deg,
+    light-dark(#f0f0f0, #2a2a2a) 25%,
+    light-dark(#e0e0e0, #333) 50%,
+    light-dark(#f0f0f0, #2a2a2a) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: light-dark(#bbb, #555);
+  font-size: 0.85em;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.product-image img {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==================== */
+/* AI Styles            */
+/* ==================== */
+
+.ai-subtitle {
+  color: light-dark(#666, #999);
+  margin-top: -10px;
+  margin-bottom: 20px;
+}
+
+.ai-search-input {
+  min-width: 350px;
+  flex: 1;
+}
+
+.ai-stream-container {
+  background-color: light-dark(#f8f6ff, #1a1625);
+  border: 1px solid light-dark(#e0d8f0, #2d2640);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.ai-thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: light-dark(#7c3aed, #a78bfa);
+}
+
+.ai-thinking-icon {
+  font-size: 1.3em;
+}
+
+.ai-reasoning {
+  background-color: light-dark(#f0edfa, #15111f);
+  border: 1px solid light-dark(#d8d0ee, #2a2040);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.82em;
+  color: light-dark(#6b5b8a, #8b7bad);
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.ai-content {
+  font-size: 0.95em;
+  line-height: 1.7;
+  color: light-dark(#333, #ddd);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-content strong {
+  color: light-dark(#1a1a1a, #fff);
+}
+
+.ai-filters-display {
+  background-color: light-dark(#eee8fd, #1f1830);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.88em;
+}
+
+.ai-filter-tag {
+  display: inline-block;
+  background-color: light-dark(#7c3aed, #5b21b6);
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  margin: 2px 4px;
+}
+
+.ai-explanation {
+  color: light-dark(#666, #999);
+  font-style: italic;
+  margin-bottom: 16px;
+}
+
+.ai-error {
+  background-color: light-dark(#fff0f0, #2a1515);
+  border: 1px solid light-dark(#ffcdd2, #4a2020);
+  border-radius: 8px;
+  padding: 16px;
+  color: light-dark(#c62828, #ef9a9a);
+}
+
+.ai-product-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.ai-action-btn {
+  background: linear-gradient(135deg, light-dark(#7c3aed, #5b21b6), light-dark(#a78bfa, #7c3aed));
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.ai-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px light-dark(rgba(124, 58, 237, 0.3), rgba(124, 58, 237, 0.5));
+}
+
+.ai-quick-prompts {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.quick-prompt {
+  background-color: light-dark(#f3f0ff, #1f1830);
+  border: 1px solid light-dark(#d8d0ee, #3d2d5c);
+  color: light-dark(#7c3aed, #a78bfa);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quick-prompt:hover {
+  background-color: light-dark(#7c3aed, #5b21b6);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ==================== */
+/* Nav Sale Link        */
+/* ==================== */
+
+.nav-sale-link {
+  color: light-dark(#dc2626, #ef4444) !important;
+  font-weight: 700 !important;
+}
+
+/* ==================== */
+/* Discount overlay     */
+/* ==================== */
+
+.product-card {
+  position: relative;
+}
+
+.discount-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: #dc2626;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: 700;
+  z-index: 1;
+}
+
+/* ==================== */
+/* Color swatches in cards */
+/* ==================== */
+
+.card-swatches {
+  display: flex;
+  gap: 3px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.card-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid light-dark(#ddd, #444);
+  display: inline-block;
+}
+
+/* ==================== */
+/* Dark mode toggle     */
+/* ==================== */
+
+.theme-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1001;
+  background-color: light-dark(#fff, #1e1e1e);
+  border: 1px solid light-dark(#ddd, #444);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.3em;
+  box-shadow: 0 2px 8px light-dark(rgba(0,0,0,0.15), rgba(0,0,0,0.5));
+  transition: transform 0.2s;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
 }
