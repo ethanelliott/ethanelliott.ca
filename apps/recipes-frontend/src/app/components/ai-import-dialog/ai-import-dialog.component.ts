@@ -9,6 +9,9 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
+import { InputTextModule } from 'primeng/inputtext';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TextareaModule } from 'primeng/textarea';
 import {
@@ -23,6 +26,9 @@ import {
     FormsModule,
     ButtonModule,
     DialogModule,
+    InputGroupModule,
+    InputGroupAddonModule,
+    InputTextModule,
     ProgressSpinnerModule,
     TextareaModule,
   ],
@@ -40,9 +46,43 @@ import {
       @if (!parsed()) {
       <!-- Input Phase -->
       <p class="intro-text">
-        Paste recipe text from any source and our AI will parse it into a
-        structured recipe for you.
+        Import a recipe from a URL or paste recipe text and AI will parse it.
       </p>
+
+      <!-- Mode Toggle -->
+      <div class="mode-toggle">
+        <button
+          class="mode-btn"
+          [class.active]="mode() === 'url'"
+          (click)="mode.set('url')"
+        >
+          <i class="pi pi-link"></i> URL
+        </button>
+        <button
+          class="mode-btn"
+          [class.active]="mode() === 'text'"
+          (click)="mode.set('text')"
+        >
+          <i class="pi pi-file-edit"></i> Text
+        </button>
+      </div>
+
+      @if (mode() === 'url') {
+      <p-inputgroup>
+        <p-inputgroup-addon>
+          <i class="pi pi-link"></i>
+        </p-inputgroup-addon>
+        <input
+          pInputText
+          [(ngModel)]="urlText"
+          placeholder="https://www.allrecipes.com/recipe/..."
+          class="full-width"
+        />
+      </p-inputgroup>
+      <p class="helper-text">
+        Works with most recipe sites that use structured data.
+      </p>
+      } @else {
       <textarea
         pTextarea
         [autoResize]="true"
@@ -51,8 +91,7 @@ import {
         placeholder="Paste recipe text here..."
         class="full-width"
       ></textarea>
-
-      @if (error()) {
+      } @if (error()) {
       <div class="error-banner">
         <i class="pi pi-exclamation-triangle"></i>
         {{ error() }}
@@ -68,11 +107,11 @@ import {
             (click)="visible.set(false)"
           />
           <p-button
-            label="Parse Recipe"
+            [label]="mode() === 'url' ? 'Import Recipe' : 'Parse Recipe'"
             icon="pi pi-sparkles"
-            (click)="parse()"
+            (click)="mode() === 'url' ? parseUrl() : parse()"
             [loading]="parsing()"
-            [disabled]="!inputText.trim()"
+            [disabled]="mode() === 'url' ? !urlText.trim() : !inputText.trim()"
           />
         </div>
       </ng-template>
@@ -147,6 +186,46 @@ import {
       color: var(--p-text-muted-color);
       font-size: 0.9rem;
       margin: 0 0 12px;
+    }
+
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      border: 1px solid var(--p-surface-600);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--p-text-muted-color);
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+
+      &.active {
+        background: var(--p-primary-color);
+        color: var(--p-primary-contrast-color);
+        font-weight: 600;
+      }
+
+      &:hover:not(.active) {
+        background: var(--p-surface-700);
+      }
+    }
+
+    .helper-text {
+      color: var(--p-text-muted-color);
+      font-size: 0.75rem;
+      margin: 6px 0 0;
     }
 
     .full-width {
@@ -251,8 +330,10 @@ export class AiImportDialogComponent {
 
   closed = output<void>();
 
+  mode = signal<'url' | 'text'>('url');
   visible = signal(false);
   inputText = '';
+  urlText = '';
   parsing = signal(false);
   creating = signal(false);
   parsed = signal<ParsedRecipe | null>(null);
@@ -265,10 +346,31 @@ export class AiImportDialogComponent {
 
   reset() {
     this.inputText = '';
+    this.urlText = '';
     this.parsed.set(null);
     this.error.set('');
     this.parsing.set(false);
     this.creating.set(false);
+  }
+
+  parseUrl() {
+    if (!this.urlText.trim()) return;
+    this.parsing.set(true);
+    this.error.set('');
+
+    this.api.parseRecipeFromUrl(this.urlText).subscribe({
+      next: (result) => {
+        this.parsed.set(result);
+        this.parsing.set(false);
+      },
+      error: (err) => {
+        const message =
+          err?.error?.message ||
+          'Failed to import recipe from URL. Try pasting the text instead.';
+        this.error.set(message);
+        this.parsing.set(false);
+      },
+    });
   }
 
   parse() {

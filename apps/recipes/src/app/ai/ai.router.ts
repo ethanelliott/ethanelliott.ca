@@ -206,4 +206,22 @@ export async function AiRouter(fastify: FastifyInstance) {
       return aiService.parseRecipeFromText(request.body.text);
     }
   );
+
+  // Parse recipe from URL (fetch + JSON-LD extraction)
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/parse-recipe-url',
+    {
+      schema: {
+        body: z.object({
+          url: z.string().url().max(2000),
+        }),
+        response: {
+          200: ParsedRecipeResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      return aiService.parseRecipeFromUrl(request.body.url);
+    }
+  );
 }

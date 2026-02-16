@@ -485,4 +485,13 @@ export class RecipesApiService {
       text,
     });
   }
+
+  /**
+   * Parse recipe from a URL (fetches page and extracts JSON-LD Recipe data)
+   */
+  parseRecipeFromUrl(url: string): Observable<ParsedRecipe> {
+    return this.http.post<ParsedRecipe>(`${this.baseUrl}/ai/parse-recipe-url`, {
+      url,
+    });
+  }
 }

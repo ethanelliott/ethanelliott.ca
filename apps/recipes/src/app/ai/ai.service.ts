@@ -1,5 +1,6 @@
 import { inject } from '@ee/di';
 import HttpErrors from 'http-errors';
+import { parse as parseHTML } from 'node-html-parser';
 import { RecipesService } from '../recipes/recipes.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TagsService } from '../tags/tags.service';
@@ -36,6 +37,26 @@ const PARSED_RECIPE_SCHEMA: JsonSchema = {
     source: { type: 'string' },
   },
   required: ['title', 'ingredients', 'instructions'],
+};
+
+const PARSED_INGREDIENTS_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    ingredients: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          quantity: { type: 'number' },
+          unit: { type: 'string' },
+          notes: { type: 'string' },
+        },
+        required: ['name', 'quantity', 'unit'],
+      },
+    },
+  },
+  required: ['ingredients'],
 };
 
 const SUGGESTION_SCHEMA: JsonSchema = {
@@ -432,6 +453,247 @@ Guidelines:
   }
 
   /**
+   * Parse recipe from a URL by fetching the page and extracting JSON-LD Recipe data
+   */
+  async parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
+    // Fetch the page HTML
+    let html: string;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml',
+        },
+        signal: controller.signal,
+        redirect: 'follow',
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      html = await response.text();
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : 'Unknown fetch error';
+      throw HttpErrors.BadGateway(`Failed to fetch URL: ${msg}`);
+    }
+
+    // Parse the HTML and look for JSON-LD Recipe data
+    const root = parseHTML(html);
+    const jsonLdScripts = root.querySelectorAll(
+      'script[type="application/ld+json"]'
+    );
+
+    let recipeData: any = null;
+
+    for (const script of jsonLdScripts) {
+      try {
+        const data = JSON.parse(script.textContent);
+        recipeData = this.findRecipeInJsonLd(data);
+        if (recipeData) break;
+      } catch {
+        // Skip malformed JSON-LD blocks
+      }
+    }
+
+    if (!recipeData) {
+      throw HttpErrors.UnprocessableEntity(
+        'No structured recipe data (JSON-LD) found on this page. Try copying and pasting the recipe text instead.'
+      );
+    }
+
+    // Map schema.org Recipe to our format
+    return this.mapJsonLdToRecipe(recipeData, url);
+  }
+
+  /**
+   * Recursively search a JSON-LD structure for a Recipe object
+   */
+  private findRecipeInJsonLd(data: any): any | null {
+    if (!data) return null;
+
+    // Direct Recipe object
+    if (data['@type'] === 'Recipe') return data;
+
+    // Array of types (e.g. ["Recipe", "Thing"])
+    if (Array.isArray(data['@type']) && data['@type'].includes('Recipe'))
+      return data;
+
+    // @graph array (common pattern)
+    if (data['@graph'] && Array.isArray(data['@graph'])) {
+      for (const item of data['@graph']) {
+        const found = this.findRecipeInJsonLd(item);
+        if (found) return found;
+      }
+    }
+
+    // Top-level array
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        const found = this.findRecipeInJsonLd(item);
+        if (found) return found;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Map a schema.org Recipe JSON-LD object to our ParsedRecipe format
+   */
+  private async mapJsonLdToRecipe(
+    data: any,
+    sourceUrl: string
+  ): Promise<ParsedRecipe> {
+    const title = data.name || 'Untitled Recipe';
+    const description = data.description || undefined;
+
+    // Parse instructions
+    let instructions = '';
+    if (typeof data.recipeInstructions === 'string') {
+      instructions = data.recipeInstructions;
+    } else if (Array.isArray(data.recipeInstructions)) {
+      instructions = data.recipeInstructions
+        .map((step: any, idx: number) => {
+          if (typeof step === 'string') return `${idx + 1}. ${step}`;
+          if (step.text) return `${idx + 1}. ${step.text}`;
+          // HowToSection with itemListElement
+          if (step['@type'] === 'HowToSection' && step.itemListElement) {
+            const sectionSteps = step.itemListElement
+              .map((s: any, i: number) =>
+                typeof s === 'string' ? s : s.text || ''
+              )
+              .filter(Boolean);
+            const header = step.name ? `**${step.name}**\n` : '';
+            return (
+              header +
+              sectionSteps
+                .map((s: string, i: number) => `${idx + i + 1}. ${s}`)
+                .join('\n')
+            );
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    // Parse servings from recipeYield
+    let servings: number | undefined;
+    if (data.recipeYield) {
+      const yieldVal = Array.isArray(data.recipeYield)
+        ? data.recipeYield[0]
+        : data.recipeYield;
+      const num = parseInt(String(yieldVal), 10);
+      if (!isNaN(num)) servings = num;
+    }
+
+    // Parse ISO 8601 durations (PT20M, PT1H30M, etc.)
+    const prepTimeMinutes = this.parseIsoDuration(data.prepTime);
+    const cookTimeMinutes = this.parseIsoDuration(data.cookTime);
+
+    // Parse ingredients using LLM (schema.org gives strings like "1 cup butter, softened")
+    let ingredients: ParsedRecipe['ingredients'] = [];
+    if (
+      Array.isArray(data.recipeIngredient) &&
+      data.recipeIngredient.length > 0
+    ) {
+      ingredients = await this.parseIngredientStrings(data.recipeIngredient);
+    }
+
+    return {
+      title,
+      description,
+      ingredients,
+      instructions,
+      servings,
+      prepTimeMinutes,
+      cookTimeMinutes,
+      source: sourceUrl,
+    };
+  }
+
+  /**
+   * Parse ISO 8601 duration string (e.g. "PT1H30M") to minutes
+   */
+  private parseIsoDuration(duration: string | undefined): number | undefined {
+    if (!duration || typeof duration !== 'string') return undefined;
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!match) return undefined;
+    const hours = parseInt(match[1] || '0', 10);
+    const minutes = parseInt(match[2] || '0', 10);
+    const total = hours * 60 + minutes;
+    return total > 0 ? total : undefined;
+  }
+
+  /**
+   * Use LLM to parse ingredient strings into structured objects.
+   * Strings like "1 cup butter, softened" → { quantity: 1, unit: "cup", name: "butter", notes: "softened" }
+   */
+  private async parseIngredientStrings(
+    ingredientStrings: string[]
+  ): Promise<ParsedRecipe['ingredients']> {
+    const messages: Message[] = [
+      {
+        role: 'system',
+        content: `/no_think You are an ingredient parsing expert. Parse each ingredient string into structured data.
+
+CRITICAL FIELD DEFINITIONS:
+- "name": The ingredient itself (e.g. "butter", "all-purpose flour", "brown sugar", "chicken breast"). This is the name of the INGREDIENT, NOT the recipe title.
+- "quantity": The numeric amount as a decimal (1/2 = 0.5, 1 1/2 = 1.5). Use 1 if no quantity given.
+- "unit": The unit of measurement (e.g. "cup", "teaspoon", "tablespoon", "lb", "oz"). Use "" (empty string) for items counted individually (e.g. "2 large eggs" → unit: "").
+- "notes": OPTIONAL preparation details, descriptors, or alternatives (e.g. "softened", "finely diced", "room temperature", "packed", "or substitute butter"). Only include if present.
+
+Examples:
+- "1 cup butter, softened" → { quantity: 1, unit: "cup", name: "butter", notes: "softened" }
+- "2 large eggs" → { quantity: 2, unit: "", name: "eggs", notes: "large" }
+- "3 cups all-purpose flour" → { quantity: 3, unit: "cup", name: "all-purpose flour" }
+- "1 cup packed brown sugar" → { quantity: 1, unit: "cup", name: "brown sugar", notes: "packed" }
+- "½ teaspoon salt" → { quantity: 0.5, unit: "teaspoon", name: "salt" }
+- "1 cup chopped walnuts" → { quantity: 1, unit: "cup", name: "walnuts", notes: "chopped" }`,
+      },
+      {
+        role: 'user',
+        content: `Parse these ingredient strings:\n${ingredientStrings
+          .map((s, i) => `${i + 1}. ${s}`)
+          .join('\n')}`,
+      },
+    ];
+
+    const response = await this._ollamaClient.chat(messages, {
+      temperature: 0.1,
+      timeoutMs: 60000,
+      format: PARSED_INGREDIENTS_SCHEMA,
+    });
+
+    const cleaned = this.cleanJsonResponse(response);
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed.ingredients)) {
+        return parsed.ingredients.map((ing: any) => ({
+          name: ing.name || '',
+          quantity: Number(ing.quantity) || 1,
+          unit: ing.unit || '',
+          notes: ing.notes || undefined,
+        }));
+      }
+    } catch {
+      console.error('Failed to parse ingredient strings with LLM:', response);
+    }
+
+    // Fallback: basic parsing without LLM
+    return ingredientStrings.map((s) => ({
+      name: s,
+      quantity: 1,
+      unit: '',
+    }));
+  }
+
+  /**
    * Feature 14: Parse recipe from pasted text/webpage content
    */
   async parseRecipeFromText(rawText: string): Promise<ParsedRecipe> {
@@ -445,7 +707,13 @@ CRITICAL RULES:
 - Do NOT invent or hallucinate any ingredients, instructions, or details
 - Parse ingredient quantities as decimals (1/2 = 0.5, 1 1/2 = 1.5)
 - Format instructions as markdown with numbered list (1. Step one\\n2. Step two)
-- If information is not present, omit the field`,
+- If information is not present, omit the field
+
+CRITICAL INGREDIENT FIELD DEFINITIONS:
+- "name": The ingredient itself (e.g. "butter", "all-purpose flour", "chicken breast"). This is the INGREDIENT name, NOT the recipe title.
+- "quantity": Numeric amount as a decimal.
+- "unit": Unit of measurement ("cup", "teaspoon", etc.). Use empty string for individually counted items.
+- "notes": OPTIONAL preparation details or descriptors (e.g. "softened", "diced", "room temperature"). Only include if present.`,
       },
       {
         role: 'user',
