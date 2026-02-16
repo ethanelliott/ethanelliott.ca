@@ -6,6 +6,7 @@ import {
   signal,
   ElementRef,
   ViewChild,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -17,7 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatListModule } from '@angular/material/list';
+import { Router } from '@angular/router';
 import {
   FinanceApiService,
   Category,
@@ -40,208 +41,246 @@ import { firstValueFrom } from 'rxjs';
     MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    MatListModule,
     MatSnackBarModule,
   ],
   styleUrl: './categories.component.scss',
   template: `
     <div class="categories-container">
-      <div class="header">
+      <!-- Header -->
+      <header class="header">
         <div class="header-row">
           <div class="title-section">
-            <p class="page-subtitle">
-              Organize your spending with custom categories
-            </p>
+            <h1>Categories</h1>
+            <p class="page-subtitle">Organize your transactions by category</p>
           </div>
           <div class="controls-section">
-            <div class="header-stats">
-              <div class="stat-chip">
-                <mat-icon>sell</mat-icon>
-                <span>{{ categories().length }} Categories</span>
-              </div>
+            <div class="search-box">
+              <mat-icon>search</mat-icon>
+              <input
+                type="text"
+                [formControl]="searchControl"
+                placeholder="Search categories..."
+              />
+              @if (searchControl.value) {
+              <button class="clear-btn" (click)="searchControl.reset()">
+                <mat-icon>close</mat-icon>
+              </button>
+              }
             </div>
             <button
               mat-stroked-button
               (click)="seedDefaults()"
               [disabled]="seeding()"
-              matTooltip="Add commonly used categories"
+              class="seed-btn"
             >
               @if (seeding()) {
               <mat-spinner diameter="18"></mat-spinner>
               } @else {
               <mat-icon>auto_awesome</mat-icon>
-              } Seed Defaults
+              Seed Defaults
+              }
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
       <!-- Quick Add Form -->
-      <mat-card class="quick-add-card">
-        <mat-card-content>
-          <div class="quick-add-form">
-            <mat-form-field appearance="outline" class="category-input">
-              <mat-label>Add New Category</mat-label>
-              <input
-                matInput
-                #categoryInput
-                [formControl]="categoryControl"
-                placeholder="e.g., Food & Dining, Transportation"
-                (keydown.enter)="addCategory()"
-              />
-              <mat-icon matSuffix>category</mat-icon>
-            </mat-form-field>
-            <div class="color-picker">
-              <input
-                type="color"
-                [formControl]="colorControl"
-                class="color-input"
-              />
-            </div>
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="addCategory()"
-              [disabled]="!categoryControl.valid || submitting()"
-              class="add-button"
-            >
-              @if (submitting()) {
-              <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-              <mat-icon>add</mat-icon>
-              Add Category }
-            </button>
+      <div class="quick-add-section">
+        <form class="quick-add-form" (ngSubmit)="addCategory()">
+          <div class="color-picker-wrapper">
+            <input
+              type="color"
+              [formControl]="colorControl"
+              class="color-input"
+              title="Choose category color"
+            />
           </div>
-        </mat-card-content>
-      </mat-card>
+          <mat-form-field appearance="outline" class="name-input">
+            <mat-label>New category name</mat-label>
+            <input
+              matInput
+              [formControl]="categoryControl"
+              placeholder="e.g. Groceries, Transportation..."
+              #categoryInput
+            />
+          </mat-form-field>
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="!categoryControl.valid || submitting()"
+            class="add-button"
+          >
+            @if (submitting()) {
+            <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+            <mat-icon>add</mat-icon>
+            Add
+            }
+          </button>
+        </form>
+      </div>
 
       @if (loading()) {
       <div class="loading-container">
-        <mat-spinner diameter="48"></mat-spinner>
-        <h3>Loading Categories</h3>
+        <mat-spinner diameter="40"></mat-spinner>
+        <span>Loading categories...</span>
       </div>
       } @else {
-      <!-- Category Usage -->
-      @if (categoryUsage().length > 0) {
-      <mat-card class="analytics-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>bar_chart</mat-icon>
-            Category Usage
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="category-stats">
-            @for (usage of categoryUsage().slice(0, 8); track usage.categoryId;
-            let idx = $index) {
-            <div class="stat-item">
-              <div class="stat-rank">#{{ idx + 1 }}</div>
-              <div class="stat-content">
-                <div class="stat-name">{{ usage.name }}</div>
-                <div class="stat-details">
-                  <span class="transaction-count"
-                    >{{ usage.transactionCount }} transactions</span
-                  >
-                </div>
-                <div class="usage-bar">
-                  <div
-                    class="usage-fill"
-                    [style.width.%]="getUsagePercentage(usage.transactionCount)"
-                  ></div>
+      <!-- Stats Bar -->
+      <div class="stats-bar">
+        <div class="stat">
+          <span class="stat-value">{{ categories().length }}</span>
+          <span class="stat-label">Total Categories</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ getTotalTransactions() }}</span>
+          <span class="stat-label">Categorized</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ getSystemCount() }}</span>
+          <span class="stat-label">System</span>
+        </div>
+      </div>
+
+      <!-- Categories Grid -->
+      @if (filteredCategories().length === 0) {
+      <div class="empty-state">
+        @if (searchControl.value) {
+        <mat-icon>search_off</mat-icon>
+        <h3>No matches found</h3>
+        <p>Try a different search term</p>
+        } @else {
+        <mat-icon>category</mat-icon>
+        <h3>No Categories Yet</h3>
+        <p>Add your first category or seed with defaults to get started</p>
+        }
+      </div>
+      } @else {
+      <div class="categories-grid">
+        @for (category of filteredCategories(); track category.id) {
+        <div
+          class="category-card"
+          [class.expanded]="expandedCategoryId() === category.id"
+          [class.is-system]="category.isSystem"
+        >
+          <!-- Category Header (always visible) -->
+          <div class="category-header" (click)="toggleExpand(category)">
+            <div
+              class="color-indicator"
+              [style.background-color]="category.color || '#666'"
+            ></div>
+            <div class="category-info">
+              <span class="category-name">{{ category.name }}</span>
+              @if (getUsageCount(category.id); as count) {
+              <span class="usage-count">{{ count }} transactions</span>
+              }
+            </div>
+            @if (category.isSystem) {
+            <span class="system-badge">System</span>
+            }
+            <mat-icon class="expand-icon">
+              {{
+                expandedCategoryId() === category.id
+                  ? 'expand_less'
+                  : 'expand_more'
+              }}
+            </mat-icon>
+          </div>
+
+          <!-- Expanded Content -->
+          @if (expandedCategoryId() === category.id) {
+          <div class="category-details">
+            <div class="edit-section">
+              <div class="edit-row">
+                <label>Color</label>
+                <div class="color-edit">
+                  <input
+                    type="color"
+                    [value]="category.color || '#666666'"
+                    (change)="updateColor(category, $event)"
+                    class="edit-color-input"
+                    [disabled]="category.isSystem"
+                  />
+                  <span class="color-hex">{{
+                    category.color || '#666666'
+                  }}</span>
                 </div>
               </div>
-            </div>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-      }
 
-      <!-- Categories List -->
-      <mat-card class="categories-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>list</mat-icon>
-            All Categories
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          @if (categories().length === 0) {
-          <div class="empty-state">
-            <mat-icon>category</mat-icon>
-            <h3>No Categories Yet</h3>
-            <p>Add your first category or seed with defaults to get started</p>
-          </div>
-          } @else {
-          <div class="categories-list">
-            @for (category of categories(); track category.id) {
-            <div class="category-item">
-              <div
-                class="category-color"
-                [style.background-color]="category.color || '#666'"
-              ></div>
-              @if (editingCategoryId() === category.id) {
-              <div class="category-edit-form">
-                <mat-form-field appearance="outline" class="edit-input">
+              <div class="edit-row">
+                <label>Name</label>
+                <div class="name-edit">
+                  @if (editingCategoryId() === category.id) {
                   <input
-                    matInput
+                    type="text"
                     [formControl]="editNameControl"
+                    class="edit-name-input"
                     (keydown.enter)="saveEdit(category)"
                     (keydown.escape)="cancelEdit()"
                   />
-                </mat-form-field>
-                <button
-                  mat-icon-button
-                  (click)="saveEdit(category)"
-                  [disabled]="!editNameControl.valid"
-                >
-                  <mat-icon>check</mat-icon>
-                </button>
-                <button mat-icon-button (click)="cancelEdit()">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-              } @else {
-              <div class="category-info">
-                <span class="category-name">{{ category.name }}</span>
-                @if (category.description) {
-                <span class="category-description">{{
-                  category.description
-                }}</span>
-                }
-              </div>
-              } @if (category.isSystem) {
-              <span class="system-badge">System</span>
-              } @if (editingCategoryId() !== category.id) {
-              <div class="category-actions">
-                <button
-                  mat-icon-button
-                  (click)="editCategory(category)"
-                  matTooltip="Edit"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  (click)="deleteCategory(category)"
-                  [disabled]="deleting().has(category.id) || category.isSystem"
-                  matTooltip="Delete"
-                  class="delete-btn"
-                >
-                  @if (deleting().has(category.id)) {
-                  <mat-spinner diameter="18"></mat-spinner>
+                  <button
+                    class="save-btn"
+                    (click)="saveEdit(category)"
+                    [disabled]="!editNameControl.valid"
+                  >
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button class="cancel-btn" (click)="cancelEdit()">
+                    <mat-icon>close</mat-icon>
+                  </button>
                   } @else {
-                  <mat-icon>delete</mat-icon>
+                  <span class="current-name">{{ category.name }}</span>
+                  @if (!category.isSystem) {
+                  <button
+                    class="edit-btn"
+                    (click)="editCategory(category); $event.stopPropagation()"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
                   }
-                </button>
+                  }
+                </div>
+              </div>
+
+              @if (category.description) {
+              <div class="edit-row">
+                <label>Description</label>
+                <span class="description">{{ category.description }}</span>
               </div>
               }
             </div>
-            }
+
+            <div class="action-buttons">
+              <button
+                mat-stroked-button
+                (click)="viewTransactions(category)"
+                class="view-btn"
+              >
+                <mat-icon>receipt_long</mat-icon>
+                View Transactions
+              </button>
+              <button
+                mat-stroked-button
+                color="warn"
+                (click)="deleteCategory(category)"
+                [disabled]="deleting().has(category.id) || category.isSystem"
+                class="delete-btn"
+              >
+                @if (deleting().has(category.id)) {
+                <mat-spinner diameter="18"></mat-spinner>
+                } @else {
+                <mat-icon>delete</mat-icon>
+                Delete
+                }
+              </button>
+            </div>
           </div>
           }
-        </mat-card-content>
-      </mat-card>
+        </div>
+        }
+      </div>
+      }
       }
     </div>
   `,
@@ -252,6 +291,7 @@ export class CategoriesComponent implements OnInit {
   private readonly apiService = inject(FinanceApiService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialogService = inject(DialogService);
+  private readonly router = inject(Router);
 
   loading = signal(true);
   submitting = signal(false);
@@ -259,24 +299,34 @@ export class CategoriesComponent implements OnInit {
   deleting = signal<Set<string>>(new Set());
   categories = signal<Category[]>([]);
   categoryUsage = signal<CategoryUsage[]>([]);
+  expandedCategoryId = signal<string | null>(null);
   editingCategoryId = signal<string | null>(null);
+
+  searchControl = new FormControl('');
   editNameControl = new FormControl('', [
     Validators.required,
     Validators.minLength(2),
   ]);
-
   categoryControl = new FormControl('', [
     Validators.required,
     Validators.minLength(2),
     Validators.maxLength(50),
   ]);
-
   colorControl = new FormControl('#6366f1');
 
-  private maxUsageCount = 1;
+  filteredCategories = computed(() => {
+    const search = this.searchControl.value?.toLowerCase() || '';
+    const cats = this.categories();
+    if (!search) return cats;
+    return cats.filter((c) => c.name.toLowerCase().includes(search));
+  });
 
   ngOnInit() {
     this.loadData();
+    this.searchControl.valueChanges.subscribe(() => {
+      // Reset expanded state on search
+      this.expandedCategoryId.set(null);
+    });
   }
 
   private async loadData() {
@@ -288,7 +338,6 @@ export class CategoriesComponent implements OnInit {
       ]);
       this.categories.set(categories);
       this.categoryUsage.set(usage);
-      this.maxUsageCount = Math.max(...usage.map((u) => u.transactionCount), 1);
     } catch (error) {
       console.error('Error loading categories:', error);
       this.snackBar.open('Failed to load categories', 'Dismiss', {
@@ -296,6 +345,31 @@ export class CategoriesComponent implements OnInit {
       });
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  getTotalTransactions(): number {
+    return this.categoryUsage().reduce((sum, u) => sum + u.transactionCount, 0);
+  }
+
+  getSystemCount(): number {
+    return this.categories().filter((c) => c.isSystem).length;
+  }
+
+  getUsageCount(categoryId: string): number {
+    return (
+      this.categoryUsage().find((u) => u.categoryId === categoryId)
+        ?.transactionCount || 0
+    );
+  }
+
+  toggleExpand(category: Category) {
+    if (this.expandedCategoryId() === category.id) {
+      this.expandedCategoryId.set(null);
+      this.cancelEdit();
+    } else {
+      this.expandedCategoryId.set(category.id);
+      this.cancelEdit();
     }
   }
 
@@ -345,6 +419,29 @@ export class CategoriesComponent implements OnInit {
     }
   }
 
+  async updateColor(category: Category, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const newColor = input.value;
+
+    if (newColor === category.color) return;
+
+    try {
+      await firstValueFrom(
+        this.apiService.updateCategory(category.id, { color: newColor })
+      );
+      // Update local state immediately
+      this.categories.update((cats) =>
+        cats.map((c) => (c.id === category.id ? { ...c, color: newColor } : c))
+      );
+      this.snackBar.open('Color updated', 'Dismiss', { duration: 2000 });
+    } catch (error) {
+      console.error('Error updating color:', error);
+      this.snackBar.open('Failed to update color', 'Dismiss', {
+        duration: 3000,
+      });
+    }
+  }
+
   editCategory(category: Category) {
     this.editingCategoryId.set(category.id);
     this.editNameControl.setValue(category.name);
@@ -366,7 +463,9 @@ export class CategoriesComponent implements OnInit {
       await firstValueFrom(
         this.apiService.updateCategory(category.id, { name: newName })
       );
-      this.loadData();
+      this.categories.update((cats) =>
+        cats.map((c) => (c.id === category.id ? { ...c, name: newName } : c))
+      );
       this.snackBar.open('Category updated', 'Dismiss', { duration: 2000 });
     } catch (error) {
       console.error('Error updating category:', error);
@@ -376,6 +475,12 @@ export class CategoriesComponent implements OnInit {
     } finally {
       this.cancelEdit();
     }
+  }
+
+  viewTransactions(category: Category) {
+    this.router.navigate(['/dashboard/transactions'], {
+      queryParams: { category: category.name },
+    });
   }
 
   async deleteCategory(category: Category) {
@@ -399,6 +504,7 @@ export class CategoriesComponent implements OnInit {
       this.categories.update((cats) =>
         cats.filter((c) => c.id !== category.id)
       );
+      this.expandedCategoryId.set(null);
       this.snackBar.open('Category deleted', 'Dismiss', { duration: 2000 });
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -410,9 +516,5 @@ export class CategoriesComponent implements OnInit {
       updatedDeleting.delete(category.id);
       this.deleting.set(updatedDeleting);
     }
-  }
-
-  getUsagePercentage(count: number): number {
-    return (count / this.maxUsageCount) * 100;
   }
 }

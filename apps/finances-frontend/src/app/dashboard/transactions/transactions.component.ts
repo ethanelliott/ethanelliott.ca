@@ -468,6 +468,7 @@ export class TransactionsComponent implements OnInit {
   searchQuery = '';
   selectedAccountId: string | null = null;
   selectedCategoryId: string | null = null;
+  selectedTagFilter: string | null = null;
   selectedType: TransactionType | null = null;
   startDate: Date | null = null;
   endDate: Date | null = null;
@@ -495,6 +496,7 @@ export class TransactionsComponent implements OnInit {
     let count = 0;
     if (this.selectedAccountId) count++;
     if (this.selectedCategoryId) count++;
+    if (this.selectedTagFilter) count++;
     if (this.selectedType) count++;
     if (this.startDate) count++;
     if (this.endDate) count++;
@@ -520,6 +522,16 @@ export class TransactionsComponent implements OnInit {
       }
       if (params['categoryId']) {
         this.selectedCategoryId = params['categoryId'];
+        this.showFilters.set(true);
+      }
+      // Also support filtering by category name
+      if (params['category']) {
+        this.selectedCategoryId = params['category'];
+        this.showFilters.set(true);
+      }
+      // Support filtering by tag name
+      if (params['tag']) {
+        this.selectedTagFilter = params['tag'];
         this.showFilters.set(true);
       }
       if (params['type']) {
@@ -605,6 +617,12 @@ export class TransactionsComponent implements OnInit {
       );
     }
 
+    if (this.selectedTagFilter) {
+      filtered = filtered.filter(
+        (tx) => tx.tags && tx.tags.includes(this.selectedTagFilter!)
+      );
+    }
+
     if (this.selectedType) {
       filtered = filtered.filter((tx) => tx.type === this.selectedType);
     }
@@ -628,6 +646,7 @@ export class TransactionsComponent implements OnInit {
       this.searchQuery ||
       this.selectedAccountId ||
       this.selectedCategoryId ||
+      this.selectedTagFilter ||
       this.selectedType ||
       this.startDate ||
       this.endDate
@@ -638,6 +657,7 @@ export class TransactionsComponent implements OnInit {
     this.searchQuery = '';
     this.selectedAccountId = null;
     this.selectedCategoryId = null;
+    this.selectedTagFilter = null;
     this.selectedType = null;
     this.startDate = null;
     this.endDate = null;
