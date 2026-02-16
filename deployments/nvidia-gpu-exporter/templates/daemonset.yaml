@@ -57,6 +57,8 @@ spec:
               value: utility
             - name: LD_LIBRARY_PATH
               value: /usr/lib/wsl/lib:/usr/lib/wsl/drivers/nvdd.inf_amd64_1c978806815a7d2e
+            - name: QUERY_FIELD_NAMES
+              value: "name,index,uuid,temperature.gpu,utilization.gpu,utilization.memory,memory.total,memory.used,memory.free,power.draw,power.limit,fan.speed,pstate,clocks.current.graphics,clocks.current.memory,driver_version,pcie.link.gen.current,pcie.link.width.current"
           volumeMounts:
             - name: nvidia-smi
               mountPath: /usr/bin/nvidia-smi
