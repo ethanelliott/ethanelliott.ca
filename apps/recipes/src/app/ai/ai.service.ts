@@ -875,7 +875,10 @@ Guidelines:
         ingredients = await this.parseIngredientStrings(data.recipeIngredient);
       } catch (error) {
         logger.warn(
-          { err: error instanceof Error ? error : undefined, ingredientCount: data.recipeIngredient.length },
+          {
+            err: error instanceof Error ? error : undefined,
+            ingredientCount: data.recipeIngredient.length,
+          },
           'LLM ingredient parsing failed, using raw strings as fallback'
         );
         // Fallback: use raw ingredient strings as names
