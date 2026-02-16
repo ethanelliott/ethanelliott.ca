@@ -237,6 +237,32 @@ async function main() {
     res.json(results);
   });
 
+  // Fetch variants by IDs (for wishlist)
+  app.get('/api/variants', async (req, res) => {
+    const ids = (req.query.ids as string || '').split(',').filter(Boolean);
+    if (ids.length === 0) {
+      res.json([]);
+      return;
+    }
+    const db = getDB();
+    const placeholders = ids.map(() => '?').join(',');
+    const variants = await allPromise.call(
+      db,
+      `SELECT v.id, v.color, v.color_id, v.length, v.price, v.list_price,
+              v.available_sizes, v.product_id,
+              p.name, p.display_name, p.brand, p.slug, p.rating, p.review_count,
+              COALESCE(
+                (SELECT id FROM images WHERE variant_id = v.id LIMIT 1),
+                (SELECT i.id FROM images i JOIN variants v2 ON i.variant_id = v2.id WHERE v2.product_id = v.product_id AND v2.color = v.color LIMIT 1)
+              ) as thumbnail_id
+       FROM variants v
+       JOIN products p ON v.product_id = p.id
+       WHERE v.id IN (${placeholders})`,
+      ids
+    );
+    res.json(variants);
+  });
+
   // ==================== WEB ROUTES ====================
 
   // Homepage - Newest variants with search, filters, sorting
@@ -254,9 +280,57 @@ async function main() {
     const maxPrice = req.query.maxPrice
       ? parseFloat(req.query.maxPrice as string)
       : null;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const perPage = 48;
 
     const lastScanTime = await getLastScanTime(db);
     const stats = await getStats(db);
+
+    let whereClauses = `WHERE v.last_seen_at = ?`;
+    const params: any[] = [lastScanTime];
+
+    if (searchQuery) {
+      whereClauses += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR v.color LIKE ?)`;
+      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
+    }
+
+    if (brandFilter) {
+      whereClauses += ` AND p.brand = ?`;
+      params.push(brandFilter);
+    }
+
+    if (fitFilter) {
+      whereClauses += ` AND p.fit LIKE ?`;
+      params.push(`%${fitFilter}%`);
+    }
+
+    if (categoryFilter) {
+      whereClauses += ` AND p.category LIKE ?`;
+      params.push(`%${categoryFilter}%`);
+    }
+
+    if (sizeFilter) {
+      whereClauses += ` AND v.available_sizes LIKE ?`;
+      params.push(`%${sizeFilter}%`);
+    }
+
+    if (minPrice !== null) {
+      whereClauses += ` AND v.price >= ?`;
+      params.push(minPrice);
+    }
+
+    if (maxPrice !== null) {
+      whereClauses += ` AND v.price <= ?`;
+      params.push(maxPrice);
+    }
+
+    // Count query for pagination
+    const countSql = `SELECT COUNT(*) as total FROM variants v JOIN products p ON v.product_id = p.id ${whereClauses}`;
+    const countResult = await getPromise.call(db, countSql, [...params]);
+    const totalCount = (countResult as any)?.total || 0;
+    const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * perPage;
 
     let sql = `
       SELECT v.id, v.color, v.color_id, v.length, v.added_at, v.price, v.list_price, 
@@ -269,44 +343,8 @@ async function main() {
              ) as thumbnail_id
       FROM variants v
       JOIN products p ON v.product_id = p.id
-      WHERE v.last_seen_at = ?
+      ${whereClauses}
     `;
-    const params: any[] = [lastScanTime];
-
-    if (searchQuery) {
-      sql += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR v.color LIKE ?)`;
-      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
-    }
-
-    if (brandFilter) {
-      sql += ` AND p.brand = ?`;
-      params.push(brandFilter);
-    }
-
-    if (fitFilter) {
-      sql += ` AND p.fit LIKE ?`;
-      params.push(`%${fitFilter}%`);
-    }
-
-    if (categoryFilter) {
-      sql += ` AND p.category LIKE ?`;
-      params.push(`%${categoryFilter}%`);
-    }
-
-    if (sizeFilter) {
-      sql += ` AND v.available_sizes LIKE ?`;
-      params.push(`%${sizeFilter}%`);
-    }
-
-    if (minPrice !== null) {
-      sql += ` AND v.price >= ?`;
-      params.push(minPrice);
-    }
-
-    if (maxPrice !== null) {
-      sql += ` AND v.price <= ?`;
-      params.push(maxPrice);
-    }
 
     // Sorting
     switch (sortBy) {
@@ -331,7 +369,8 @@ async function main() {
         break;
     }
 
-    sql += ` LIMIT 100`;
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(perPage, offset);
 
     const variants = await allPromise.call(db, sql, params);
 
@@ -407,6 +446,9 @@ async function main() {
       minPrice,
       maxPrice,
       stats,
+      page: safePage,
+      totalPages,
+      totalCount,
     });
   });
 
@@ -418,9 +460,42 @@ async function main() {
     const categoryFilter = req.query.category as string;
     const sortBy = (req.query.sort as string) || 'name';
     const searchQuery = req.query.q as string;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const perPage = 48;
 
     const lastScanTime = await getLastScanTime(db);
     const stats = await getStats(db);
+
+    let whereClauses = `WHERE 1=1`;
+    const params: any[] = [];
+
+    if (searchQuery) {
+      whereClauses += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR p.description LIKE ?)`;
+      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
+    }
+
+    if (brandFilter) {
+      whereClauses += ` AND p.brand = ?`;
+      params.push(brandFilter);
+    }
+
+    if (fitFilter) {
+      whereClauses += ` AND p.fit LIKE ?`;
+      params.push(`%${fitFilter}%`);
+    }
+
+    if (categoryFilter) {
+      whereClauses += ` AND p.category LIKE ?`;
+      params.push(`%${categoryFilter}%`);
+    }
+
+    // Count query for pagination
+    const countSql = `SELECT COUNT(DISTINCT p.id) as total FROM products p LEFT JOIN variants v ON p.id = v.product_id ${whereClauses}`;
+    const countResult = await getPromise.call(db, countSql, [...params]);
+    const totalCount = (countResult as any)?.total || 0;
+    const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * perPage;
 
     let sql = `
       SELECT p.id, p.name, p.display_name, p.slug, p.brand, p.rating, p.review_count, 
@@ -431,29 +506,9 @@ async function main() {
              MAX(v.list_price) as max_price
       FROM products p
       LEFT JOIN variants v ON p.id = v.product_id
-      WHERE 1=1
+      ${whereClauses}
     `;
-    const params: any[] = [lastScanTime];
-
-    if (searchQuery) {
-      sql += ` AND (p.name LIKE ? OR p.display_name LIKE ? OR p.description LIKE ?)`;
-      params.push(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
-    }
-
-    if (brandFilter) {
-      sql += ` AND p.brand = ?`;
-      params.push(brandFilter);
-    }
-
-    if (fitFilter) {
-      sql += ` AND p.fit LIKE ?`;
-      params.push(`%${fitFilter}%`);
-    }
-
-    if (categoryFilter) {
-      sql += ` AND p.category LIKE ?`;
-      params.push(`%${categoryFilter}%`);
-    }
+    const queryParams: any[] = [lastScanTime, ...params];
 
     sql += ` GROUP BY p.id, p.name, p.slug`;
 
@@ -477,7 +532,10 @@ async function main() {
         break;
     }
 
-    const allProducts = await allPromise.call(db, sql, params);
+    sql += ` LIMIT ? OFFSET ?`;
+    queryParams.push(perPage, offset);
+
+    const allProducts = await allPromise.call(db, sql, queryParams);
 
     // Fetch filter options
     const brands = await allPromise.call(
@@ -545,6 +603,9 @@ async function main() {
       minPrice: null,
       maxPrice: null,
       stats,
+      page: safePage,
+      totalPages,
+      totalCount,
     });
   });
 
@@ -1269,6 +1330,14 @@ async function main() {
       title: store.name !== 'Unknown' ? store.name : `Store #${storeId}`,
       stats,
     });
+  });
+
+  // ==================== FAVORITES ====================
+
+  app.get('/favorites', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('favorites', { stats });
   });
 
   // ==================== AI WEB ROUTES ====================

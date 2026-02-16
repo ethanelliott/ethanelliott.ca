@@ -8,6 +8,7 @@
     <a href="/colors">Colors</a>
     <a href="/stores">Stores</a>
     <a href="/discontinued">Discontinued</a>
+    <a href="/favorites" class="nav-fav-link">&#x2665; Favorites <span id="fav-count" class="fav-badge"></span></a>
     <span class="nav-divider">|</span>
     <a href="/ai/search" class="nav-ai-link">🤖 AI Search</a>
     <a href="/ai/style" class="nav-ai-link">👗 Style Advisor</a>
@@ -21,9 +22,16 @@
   </div>
   <% } %>
 </nav>
-<button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" id="theme-toggle">🌙</button>
+<button
+  class="theme-toggle"
+  onclick="toggleTheme()"
+  title="Toggle dark/light mode"
+  id="theme-toggle"
+>
+  🌙
+</button>
 <script>
-  (function() {
+  (function () {
     const saved = localStorage.getItem('theme');
     if (saved === 'light') {
       document.documentElement.style.colorScheme = 'light';
@@ -35,10 +43,15 @@
   })();
   function toggleTheme() {
     const html = document.documentElement;
-    const current = html.style.colorScheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const current =
+      html.style.colorScheme ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light');
     const next = current === 'dark' ? 'light' : 'dark';
     html.style.colorScheme = next;
     localStorage.setItem('theme', next);
-    document.getElementById('theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+    document.getElementById('theme-toggle').textContent =
+      next === 'dark' ? '🌙' : '☀️';
   }
 </script>

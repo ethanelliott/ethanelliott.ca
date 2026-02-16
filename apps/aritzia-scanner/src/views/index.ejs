@@ -70,7 +70,7 @@
     </form>
 
     <% if (activeProducts && activeProducts.length > 0) { %>
-    <h2>Active Products (<%= activeProducts.length %>)</h2>
+    <h2>Active Products (<%= totalCount || activeProducts.length %>)</h2>
     <div class="product-grid">
       <% activeProducts.forEach(product => { %>
       <% 
@@ -87,6 +87,9 @@
       <div class="product-card">
         <% if (product.price && product.list_price && product.price < product.list_price) { %>
         <span class="discount-overlay"><%= Math.round((1 - product.price / product.list_price) * 100) %>% OFF</span>
+        <% } %>
+        <% if (product.isVariant) { %>
+        <button class="favorite-btn" data-id="<%= product.id %>" onclick="toggleFavorite(this)" title="Add to favorites">&#x2661;</button>
         <% } %>
         <a href="<%= link %>" class="product-image">
           <% if (product.thumbnail_id) { %>
@@ -185,5 +188,106 @@
       <a href="/products" class="view-all-button">View All Products</a>
     </div>
     <% } %>
+
+    <% if (locals.totalPages && totalPages > 1) { %>
+    <nav class="pagination" aria-label="Pagination">
+      <%
+        // Build base URL preserving all current filters
+        const baseUrl = title === 'All Products' ? '/products' : '/';
+        const qp = new URLSearchParams();
+        if (searchQuery) qp.set('q', searchQuery);
+        if (currentBrand) qp.set('brand', currentBrand);
+        if (currentFit) qp.set('fit', currentFit);
+        if (currentCategory) qp.set('category', currentCategory);
+        if (locals.currentSize && currentSize) qp.set('size', currentSize);
+        if (currentSort && currentSort !== 'newest' && currentSort !== 'name') qp.set('sort', currentSort);
+        if (locals.minPrice && minPrice) qp.set('minPrice', String(minPrice));
+        if (locals.maxPrice && maxPrice) qp.set('maxPrice', String(maxPrice));
+        
+        function pageUrl(p) {
+          const params = new URLSearchParams(qp);
+          if (p > 1) params.set('page', String(p));
+          const qs = params.toString();
+          return baseUrl + (qs ? '?' + qs : '');
+        }
+        
+        // Calculate page range to show
+        const maxVisible = 7;
+        let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        if (endPage - startPage < maxVisible - 1) {
+          startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+      %>
+      
+      <% if (page > 1) { %>
+      <a href="<%= pageUrl(page - 1) %>" class="page-link" aria-label="Previous">&laquo; Prev</a>
+      <% } else { %>
+      <span class="page-link disabled">&laquo; Prev</span>
+      <% } %>
+
+      <% if (startPage > 1) { %>
+      <a href="<%= pageUrl(1) %>" class="page-link">1</a>
+      <% if (startPage > 2) { %><span class="page-ellipsis">&hellip;</span><% } %>
+      <% } %>
+
+      <% for (let i = startPage; i <= endPage; i++) { %>
+      <% if (i === page) { %>
+      <span class="page-link active"><%= i %></span>
+      <% } else { %>
+      <a href="<%= pageUrl(i) %>" class="page-link"><%= i %></a>
+      <% } %>
+      <% } %>
+
+      <% if (endPage < totalPages) { %>
+      <% if (endPage < totalPages - 1) { %><span class="page-ellipsis">&hellip;</span><% } %>
+      <a href="<%= pageUrl(totalPages) %>" class="page-link"><%= totalPages %></a>
+      <% } %>
+
+      <% if (page < totalPages) { %>
+      <a href="<%= pageUrl(page + 1) %>" class="page-link" aria-label="Next">Next &raquo;</a>
+      <% } else { %>
+      <span class="page-link disabled">Next &raquo;</span>
+      <% } %>
+    </nav>
+    <% } %>
+
+    <script>
+      const FAVORITES_KEY = 'aritzia_favorites';
+      function getFavorites() {
+        try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); }
+        catch { return []; }
+      }
+      function toggleFavorite(btn) {
+        const id = btn.dataset.id;
+        let favs = getFavorites();
+        if (favs.includes(id)) {
+          favs = favs.filter(f => f !== id);
+          btn.innerHTML = '\u2661';
+          btn.classList.remove('favorited');
+        } else {
+          favs.push(id);
+          btn.innerHTML = '\u2665';
+          btn.classList.add('favorited');
+        }
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+        updateFavCount();
+      }
+      function updateFavCount() {
+        const badge = document.getElementById('fav-count');
+        if (badge) badge.textContent = getFavorites().length || '';
+      }
+      // Initialize favorite states on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        const favs = getFavorites();
+        document.querySelectorAll('.favorite-btn[data-id]').forEach(btn => {
+          if (favs.includes(btn.dataset.id)) {
+            btn.innerHTML = '\u2665';
+            btn.classList.add('favorited');
+          }
+        });
+        updateFavCount();
+      });
+    </script>
   </body>
 </html>

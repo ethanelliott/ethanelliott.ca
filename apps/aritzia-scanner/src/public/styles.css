@@ -42,7 +42,10 @@ a:hover {
   left: 0;
   right: 0;
   z-index: 1000;
-  background-color: light-dark(rgba(255,255,255,0.92), rgba(18,18,18,0.92));
+  background-color: light-dark(
+    rgba(255, 255, 255, 0.92),
+    rgba(18, 18, 18, 0.92)
+  );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid light-dark(#e0e0e0, #333);
@@ -468,6 +471,66 @@ select {
 .view-all-container {
   margin-top: 30px;
   text-align: center;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin: 32px 0 16px;
+  flex-wrap: wrap;
+}
+
+.page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid light-dark(#ddd, #444);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: light-dark(#333, #e0e0e0);
+  background: light-dark(#fff, #1e1e1e);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.page-link:hover:not(.disabled):not(.active) {
+  background: light-dark(#f0f0f0, #2a2a2a);
+  border-color: light-dark(#999, #666);
+  color: light-dark(#333, #fff);
+}
+
+.page-link:visited {
+  color: light-dark(#333, #e0e0e0);
+}
+
+.page-link.active {
+  background: light-dark(#333, #e0e0e0);
+  color: light-dark(#fff, #121212);
+  border-color: light-dark(#333, #e0e0e0);
+  font-weight: 700;
+}
+
+.page-link.disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.page-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  color: light-dark(#999, #666);
+  font-size: 14px;
 }
 
 /* Badge Styles */
@@ -1313,8 +1376,12 @@ select {
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .product-image img {
@@ -1322,8 +1389,12 @@ select {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ==================== */
@@ -1431,7 +1502,11 @@ select {
 }
 
 .ai-action-btn {
-  background: linear-gradient(135deg, light-dark(#7c3aed, #5b21b6), light-dark(#a78bfa, #7c3aed));
+  background: linear-gradient(
+    135deg,
+    light-dark(#7c3aed, #5b21b6),
+    light-dark(#a78bfa, #7c3aed)
+  );
   color: #fff;
   border: none;
   padding: 10px 20px;
@@ -1444,7 +1519,8 @@ select {
 
 .ai-action-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px light-dark(rgba(124, 58, 237, 0.3), rgba(124, 58, 237, 0.5));
+  box-shadow: 0 4px 12px
+    light-dark(rgba(124, 58, 237, 0.3), rgba(124, 58, 237, 0.5));
 }
 
 .ai-quick-prompts {
@@ -1502,6 +1578,70 @@ select {
 }
 
 /* ==================== */
+/* Favorite button      */
+/* ==================== */
+
+.favorite-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  background: light-dark(rgba(255,255,255,0.85), rgba(30,30,30,0.85));
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: light-dark(#999, #666);
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+}
+
+.favorite-btn:hover {
+  color: #e11d48;
+  transform: scale(1.15);
+}
+
+.favorite-btn.favorited {
+  color: #e11d48;
+}
+
+.nav-fav-link {
+  color: light-dark(#e11d48, #fb7185) !important;
+}
+
+.fav-badge {
+  font-size: 0.7em;
+  background: #e11d48;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 5px;
+  margin-left: 2px;
+  vertical-align: super;
+}
+
+.fav-badge:empty {
+  display: none;
+}
+
+/* Favorites page */
+.favorites-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: light-dark(#999, #666);
+}
+
+.favorites-empty .heart-icon-demo {
+  color: #e11d48;
+  font-size: 1.3em;
+}
+
+/* ==================== */
 /* Color swatches in cards */
 /* ==================== */
 
@@ -1539,7 +1679,7 @@ select {
   justify-content: center;
   cursor: pointer;
   font-size: 1.3em;
-  box-shadow: 0 2px 8px light-dark(rgba(0,0,0,0.15), rgba(0,0,0,0.5));
+  box-shadow: 0 2px 8px light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.5));
   transition: transform 0.2s;
 }
 
