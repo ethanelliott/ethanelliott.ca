@@ -14,6 +14,7 @@ import { ColorPickerModule } from 'primeng/colorpicker';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TextareaModule } from 'primeng/textarea';
 import {
   RecipesApiService,
   Category,
@@ -32,6 +33,7 @@ import {
     ColorPickerModule,
     ConfirmDialogModule,
     ProgressSpinnerModule,
+    TextareaModule,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -113,6 +115,7 @@ import {
             <label for="catDesc">Description</label>
             <textarea
               pTextarea
+              [autoResize]="true"
               id="catDesc"
               [(ngModel)]="formDescription"
               rows="3"

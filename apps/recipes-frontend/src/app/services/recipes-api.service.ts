@@ -388,6 +388,76 @@ export class RecipesApiService {
   }
 
   /**
+   * Stream chat with AI about a specific recipe (SSE)
+   * Returns an Observable that emits tokens as they arrive
+   */
+  chatAboutRecipeStream(
+    recipeId: string,
+    question: string,
+    history: Message[] = []
+  ): Observable<{ token: string; done: boolean }> {
+    return new Observable((subscriber) => {
+      const abortController = new AbortController();
+
+      fetch(`${this.baseUrl}/ai/chat/${recipeId}/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, history }),
+        signal: abortController.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`Chat stream failed: ${response.status}`);
+          }
+          if (!response.body) {
+            throw new Error('Response body is null');
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const data = trimmed.slice(6);
+              if (data === '[DONE]') {
+                subscriber.complete();
+                return;
+              }
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.error) {
+                  subscriber.error(new Error(parsed.error));
+                  return;
+                }
+                subscriber.next(parsed);
+              } catch {
+                // Skip malformed SSE data
+              }
+            }
+          }
+          subscriber.complete();
+        })
+        .catch((error) => {
+          if (error.name !== 'AbortError') {
+            subscriber.error(error);
+          }
+        });
+
+      return () => abortController.abort();
+    });
+  }
+
+  /**
    * Get cooking tips and common mistakes for a recipe
    */
   getCookingTips(recipeId: string): Observable<CookingTipsResponse> {

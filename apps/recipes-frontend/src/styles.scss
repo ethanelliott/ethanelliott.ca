@@ -1,5 +1,26 @@
 @use 'primeicons/primeicons.css';
 
+// ===== PRIMENG FORM COMPONENTS =====
+// Make PrimeNG custom element hosts behave as block-level and fill containers
+p-inputnumber,
+p-inputtext,
+p-multiselect,
+p-select,
+p-autocomplete,
+p-calendar,
+p-datepicker,
+p-colorpicker,
+p-textarea {
+  display: block;
+  width: 100%;
+}
+
+// Ensure native inputs/textareas with PrimeNG directives also fill width
+input[pInputText],
+textarea[pTextarea] {
+  width: 100%;
+}
+
 html,
 body {
   height: 100%;

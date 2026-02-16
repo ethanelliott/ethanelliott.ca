@@ -210,10 +210,10 @@ interface RecipeSelection {
         color: var(--p-text-muted-color);
         font-size: 0.85rem;
       }
-    }
 
-    :host ::ng-deep .servings-input .p-inputnumber {
-      width: 80px;
+      p-inputnumber {
+        width: 80px;
+      }
     }
 
     .generate-action {

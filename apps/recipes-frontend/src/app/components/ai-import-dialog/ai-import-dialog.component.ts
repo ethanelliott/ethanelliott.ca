@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TextareaModule } from 'primeng/textarea';
 import {
   RecipesApiService,
   ParsedRecipe,
@@ -18,7 +19,13 @@ import {
 @Component({
   selector: 'app-ai-import-dialog',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DialogModule, ProgressSpinnerModule],
+  imports: [
+    FormsModule,
+    ButtonModule,
+    DialogModule,
+    ProgressSpinnerModule,
+    TextareaModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-dialog
@@ -37,6 +44,7 @@ import {
       </p>
       <textarea
         pTextarea
+        [autoResize]="true"
         [(ngModel)]="inputText"
         rows="10"
         placeholder="Paste recipe text here..."

@@ -3,7 +3,12 @@ import HttpErrors from 'http-errors';
 import { RecipesService } from '../recipes/recipes.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TagsService } from '../tags/tags.service';
-import { OllamaClient, Message, JsonSchema } from './ollama.client';
+import {
+  OllamaClient,
+  Message,
+  JsonSchema,
+  OllamaStreamChunk,
+} from './ollama.client';
 
 // JSON Schemas for structured output
 const PARSED_RECIPE_SCHEMA: JsonSchema = {
@@ -344,6 +349,45 @@ Guidelines:
       answer,
       messages: updatedMessages,
     };
+  }
+
+  /**
+   * Stream chat about a recipe - yields tokens as they arrive from the LLM
+   */
+  async *chatAboutRecipeStream(
+    recipeId: string,
+    question: string,
+    conversationHistory: Message[] = []
+  ): AsyncGenerator<{ token: string; done: boolean }> {
+    const recipe = await this._recipesService.getById(recipeId);
+    const recipeContext = this.buildRecipeContext(recipe);
+
+    const systemPrompt = `You are a friendly and knowledgeable cooking assistant. You have access to the following recipe and will answer questions about it helpfully and accurately.
+
+${recipeContext}
+
+Guidelines:
+- Be concise but thorough
+- If asked about substitutions, provide alternatives with explanations
+- If asked about techniques, explain them clearly for home cooks
+- If the question is not related to this recipe or cooking, politely redirect
+- Use a warm, encouraging tone
+- Use markdown formatting for better readability (bold, lists, etc.)`;
+
+    const messages: Message[] = [
+      { role: 'system', content: systemPrompt },
+      ...conversationHistory,
+      { role: 'user', content: question },
+    ];
+
+    for await (const chunk of this._ollamaClient.chatStream(messages, {
+      temperature: 0.7,
+    })) {
+      yield {
+        token: chunk.message.content,
+        done: chunk.done,
+      };
+    }
   }
 
   /**

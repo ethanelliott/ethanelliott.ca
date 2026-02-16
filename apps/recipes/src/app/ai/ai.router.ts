@@ -113,6 +113,48 @@ export async function AiRouter(fastify: FastifyInstance) {
     }
   );
 
+  // Streaming chat about a recipe (SSE)
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/chat/:recipeId/stream',
+    {
+      schema: {
+        params: z.object({
+          recipeId: z.string().uuid(),
+        }),
+        body: ChatRequestSchema,
+      },
+    },
+    async (request, reply) => {
+      const { question, history } = request.body;
+
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      try {
+        for await (const chunk of aiService.chatAboutRecipeStream(
+          request.params.recipeId,
+          question,
+          history
+        )) {
+          reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        }
+        reply.raw.write('data: [DONE]\n\n');
+      } catch (error) {
+        reply.raw.write(
+          `data: ${JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })}\n\n`
+        );
+      } finally {
+        reply.raw.end();
+      }
+    }
+  );
+
   // Get cooking tips for a recipe (Feature 9)
   fastify.withTypeProvider<ZodTypeProvider>().post(
     '/cooking-tips/:recipeId',

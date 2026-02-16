@@ -14,6 +14,7 @@ import { ColorPickerModule } from 'primeng/colorpicker';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TextareaModule } from 'primeng/textarea';
 import {
   RecipesApiService,
   Tag,
@@ -32,6 +33,7 @@ import {
     ColorPickerModule,
     ConfirmDialogModule,
     ProgressSpinnerModule,
+    TextareaModule,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -115,6 +117,7 @@ import {
             <label for="tagDesc">Description</label>
             <textarea
               pTextarea
+              [autoResize]="true"
               id="tagDesc"
               [(ngModel)]="formDescription"
               rows="3"

@@ -26,7 +26,7 @@ export interface ChatOptions {
 interface OllamaChatRequest {
   model: string;
   messages: Message[];
-  stream: false;
+  stream: boolean;
   format?: JsonSchema;
   options?: {
     temperature?: number;
@@ -43,6 +43,15 @@ interface OllamaChatResponse {
   total_duration?: number;
   prompt_eval_count?: number;
   eval_count?: number;
+}
+
+export interface OllamaStreamChunk {
+  model: string;
+  message: {
+    role: string;
+    content: string;
+  };
+  done: boolean;
 }
 
 export class OllamaClient {
@@ -108,6 +117,96 @@ export class OllamaClient {
         throw new Error(`Ollama request failed: ${error.message}`);
       }
       throw new Error('Ollama request failed: Unknown error');
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Send a streaming chat request to Ollama, yielding tokens as they arrive
+   */
+  async *chatStream(
+    messages: Message[],
+    options?: ChatOptions
+  ): AsyncGenerator<OllamaStreamChunk> {
+    const model = options?.model ?? this.defaultModel;
+    const timeoutMs = options?.timeoutMs ?? this.defaultTimeoutMs;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort('Request timeout'),
+      timeoutMs
+    );
+
+    try {
+      const request: OllamaChatRequest = {
+        model,
+        messages,
+        stream: true,
+        ...(options?.temperature !== undefined && {
+          options: { temperature: options.temperature },
+        }),
+      };
+
+      const response = await fetch(`${this.baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Ollama request failed: ${response.status} - ${errorText}`
+        );
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is null');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const chunk: OllamaStreamChunk = JSON.parse(trimmed);
+            yield chunk;
+          } catch {
+            // Skip malformed lines
+          }
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        try {
+          const chunk: OllamaStreamChunk = JSON.parse(buffer.trim());
+          yield chunk;
+        } catch {
+          // Skip malformed final line
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error(`Ollama request timed out after ${timeoutMs}ms`);
+        }
+        throw new Error(`Ollama stream failed: ${error.message}`);
+      }
+      throw new Error('Ollama stream failed: Unknown error');
     } finally {
       clearTimeout(timeoutId);
     }

@@ -21,6 +21,7 @@ import { CardModule } from 'primeng/card';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TextareaModule } from 'primeng/textarea';
 import {
   RecipesApiService,
   Recipe,
@@ -42,6 +43,7 @@ import {
     CardModule,
     ConfirmDialogModule,
     ProgressSpinnerModule,
+    TextareaModule,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,6 +87,7 @@ import {
               <label for="description">Description</label>
               <textarea
                 pTextarea
+                [autoResize]="true"
                 id="description"
                 formControlName="description"
                 rows="3"
@@ -98,6 +101,7 @@ import {
                 formControlName="servings"
                 [min]="1"
                 [showButtons]="true"
+                [fluid]="true"
               />
             </div>
             <div class="form-field">
@@ -107,6 +111,7 @@ import {
                 formControlName="prepTimeMinutes"
                 [min]="0"
                 [showButtons]="true"
+                [fluid]="true"
               />
             </div>
             <div class="form-field">
@@ -116,6 +121,7 @@ import {
                 formControlName="cookTimeMinutes"
                 [min]="0"
                 [showButtons]="true"
+                [fluid]="true"
               />
             </div>
             <div class="form-field">
@@ -136,6 +142,7 @@ import {
                 optionValue="id"
                 placeholder="Select categories"
                 display="chip"
+                [fluid]="true"
               />
             </div>
             <div class="form-field">
@@ -147,6 +154,7 @@ import {
                 optionValue="id"
                 placeholder="Select tags"
                 display="chip"
+                [fluid]="true"
               />
             </div>
           </div>
@@ -164,6 +172,7 @@ import {
                 formControlName="quantity"
                 placeholder="Qty"
                 [min]="0"
+                [fluid]="true"
                 class="ing-qty-input"
               />
               <input
@@ -208,6 +217,7 @@ import {
         <p-card header="Instructions" styleClass="form-card">
           <textarea
             pTextarea
+            [autoResize]="true"
             formControlName="instructions"
             rows="10"
             placeholder="Recipe instructions (Markdown supported)"
@@ -220,6 +230,7 @@ import {
         <p-card header="Personal Notes" styleClass="form-card">
           <textarea
             pTextarea
+            [autoResize]="true"
             formControlName="notes"
             rows="4"
             placeholder="Personal notes"
@@ -355,20 +366,27 @@ import {
 
     .ing-qty-input {
       width: 80px;
+      min-width: 80px;
+      max-width: 80px;
       flex-shrink: 0;
     }
 
     .ing-unit-input {
       width: 80px;
+      min-width: 80px;
+      max-width: 80px;
       flex-shrink: 0;
     }
 
     .ing-name-input {
       flex: 1;
+      min-width: 0;
     }
 
     .ing-notes-input {
       width: 120px;
+      min-width: 120px;
+      max-width: 120px;
       flex-shrink: 0;
     }
 
