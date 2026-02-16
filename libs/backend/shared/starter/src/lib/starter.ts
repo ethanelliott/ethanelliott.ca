@@ -17,12 +17,20 @@ export async function starter<T extends FastifyPluginAsync>(
     Promise.resolve()
   );
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  const defaultLogger: Record<string, unknown> = isProduction
+    ? { level: 'info' }
+    : {
+        level: 'debug',
+        transport: {
+          target: 'pino-pretty',
+        },
+      };
+
   const server = Fastify({
-    // logger: {
-    //   transport: {
-    //     target: 'pino-pretty',
-    //   },
-    // },
+    logger:
+      appConfig.logger !== undefined ? appConfig.logger : defaultLogger,
   });
 
   await server.register(MainPlugin);
@@ -36,6 +44,6 @@ export async function starter<T extends FastifyPluginAsync>(
       server.log.error(err);
       process.exit(1);
     }
-    console.log(`Server listening on ${host}:${port}`);
+    server.log.info(`Server listening on ${host}:${port}`);
   });
 }

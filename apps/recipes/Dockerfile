@@ -29,8 +29,8 @@ COPY dist/apps/recipes ./
 # Install runtime dependencies
 RUN npm install --omit=dev
 
-# Add user so we don't need --no-sandbox (matches aritzia-scanner pattern)
-RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
+# Add user with fixed UID/GID so we don't need --no-sandbox (matches aritzia-scanner pattern)
+RUN groupadd -r -g 1001 pptruser && useradd -r -u 1001 -g pptruser -G audio,video pptruser \
     && mkdir -p /home/pptruser/Downloads \
     && chown -R pptruser:pptruser /home/pptruser \
     && chown -R pptruser:pptruser /app

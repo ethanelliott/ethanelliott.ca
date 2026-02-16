@@ -2,6 +2,7 @@ import { inject } from '@ee/di';
 import HttpErrors from 'http-errors';
 import { parse as parseHTML } from 'node-html-parser';
 import puppeteer, { Browser } from 'puppeteer';
+import { logger } from '../logger';
 import { RecipesService } from '../recipes/recipes.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TagsService } from '../tags/tags.service';
@@ -293,7 +294,7 @@ Rules:
       parsed = JSON.parse(cleanedResponse);
     } catch {
       // If parsing fails, return empty suggestions
-      console.error('Failed to parse AI response:', response);
+      logger.error({ response }, 'Failed to parse AI suggestion response');
       return {
         suggestedCategories: [],
         suggestedTags: [],
@@ -474,12 +475,17 @@ Guidelines:
    * Parse recipe from a URL by fetching the page and extracting JSON-LD Recipe data
    */
   async parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
+    logger.info({ url }, 'Parsing recipe from URL');
     const html = await this.fetchPageHtml(url);
 
     // Parse the HTML and look for JSON-LD Recipe data
     const root = parseHTML(html);
     const jsonLdScripts = root.querySelectorAll(
       'script[type="application/ld+json"]'
+    );
+    logger.debug(
+      { url, jsonLdBlockCount: jsonLdScripts.length },
+      'Found JSON-LD blocks'
     );
 
     let recipeData: any = null;
@@ -495,12 +501,17 @@ Guidelines:
     }
 
     if (!recipeData) {
+      logger.warn({ url }, 'No JSON-LD recipe data found');
       throw HttpErrors.UnprocessableEntity(
         'No structured recipe data (JSON-LD) found on this page. Try copying and pasting the recipe text instead.'
       );
     }
 
     // Map schema.org Recipe to our format
+    logger.info(
+      { url, recipeName: recipeData.name },
+      'Extracted recipe from JSON-LD'
+    );
     return this.mapJsonLdToRecipe(recipeData, url);
   }
 
@@ -510,6 +521,7 @@ Guidelines:
    */
   private async fetchPageHtml(url: string): Promise<string> {
     // Try simple fetch first (fast, works for most sites)
+    logger.debug({ url }, 'Fetching page HTML');
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -527,6 +539,7 @@ Guidelines:
       clearTimeout(timeoutId);
 
       if (response.ok) {
+        logger.debug({ url, status: response.status }, 'Fetch succeeded');
         return await response.text();
       }
 
@@ -535,8 +548,9 @@ Guidelines:
         throw new Error(`HTTP ${response.status}`);
       }
 
-      console.log(
-        `Fetch returned ${response.status} for ${url}, retrying with puppeteer...`
+      logger.info(
+        { url, status: response.status },
+        'Fetch blocked, retrying with puppeteer'
       );
     } catch (error) {
       // If it's a non-blocking error (timeout, network), throw immediately
@@ -570,9 +584,17 @@ Guidelines:
       });
 
       const html = await page.content();
+      logger.info(
+        { url, htmlLength: html.length },
+        'Puppeteer fetch succeeded'
+      );
       return html;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(
+        { url, err: error instanceof Error ? error : undefined },
+        'Puppeteer fetch failed'
+      );
       throw HttpErrors.BadGateway(
         `Failed to fetch URL with browser fallback: ${msg}`
       );
@@ -753,7 +775,7 @@ Examples:
         }));
       }
     } catch {
-      console.error('Failed to parse ingredient strings with LLM:', response);
+      logger.error({ response }, 'Failed to parse ingredient strings with LLM');
     }
 
     // Fallback: basic parsing without LLM
@@ -912,7 +934,7 @@ ${recipe.instructions || 'No instructions provided'}`;
           : [],
       };
     } catch {
-      console.error('Failed to parse cooking tips response:', response);
+      logger.error({ response }, 'Failed to parse cooking tips response');
       return { tips: [], commonMistakes: [] };
     }
   }
@@ -946,7 +968,7 @@ ${recipe.instructions || 'No instructions provided'}`;
         source: parsed.source,
       };
     } catch {
-      console.error('Failed to parse recipe response:', response);
+      logger.error({ response }, 'Failed to parse recipe response');
       throw new Error('Failed to parse recipe from text');
     }
   }
@@ -968,7 +990,7 @@ ${recipe.instructions || 'No instructions provided'}`;
           : [],
       };
     } catch {
-      console.error('Failed to parse flavor profile response:', response);
+      logger.error({ response }, 'Failed to parse flavor profile response');
       return {
         primaryFlavors: [],
         tasteProfile: '',

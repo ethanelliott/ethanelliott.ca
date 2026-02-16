@@ -1,3 +1,5 @@
+import { logger } from '../logger';
+
 const OLLAMA_URL = process.env.OLLAMA_URL || 'https://ollama.elliott.haus';
 const DEFAULT_MODEL = 'qwen3:8b';
 const DEFAULT_TIMEOUT_MS = 120000; // 2 minutes
@@ -76,6 +78,11 @@ export class OllamaClient {
     const model = options?.model ?? this.defaultModel;
     const timeoutMs = options?.timeoutMs ?? this.defaultTimeoutMs;
 
+    logger.info(
+      { model, messageCount: messages.length, hasFormat: !!options?.format },
+      'Ollama chat request'
+    );
+
     const controller = new AbortController();
     const timeoutId = setTimeout(
       () => controller.abort('Request timeout'),
@@ -108,12 +115,25 @@ export class OllamaClient {
       }
 
       const data: OllamaChatResponse = await response.json();
+      logger.info(
+        {
+          model,
+          durationMs: data.total_duration
+            ? Math.round(data.total_duration / 1e6)
+            : undefined,
+          promptTokens: data.prompt_eval_count,
+          evalTokens: data.eval_count,
+        },
+        'Ollama chat response'
+      );
       return data.message.content;
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
+          logger.warn({ model, timeoutMs }, 'Ollama chat request timed out');
           throw new Error(`Ollama request timed out after ${timeoutMs}ms`);
         }
+        logger.error({ err: error, model }, 'Ollama chat request failed');
         throw new Error(`Ollama request failed: ${error.message}`);
       }
       throw new Error('Ollama request failed: Unknown error');
@@ -131,6 +151,11 @@ export class OllamaClient {
   ): AsyncGenerator<OllamaStreamChunk> {
     const model = options?.model ?? this.defaultModel;
     const timeoutMs = options?.timeoutMs ?? this.defaultTimeoutMs;
+
+    logger.info(
+      { model, messageCount: messages.length },
+      'Ollama stream request'
+    );
 
     const controller = new AbortController();
     const timeoutId = setTimeout(

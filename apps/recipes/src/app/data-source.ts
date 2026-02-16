@@ -2,6 +2,7 @@ import { createToken, inject, Class } from '@ee/di';
 import { DataSource, ObjectLiteral } from 'typeorm';
 // Ensure native dependencies are included in the build
 import 'better-sqlite3';
+import { logger } from './logger';
 
 export const ENTITIES = createToken<Class<any>>('entities', {
   multi: true,
@@ -27,14 +28,13 @@ export class Database {
     this.dataSource
       .initialize()
       .then(() => {
-        console.log(
-          `📊 Registered entities: ${this._entities
-            .map((e) => e.name)
-            .join(', ')}`
+        logger.info(
+          { entities: this._entities.map((e) => e.name) },
+          'Database initialized'
         );
       })
       .catch((error) => {
-        console.error('❌ Database initialization failed:', error);
+        logger.fatal({ err: error }, 'Database initialization failed');
         process.exit(1);
       });
   }
