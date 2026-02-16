@@ -18,6 +18,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
+import { GalleriaModule } from 'primeng/galleria';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { TooltipModule } from 'primeng/tooltip';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import {
@@ -27,6 +30,9 @@ import {
   Message,
   CookingTipsResponse,
   FlavorProfileResponse,
+  RecipePhoto,
+  Category,
+  Tag,
 } from '../../services/recipes-api.service';
 import { marked } from 'marked';
 
@@ -42,6 +48,9 @@ import { marked } from 'marked';
     InputTextModule,
     ProgressSpinnerModule,
     ConfirmDialogModule,
+    GalleriaModule,
+    MultiSelectModule,
+    TooltipModule,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -109,9 +118,9 @@ import { marked } from 'marked';
       </div>
 
       <!-- Categories & Tags -->
-      @if (recipe()!.categories.length > 0 || recipe()!.tags.length > 0) {
       <div class="chips-section">
-        @for (cat of recipe()!.categories; track cat.id) {
+        @if (!editingChips()) { @for (cat of recipe()!.categories; track cat.id)
+        {
         <span
           class="category-chip"
           [style.background]="cat.color || 'var(--p-primary-color)'"
@@ -127,25 +136,143 @@ import { marked } from 'marked';
         >
           {{ tag.name }}
         </span>
+        } @if (recipe()!.categories.length === 0 && recipe()!.tags.length === 0)
+        {
+        <span class="no-chips-hint">No categories or tags</span>
+        }
+        <p-button
+          icon="pi pi-pencil"
+          [rounded]="true"
+          [text]="true"
+          severity="secondary"
+          size="small"
+          pTooltip="Edit categories & tags"
+          tooltipPosition="top"
+          (click)="startEditingChips()"
+        />
+        } @else {
+        <div class="chips-edit-panel">
+          <div class="chips-edit-row">
+            <label>Categories</label>
+            <p-multiselect
+              [options]="allCategories()"
+              [(ngModel)]="selectedCategoryIds"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select categories"
+              display="chip"
+              [filter]="true"
+              filterPlaceholder="Search..."
+              [fluid]="true"
+            />
+          </div>
+          <div class="chips-edit-row">
+            <label>Tags</label>
+            <p-multiselect
+              [options]="allTags()"
+              [(ngModel)]="selectedTagIds"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select tags"
+              display="chip"
+              [filter]="true"
+              filterPlaceholder="Search..."
+              [fluid]="true"
+            />
+          </div>
+          <div class="chips-edit-actions">
+            <p-button
+              label="Cancel"
+              severity="secondary"
+              [text]="true"
+              size="small"
+              (click)="cancelEditingChips()"
+            />
+            <p-button
+              label="Save"
+              icon="pi pi-check"
+              size="small"
+              (click)="saveChips()"
+              [loading]="savingChips()"
+            />
+          </div>
+        </div>
         }
       </div>
-      }
 
       <!-- Photos -->
-      @if (recipe()!.photos && recipe()!.photos!.length > 0) {
       <div class="photos-section">
-        <h2 class="section-title">Photos</h2>
-        <div class="photos-scroll">
-          @for (photo of recipe()!.photos!; track photo.id) {
-          <img
-            [src]="api.getPhotoUrl(photo.id)"
-            [alt]="recipe()!.title"
-            class="recipe-photo"
-          />
-          }
+        <div class="photos-section-header">
+          <h2 class="section-title">Photos</h2>
+          <div class="photos-actions">
+            <input
+              type="file"
+              accept="image/*"
+              (change)="onFileSelected($event)"
+              #fileInput
+              style="display: none"
+            />
+            <p-button
+              icon="pi pi-upload"
+              label="Upload"
+              severity="secondary"
+              [outlined]="true"
+              size="small"
+              (click)="fileInput.click()"
+              [loading]="uploadLoading()"
+            />
+          </div>
         </div>
+        @if (galleryImages().length > 0) {
+        <p-galleria
+          [value]="galleryImages()"
+          [numVisible]="5"
+          [showItemNavigators]="true"
+          [showItemNavigatorsOnHover]="true"
+          [circular]="true"
+          [showThumbnails]="galleryImages().length > 1"
+          [containerStyle]="{ 'max-width': '100%' }"
+          [responsiveOptions]="galleriaResponsiveOptions"
+        >
+          <ng-template #item let-item>
+            <div class="galleria-item-wrapper">
+              <img
+                [src]="item.itemImageSrc"
+                [alt]="item.alt"
+                style="width: 100%; display: block; border-radius: 8px;"
+              />
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                [rounded]="true"
+                size="small"
+                class="galleria-delete-btn"
+                pTooltip="Delete photo"
+                tooltipPosition="left"
+                (click)="confirmDeletePhoto(item.photoId)"
+              />
+            </div>
+          </ng-template>
+          <ng-template #thumbnail let-item>
+            <img
+              [src]="item.thumbnailImageSrc"
+              [alt]="item.alt"
+              style="display: block; width: 100%; border-radius: 4px;"
+            />
+          </ng-template>
+          <ng-template #caption let-item>
+            <div class="galleria-caption">
+              {{ activeGalleryIndex() + 1 }} / {{ galleryImages().length }}
+            </div>
+          </ng-template>
+        </p-galleria>
+        } @else {
+        <div class="photos-empty">
+          <i class="pi pi-image"></i>
+          <p>No photos yet. Upload one to get started!</p>
+        </div>
+        }
       </div>
-      }
 
       <!-- Recipe Body - Two Column Layout -->
       <div class="recipe-body">
@@ -488,6 +615,7 @@ import { marked } from 'marked';
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 24px;
+      align-items: center;
     }
 
     .category-chip {
@@ -504,6 +632,41 @@ import { marked } from 'marked';
       font-size: 0.8rem;
       font-weight: 500;
       background: transparent;
+    }
+
+    .no-chips-hint {
+      font-size: 0.85rem;
+      color: var(--p-text-muted-color);
+      font-style: italic;
+    }
+
+    .chips-edit-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      padding: 16px;
+      background: var(--p-surface-900);
+      border: 1px solid var(--p-surface-700);
+      border-radius: 12px;
+    }
+
+    .chips-edit-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--p-text-muted-color);
+      }
+    }
+
+    .chips-edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
     }
 
     .section-header {
@@ -744,21 +907,77 @@ import { marked } from 'marked';
       margin-bottom: 32px;
     }
 
-    .photos-scroll {
+    .photos-section-header {
       display: flex;
-      gap: 12px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      scroll-snap-type: x mandatory;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+
+      .section-title {
+        margin-bottom: 0;
+      }
     }
 
-    .recipe-photo {
-      width: 280px;
-      height: 200px;
-      object-fit: cover;
+    .photos-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .galleria-item-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .galleria-delete-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .galleria-item-wrapper:hover .galleria-delete-btn {
+      opacity: 1;
+    }
+
+    :host ::ng-deep .p-galleria {
       border-radius: 12px;
-      flex-shrink: 0;
-      scroll-snap-align: start;
+      overflow: hidden;
+      border: 1px solid var(--p-surface-700);
+    }
+
+    :host ::ng-deep .p-galleria-thumbnail-items img {
+      height: 60px;
+      object-fit: cover;
+    }
+
+    .galleria-caption {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--p-text-muted-color);
+    }
+
+    .photos-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      border: 2px dashed var(--p-surface-600);
+      border-radius: 12px;
+      color: var(--p-text-muted-color);
+      gap: 12px;
+
+      i {
+        font-size: 2rem;
+        opacity: 0.5;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.9rem;
+      }
     }
 
     // ===== AI SECTION =====
@@ -1144,10 +1363,6 @@ import { marked } from 'marked';
         grid-template-columns: 1fr;
       }
 
-      .recipe-photo {
-        width: 240px;
-        height: 170px;
-      }
     }
 
     // ===== RESPONSIVE: Mobile =====
@@ -1207,11 +1422,6 @@ import { marked } from 'marked';
         gap: 8px;
       }
 
-      .recipe-photo {
-        width: 200px;
-        height: 150px;
-      }
-
       .instructions-content {
         :deep(ol li) {
           padding: 10px 12px 10px 42px;
@@ -1257,6 +1467,35 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
   displayIngredients = signal<Ingredient[]>([]);
   ingredientsLoading = signal(false);
 
+  // Photo state
+  uploadLoading = signal(false);
+  activeGalleryIndex = signal(0);
+
+  // Categories & Tags editing state
+  allCategories = signal<Category[]>([]);
+  allTags = signal<Tag[]>([]);
+  editingChips = signal(false);
+  savingChips = signal(false);
+  selectedCategoryIds: string[] = [];
+  selectedTagIds: string[] = [];
+
+  galleryImages = computed(() => {
+    const r = this.recipe();
+    if (!r?.photos?.length) return [];
+    return r.photos.map((photo) => ({
+      itemImageSrc: this.api.getPhotoUrl(photo.id),
+      thumbnailImageSrc: this.api.getPhotoUrl(photo.id),
+      alt: r.title,
+      photoId: photo.id,
+    }));
+  });
+
+  galleriaResponsiveOptions = [
+    { breakpoint: '1024px', numVisible: 5 },
+    { breakpoint: '768px', numVisible: 3 },
+    { breakpoint: '560px', numVisible: 2 },
+  ];
+
   // AI State
   aiPanelOpen = signal(false);
   aiTab = signal<'chat' | 'tips' | 'flavor'>('chat');
@@ -1294,6 +1533,10 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
       this.displayIngredients.set(recipe.ingredients);
       this.loading.set(false);
     });
+
+    // Pre-load all categories and tags for inline editing
+    this.api.getCategories().subscribe((cats) => this.allCategories.set(cats));
+    this.api.getTags().subscribe((tags) => this.allTags.set(tags));
   }
 
   ngOnDestroy() {
@@ -1336,6 +1579,47 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
     return qty % 1 === 0 ? qty.toString() : qty.toFixed(2).replace(/0+$/, '');
   }
 
+  startEditingChips() {
+    const r = this.recipe();
+    if (!r) return;
+    this.selectedCategoryIds = r.categories.map((c) => c.id);
+    this.selectedTagIds = r.tags.map((t) => t.id);
+    this.editingChips.set(true);
+  }
+
+  cancelEditingChips() {
+    this.editingChips.set(false);
+  }
+
+  saveChips() {
+    const r = this.recipe();
+    if (!r) return;
+    this.savingChips.set(true);
+
+    this.api
+      .updateRecipe(r.id, {
+        categoryIds: this.selectedCategoryIds,
+        tagIds: this.selectedTagIds,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.recipe.update((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              categories: updated.categories,
+              tags: updated.tags,
+            };
+          });
+          this.savingChips.set(false);
+          this.editingChips.set(false);
+        },
+        error: () => {
+          this.savingChips.set(false);
+        },
+      });
+  }
+
   confirmDelete() {
     this.confirmationService.confirm({
       message: 'Are you sure you want to delete this recipe?',
@@ -1354,6 +1638,62 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
     return this.sanitizer.bypassSecurityTrustHtml(
       marked.parse(content, { async: false }) as string
     );
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.uploadLoading.set(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      this.api
+        .uploadPhoto(this.recipe()!.id, {
+          filename: file.name,
+          mimeType: file.type,
+          data: base64,
+        })
+        .subscribe({
+          next: (photo) => {
+            this.recipe.update((r) => {
+              if (!r) return r;
+              return {
+                ...r,
+                photos: [...(r.photos || []), photo],
+              };
+            });
+            this.uploadLoading.set(false);
+            input.value = '';
+          },
+          error: () => {
+            this.uploadLoading.set(false);
+            input.value = '';
+          },
+        });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  confirmDeletePhoto(photoId: string) {
+    this.confirmationService.confirm({
+      message: 'Delete this photo?',
+      header: 'Confirm',
+      icon: 'pi pi-trash',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deletePhoto(photoId).subscribe(() => {
+          this.recipe.update((r) => {
+            if (!r) return r;
+            return {
+              ...r,
+              photos: (r.photos || []).filter((p) => p.id !== photoId),
+            };
+          });
+        });
+      },
+    });
   }
 
   sendChat(message: string) {
