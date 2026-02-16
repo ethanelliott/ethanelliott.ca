@@ -1,0 +1,6 @@
+apiVersion: v2
+name: nvidia-gpu-exporter
+description: Lightweight NVIDIA GPU metrics exporter using nvidia-smi
+type: application
+version: 1.0.0
+appVersion: '1.2.1'

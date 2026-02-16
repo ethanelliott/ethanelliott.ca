@@ -1,0 +1,23 @@
+image:
+  repository: utkuozdemir/nvidia_gpu_exporter
+  tag: 1.2.1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9835
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Node selector to only run on GPU nodes
+nodeSelector:
+  nvidia.com/gpu.present: 'true'
+
+# Tolerations (in case GPU nodes have taints)
+tolerations: []
