@@ -30,6 +30,7 @@ import {
   Tag,
   TransactionType,
 } from '../../services/finance-api.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-inbox',
@@ -106,6 +107,21 @@ import {
               </span>
               }
             </div>
+
+            @if (tx.linkedTransferId && inboxLinkedTransfer()) {
+            <div class="inbox-transfer-card">
+              <mat-icon>swap_horiz</mat-icon>
+              <span class="transfer-text"
+                >Transfer {{ tx.amount > 0 ? 'to' : 'from' }}
+                <strong>{{ inboxLinkedTransfer()!.accountName }}</strong></span
+              >
+            </div>
+            } @else if (tx.type === 'TRANSFER' && !tx.linkedTransferId) {
+            <div class="inbox-transfer-card unlinked">
+              <mat-icon>warning</mat-icon>
+              <span class="transfer-text">Unlinked transfer</span>
+            </div>
+            }
 
             <div class="editor-inputs">
               <mat-form-field appearance="outline" class="category-field">
@@ -408,6 +424,33 @@ import {
           width: 12px;
           height: 12px;
         }
+      }
+    }
+
+    .inbox-transfer-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      background: rgba(var(--mat-sys-tertiary-rgb), 0.08);
+      color: var(--mat-sys-tertiary);
+      font-size: 0.85rem;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &.unlinked {
+        background: rgba(var(--mat-sys-error-rgb), 0.08);
+        color: var(--mat-sys-error);
+      }
+
+      .transfer-text strong {
+        font-weight: 600;
       }
     }
 
@@ -752,6 +795,9 @@ export class InboxComponent implements OnInit {
   pendingCategory = signal<string | null>(null);
   pendingTags = signal<string[]>([]);
 
+  // Transfer info for current inbox transaction
+  inboxLinkedTransfer = signal<Transaction | null>(null);
+
   currentTransaction = computed(() => {
     const txs = this.transactions();
     const idx = this.currentIndex();
@@ -828,6 +874,8 @@ export class InboxComponent implements OnInit {
           this.pendingTags.set([...txs[0].tags]);
           // tx.category is already the category name from the API
           this.categoryInput.set(txs[0].category ?? '');
+          // Load linked transfer for first transaction
+          this.loadLinkedTransfer(txs[0]);
         }
       },
       error: (err) => {
@@ -860,15 +908,29 @@ export class InboxComponent implements OnInit {
   private resetPendingChanges() {
     this.tagInput.set('');
     this.pendingCategory.set(null);
+    this.inboxLinkedTransfer.set(null);
     // Initialize pending tags from current transaction (tx.tags already contains names)
     const tx = this.currentTransaction();
     if (tx) {
       this.pendingTags.set([...tx.tags]);
       // tx.category is already the category name from the API
       this.categoryInput.set(tx.category ?? '');
+      // Load linked transfer info
+      this.loadLinkedTransfer(tx);
     } else {
       this.pendingTags.set([]);
       this.categoryInput.set('');
+    }
+  }
+
+  private async loadLinkedTransfer(tx: Transaction) {
+    if (tx.linkedTransferId) {
+      try {
+        const linked = await firstValueFrom(this.api.getLinkedTransfer(tx.id));
+        this.inboxLinkedTransfer.set(linked);
+      } catch {
+        this.inboxLinkedTransfer.set(null);
+      }
     }
   }
 

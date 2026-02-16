@@ -122,6 +122,11 @@ export class OverviewService {
     for (const txn of filtered) {
       const amount = Math.abs(parseFloat(txn.amount.toString()));
 
+      // Skip linked transfers — they're internal money movements, not income/expenses
+      if (txn.type === TransactionType.TRANSFER && txn.linkedTransferId) {
+        continue;
+      }
+
       if (txn.type === TransactionType.INCOME) {
         totalIncome += amount;
         if (!dayMap.has(txn.date)) {

@@ -608,45 +608,196 @@ export class PlaidService {
 
   /**
    * Detect transfers between accounts
-   * This looks for matching transactions on the same date with opposite amounts
+   * Uses fuzzy date matching (±3 days), opposite amounts, different accounts,
+   * and keyword/category signals to auto-link transfers with confidence scoring.
+   * Also catches bill payments (credit card payments, loan payments, etc.)
    */
   async detectTransfers(userId: string): Promise<number> {
-    // Find transactions that look like transfers (not already linked)
-    const potentialTransfers = await this._transactionRepository
+    // Find ALL unlinked, non-pending transactions (not just type=TRANSFER)
+    const unlinked = await this._transactionRepository
       .createQueryBuilder('t')
       .leftJoinAndSelect('t.account', 'account')
       .where('t.user.id = :userId', { userId })
       .andWhere('t.linkedTransferId IS NULL')
-      .andWhere('t.type = :type', { type: TransactionType.TRANSFER })
+      .andWhere('t.pending = :pending', { pending: false })
       .orderBy('t.date', 'ASC')
       .getMany();
 
+    // Group by date for efficient matching (expand to ±3 day windows)
+    const byDate = new Map<string, typeof unlinked>();
+    for (const txn of unlinked) {
+      if (!byDate.has(txn.date)) byDate.set(txn.date, []);
+      byDate.get(txn.date)!.push(txn);
+    }
+
+    const linked = new Set<string>();
     let linkedCount = 0;
 
-    for (const txn of potentialTransfers) {
-      // Look for a matching transaction on the same date with opposite amount
-      // in a different account
-      const match = await this._transactionRepository
-        .createQueryBuilder('t')
-        .leftJoinAndSelect('t.account', 'account')
-        .where('t.user.id = :userId', { userId })
-        .andWhere('t.id != :txnId', { txnId: txn.id })
-        .andWhere('t.linkedTransferId IS NULL')
-        .andWhere('t.date = :date', { date: txn.date })
-        .andWhere('t.amount = :amount', { amount: -txn.amount })
-        .andWhere('account.id != :accountId', { accountId: txn.account.id })
-        .getOne();
+    // For each transaction, attempt to find the best match
+    for (const txn of unlinked) {
+      if (linked.has(txn.id)) continue;
 
-      if (match) {
-        // Link the two transactions
-        txn.linkedTransferId = match.id;
-        match.linkedTransferId = txn.id;
-        await this._transactionRepository.save([txn, match]);
-        linkedCount++;
+      const txnAmount = parseFloat(txn.amount.toString());
+
+      // Collect candidates within ±3 days
+      const dateParts = txn.date.split('-').map(Number);
+      const baseDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+      const candidates: Array<{
+        candidate: (typeof unlinked)[0];
+        confidence: number;
+      }> = [];
+
+      for (let offset = -3; offset <= 3; offset++) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + offset);
+        const key = d.toISOString().split('T')[0];
+        const group = byDate.get(key);
+        if (!group) continue;
+
+        for (const c of group) {
+          if (c.id === txn.id) continue;
+          if (linked.has(c.id)) continue;
+          if (c.account?.id === txn.account?.id) continue;
+
+          const cAmount = parseFloat(c.amount.toString());
+          const confidence = this.computeLinkConfidence(
+            txnAmount,
+            txn.date,
+            txn.account?.id || '',
+            txn.name,
+            txn.type,
+            txn.plaidPersonalFinanceCategory,
+            cAmount,
+            c.date,
+            c.account?.id || '',
+            c.name,
+            c.type,
+            c.plaidPersonalFinanceCategory
+          );
+
+          if (confidence >= 70) {
+            candidates.push({ candidate: c, confidence });
+          }
+        }
       }
+
+      if (candidates.length === 0) continue;
+
+      // Pick the highest confidence match
+      candidates.sort((a, b) => b.confidence - a.confidence);
+      const bestMatch = candidates[0];
+
+      // Link them
+      txn.linkedTransferId = bestMatch.candidate.id;
+      txn.linkedTransferConfidence = bestMatch.confidence;
+      txn.type = TransactionType.TRANSFER;
+      bestMatch.candidate.linkedTransferId = txn.id;
+      bestMatch.candidate.linkedTransferConfidence = bestMatch.confidence;
+      bestMatch.candidate.type = TransactionType.TRANSFER;
+
+      await this._transactionRepository.save([txn, bestMatch.candidate]);
+      linked.add(txn.id);
+      linked.add(bestMatch.candidate.id);
+      linkedCount++;
     }
 
     return linkedCount;
+  }
+
+  /**
+   * Compute confidence (0-100) that two transactions are a transfer pair
+   */
+  private computeLinkConfidence(
+    amountA: number,
+    dateA: string,
+    accountIdA: string,
+    nameA: string,
+    typeA: TransactionType,
+    categoryA: string | undefined,
+    amountB: number,
+    dateB: string,
+    accountIdB: string,
+    nameB: string,
+    typeB: TransactionType,
+    categoryB: string | undefined
+  ): number {
+    // Must be different accounts
+    if (accountIdA === accountIdB) return 0;
+
+    let score = 0;
+
+    // ── Amount matching ──
+    const sumAmount = amountA + amountB;
+    const absA = Math.abs(amountA);
+    if (Math.abs(sumAmount) < 0.02) {
+      score += 50; // exact opposite
+    } else if (absA > 0 && Math.abs(sumAmount) / absA < 0.01) {
+      score += 40; // within 1%
+    } else {
+      return 0; // amounts must be close to opposite
+    }
+
+    // ── Date proximity ──
+    const dateAMs = new Date(dateA).getTime();
+    const dateBMs = new Date(dateB).getTime();
+    const daysDiff = Math.abs(dateAMs - dateBMs) / (1000 * 60 * 60 * 24);
+    if (daysDiff === 0) {
+      score += 25;
+    } else if (daysDiff <= 1) {
+      score += 20;
+    } else if (daysDiff <= 2) {
+      score += 15;
+    } else if (daysDiff <= 3) {
+      score += 10;
+    }
+
+    // ── Type / category signals ──
+    const transferTypes = [
+      'TRANSFER_IN',
+      'TRANSFER_OUT',
+      'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT',
+      'LOAN_PAYMENTS_MORTGAGE_PAYMENT',
+      'LOAN_PAYMENTS_CAR_PAYMENT',
+      'LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT',
+    ];
+    if (
+      typeA === TransactionType.TRANSFER ||
+      typeB === TransactionType.TRANSFER
+    ) {
+      score += 10;
+    }
+    if (
+      (categoryA && transferTypes.some((t) => categoryA.includes(t))) ||
+      (categoryB && transferTypes.some((t) => categoryB.includes(t)))
+    ) {
+      score += 10;
+    }
+
+    // ── Name keyword signals ──
+    const keywords = [
+      'transfer',
+      'e-transfer',
+      'payment',
+      'pymt',
+      'pmt',
+      'bill pay',
+      'online banking',
+      'internet banking',
+      'credit card',
+      'visa',
+      'mastercard',
+      'amex',
+    ];
+    const nameALower = nameA.toLowerCase();
+    const nameBLower = nameB.toLowerCase();
+    for (const kw of keywords) {
+      if (nameALower.includes(kw) || nameBLower.includes(kw)) {
+        score += 5;
+        break;
+      }
+    }
+
+    return Math.min(score, 100);
   }
 
   /**
@@ -655,15 +806,41 @@ export class PlaidService {
   private determineTransactionType(
     plaidTxn: PlaidTransaction
   ): TransactionType {
-    // Check if it's a transfer based on category or name
-    const isTransfer =
-      plaidTxn.category?.includes('Transfer') ||
-      plaidTxn.personal_finance_category?.primary === 'TRANSFER_IN' ||
-      plaidTxn.personal_finance_category?.primary === 'TRANSFER_OUT' ||
-      plaidTxn.name.toLowerCase().includes('transfer') ||
-      plaidTxn.name.toLowerCase().includes('e-transfer');
+    const nameLower = plaidTxn.name.toLowerCase();
+    const detailedCategory = plaidTxn.personal_finance_category?.detailed || '';
+    const primaryCategory = plaidTxn.personal_finance_category?.primary || '';
 
-    if (isTransfer) {
+    // Check Plaid categories for transfers
+    const isTransferCategory =
+      plaidTxn.category?.includes('Transfer') ||
+      primaryCategory === 'TRANSFER_IN' ||
+      primaryCategory === 'TRANSFER_OUT';
+
+    // Check for bill payment / loan payment categories
+    const isBillPayCategory =
+      detailedCategory.includes('LOAN_PAYMENTS') ||
+      detailedCategory.includes('CREDIT_CARD_PAYMENT') ||
+      primaryCategory === 'LOAN_PAYMENTS';
+
+    // Check name for transfer keywords
+    const isTransferName =
+      nameLower.includes('transfer') ||
+      nameLower.includes('e-transfer') ||
+      nameLower.includes('etransfer');
+
+    // Check name for bill payment keywords
+    const isBillPayName =
+      /\b(payment|pymt|pmt|bill pay)\b/.test(nameLower) &&
+      /(visa|mastercard|amex|credit card|cibc|rbc|td|bmo|scotiabank|tangerine)/i.test(
+        nameLower
+      );
+
+    if (
+      isTransferCategory ||
+      isTransferName ||
+      isBillPayCategory ||
+      isBillPayName
+    ) {
       return TransactionType.TRANSFER;
     }
 

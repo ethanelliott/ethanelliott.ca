@@ -70,6 +70,8 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
             totalIncome: z.number(),
             totalExpenses: z.number(),
             totalTransfers: z.number(),
+            linkedTransferCount: z.number(),
+            unlinkedTransferCount: z.number(),
             byCategory: z.array(
               z.object({
                 category: z.string(),
@@ -170,6 +172,73 @@ export async function TransactionsRouter(fastify: FastifyInstance) {
     },
     async (request) => {
       return transactionsService.getLinkedTransfer(
+        request.params.transactionId,
+        request.currentUser.id
+      );
+    }
+  );
+
+  // Link two transactions as a transfer pair
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/:transactionId/link-transfer',
+    {
+      schema: {
+        params: z.object({
+          transactionId: z.string().uuid(),
+        }),
+        body: z.object({
+          targetTransactionId: z.string().uuid(),
+        }),
+        response: {
+          200: TransactionOutSchema,
+        },
+      },
+    },
+    async (request) => {
+      return transactionsService.linkTransfer(
+        request.params.transactionId,
+        request.body.targetTransactionId,
+        request.currentUser.id
+      );
+    }
+  );
+
+  // Unlink a transfer pair
+  fastify.withTypeProvider<ZodTypeProvider>().delete(
+    '/:transactionId/link-transfer',
+    {
+      schema: {
+        params: z.object({
+          transactionId: z.string().uuid(),
+        }),
+        response: {
+          200: TransactionOutSchema,
+        },
+      },
+    },
+    async (request) => {
+      return transactionsService.unlinkTransfer(
+        request.params.transactionId,
+        request.currentUser.id
+      );
+    }
+  );
+
+  // Get transfer suggestions for a transaction
+  fastify.withTypeProvider<ZodTypeProvider>().get(
+    '/:transactionId/transfer-suggestions',
+    {
+      schema: {
+        params: z.object({
+          transactionId: z.string().uuid(),
+        }),
+        response: {
+          200: z.array(TransactionOutSchema.extend({ confidence: z.number() })),
+        },
+      },
+    },
+    async (request) => {
+      return transactionsService.getTransferSuggestions(
         request.params.transactionId,
         request.currentUser.id
       );
