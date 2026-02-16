@@ -287,14 +287,18 @@ export async function updateDatabase() {
   const variantUpdateRecords: any[][] = [];
   const restockInsertRecords: any[][] = [];
 
-  // Fetch existing variants to check for restocks
+  // Fetch existing variants to check for restocks and price changes
   const existingVariants = await allPromise.call(
     DB,
-    'SELECT id, available_sizes FROM variants'
+    'SELECT id, available_sizes, price, list_price FROM variants'
   );
-  const existingVariantsMap = new Map<string, string[]>();
+  const existingVariantsMap = new Map<string, { sizes: string[]; price: number; listPrice: number }>();
   existingVariants.forEach((v: any) => {
-    existingVariantsMap.set(v.id, JSON.parse(v.available_sizes || '[]'));
+    existingVariantsMap.set(v.id, {
+      sizes: JSON.parse(v.available_sizes || '[]'),
+      price: v.price,
+      listPrice: v.list_price,
+    });
   });
 
   for (const [masterId, items] of groupedData.entries()) {
@@ -379,16 +383,19 @@ export async function updateDatabase() {
             variantId,
           ]); // parameters for UPDATE
 
-          // Price history
-          priceInsertRecords.push([
-            variantId,
-            color.price,
-            color.list_price,
-            scrapeTime,
-          ]);
+          // Price history — only insert when price actually changed
+          const existingVariant = existingVariantsMap.get(variantId);
+          if (!existingVariant || existingVariant.price !== color.price || existingVariant.listPrice !== color.list_price) {
+            priceInsertRecords.push([
+              variantId,
+              color.price,
+              color.list_price,
+              scrapeTime,
+            ]);
+          }
 
           // Check for restock
-          const oldSizes = existingVariantsMap.get(variantId);
+          const oldSizes = existingVariant?.sizes;
           const newSizes = color.available_sizes || [];
           if (oldSizes && oldSizes.length === 0 && newSizes.length > 0) {
             restockInsertRecords.push([variantId, scrapeTime]);

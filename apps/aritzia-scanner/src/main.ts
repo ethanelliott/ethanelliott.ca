@@ -112,17 +112,35 @@ async function main() {
       [productId]
     );
 
+    // Batch fetch all images for all variants in one query
+    const variantIds = variants.map((v: any) => v.id);
+    const allImages =
+      variantIds.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT id, product_id, variant_id FROM images WHERE variant_id IN (${variantIds
+              .map(() => '?')
+              .join(',')})`,
+            variantIds
+          )
+        : [];
+
+    // Group images by variant_id
+    const imagesByVariant = new Map<string, any[]>();
+    allImages.forEach((img: any) => {
+      if (!imagesByVariant.has(img.variant_id))
+        imagesByVariant.set(img.variant_id, []);
+      imagesByVariant
+        .get(img.variant_id)!
+        .push({
+          id: img.id,
+          product_id: img.product_id,
+          variant_id: img.variant_id,
+        });
+    });
+
     for (const variant of variants) {
-      const images = await allPromise.call(
-        db,
-        `SELECT id, product_id, variant_id FROM images WHERE variant_id = ?`,
-        [`${variant.id}`]
-      );
-      variant.images = images.map((img: any) => ({
-        id: img.id,
-        product_id: img.product_id,
-        variant_id: img.variant_id,
-      }));
+      variant.images = imagesByVariant.get(variant.id) || [];
     }
 
     res.json({ ...product, variants });
@@ -143,7 +161,16 @@ async function main() {
       return;
     }
 
+    // Images are immutable BLOBs - cache aggressively
     res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('ETag', `"${imageId}"`);
+
+    if (req.headers['if-none-match'] === `"${imageId}"`) {
+      res.status(304).end();
+      return;
+    }
+
     res.send(imageRecord.image);
   });
 
@@ -639,25 +666,50 @@ async function main() {
         allLengths.add(variant.length);
       }
       group.lastSeenAts.push(variant.last_seen_at);
+    }
 
-      const history = await getPromise.call(
-        db,
-        `SELECT MIN(price) as min_price FROM prices WHERE variant_id = ?`,
-        [variant.id]
-      );
-      if (history && history.min_price < group.lowest_price) {
-        group.lowest_price = history.min_price;
+    // Batch: get lowest prices for all variants at once
+    const variantIdsForProduct = variants.map((v: any) => v.id);
+    const lowestPrices =
+      variantIdsForProduct.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT variant_id, MIN(price) as min_price FROM prices WHERE variant_id IN (${variantIdsForProduct
+              .map(() => '?')
+              .join(',')}) GROUP BY variant_id`,
+            variantIdsForProduct
+          )
+        : [];
+    const lowestPriceMap = new Map<string, number>();
+    lowestPrices.forEach((r: any) =>
+      lowestPriceMap.set(r.variant_id, r.min_price)
+    );
+
+    // Batch: get first thumbnail image per variant
+    const thumbnailImages =
+      variantIdsForProduct.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT variant_id, MIN(id) as image_id FROM images WHERE variant_id IN (${variantIdsForProduct
+              .map(() => '?')
+              .join(',')}) GROUP BY variant_id`,
+            variantIdsForProduct
+          )
+        : [];
+    const thumbnailMap = new Map<string, string>();
+    thumbnailImages.forEach((r: any) =>
+      thumbnailMap.set(r.variant_id, r.image_id)
+    );
+
+    // Apply batch results to grouped variants
+    for (const variant of variants) {
+      const group = groupedVariants.get(variant.color);
+      const minPrice = lowestPriceMap.get(variant.id);
+      if (minPrice !== undefined && minPrice < group.lowest_price) {
+        group.lowest_price = minPrice;
       }
-
-      if (!group.thumbnail) {
-        const image = await getPromise.call(
-          db,
-          `SELECT id FROM images WHERE variant_id = ? LIMIT 1`,
-          [variant.id]
-        );
-        if (image) {
-          group.thumbnail = image.id;
-        }
+      if (!group.thumbnail && thumbnailMap.has(variant.id)) {
+        group.thumbnail = thumbnailMap.get(variant.id);
       }
     }
 
@@ -727,6 +779,41 @@ async function main() {
 
     const images = new Map<string, any>();
 
+    // Batch: get lowest prices for all variant IDs
+    const variantDetailIds = variants.map((v: any) => v.id);
+    const batchLowestPrices =
+      variantDetailIds.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT variant_id, MIN(price) as min_price FROM prices WHERE variant_id IN (${variantDetailIds
+              .map(() => '?')
+              .join(',')}) GROUP BY variant_id`,
+            variantDetailIds
+          )
+        : [];
+    const lowestPriceMapDetail = new Map<string, number>();
+    batchLowestPrices.forEach((r: any) =>
+      lowestPriceMapDetail.set(r.variant_id, r.min_price)
+    );
+
+    // Batch: get all images for all variants
+    const batchImages =
+      variantDetailIds.length > 0
+        ? await allPromise.call(
+            db,
+            `SELECT id, variant_id FROM images WHERE variant_id IN (${variantDetailIds
+              .map(() => '?')
+              .join(',')})`,
+            variantDetailIds
+          )
+        : [];
+
+    batchImages.forEach((img: any) => {
+      if (!images.has(img.id)) {
+        images.set(img.id, img);
+      }
+    });
+
     for (const variant of variants) {
       variant.added_at_formatted = dayjs.utc(variant.added_at).fromNow();
       variant.last_seen_at_formatted = dayjs
@@ -740,24 +827,8 @@ async function main() {
         ? JSON.parse(variant.all_sizes)
         : [];
 
-      const history = await getPromise.call(
-        db,
-        `SELECT MIN(price) as min_price FROM prices WHERE variant_id = ?`,
-        [variant.id]
-      );
-      variant.lowest_price = history ? history.min_price : variant.price;
-
-      const variantImages = await allPromise.call(
-        db,
-        `SELECT id FROM images WHERE variant_id = ?`,
-        [variant.id]
-      );
-
-      variantImages.forEach((img: any) => {
-        if (!images.has(img.id)) {
-          images.set(img.id, img);
-        }
-      });
+      const minPrice = lowestPriceMapDetail.get(variant.id);
+      variant.lowest_price = minPrice !== undefined ? minPrice : variant.price;
     }
 
     // Get store availability for this variant

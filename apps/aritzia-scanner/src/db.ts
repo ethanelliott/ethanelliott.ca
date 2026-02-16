@@ -281,15 +281,66 @@ export function setupDatabase(db: sqlite3.Database): Promise<void> {
               province TEXT,
               country TEXT
           );
-        `,
-        (err) => {
-          if (err) return reject(err);
-          console.log(
-            'Database tables initialized (products, variants, images, prices, restocks, store_availability, stores).'
-          );
-          resolve();
-        }
+        `
       );
+
+      // Table 8: AI Summaries cache
+      db.run(
+        `
+          CREATE TABLE IF NOT EXISTS ai_summaries (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              product_id TEXT,
+              summary TEXT,
+              created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+              FOREIGN KEY (product_id) REFERENCES products(id),
+              UNIQUE(product_id)
+          );
+        `
+      );
+
+      // ==================== INDEXES ====================
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_variants_product_id ON variants(product_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_variants_last_seen_at ON variants(last_seen_at)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_variants_color ON variants(color)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_variants_color_id ON variants(color_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_images_variant_id ON images(variant_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_images_product_id ON images(product_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_prices_variant_id ON prices(variant_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_store_availability_variant_id ON store_availability(variant_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_store_availability_store_id ON store_availability(store_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_restocks_variant_id ON restocks(variant_id)`
+      );
+      db.run(
+        `CREATE INDEX IF NOT EXISTS idx_ai_summaries_product_id ON ai_summaries(product_id)`
+      );
+
+      // Enable WAL mode for better concurrent read performance
+      db.run(`PRAGMA journal_mode=WAL`, (err) => {
+        if (err) return reject(err);
+        console.log(
+          'Database tables initialized with indexes and WAL mode enabled.'
+        );
+        resolve();
+      });
     });
   });
 }
