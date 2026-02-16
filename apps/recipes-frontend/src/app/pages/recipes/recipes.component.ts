@@ -5,7 +5,6 @@ import {
   inject,
   OnInit,
   signal,
-  viewChild,
 } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -15,7 +14,6 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { ChipModule } from 'primeng/chip';
 import { TagModule } from 'primeng/tag';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { AiImportDialogComponent } from '../../components/ai-import-dialog/ai-import-dialog.component';
 import {
   RecipesApiService,
   RecipeSummary,
@@ -35,7 +33,6 @@ import {
     ChipModule,
     TagModule,
     ProgressSpinnerModule,
-    AiImportDialogComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -54,7 +51,7 @@ import {
             icon="pi pi-sparkles"
             severity="secondary"
             [outlined]="true"
-            (click)="aiImport().open()"
+            (click)="router.navigate(['/recipes/import'])"
           />
           <p-button
             label="Add Recipe"
@@ -195,9 +192,6 @@ import {
         }
       </div>
       }
-
-      <!-- AI Import Dialog -->
-      <app-ai-import-dialog (closed)="onAiImportClose()" />
     </div>
   `,
   styles: `
@@ -400,7 +394,6 @@ export class RecipesComponent implements OnInit {
   categories = signal<Category[]>([]);
   tags = signal<Tag[]>([]);
   loading = signal(true);
-  aiImport = viewChild.required(AiImportDialogComponent);
 
   searchQuery = '';
   selectedCategories: Category[] = [];
@@ -465,9 +458,5 @@ export class RecipesComponent implements OnInit {
 
   getTotalTime(recipe: RecipeSummary): number {
     return (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
-  }
-
-  onAiImportClose() {
-    this.loadData();
   }
 }

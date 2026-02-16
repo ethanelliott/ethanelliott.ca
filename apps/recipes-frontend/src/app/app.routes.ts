@@ -15,6 +15,13 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'recipes/import',
+        loadComponent: () =>
+          import('./pages/ai-import/ai-import.component').then(
+            (m) => m.AiImportComponent
+          ),
+      },
+      {
         path: 'recipes/new',
         loadComponent: () =>
           import('./pages/recipe-form/recipe-form.component').then(

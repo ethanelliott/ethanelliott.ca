@@ -29,7 +29,8 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-dialog
-      [(visible)]="visible"
+      [visible]="visible()"
+      (visibleChange)="visible.set($event)"
       header="Import Recipe with AI"
       [modal]="true"
       [style]="{ width: '550px' }"
@@ -64,7 +65,7 @@ import {
             label="Cancel"
             severity="secondary"
             [outlined]="true"
-            (click)="visible = false"
+            (click)="visible.set(false)"
           />
           <p-button
             label="Parse Recipe"
@@ -250,7 +251,7 @@ export class AiImportDialogComponent {
 
   closed = output<void>();
 
-  visible = false;
+  visible = signal(false);
   inputText = '';
   parsing = signal(false);
   creating = signal(false);
@@ -259,7 +260,7 @@ export class AiImportDialogComponent {
 
   open() {
     this.reset();
-    this.visible = true;
+    this.visible.set(true);
   }
 
   reset() {
@@ -311,7 +312,7 @@ export class AiImportDialogComponent {
       })
       .subscribe((created) => {
         this.creating.set(false);
-        this.visible = false;
+        this.visible.set(false);
         this.router.navigate(['/recipes', created.id]);
       });
   }
