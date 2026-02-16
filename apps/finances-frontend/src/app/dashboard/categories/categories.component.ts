@@ -77,8 +77,7 @@ import { firstValueFrom } from 'rxjs';
               <mat-spinner diameter="18"></mat-spinner>
               } @else {
               <mat-icon>auto_awesome</mat-icon>
-              Seed Defaults
-              }
+              Seed Defaults }
             </button>
           </div>
         </div>
@@ -115,8 +114,7 @@ import { firstValueFrom } from 'rxjs';
             <mat-spinner diameter="18"></mat-spinner>
             } @else {
             <mat-icon>add</mat-icon>
-            Add
-            }
+            Add }
           </button>
         </form>
       </div>
@@ -238,8 +236,7 @@ import { firstValueFrom } from 'rxjs';
                   >
                     <mat-icon>edit</mat-icon>
                   </button>
-                  }
-                  }
+                  } }
                 </div>
               </div>
 
@@ -271,8 +268,7 @@ import { firstValueFrom } from 'rxjs';
                 <mat-spinner diameter="18"></mat-spinner>
                 } @else {
                 <mat-icon>delete</mat-icon>
-                Delete
-                }
+                Delete }
               </button>
             </div>
           </div>
@@ -280,8 +276,7 @@ import { firstValueFrom } from 'rxjs';
         </div>
         }
       </div>
-      }
-      }
+      } }
     </div>
   `,
 })
