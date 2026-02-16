@@ -147,70 +147,76 @@ import { marked } from 'marked';
       </div>
       }
 
-      <!-- Ingredients -->
-      <div class="section">
-        <div class="section-header">
-          <h2 class="section-title">Ingredients</h2>
-          <div class="servings-adjuster">
-            <p-button
-              icon="pi pi-minus"
-              [rounded]="true"
-              [text]="true"
-              severity="secondary"
-              size="small"
-              (click)="adjustServings(-1)"
-              [disabled]="currentServings() <= 1"
+      <!-- Recipe Body - Two Column Layout -->
+      <div class="recipe-body">
+        <!-- Left: Ingredients -->
+        <div class="recipe-body-left">
+          <div class="ingredients-card">
+            <div class="section-header">
+              <h2 class="section-title">Ingredients</h2>
+              <div class="servings-adjuster">
+                <p-button
+                  icon="pi pi-minus"
+                  [rounded]="true"
+                  [text]="true"
+                  severity="secondary"
+                  size="small"
+                  (click)="adjustServings(-1)"
+                  [disabled]="currentServings() <= 1"
+                />
+                <span class="servings-display">{{ currentServings() }}</span>
+                <p-button
+                  icon="pi pi-plus"
+                  [rounded]="true"
+                  [text]="true"
+                  severity="secondary"
+                  size="small"
+                  (click)="adjustServings(1)"
+                />
+              </div>
+            </div>
+            @if (ingredientsLoading()) {
+            <p-progress-spinner
+              [style]="{ width: '30px', height: '30px' }"
+              ariaLabel="Loading"
             />
-            <span class="servings-display">{{ currentServings() }}</span>
-            <p-button
-              icon="pi pi-plus"
-              [rounded]="true"
-              [text]="true"
-              severity="secondary"
-              size="small"
-              (click)="adjustServings(1)"
-            />
+            } @else {
+            <ul class="ingredient-list">
+              @for (ing of displayIngredients(); track ing.id) {
+              <li class="ingredient-item">
+                <span class="ing-qty">{{ formatQuantity(ing.quantity) }}</span>
+                <span class="ing-unit">{{ ing.unit }}</span>
+                <span class="ing-name">{{ ing.name }}</span>
+                @if (ing.notes) {
+                <span class="ing-notes">({{ ing.notes }})</span>
+                }
+              </li>
+              }
+            </ul>
+            }
           </div>
         </div>
-        @if (ingredientsLoading()) {
-        <p-progress-spinner
-          [style]="{ width: '30px', height: '30px' }"
-          ariaLabel="Loading"
-        />
-        } @else {
-        <ul class="ingredient-list">
-          @for (ing of displayIngredients(); track ing.id) {
-          <li class="ingredient-item">
-            <span class="ing-qty">{{ formatQuantity(ing.quantity) }}</span>
-            <span class="ing-unit">{{ ing.unit }}</span>
-            <span class="ing-name">{{ ing.name }}</span>
-            @if (ing.notes) {
-            <span class="ing-notes">({{ ing.notes }})</span>
-            }
-          </li>
+
+        <!-- Right: Instructions & Notes -->
+        <div class="recipe-body-right">
+          @if (recipe()!.instructions) {
+          <div class="section">
+            <h2 class="section-title">Instructions</h2>
+            <div
+              class="markdown-content"
+              [innerHTML]="renderedInstructions()"
+            ></div>
+          </div>
+          } @if (recipe()!.notes) {
+          <div class="section notes-card">
+            <h2 class="section-title">
+              <i class="pi pi-bookmark"></i> Personal Notes
+            </h2>
+            <p class="notes-text">{{ recipe()!.notes }}</p>
+          </div>
           }
-        </ul>
-        }
+        </div>
       </div>
-
-      <!-- Instructions -->
-      @if (recipe()!.instructions) {
-      <div class="section">
-        <h2 class="section-title">Instructions</h2>
-        <div
-          class="markdown-content"
-          [innerHTML]="renderedInstructions()"
-        ></div>
-      </div>
-      }
-
-      <!-- Notes -->
-      @if (recipe()!.notes) {
-      <div class="section">
-        <h2 class="section-title">Personal Notes</h2>
-        <p class="notes-text">{{ recipe()!.notes }}</p>
-      </div>
-      }
 
       <!-- AI Assistant — integrated as a sidebar-style panel -->
       <div class="ai-section">
@@ -403,14 +409,6 @@ import { marked } from 'marked';
         </div>
         }
       </div>
-
-      <!-- Source -->
-      @if (recipe()!.source) {
-      <div class="source-section">
-        <span class="source-label">Source:</span>
-        <span class="source-value">{{ recipe()!.source }}</span>
-      </div>
-      }
     </div>
     }
   `,
@@ -422,7 +420,7 @@ import { marked } from 'marked';
     }
 
     .recipe-detail {
-      max-width: 900px;
+      max-width: 1800px;
       margin: 0 auto;
     }
 
@@ -439,22 +437,24 @@ import { marked } from 'marked';
     }
 
     .recipe-title {
-      font-size: 2rem;
+      font-size: 2.2rem;
       font-weight: 700;
       margin: 0 0 8px;
       color: var(--p-text-color);
+      letter-spacing: -0.02em;
     }
 
     .recipe-description {
-      font-size: 1rem;
+      font-size: 1.05rem;
       color: var(--p-text-muted-color);
-      margin: 0 0 20px;
+      margin: 0 0 24px;
       line-height: 1.6;
+      max-width: 800px;
     }
 
     .meta-strip {
       display: flex;
-      gap: 16px;
+      gap: 12px;
       margin-bottom: 20px;
       flex-wrap: wrap;
     }
@@ -506,10 +506,6 @@ import { marked } from 'marked';
       background: transparent;
     }
 
-    .section {
-      margin-bottom: 32px;
-    }
-
     .section-header {
       display: flex;
       justify-content: space-between;
@@ -521,6 +517,127 @@ import { marked } from 'marked';
       font-weight: 600;
       margin: 0 0 16px;
       color: var(--p-text-color);
+
+      i {
+        font-size: 1rem;
+        color: var(--p-primary-color);
+      }
+    }
+
+    // ===== TWO-COLUMN LAYOUT =====
+    .recipe-body {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 48px;
+      align-items: start;
+      margin-bottom: 32px;
+    }
+
+    .recipe-body-left {
+      position: sticky;
+      top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .ingredients-card {
+      background: var(--p-surface-900);
+      border: 1px solid var(--p-surface-700);
+      border-radius: 12px;
+      padding: 24px;
+
+      .section-title {
+        margin-bottom: 12px;
+      }
+
+      .ingredient-list {
+        gap: 4px 0;
+      }
+
+      .ingredient-item {
+        background: var(--p-surface-800);
+      }
+    }
+
+    .recipe-body-right {
+      min-width: 0;
+    }
+
+    .instructions-section {
+      .section-title {
+        margin-bottom: 20px;
+      }
+    }
+
+    .instructions-content {
+      :deep(ol) {
+        padding-left: 0;
+        list-style: none;
+        counter-reset: step-counter;
+
+        li {
+          counter-increment: step-counter;
+          position: relative;
+          padding: 12px 16px 12px 48px;
+          margin-bottom: 8px;
+          background: var(--p-surface-900);
+          border: 1px solid var(--p-surface-700);
+          border-radius: 10px;
+          line-height: 1.7;
+
+          &::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--p-primary-color);
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+          }
+        }
+      }
+    }
+
+    .notes-card {
+      background: var(--p-surface-900);
+      border: 1px solid var(--p-surface-700);
+      border-radius: 12px;
+      padding: 20px;
+
+      .section-title {
+        margin-bottom: 12px;
+      }
+    }
+
+    .source-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--p-surface-900);
+      border: 1px solid var(--p-surface-700);
+      border-radius: 12px;
+      font-size: 0.85rem;
+
+      .source-label {
+        color: var(--p-text-muted-color);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .source-value {
+        color: var(--p-text-color);
+        word-break: break-word;
+      }
     }
 
     .servings-adjuster {
@@ -550,10 +667,15 @@ import { marked } from 'marked';
       grid-template-columns: subgrid;
       grid-column: 1 / -1;
       gap: 0 10px;
-      padding: 8px 12px;
+      padding: 10px 14px;
       background: var(--p-surface-800);
       border-radius: 8px;
       font-size: 0.9rem;
+      transition: background 0.15s;
+
+      &:hover {
+        background: var(--p-surface-700);
+      }
     }
 
     .ing-qty {
@@ -627,14 +749,16 @@ import { marked } from 'marked';
       gap: 12px;
       overflow-x: auto;
       padding-bottom: 8px;
+      scroll-snap-type: x mandatory;
     }
 
     .recipe-photo {
-      width: 200px;
-      height: 150px;
+      width: 280px;
+      height: 200px;
       object-fit: cover;
-      border-radius: 10px;
+      border-radius: 12px;
       flex-shrink: 0;
+      scroll-snap-align: start;
     }
 
     // ===== AI SECTION =====
@@ -875,8 +999,8 @@ import { marked } from 'marked';
     }
 
     .tips-grid {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 24px;
     }
 
@@ -1005,28 +1129,115 @@ import { marked } from 'marked';
       }
     }
 
-    .source-section {
-      padding: 16px 0;
-      border-top: 1px solid var(--p-surface-700);
-      font-size: 0.85rem;
+    // ===== RESPONSIVE: Tablet =====
+    @media (max-width: 1024px) {
+      .recipe-body {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+
+      .recipe-body-left {
+        position: static;
+      }
+
+      .tips-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .recipe-photo {
+        width: 240px;
+        height: 170px;
+      }
     }
 
-    .source-label {
-      color: var(--p-text-muted-color);
-      margin-right: 8px;
-    }
-
-    .source-value {
-      color: var(--p-text-color);
-    }
-
+    // ===== RESPONSIVE: Mobile =====
     @media (max-width: 640px) {
+      .recipe-detail {
+        margin: 0 -4px;
+      }
+
       .recipe-title {
         font-size: 1.5rem;
       }
 
+      .recipe-description {
+        font-size: 0.95rem;
+      }
+
       .meta-strip {
-        flex-direction: column;
+        gap: 8px;
+      }
+
+      .meta-badge {
+        padding: 8px 12px;
+        flex: 1;
+        min-width: 0;
+        justify-content: center;
+      }
+
+      .ingredients-card {
+        padding: 16px;
+        border-radius: 10px;
+      }
+
+      .ingredient-list {
+        grid-template-columns: max-content max-content 1fr;
+      }
+
+      .ingredient-item {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+        grid-template-columns: subgrid;
+        grid-column: 1 / -1;
+      }
+
+      .ing-notes {
+        grid-column: 1 / -1;
+        padding-left: 0;
+        font-size: 0.8rem;
+      }
+
+      .notes-card {
+        padding: 16px;
+        border-radius: 10px;
+      }
+
+      .detail-header {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .recipe-photo {
+        width: 200px;
+        height: 150px;
+      }
+
+      .instructions-content {
+        :deep(ol li) {
+          padding: 10px 12px 10px 42px;
+
+          &::before {
+            left: 10px;
+            top: 10px;
+            width: 22px;
+            height: 22px;
+            font-size: 0.7rem;
+          }
+        }
+      }
+
+      .recipe-body {
+        gap: 16px;
+      }
+
+      .ai-quick-actions {
+        span {
+          display: none;
+        }
+      }
+
+      .chat-msg-content {
+        max-width: 92%;
       }
     }
   `,
