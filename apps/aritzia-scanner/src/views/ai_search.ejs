@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Search - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1>AI Search</h1>
+    <p class="ai-subtitle">
+      Describe what you're looking for in natural language
+    </p>
+
+    <form
+      id="ai-search-form"
+      class="filters-form"
+      onsubmit="return handleSearch(event)"
+    >
+      <input
+        type="text"
+        id="ai-search-input"
+        name="q"
+        placeholder="e.g. warm cozy sweater under $100 in neutral colors..."
+        class="filter-input filter-search ai-search-input"
+        autocomplete="off"
+      />
+      <button type="submit" class="filter-btn" id="ai-search-btn">
+        Search
+      </button>
+    </form>
+
+    <div id="ai-thinking" class="ai-stream-container" style="display: none">
+      <div class="ai-thinking-header">
+        <span class="ai-thinking-icon">🤖</span>
+        <span>Understanding your query...</span>
+      </div>
+      <div id="ai-reasoning" class="ai-reasoning" style="display: none"></div>
+      <div
+        id="ai-filters"
+        class="ai-filters-display"
+        style="display: none"
+      ></div>
+    </div>
+
+    <div id="ai-results" style="display: none">
+      <h2 id="results-heading"></h2>
+      <p id="ai-explanation" class="ai-explanation"></p>
+      <div id="results-grid" class="product-grid"></div>
+    </div>
+
+    <div id="ai-error" class="ai-error" style="display: none"></div>
+
+    <script>
+      function handleSearch(e) {
+        e.preventDefault();
+        const query = document.getElementById('ai-search-input').value.trim();
+        if (query.length < 3) return false;
+
+        const btn = document.getElementById('ai-search-btn');
+        btn.disabled = true;
+        btn.textContent = 'Searching...';
+
+        document.getElementById('ai-thinking').style.display = 'block';
+        document.getElementById('ai-results').style.display = 'none';
+        document.getElementById('ai-error').style.display = 'none';
+        document.getElementById('ai-reasoning').style.display = 'none';
+        document.getElementById('ai-reasoning').innerHTML = '';
+        document.getElementById('ai-filters').style.display = 'none';
+
+        const evtSource = new EventSource(
+          `/api/ai/search?q=${encodeURIComponent(query)}`
+        );
+
+        evtSource.addEventListener('thinking', (e) => {
+          const data = JSON.parse(e.data);
+          const reasoningEl = document.getElementById('ai-reasoning');
+          if (data.thinking) {
+            reasoningEl.style.display = 'block';
+            reasoningEl.classList.add('thinking-active');
+          } else if (
+            reasoningEl.classList.contains('thinking-active') &&
+            data.content
+          ) {
+            // Transition from thinking to regular output
+          }
+          reasoningEl.innerHTML += escapeHtml(data.content);
+          reasoningEl.scrollTop = reasoningEl.scrollHeight;
+        });
+
+        evtSource.addEventListener('filters', (e) => {
+          const data = JSON.parse(e.data);
+          const filtersEl = document.getElementById('ai-filters');
+          if (data.filters && Object.keys(data.filters).length > 0) {
+            filtersEl.style.display = 'block';
+            const f = data.filters;
+            let html = '<strong>Interpreted filters:</strong> ';
+            const parts = [];
+            if (f.searchTerms?.length)
+              parts.push(`Keywords: ${f.searchTerms.join(', ')}`);
+            if (f.brand) parts.push(`Brand: ${f.brand}`);
+            if (f.category) parts.push(`Category: ${f.category}`);
+            if (f.color) parts.push(`Color: ${f.color}`);
+            if (f.size) parts.push(`Size: ${f.size}`);
+            if (f.minPrice != null) parts.push(`Min: $${f.minPrice}`);
+            if (f.maxPrice != null) parts.push(`Max: $${f.maxPrice}`);
+            if (f.onSale) parts.push('On Sale');
+            if (f.sortBy) parts.push(`Sort: ${f.sortBy}`);
+            html += parts
+              .map((p) => `<span class="ai-filter-tag">${p}</span>`)
+              .join(' ');
+            filtersEl.innerHTML = html;
+          }
+        });
+
+        evtSource.addEventListener('results', (e) => {
+          const data = JSON.parse(e.data);
+          const resultsEl = document.getElementById('ai-results');
+          const gridEl = document.getElementById('results-grid');
+          const headingEl = document.getElementById('results-heading');
+          const explanationEl = document.getElementById('ai-explanation');
+
+          resultsEl.style.display = 'block';
+          headingEl.textContent = `Found ${data.count} result${
+            data.count !== 1 ? 's' : ''
+          }`;
+          explanationEl.textContent = data.explanation || '';
+
+          if (data.products.length === 0) {
+            gridEl.innerHTML =
+              '<div class="empty-state">No products matched your search. Try a different description.</div>';
+            return;
+          }
+
+          gridEl.innerHTML = data.products
+            .map(
+              (p) => `
+            <div class="product-card">
+              <a href="/product/${p.product_id}/variant/${
+                p.color_id
+              }" class="product-image">
+                ${
+                  p.thumbnail_id
+                    ? `<img src="/api/images/${
+                        p.thumbnail_id
+                      }" alt="${escapeHtml(
+                        p.display_name || p.name
+                      )}" loading="lazy" />`
+                    : '<span class="no-image-placeholder">No Image</span>'
+                }
+              </a>
+              <div class="product-info">
+                <a href="/product/${p.product_id}/variant/${
+                p.color_id
+              }" class="product-name">${escapeHtml(
+                p.display_name || p.name
+              )}</a>
+                <div class="product-price-container">
+                  ${
+                    p.price < p.list_price
+                      ? `<span class="price-sale">$${p.price}</span> <span class="price-list">$${p.list_price}</span>`
+                      : `<span>$${p.price}</span>`
+                  }
+                </div>
+                <div class="variant-details">${escapeHtml(
+                  p.color
+                )} (${escapeHtml(p.length)})</div>
+                ${
+                  p.rating
+                    ? `<div class="product-meta">${'★'.repeat(
+                        Math.round(p.rating)
+                      )}${'☆'.repeat(
+                        5 - Math.round(p.rating)
+                      )} ${p.rating.toFixed(1)}</div>`
+                    : ''
+                }
+              </div>
+            </div>
+          `
+            )
+            .join('');
+        });
+
+        evtSource.addEventListener('error', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            document.getElementById('ai-error').style.display = 'block';
+            document.getElementById(
+              'ai-error'
+            ).textContent = `Error: ${data.error}`;
+          } catch {
+            document.getElementById('ai-error').style.display = 'block';
+            document.getElementById('ai-error').textContent =
+              'Connection lost. Please try again.';
+          }
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Search';
+        });
+
+        evtSource.addEventListener('done', () => {
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Search';
+          // Collapse thinking
+          document.querySelector(
+            '.ai-thinking-header span:last-child'
+          ).textContent = 'Query processed';
+        });
+
+        evtSource.onerror = () => {
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Search';
+        };
+
+        return false;
+      }
+
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+      }
+    </script>
+  </body>
+</html>

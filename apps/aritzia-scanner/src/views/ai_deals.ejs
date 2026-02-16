@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deals Report - Aritzia Scanner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1>AI Deals Report</h1>
+    <p class="ai-subtitle">
+      AI-generated analysis of the best current deals and restocks
+    </p>
+
+    <button
+      id="generate-btn"
+      class="filter-btn"
+      onclick="generateReport()"
+      style="margin-bottom: 20px"
+    >
+      Generate Deals Report
+    </button>
+
+    <div id="ai-stream" class="ai-stream-container" style="display: none">
+      <div class="ai-thinking-header">
+        <span class="ai-thinking-icon">💰</span>
+        <span id="stream-status">Analyzing deals...</span>
+      </div>
+      <div id="ai-reasoning" class="ai-reasoning" style="display: none"></div>
+      <div id="ai-content" class="ai-content"></div>
+    </div>
+
+    <div id="ai-error" class="ai-error" style="display: none"></div>
+
+    <script>
+      function generateReport() {
+        const btn = document.getElementById('generate-btn');
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+
+        document.getElementById('ai-stream').style.display = 'block';
+        document.getElementById('ai-error').style.display = 'none';
+        document.getElementById('ai-content').innerHTML = '';
+        document.getElementById('ai-reasoning').innerHTML = '';
+        document.getElementById('ai-reasoning').style.display = 'none';
+
+        const evtSource = new EventSource('/api/ai/deals');
+
+        evtSource.addEventListener('status', (e) => {
+          const data = JSON.parse(e.data);
+          document.getElementById('stream-status').textContent = data.message;
+        });
+
+        evtSource.addEventListener('content', (e) => {
+          const data = JSON.parse(e.data);
+          const contentEl = document.getElementById('ai-content');
+          const reasoningEl = document.getElementById('ai-reasoning');
+
+          if (data.thinking) {
+            reasoningEl.style.display = 'block';
+            reasoningEl.innerHTML += escapeHtml(data.content);
+            reasoningEl.scrollTop = reasoningEl.scrollHeight;
+          } else {
+            contentEl.innerHTML += escapeHtml(data.content);
+            contentEl.scrollTop = contentEl.scrollHeight;
+          }
+        });
+
+        evtSource.addEventListener('done', () => {
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Regenerate Report';
+          document.getElementById('stream-status').textContent =
+            'Report complete';
+
+          // Post-process markdown
+          const contentEl = document.getElementById('ai-content');
+          let html = contentEl.innerHTML;
+          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          html = html.replace(/\n/g, '<br>');
+          html = html.replace(/#{1,3}\s+(.+?)(<br>)/g, '<h3>$1</h3>');
+          contentEl.innerHTML = html;
+        });
+
+        evtSource.addEventListener('error', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            document.getElementById('ai-error').style.display = 'block';
+            document.getElementById('ai-error').textContent = data.error;
+          } catch {}
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Generate Deals Report';
+        });
+
+        evtSource.onerror = () => {
+          evtSource.close();
+          btn.disabled = false;
+          btn.textContent = 'Generate Deals Report';
+        };
+      }
+
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+      }
+
+      // Auto-generate on page load
+      generateReport();
+    </script>
+  </body>
+</html>

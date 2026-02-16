@@ -132,13 +132,11 @@ async function main() {
     allImages.forEach((img: any) => {
       if (!imagesByVariant.has(img.variant_id))
         imagesByVariant.set(img.variant_id, []);
-      imagesByVariant
-        .get(img.variant_id)!
-        .push({
-          id: img.id,
-          product_id: img.product_id,
-          variant_id: img.variant_id,
-        });
+      imagesByVariant.get(img.variant_id)!.push({
+        id: img.id,
+        product_id: img.product_id,
+        variant_id: img.variant_id,
+      });
     });
 
     for (const variant of variants) {
@@ -1271,6 +1269,26 @@ async function main() {
       title: store.name !== 'Unknown' ? store.name : `Store #${storeId}`,
       stats,
     });
+  });
+
+  // ==================== AI WEB ROUTES ====================
+
+  app.get('/ai/search', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('ai_search', { stats });
+  });
+
+  app.get('/ai/style', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('ai_style', { stats });
+  });
+
+  app.get('/ai/deals', async (req, res) => {
+    const db = getDB();
+    const stats = await getStats(db);
+    res.render('ai_deals', { stats });
   });
 
   app.listen(PORT, () => {

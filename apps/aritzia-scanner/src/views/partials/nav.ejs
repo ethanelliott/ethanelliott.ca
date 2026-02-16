@@ -1,10 +1,23 @@
 <nav class="nav">
-  <a href="/">Newest</a>
-  <a href="/products">All Products</a>
-  <a href="/sale" class="nav-sale-link">Sale</a>
-  <a href="/categories">Categories</a>
-  <a href="/restocks">Restocks</a>
-  <a href="/colors">Colors</a>
-  <a href="/stores">Stores</a>
-  <a href="/discontinued">Discontinued</a>
+  <div class="nav-links">
+    <a href="/">Newest</a>
+    <a href="/products">All Products</a>
+    <a href="/sale" class="nav-sale-link">Sale</a>
+    <a href="/categories">Categories</a>
+    <a href="/restocks">Restocks</a>
+    <a href="/colors">Colors</a>
+    <a href="/stores">Stores</a>
+    <a href="/discontinued">Discontinued</a>
+    <span class="nav-divider">|</span>
+    <a href="/ai/search" class="nav-ai-link">🤖 AI Search</a>
+    <a href="/ai/style" class="nav-ai-link">👗 Style Advisor</a>
+    <a href="/ai/deals" class="nav-ai-link">💰 Deals Report</a>
+  </div>
+  <% if (typeof stats !== 'undefined' && stats) { %>
+  <div class="nav-stats">
+    <span class="nav-stat"><%= stats.productCount %> products</span>
+    <span class="nav-stat"><%= stats.variantCount %> variants</span>
+    <span class="nav-stat">Scanned <%= stats.lastScanFormatted %></span>
+  </div>
+  <% } %>
 </nav>

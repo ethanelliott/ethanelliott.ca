@@ -30,118 +30,160 @@ async function getLastScanTime(db: any): Promise<string> {
 
 // ==================== AI Product Summary (Streaming) ====================
 
-router.get('/api/ai/summary/:productId', async (req: Request, res: Response) => {
-  const { productId } = req.params;
-  const db = getDB();
+router.get(
+  '/api/ai/summary/:productId',
+  async (req: Request, res: Response) => {
+    const { productId } = req.params;
+    const db = getDB();
 
-  try {
-    // Check cache first
-    const cached = await getPromise.call(
-      db,
-      'SELECT summary, created_at FROM ai_summaries WHERE product_id = ?',
-      [productId]
-    );
-    
-    // Cache valid for 24 hours
-    if (cached && cached.summary) {
-      const cacheAge = dayjs().diff(dayjs(cached.created_at), 'hour');
-      if (cacheAge < 24) {
-        setupSSE(res);
-        sendSSE(res, 'content', { content: cached.summary, done: false, thinking: false, cached: true });
-        sendSSE(res, 'done', { done: true });
-        res.end();
+    try {
+      // Check cache first
+      const cached = await getPromise.call(
+        db,
+        'SELECT summary, created_at FROM ai_summaries WHERE product_id = ?',
+        [productId]
+      );
+
+      // Cache valid for 24 hours
+      if (cached && cached.summary) {
+        const cacheAge = dayjs().diff(dayjs(cached.created_at), 'hour');
+        if (cacheAge < 24) {
+          setupSSE(res);
+          sendSSE(res, 'content', {
+            content: cached.summary,
+            done: false,
+            thinking: false,
+            cached: true,
+          });
+          sendSSE(res, 'done', { done: true });
+          res.end();
+          return;
+        }
+      }
+
+      // Fetch product data
+      const product = await getPromise.call(
+        db,
+        'SELECT * FROM products WHERE id = ?',
+        [productId]
+      );
+      if (!product) {
+        res.status(404).json({ error: 'Product not found' });
         return;
       }
-    }
 
-    // Fetch product data
-    const product = await getPromise.call(db, 'SELECT * FROM products WHERE id = ?', [productId]);
-    if (!product) {
-      res.status(404).json({ error: 'Product not found' });
-      return;
-    }
-
-    // Fetch variant price range
-    const priceInfo = await getPromise.call(
-      db,
-      `SELECT MIN(price) as min_price, MAX(price) as max_price, MIN(list_price) as min_list, MAX(list_price) as max_list
+      // Fetch variant price range
+      const priceInfo = await getPromise.call(
+        db,
+        `SELECT MIN(price) as min_price, MAX(price) as max_price, MIN(list_price) as min_list, MAX(list_price) as max_list
        FROM variants WHERE product_id = ?`,
-      [productId]
-    );
+        [productId]
+      );
 
-    // Fetch price history for trend analysis
-    const priceHistory = await allPromise.call(
-      db,
-      `SELECT p.price, p.timestamp FROM prices p
+      // Fetch price history for trend analysis
+      const priceHistory = await allPromise.call(
+        db,
+        `SELECT p.price, p.timestamp FROM prices p
        JOIN variants v ON p.variant_id = v.id
        WHERE v.product_id = ?
        ORDER BY p.timestamp DESC LIMIT 20`,
-      [productId]
-    );
+        [productId]
+      );
 
-    const fabric = product.fabric ? JSON.parse(product.fabric) : [];
-    const category = product.category ? JSON.parse(product.category) : [];
-    const sustainability = product.sustainability ? JSON.parse(product.sustainability) : [];
+      const fabric = product.fabric ? JSON.parse(product.fabric) : [];
+      const category = product.category ? JSON.parse(product.category) : [];
+      const sustainability = product.sustainability
+        ? JSON.parse(product.sustainability)
+        : [];
 
-    const systemPrompt = `You are a fashion-savvy shopping assistant for Aritzia products. Give concise, opinionated, helpful summaries. Be honest about value. Use 2-3 short paragraphs max. Include: what the product is best for, value assessment, and any notable features. Do NOT use markdown headers.`;
+      const systemPrompt = `You are a fashion-savvy shopping assistant for Aritzia products. Give concise, opinionated, helpful summaries. Be honest about value. Use 2-3 short paragraphs max. Include: what the product is best for, value assessment, and any notable features. Do NOT use markdown headers.`;
 
-    const userPrompt = `Analyze this Aritzia product:
+      const userPrompt = `Analyze this Aritzia product:
 
 **${product.display_name || product.name}**
 - Brand: ${product.brand || 'Aritzia'}
 - Category: ${category.join(', ') || 'N/A'}
 - Fabric: ${fabric.join(', ') || 'N/A'}
-- Current price: $${priceInfo?.min_price || 'N/A'}${priceInfo?.min_price !== priceInfo?.max_price ? ` - $${priceInfo?.max_price}` : ''}
-- List price: $${priceInfo?.min_list || 'N/A'}${priceInfo?.min_list !== priceInfo?.max_list ? ` - $${priceInfo?.max_list}` : ''}
-${priceInfo?.min_price < priceInfo?.min_list ? `- ON SALE: ${Math.round((1 - priceInfo.min_price / priceInfo.min_list) * 100)}% off` : ''}
+- Current price: $${priceInfo?.min_price || 'N/A'}${
+        priceInfo?.min_price !== priceInfo?.max_price
+          ? ` - $${priceInfo?.max_price}`
+          : ''
+      }
+- List price: $${priceInfo?.min_list || 'N/A'}${
+        priceInfo?.min_list !== priceInfo?.max_list
+          ? ` - $${priceInfo?.max_list}`
+          : ''
+      }
+${
+  priceInfo?.min_price < priceInfo?.min_list
+    ? `- ON SALE: ${Math.round(
+        (1 - priceInfo.min_price / priceInfo.min_list) * 100
+      )}% off`
+    : ''
+}
 - Rating: ${product.rating || 'N/A'}/5 (${product.review_count || 0} reviews)
-- Sustainability: ${sustainability.length > 0 ? sustainability.join(', ') : 'None listed'}
+- Sustainability: ${
+        sustainability.length > 0 ? sustainability.join(', ') : 'None listed'
+      }
 - Description: ${product.description || 'N/A'}
-${product.designers_notes ? `- Designer's notes: ${product.designers_notes}` : ''}
-- Price trend: ${priceHistory.length > 1 ? `${priceHistory.length} price points recorded` : 'No history yet'}
+${
+  product.designers_notes
+    ? `- Designer's notes: ${product.designers_notes}`
+    : ''
+}
+- Price trend: ${
+        priceHistory.length > 1
+          ? `${priceHistory.length} price points recorded`
+          : 'No history yet'
+      }
 
 Give a quick, opinionated summary: is this worth buying? What's it best for? Any concerns?`;
 
-    const messages: Message[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ];
+      const messages: Message[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ];
 
-    setupSSE(res);
-    const ollama = getOllamaClient();
-    let fullContent = '';
+      setupSSE(res);
+      const ollama = getOllamaClient();
+      let fullContent = '';
 
-    for await (const chunk of ollama.chatStream(messages, { temperature: 0.7 })) {
-      fullContent += chunk.content;
-      sendSSE(res, 'content', {
-        content: chunk.content,
-        done: chunk.done,
-        thinking: chunk.thinking || false,
-      });
-    }
+      for await (const chunk of ollama.chatStream(messages, {
+        temperature: 0.7,
+      })) {
+        fullContent += chunk.content;
+        sendSSE(res, 'content', {
+          content: chunk.content,
+          done: chunk.done,
+          thinking: chunk.thinking || false,
+        });
+      }
 
-    // Cache the result (strip thinking blocks for cache)
-    const cleanContent = fullContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    if (cleanContent) {
-      await runPromise.call(
-        db,
-        `INSERT OR REPLACE INTO ai_summaries (product_id, summary, created_at) VALUES (?, ?, ?)`,
-        [productId, cleanContent, new Date().toISOString()]
-      );
-    }
+      // Cache the result (strip thinking blocks for cache)
+      const cleanContent = fullContent
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .trim();
+      if (cleanContent) {
+        await runPromise.call(
+          db,
+          `INSERT OR REPLACE INTO ai_summaries (product_id, summary, created_at) VALUES (?, ?, ?)`,
+          [productId, cleanContent, new Date().toISOString()]
+        );
+      }
 
-    sendSSE(res, 'done', { done: true });
-    res.end();
-  } catch (error: any) {
-    console.error('AI Summary error:', error.message);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'AI service unavailable' });
-    } else {
-      sendSSE(res, 'error', { error: error.message });
+      sendSSE(res, 'done', { done: true });
       res.end();
+    } catch (error: any) {
+      console.error('AI Summary error:', error.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'AI service unavailable' });
+      } else {
+        sendSSE(res, 'error', { error: error.message });
+        res.end();
+      }
     }
   }
-});
+);
 
 // ==================== AI Natural Language Search (Streaming) ====================
 
@@ -158,14 +200,26 @@ router.get('/api/ai/search', async (req: Request, res: Response) => {
     const lastScanTime = await getLastScanTime(db);
 
     // Get summary of what's in the database for context
-    const brands = await allPromise.call(db, `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`);
-    const categoryRows = await allPromise.call(db, `SELECT DISTINCT category FROM products WHERE category IS NOT NULL`);
+    const brands = await allPromise.call(
+      db,
+      `SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand`
+    );
+    const categoryRows = await allPromise.call(
+      db,
+      `SELECT DISTINCT category FROM products WHERE category IS NOT NULL`
+    );
     const categoriesSet = new Set<string>();
     categoryRows.forEach((r: any) => {
-      try { JSON.parse(r.category).forEach((c: string) => categoriesSet.add(c)); } catch {}
+      try {
+        JSON.parse(r.category).forEach((c: string) => categoriesSet.add(c));
+      } catch {}
     });
 
-    const priceRange = await getPromise.call(db, `SELECT MIN(price) as min_price, MAX(price) as max_price FROM variants WHERE last_seen_at = ?`, [lastScanTime]);
+    const priceRange = await getPromise.call(
+      db,
+      `SELECT MIN(price) as min_price, MAX(price) as max_price FROM variants WHERE last_seen_at = ?`,
+      [lastScanTime]
+    );
 
     const systemPrompt = `You are a search query parser for an Aritzia clothing database. Extract structured filters from natural language queries.
 
@@ -205,7 +259,9 @@ Return JSON:
     sendSSE(res, 'status', { message: 'Understanding your query...' });
 
     let fullResponse = '';
-    for await (const chunk of ollama.chatStream(messages, { temperature: 0.1 })) {
+    for await (const chunk of ollama.chatStream(messages, {
+      temperature: 0.1,
+    })) {
       fullResponse += chunk.content;
       sendSSE(res, 'thinking', {
         content: chunk.content,
@@ -245,7 +301,10 @@ Return JSON:
 
     // Apply search terms
     if (filters.searchTerms && filters.searchTerms.length > 0) {
-      const termConditions = filters.searchTerms.map(() => `(p.name LIKE ? OR p.display_name LIKE ? OR p.description LIKE ? OR v.color LIKE ?)`);
+      const termConditions = filters.searchTerms.map(
+        () =>
+          `(p.name LIKE ? OR p.display_name LIKE ? OR p.description LIKE ? OR v.color LIKE ?)`
+      );
       sql += ` AND (${termConditions.join(' OR ')})`;
       filters.searchTerms.forEach((term: string) => {
         params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`);
@@ -288,12 +347,24 @@ Return JSON:
 
     // Sorting
     switch (filters.sortBy) {
-      case 'price-low': sql += ` ORDER BY v.price ASC`; break;
-      case 'price-high': sql += ` ORDER BY v.price DESC`; break;
-      case 'rating': sql += ` ORDER BY p.rating DESC, p.review_count DESC`; break;
-      case 'discount': sql += ` ORDER BY ((v.list_price - v.price) / v.list_price) DESC`; break;
-      case 'newest': sql += ` ORDER BY v.added_at DESC`; break;
-      default: sql += ` ORDER BY p.review_count DESC`; break;
+      case 'price-low':
+        sql += ` ORDER BY v.price ASC`;
+        break;
+      case 'price-high':
+        sql += ` ORDER BY v.price DESC`;
+        break;
+      case 'rating':
+        sql += ` ORDER BY p.rating DESC, p.review_count DESC`;
+        break;
+      case 'discount':
+        sql += ` ORDER BY ((v.list_price - v.price) / v.list_price) DESC`;
+        break;
+      case 'newest':
+        sql += ` ORDER BY v.added_at DESC`;
+        break;
+      default:
+        sql += ` ORDER BY p.review_count DESC`;
+        break;
     }
 
     sql += ` LIMIT 50`;
@@ -301,12 +372,20 @@ Return JSON:
     const results = await allPromise.call(db, sql, params);
 
     results.forEach((v: any) => {
-      v.available_sizes_arr = v.available_sizes ? JSON.parse(v.available_sizes) : [];
+      v.available_sizes_arr = v.available_sizes
+        ? JSON.parse(v.available_sizes)
+        : [];
       v.category_arr = v.category ? JSON.parse(v.category) : [];
-      v.sustainability_arr = v.sustainability ? JSON.parse(v.sustainability) : [];
+      v.sustainability_arr = v.sustainability
+        ? JSON.parse(v.sustainability)
+        : [];
     });
 
-    sendSSE(res, 'results', { products: results, count: results.length, explanation: filters.explanation || '' });
+    sendSSE(res, 'results', {
+      products: results,
+      count: results.length,
+      explanation: filters.explanation || '',
+    });
     sendSSE(res, 'done', { done: true });
     res.end();
   } catch (error: any) {
@@ -350,11 +429,19 @@ router.get('/api/ai/style', async (req: Request, res: Response) => {
       [lastScanTime]
     );
 
-    const productList = sampleProducts.map((p: any, i: number) => {
-      const cats = p.category ? JSON.parse(p.category) : [];
-      const fab = p.fabric ? JSON.parse(p.fabric) : [];
-      return `[${i}] ${p.display_name || p.name} | ${p.brand || 'Aritzia'} | $${p.price}${p.price < p.list_price ? ` (sale from $${p.list_price})` : ''} | ${cats.join(', ')} | Fabric: ${fab.join(', ')} | Rating: ${p.rating}/5 | Colors: ${p.colors}`;
-    }).join('\n');
+    const productList = sampleProducts
+      .map((p: any, i: number) => {
+        const cats = p.category ? JSON.parse(p.category) : [];
+        const fab = p.fabric ? JSON.parse(p.fabric) : [];
+        return `[${i}] ${p.display_name || p.name} | ${
+          p.brand || 'Aritzia'
+        } | $${p.price}${
+          p.price < p.list_price ? ` (sale from $${p.list_price})` : ''
+        } | ${cats.join(', ')} | Fabric: ${fab.join(', ')} | Rating: ${
+          p.rating
+        }/5 | Colors: ${p.colors}`;
+      })
+      .join('\n');
 
     const systemPrompt = `You are a fashion stylist assistant for Aritzia. The user will describe an occasion, vibe, or style goal. Recommend 3-5 products from the available inventory that would work well together as an outfit or collection.
 
@@ -378,9 +465,13 @@ Recommend 3-5 items that work together. Explain your styling choices.`;
     const ollama = getOllamaClient();
     let fullResponse = '';
 
-    sendSSE(res, 'status', { message: 'Curating your style recommendations...' });
+    sendSSE(res, 'status', {
+      message: 'Curating your style recommendations...',
+    });
 
-    for await (const chunk of ollama.chatStream(messages, { temperature: 0.8 })) {
+    for await (const chunk of ollama.chatStream(messages, {
+      temperature: 0.8,
+    })) {
       fullResponse += chunk.content;
       sendSSE(res, 'content', {
         content: chunk.content,
@@ -434,7 +525,11 @@ router.get('/api/ai/outfit/:productId', async (req: Request, res: Response) => {
   try {
     const lastScanTime = await getLastScanTime(db);
 
-    const product = await getPromise.call(db, 'SELECT * FROM products WHERE id = ?', [productId]);
+    const product = await getPromise.call(
+      db,
+      'SELECT * FROM products WHERE id = ?',
+      [productId]
+    );
     if (!product) {
       res.status(404).json({ error: 'Product not found' });
       return;
@@ -456,11 +551,15 @@ router.get('/api/ai/outfit/:productId', async (req: Request, res: Response) => {
       [lastScanTime, productId]
     );
 
-    const productList = otherProducts.map((p: any, i: number) => {
-      const cats = p.category ? JSON.parse(p.category) : [];
-      const fab = p.fabric ? JSON.parse(p.fabric) : [];
-      return `[${i}] ${p.display_name || p.name} | $${p.price} | ${cats.join(', ')} | ${fab.join(', ')} | Colors: ${p.colors}`;
-    }).join('\n');
+    const productList = otherProducts
+      .map((p: any, i: number) => {
+        const cats = p.category ? JSON.parse(p.category) : [];
+        const fab = p.fabric ? JSON.parse(p.fabric) : [];
+        return `[${i}] ${p.display_name || p.name} | $${p.price} | ${cats.join(
+          ', '
+        )} | ${fab.join(', ')} | Colors: ${p.colors}`;
+      })
+      .join('\n');
 
     const fabric = product.fabric ? JSON.parse(product.fabric) : [];
     const category = product.category ? JSON.parse(product.category) : [];
@@ -471,7 +570,11 @@ Consider: color coordination, style cohesion, occasion versatility, and layering
 
 Format naturally with product names in **bold**. End with: <!--PICKS:[indices]-->`;
 
-    const userPrompt = `I just picked: **${product.display_name || product.name}** (${category.join(', ')}, ${fabric.join(', ')}, $${product.price || 'N/A'})
+    const userPrompt = `I just picked: **${
+      product.display_name || product.name
+    }** (${category.join(', ')}, ${fabric.join(', ')}, $${
+      product.price || 'N/A'
+    })
 
 What should I pair it with from these available items?
 ${productList}`;
@@ -485,9 +588,15 @@ ${productList}`;
     const ollama = getOllamaClient();
     let fullResponse = '';
 
-    sendSSE(res, 'status', { message: `Finding pieces to pair with ${product.display_name || product.name}...` });
+    sendSSE(res, 'status', {
+      message: `Finding pieces to pair with ${
+        product.display_name || product.name
+      }...`,
+    });
 
-    for await (const chunk of ollama.chatStream(messages, { temperature: 0.8 })) {
+    for await (const chunk of ollama.chatStream(messages, {
+      temperature: 0.8,
+    })) {
       fullResponse += chunk.content;
       sendSSE(res, 'content', {
         content: chunk.content,
@@ -564,14 +673,25 @@ router.get('/api/ai/deals', async (req: Request, res: Response) => {
        LIMIT 10`
     );
 
-    const dealsInfo = bigDeals.map((d: any) => {
-      const discount = Math.round((1 - d.price / d.list_price) * 100);
-      return `- ${d.display_name || d.name} in ${d.color}: $${d.price} (was $${d.list_price}, ${discount}% off, lowest ever: $${d.lowest_ever || d.price}) | Rating: ${d.rating}/5 (${d.review_count} reviews)`;
-    }).join('\n');
+    const dealsInfo = bigDeals
+      .map((d: any) => {
+        const discount = Math.round((1 - d.price / d.list_price) * 100);
+        return `- ${d.display_name || d.name} in ${d.color}: $${
+          d.price
+        } (was $${d.list_price}, ${discount}% off, lowest ever: $${
+          d.lowest_ever || d.price
+        }) | Rating: ${d.rating}/5 (${d.review_count} reviews)`;
+      })
+      .join('\n');
 
-    const restocksInfo = recentRestocks.map((r: any) =>
-      `- ${r.display_name || r.name} in ${r.color}: $${r.price} (restocked ${dayjs(r.timestamp).fromNow()})`
-    ).join('\n');
+    const restocksInfo = recentRestocks
+      .map(
+        (r: any) =>
+          `- ${r.display_name || r.name} in ${r.color}: $${
+            r.price
+          } (restocked ${dayjs(r.timestamp).fromNow()})`
+      )
+      .join('\n');
 
     const systemPrompt = `You are a deals analyst for Aritzia shoppers. Write an engaging, concise deals report highlighting the best current values. Be enthusiastic about genuinely good deals, skeptical about marginal ones. Group by theme (best discounts, popular items on sale, recent restocks). Use casual but informative tone. Keep it under 400 words.`;
 
@@ -595,7 +715,9 @@ Write an engaging summary highlighting the best values.`;
 
     sendSSE(res, 'status', { message: 'Analyzing current deals...' });
 
-    for await (const chunk of ollama.chatStream(messages, { temperature: 0.7 })) {
+    for await (const chunk of ollama.chatStream(messages, {
+      temperature: 0.7,
+    })) {
       sendSSE(res, 'content', {
         content: chunk.content,
         done: chunk.done,

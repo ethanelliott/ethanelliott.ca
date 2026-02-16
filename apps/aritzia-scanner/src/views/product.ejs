@@ -8,7 +8,7 @@
   </head>
   <body>
     <%- include('partials/nav') %>
-    
+
     <div class="product-header">
       <h1><%= product.display_name || product.name %></h1>
     </div>
@@ -17,73 +17,145 @@
       <div class="product-details-box">
         <% if (product.description) { %>
         <p class="product-description"><%= product.description %></p>
-        <% } %>
-        
-        <% if (product.designers_notes) { %>
-        <p class="designers-notes"><%- product.designers_notes.replace(/&mdash;/g, '—').replace(/&rsquo;/g, "'").replace(/&nbsp;/g, ' ') %></p>
-        <% } %>
-        
-        <%
-          const naturalFibers = ['Cotton', 'Wool', 'Silk', 'Linen', 'Cashmere', 'Merino', 'Alpaca'];
-          const isNatural = product.fabric && product.fabric.some(f => naturalFibers.some(nf => f.includes(nf)));
-          const warmthLevels = ['Warmest', 'Warmer', 'Warm'];
-          const warmth = product.warmth && product.warmth.find(w => warmthLevels.some(wl => w.includes(wl)));
-          const hasAttributes = (product.fabric && product.fabric.length > 0) || 
-                                (product.neckline && product.neckline.length > 0) || 
-                                (product.sleeve && product.sleeve.length > 0) || 
-                                (product.style && product.style.length > 0);
-          const hasBadges = product.brand || (product.category && product.category.length > 0) || 
-                           isNatural || (product.sustainability && product.sustainability.length > 0) || warmth;
-        %>
-        
-        <% if (hasAttributes || hasBadges) { %>
+        <% } %> <% if (product.designers_notes) { %>
+        <p class="designers-notes">
+          <%- product.designers_notes.replace(/&mdash;/g,
+          '—').replace(/&rsquo;/g, "'").replace(/&nbsp;/g, ' ') %>
+        </p>
+        <% } %> <% const naturalFibers = ['Cotton', 'Wool', 'Silk', 'Linen',
+        'Cashmere', 'Merino', 'Alpaca']; const isNatural = product.fabric &&
+        product.fabric.some(f => naturalFibers.some(nf => f.includes(nf)));
+        const warmthLevels = ['Warmest', 'Warmer', 'Warm']; const warmth =
+        product.warmth && product.warmth.find(w => warmthLevels.some(wl =>
+        w.includes(wl))); const hasAttributes = (product.fabric &&
+        product.fabric.length > 0) || (product.neckline &&
+        product.neckline.length > 0) || (product.sleeve && product.sleeve.length
+        > 0) || (product.style && product.style.length > 0); const hasBadges =
+        product.brand || (product.category && product.category.length > 0) ||
+        isNatural || (product.sustainability && product.sustainability.length >
+        0) || warmth; %> <% if (hasAttributes || hasBadges) { %>
         <div class="product-attributes">
           <% if (product.brand) { %>
-          <span class="attribute"><strong>Brand:</strong> <%= product.brand %></span>
-          <% } %>
-          <% if (product.category && product.category.length > 0) { %>
-          <span class="attribute"><strong>Category:</strong> <%- product.category.map(cat => `<a href="/categories/${encodeURIComponent(cat)}">${cat}</a>`).join(', ') %></span>
-          <% } %>
-          <% if (product.fabric && product.fabric.length > 0) { %>
-          <span class="attribute"><strong>Fabric:</strong> <%= product.fabric.join(', ') %></span>
-          <% } %>
-          <% if (product.neckline && product.neckline.length > 0) { %>
-          <span class="attribute"><strong>Neckline:</strong> <%= product.neckline.join(', ') %></span>
-          <% } %>
-          <% if (product.sleeve && product.sleeve.length > 0) { %>
-          <span class="attribute"><strong>Sleeve:</strong> <%= product.sleeve.join(', ') %></span>
-          <% } %>
-          <% if (product.style && product.style.length > 0) { %>
-          <span class="attribute"><strong>Style:</strong> <%= product.style.join(', ') %></span>
-          <% } %>
-          <% if (warmth) { %>
+          <span class="attribute"
+            ><strong>Brand:</strong> <%= product.brand %></span
+          >
+          <% } %> <% if (product.category && product.category.length > 0) { %>
+          <span class="attribute"
+            ><strong>Category:</strong> <%- product.category.map(cat => `<a
+              href="/categories/${encodeURIComponent(cat)}"
+              >${cat}</a
+            >`).join(', ') %></span
+          >
+          <% } %> <% if (product.fabric && product.fabric.length > 0) { %>
+          <span class="attribute"
+            ><strong>Fabric:</strong> <%= product.fabric.join(', ') %></span
+          >
+          <% } %> <% if (product.neckline && product.neckline.length > 0) { %>
+          <span class="attribute"
+            ><strong>Neckline:</strong> <%= product.neckline.join(', ') %></span
+          >
+          <% } %> <% if (product.sleeve && product.sleeve.length > 0) { %>
+          <span class="attribute"
+            ><strong>Sleeve:</strong> <%= product.sleeve.join(', ') %></span
+          >
+          <% } %> <% if (product.style && product.style.length > 0) { %>
+          <span class="attribute"
+            ><strong>Style:</strong> <%= product.style.join(', ') %></span
+          >
+          <% } %> <% if (warmth) { %>
           <span class="attribute"><strong>Warmth:</strong> <%= warmth %></span>
-          <% } %>
-          <% if (isNatural) { %>
+          <% } %> <% if (isNatural) { %>
           <span class="attribute badge-natural">Natural Fiber</span>
-          <% } %>
-          <% if (product.sustainability && product.sustainability.length > 0) { %>
+          <% } %> <% if (product.sustainability && product.sustainability.length
+          > 0) { %>
           <span class="attribute badge-sustainable">Sustainable</span>
           <% } %>
         </div>
-        <% } %>
-        
-        <% if (product.rating) { %>
+        <% } %> <% if (product.rating) { %>
         <div class="product-rating-row">
-          <span class="stars"><%= '★'.repeat(Math.round(product.rating)) %><%= '☆'.repeat(5 - Math.round(product.rating)) %></span>
+          <span class="stars"
+            ><%= '★'.repeat(Math.round(product.rating)) %><%= '☆'.repeat(5 -
+            Math.round(product.rating)) %></span
+          >
           <span class="rating-value"><%= product.rating.toFixed(1) %></span>
           <% if (product.review_count) { %>
-          <span class="review-count">(<%= product.review_count.toLocaleString() %> reviews)</span>
+          <span class="review-count"
+            >(<%= product.review_count.toLocaleString() %> reviews)</span
+          >
           <% } %>
         </div>
         <% } %>
-        
+
         <div class="product-meta-row">
-          <span class="meta-item">Added: <%= product.added_at_formatted %></span>
-          <span class="meta-item">Last seen: <%= product.last_seen_at_formatted %></span>
-          <a href="https://www.aritzia.com/en/product/<%= product.slug %>" target="_blank" class="meta-link">View on Aritzia</a>
+          <span class="meta-item"
+            >Added: <%= product.added_at_formatted %></span
+          >
+          <span class="meta-item"
+            >Last seen: <%= product.last_seen_at_formatted %></span
+          >
+          <a
+            href="https://www.aritzia.com/en/product/<%= product.slug %>"
+            target="_blank"
+            class="meta-link"
+            >View on Aritzia</a
+          >
         </div>
       </div>
+    </div>
+
+    <!-- AI Features -->
+    <div class="ai-product-actions">
+      <button
+        class="ai-action-btn"
+        onclick="loadAISummary('<%= product.id %>')"
+      >
+        🤖 AI Summary
+      </button>
+      <button
+        class="ai-action-btn"
+        onclick="loadOutfitBuilder('<%= product.id %>')"
+      >
+        👗 What Goes With This?
+      </button>
+    </div>
+
+    <div
+      id="ai-summary-container"
+      class="ai-stream-container"
+      style="display: none"
+    >
+      <div class="ai-thinking-header">
+        <span class="ai-thinking-icon">🤖</span>
+        <span id="summary-status">Analyzing product...</span>
+      </div>
+      <div
+        id="ai-summary-reasoning"
+        class="ai-reasoning"
+        style="display: none"
+      ></div>
+      <div id="ai-summary-content" class="ai-content"></div>
+    </div>
+
+    <div
+      id="ai-outfit-container"
+      class="ai-stream-container"
+      style="display: none"
+    >
+      <div class="ai-thinking-header">
+        <span class="ai-thinking-icon">👗</span>
+        <span id="outfit-status">Finding complementary pieces...</span>
+      </div>
+      <div
+        id="ai-outfit-reasoning"
+        class="ai-reasoning"
+        style="display: none"
+      ></div>
+      <div id="ai-outfit-content" class="ai-content"></div>
+      <div
+        id="ai-outfit-picks"
+        class="product-grid"
+        style="margin-top: 15px"
+      ></div>
     </div>
 
     <% if (product.allLengths && product.allLengths.length > 1) { %>
@@ -99,14 +171,16 @@
 
     <h2>Variants (<%= product.variants.length %> colors)</h2>
 
-    <% const activeVariants = product.variants.filter(v => v.isActive); 
-       const discontinuedVariants = product.variants.filter(v => !v.isActive); %>
-    
-    <% if (activeVariants.length > 0) { %>
+    <% const activeVariants = product.variants.filter(v => v.isActive); const
+    discontinuedVariants = product.variants.filter(v => !v.isActive); %> <% if
+    (activeVariants.length > 0) { %>
     <h3>Active Variants (<%= activeVariants.length %>)</h3>
     <div class="variant-wrapper">
       <% activeVariants.forEach(variant => { %>
-      <div class="variant" data-lengths="<%= JSON.stringify(variant.lengths) %>">
+      <div
+        class="variant"
+        data-lengths="<%= JSON.stringify(variant.lengths) %>"
+      >
         <% if (variant.thumbnail) { %>
         <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
           <img
@@ -116,10 +190,14 @@
           />
         </a>
         <% } %>
-        
+
         <div class="variant-info">
           <h3 class="variant-title">
-            <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>" class="variant-link"><%= variant.color %></a>
+            <a
+              href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
+              class="variant-link"
+              ><%= variant.color %></a
+            >
           </h3>
 
           <% if (variant.price) { %>
@@ -131,30 +209,32 @@
             <span>$<%= variant.price %></span>
             <% } %>
           </div>
-          <% } %>
-          
-          <% if (variant.available_sizes && variant.available_sizes.length > 0) { %>
+          <% } %> <% if (variant.available_sizes &&
+          variant.available_sizes.length > 0) { %>
           <div class="sizes-mini">
             <% variant.all_sizes.forEach(size => { %>
-            <span class="size-tag-mini <%= variant.available_sizes.includes(size) ? 'available' : 'unavailable' %>"><%= size %></span>
+            <span
+              class="size-tag-mini <%= variant.available_sizes.includes(size) ? 'available' : 'unavailable' %>"
+              ><%= size %></span
+            >
             <% }); %>
           </div>
-          <% } %>
-          
-          <% if (product.allLengths && product.allLengths.length > 1) { %>
+          <% } %> <% if (product.allLengths && product.allLengths.length > 1) {
+          %>
           <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
           <% } %>
         </div>
       </div>
       <% }); %>
     </div>
-    <% } %>
-    
-    <% if (discontinuedVariants.length > 0) { %>
+    <% } %> <% if (discontinuedVariants.length > 0) { %>
     <h3>Discontinued Variants (<%= discontinuedVariants.length %>)</h3>
     <div class="variant-wrapper">
       <% discontinuedVariants.forEach(variant => { %>
-      <div class="variant discontinued" data-lengths="<%= JSON.stringify(variant.lengths) %>">
+      <div
+        class="variant discontinued"
+        data-lengths="<%= JSON.stringify(variant.lengths) %>"
+      >
         <% if (variant.thumbnail) { %>
         <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
           <img
@@ -164,10 +244,14 @@
           />
         </a>
         <% } %>
-        
+
         <div class="variant-info">
           <h3 class="variant-title">
-            <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>" class="variant-link"><%= variant.color %></a>
+            <a
+              href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
+              class="variant-link"
+              ><%= variant.color %></a
+            >
           </h3>
 
           <% if (variant.price) { %>
@@ -179,19 +263,18 @@
             <span>$<%= variant.price %></span>
             <% } %>
           </div>
-          <% } %>
-          
-          <% if (product.allLengths && product.allLengths.length > 1) { %>
+          <% } %> <% if (product.allLengths && product.allLengths.length > 1) {
+          %>
           <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
           <% } %>
-          
+
           <p class="discontinued-label">Discontinued</p>
         </div>
       </div>
       <% }); %>
     </div>
     <% } %>
-    
+
     <script>
       const lengthSelect = document.getElementById('length-select');
       if (lengthSelect) {
@@ -207,6 +290,147 @@
             }
           });
         });
+      }
+
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+      }
+
+      function loadAISummary(productId) {
+        const container = document.getElementById('ai-summary-container');
+        const content = document.getElementById('ai-summary-content');
+        const reasoning = document.getElementById('ai-summary-reasoning');
+
+        container.style.display = 'block';
+        content.innerHTML = '';
+        reasoning.innerHTML = '';
+        reasoning.style.display = 'none';
+        document.getElementById('summary-status').textContent =
+          'Analyzing product...';
+
+        const evtSource = new EventSource(`/api/ai/summary/${productId}`);
+
+        evtSource.addEventListener('content', (e) => {
+          const data = JSON.parse(e.data);
+          if (data.cached) {
+            content.innerHTML = data.content.replace(/\n/g, '<br>');
+            document.getElementById('summary-status').textContent =
+              'AI Summary (cached)';
+            return;
+          }
+          if (data.thinking) {
+            reasoning.style.display = 'block';
+            reasoning.innerHTML += escapeHtml(data.content);
+            reasoning.scrollTop = reasoning.scrollHeight;
+          } else {
+            content.innerHTML += escapeHtml(data.content);
+          }
+        });
+
+        evtSource.addEventListener('done', () => {
+          evtSource.close();
+          document.getElementById('summary-status').textContent = 'AI Summary';
+          let html = content.innerHTML;
+          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          html = html.replace(/\n/g, '<br>');
+          content.innerHTML = html;
+        });
+
+        evtSource.addEventListener('error', (e) => {
+          try {
+            content.textContent = JSON.parse(e.data).error;
+          } catch {}
+          evtSource.close();
+        });
+        evtSource.onerror = () => evtSource.close();
+      }
+
+      function loadOutfitBuilder(productId) {
+        const container = document.getElementById('ai-outfit-container');
+        const content = document.getElementById('ai-outfit-content');
+        const reasoning = document.getElementById('ai-outfit-reasoning');
+        const picks = document.getElementById('ai-outfit-picks');
+
+        container.style.display = 'block';
+        content.innerHTML = '';
+        reasoning.innerHTML = '';
+        reasoning.style.display = 'none';
+        picks.innerHTML = '';
+        document.getElementById('outfit-status').textContent =
+          'Finding complementary pieces...';
+
+        const evtSource = new EventSource(`/api/ai/outfit/${productId}`);
+
+        evtSource.addEventListener('status', (e) => {
+          document.getElementById('outfit-status').textContent = JSON.parse(
+            e.data
+          ).message;
+        });
+
+        evtSource.addEventListener('content', (e) => {
+          const data = JSON.parse(e.data);
+          if (data.thinking) {
+            reasoning.style.display = 'block';
+            reasoning.innerHTML += escapeHtml(data.content);
+          } else {
+            content.innerHTML += escapeHtml(data.content);
+          }
+        });
+
+        evtSource.addEventListener('picks', (e) => {
+          const data = JSON.parse(e.data);
+          if (data.products?.length) {
+            picks.innerHTML = data.products
+              .map(
+                (p) => `
+              <div class="product-card">
+                <div class="product-info">
+                  <a href="/product/${p.id}" class="product-name">${escapeHtml(
+                  p.name
+                )}</a>
+                  <div class="product-price-container">
+                    ${
+                      p.price < p.list_price
+                        ? `<span class="price-sale">$${p.price}</span> <span class="price-list">$${p.list_price}</span>`
+                        : `<span>$${p.price}</span>`
+                    }
+                  </div>
+                  ${
+                    p.rating
+                      ? `<div class="product-meta">${'★'.repeat(
+                          Math.round(p.rating)
+                        )} ${p.rating.toFixed(1)}</div>`
+                      : ''
+                  }
+                </div>
+              </div>
+            `
+              )
+              .join('');
+          }
+        });
+
+        evtSource.addEventListener('done', () => {
+          evtSource.close();
+          document.getElementById('outfit-status').textContent =
+            'Outfit suggestions ready';
+          let html = content.innerHTML;
+          html = html.replace(/&lt;!--PICKS:\[[\d,\s]*\]--&gt;/g, '');
+          html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          html = html.replace(/\n/g, '<br>');
+          content.innerHTML = html;
+        });
+
+        evtSource.addEventListener('error', (e) => {
+          try {
+            content.textContent = JSON.parse(e.data).error;
+          } catch {}
+          evtSource.close();
+        });
+        evtSource.onerror = () => evtSource.close();
       }
     </script>
   </body>
