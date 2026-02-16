@@ -460,8 +460,6 @@ async function main() {
     const categoryFilter = req.query.category as string;
     const sortBy = (req.query.sort as string) || 'name';
     const searchQuery = req.query.q as string;
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const perPage = 48;
 
     const lastScanTime = await getLastScanTime(db);
     const stats = await getStats(db);
@@ -488,14 +486,6 @@ async function main() {
       whereClauses += ` AND p.category LIKE ?`;
       params.push(`%${categoryFilter}%`);
     }
-
-    // Count query for pagination
-    const countSql = `SELECT COUNT(DISTINCT p.id) as total FROM products p LEFT JOIN variants v ON p.id = v.product_id ${whereClauses}`;
-    const countResult = await getPromise.call(db, countSql, [...params]);
-    const totalCount = (countResult as any)?.total || 0;
-    const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
-    const safePage = Math.min(page, totalPages);
-    const offset = (safePage - 1) * perPage;
 
     let sql = `
       SELECT p.id, p.name, p.display_name, p.slug, p.brand, p.rating, p.review_count, 
@@ -531,9 +521,6 @@ async function main() {
         sql += ` ORDER BY p.name`;
         break;
     }
-
-    sql += ` LIMIT ? OFFSET ?`;
-    queryParams.push(perPage, offset);
 
     const allProducts = await allPromise.call(db, sql, queryParams);
 
@@ -603,9 +590,9 @@ async function main() {
       minPrice: null,
       maxPrice: null,
       stats,
-      page: safePage,
-      totalPages,
-      totalCount,
+      page: 1,
+      totalPages: 1,
+      totalCount: allProducts.length,
     });
   });
 
