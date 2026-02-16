@@ -292,7 +292,10 @@ export async function updateDatabase() {
     DB,
     'SELECT id, available_sizes, price, list_price FROM variants'
   );
-  const existingVariantsMap = new Map<string, { sizes: string[]; price: number; listPrice: number }>();
+  const existingVariantsMap = new Map<
+    string,
+    { sizes: string[]; price: number; listPrice: number }
+  >();
   existingVariants.forEach((v: any) => {
     existingVariantsMap.set(v.id, {
       sizes: JSON.parse(v.available_sizes || '[]'),
@@ -385,7 +388,11 @@ export async function updateDatabase() {
 
           // Price history — only insert when price actually changed
           const existingVariant = existingVariantsMap.get(variantId);
-          if (!existingVariant || existingVariant.price !== color.price || existingVariant.listPrice !== color.list_price) {
+          if (
+            !existingVariant ||
+            existingVariant.price !== color.price ||
+            existingVariant.listPrice !== color.list_price
+          ) {
             priceInsertRecords.push([
               variantId,
               color.price,

@@ -11,6 +11,7 @@ import { allPromise, closeDB, getDB, getPromise, setupDatabase } from './db';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { closeBrowser, updateDatabase } from './scraper';
+import aiRoutes from './ai-routes';
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
@@ -69,6 +70,7 @@ async function main() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
   app.use(express.static(path.join(__dirname, 'public')));
+  app.use(aiRoutes);
 
   // ==================== API ROUTES ====================
 
