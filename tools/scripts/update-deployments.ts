@@ -15,14 +15,17 @@ interface AppVersionMap {
 }
 
 const DEPLOYMENT_MAP: Record<string, string> = {
-  finances: 'finances',
-  'finances-frontend': 'finances-frontend',
-  server: 'test-server',
+  'ai-gateway': 'ai-gateway',
   'aritzia-scanner': 'aritzia-scanner',
-  wheel: 'wheel',
-  landing: 'landing-page',
   camera: 'camera',
   'camera-frontend': 'camera-frontend',
+  finances: 'finances',
+  'finances-frontend': 'finances-frontend',
+  landing: 'landing-page',
+  recipes: 'recipes',
+  'recipes-frontend': 'recipes-frontend',
+  server: 'test-server',
+  wheel: 'wheel',
 };
 
 function getAppVersion(appName: string): string | null {

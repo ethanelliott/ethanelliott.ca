@@ -80,7 +80,7 @@ jobs:
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -106,13 +106,13 @@ jobs:
       - name: Check for affected container projects
         id: check-affected
         run: |
-          AFFECTED=$(bun nx print-affected -t container 2>/dev/null | grep -o '"[^"]*"' | tr -d '"' || true)
+          AFFECTED=$(bun nx show projects --affected --with-target container 2>/dev/null || echo "")
           if [ -z "$AFFECTED" ]; then
             echo "has_affected=false" >> $GITHUB_OUTPUT
             echo "No affected container projects — skipping Docker builds"
           else
             echo "has_affected=true" >> $GITHUB_OUTPUT
-            echo "Affected container projects detected"
+            echo "Affected container projects: $AFFECTED"
           fi
 
       - name: Docker Login
@@ -124,7 +124,62 @@ jobs:
 
       - name: Build & Push Affected Development Containers
         if: steps.check-affected.outputs.has_affected == 'true'
+        id: build
         run: |
-          echo "Building and pushing containers for affected projects with 'latest' tag..."
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Building affected containers with tags: sha-${SHORT_SHA}, latest"
+
+          bun nx affected -t container --tag=sha-${SHORT_SHA} --parallel=3
           bun nx affected -t container --tag=latest --parallel=3
-          echo "✅ Affected development containers built and pushed successfully"
+
+          echo "✅ Affected containers built and pushed"
+
+      - name: Update deployment manifests with new image tags
+        if: steps.check-affected.outputs.has_affected == 'true'
+        run: |
+          SHORT_SHA=${{ steps.build.outputs.sha }}
+
+          # Map from Nx project name to deployment directory
+          declare -A DEPLOY_MAP
+          DEPLOY_MAP[ai-gateway]=ai-gateway
+          DEPLOY_MAP[aritzia-scanner]=aritzia-scanner
+          DEPLOY_MAP[camera]=camera
+          DEPLOY_MAP[camera-frontend]=camera-frontend
+          DEPLOY_MAP[finances]=finances
+          DEPLOY_MAP[finances-frontend]=finances-frontend
+          DEPLOY_MAP[landing]=landing-page
+          DEPLOY_MAP[recipes]=recipes
+          DEPLOY_MAP[recipes-frontend]=recipes-frontend
+          DEPLOY_MAP[server]=test-server
+          DEPLOY_MAP[wheel]=wheel
+
+          AFFECTED=$(bun nx show projects --affected --with-target container 2>/dev/null || echo "")
+
+          UPDATED=0
+          for PROJECT in $AFFECTED; do
+            DEPLOY_DIR="${DEPLOY_MAP[$PROJECT]}"
+            if [ -n "$DEPLOY_DIR" ] && [ -f "deployments/${DEPLOY_DIR}/values.yaml" ]; then
+              sed -i "s/^\(\s*tag:\s*\).*/\1sha-${SHORT_SHA}/" "deployments/${DEPLOY_DIR}/values.yaml"
+              echo "  Updated deployments/${DEPLOY_DIR}/values.yaml → sha-${SHORT_SHA}"
+              UPDATED=$((UPDATED + 1))
+            fi
+          done
+
+          echo "Updated ${UPDATED} deployment manifest(s)"
+
+      - name: Commit and push deployment updates
+        if: steps.check-affected.outputs.has_affected == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add deployments/*/values.yaml
+
+          if git diff --cached --quiet; then
+            echo "No deployment changes to commit"
+          else
+            git commit -m "ci(deploy): update image tags to sha-${{ steps.build.outputs.sha }} [skip ci]"
+            git push
+            echo "✅ Deployment manifests updated — ArgoCD will auto-sync"
+          fi
