@@ -1,0 +1,60 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/camera
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  hostname: 'camera-api.elliott.haus'
+  cors:
+    enabled: true
+    allowOrigins:
+      - https://camera.elliott.haus
+
+resources:
+  limits:
+    cpu: '1'
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+  CAMERA_IP: '192.168.86.34'
+  CAMERA_MODEL: 'Arenti a3'
+  CAMERA_ONVIF_PORT: '80'
+  CAMERA_RTSP_PORT: '554'
+  CAMERA_RTSP_PATH: '/stream1'
+  DETECTION_INTERVAL: '3'
+  DETECTION_THRESHOLD: '0.6'
+  DATA_DIR: '/app/data'
+
+# Camera credentials from Kubernetes Secret
+secretEnv:
+  - name: CAMERA_USERNAME
+    secretName: camera-credentials
+    secretKey: username
+  - name: CAMERA_PASSWORD
+    secretName: camera-credentials
+    secretKey: password
+
+# Set to true to create the secret via Helm (for development/testing)
+createSecret: false
+secretData:
+  username: admin
+  password: changeme
+
+storage:
+  size: 100Gi
+
+# Enable host network if the K8s cluster can't reach the camera subnet
+hostNetwork: false

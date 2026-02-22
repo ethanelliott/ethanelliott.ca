@@ -21,6 +21,8 @@ const DEPLOYMENT_MAP: Record<string, string> = {
   'aritzia-scanner': 'aritzia-scanner',
   wheel: 'wheel',
   landing: 'landing-page',
+  camera: 'camera',
+  'camera-frontend': 'camera-frontend',
 };
 
 function getAppVersion(appName: string): string | null {

@@ -1,0 +1,111 @@
+{
+  "name": "camera-frontend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/camera-frontend/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/apps/camera-frontend",
+        "index": "apps/camera-frontend/src/index.html",
+        "browser": "apps/camera-frontend/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "apps/camera-frontend/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/camera-frontend/public"
+          }
+        ],
+        "styles": [
+          "apps/camera-frontend/src/styles.scss"
+        ],
+        "stylePreprocessorOptions": {
+          "includePaths": [
+            "apps/camera-frontend/src"
+          ]
+        },
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "800kb",
+              "maximumError": "1.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            }
+          ],
+          "optimization": {
+            "scripts": true,
+            "styles": {
+              "minify": true,
+              "inlineCritical": false
+            },
+            "fonts": true
+          },
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/camera-frontend/src/environments/environment.ts",
+              "with": "apps/camera-frontend/src/environments/environment.prod.ts"
+            }
+          ]
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "camera-frontend:build:production"
+        },
+        "development": {
+          "buildTarget": "camera-frontend:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular-devkit/build-angular:extract-i18n"
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "container": {
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "TAG={args.tag} && docker build -f apps/camera-frontend/Dockerfile -t ethanelliottio/camera-frontend:$TAG . && docker push ethanelliottio/camera-frontend:$TAG"
+        ],
+        "parallel": false
+      },
+      "configurations": {
+        "latest": {
+          "tag": "latest"
+        }
+      }
+    }
+  }
+}

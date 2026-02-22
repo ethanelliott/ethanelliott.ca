@@ -1,0 +1,28 @@
+{{- if .Values.ingress.cors.enabled -}}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "camera.fullname" . }}-cors
+  labels:
+    {{- include "camera.labels" . | nindent 4 }}
+spec:
+  headers:
+    accessControlAllowMethods:
+      - "GET"
+      - "HEAD"
+      - "POST"
+      - "PUT"
+      - "PATCH"
+      - "DELETE"
+      - "CONNECT"
+      - "OPTIONS"
+      - "TRACE"
+    accessControlAllowHeaders:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+    accessControlAllowOriginList:
+{{ toYaml .Values.ingress.cors.allowOrigins | indent 6 }}
+    accessControlMaxAge: 100
+    addVaryHeader: true
+{{- end }}

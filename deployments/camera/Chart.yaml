@@ -1,0 +1,9 @@
+apiVersion: v2
+name: camera
+description: Camera security backend API with ONVIF, FFmpeg HLS, and TF.js detection
+type: application
+
+version: 0.0.1
+appVersion: '0.0.1'
+
+dependencies: []
