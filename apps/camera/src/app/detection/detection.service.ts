@@ -513,7 +513,7 @@ export class DetectionService {
     try {
       // Decode JPEG to raw pixels using sharp (pre-loaded)
       const { data, info } = await this._sharp(frameBuffer)
-        .resize(640, 480, { fit: 'inside' }) // Resize for faster detection
+        .resize(1280, 720, { fit: 'inside' }) // 720p for better detection accuracy
         .raw()
         .toBuffer({ resolveWithObject: true });
 

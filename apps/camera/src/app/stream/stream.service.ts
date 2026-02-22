@@ -195,7 +195,7 @@ export class StreamService {
       '-map',
       '0:v',
       '-vf',
-      `fps=${this._detectionFps},scale=640:360`,
+      `fps=${this._detectionFps},scale=1280:720`,
       '-f',
       'image2',
       '-update',
