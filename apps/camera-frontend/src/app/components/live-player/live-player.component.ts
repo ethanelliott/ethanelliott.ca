@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
 import { ButtonDirective } from 'primeng/button';
 import Hls from 'hls.js';
 import { EventService } from '../../services/event.service';
-import { DetectionEvent } from '../../services/camera-api.service';
+import { FrameDetection } from '../../services/camera-api.service';
 
 @Component({
   selector: 'app-live-player',
@@ -185,24 +185,9 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
   readonly error = signal<string | null>(null);
   readonly showBoxes = signal(true);
 
-  /** Show detections from the last N seconds */
-  private readonly DETECTION_TTL_MS = 4000;
-
-  /** Active detections: most recent per-label within TTL */
+  /** Active detections: sourced directly from the latest frame emission */
   readonly activeDetections = computed(() => {
-    const events = this.eventService.recentEvents();
-    const now = Date.now();
-    const seen = new Map<string, DetectionEvent>();
-
-    for (const evt of events) {
-      const age = now - new Date(evt.timestamp).getTime();
-      if (age > this.DETECTION_TTL_MS) break; // events are newest-first
-      // Keep only the latest detection per label
-      if (!seen.has(evt.label)) {
-        seen.set(evt.label, evt);
-      }
-    }
-    return [...seen.values()];
+    return this.eventService.currentFrameDetections();
   });
 
   private hls: Hls | null = null;

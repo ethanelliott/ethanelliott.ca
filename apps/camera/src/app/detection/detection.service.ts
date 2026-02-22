@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ChildProcess, spawn } from 'child_process';
 import { inject } from '@ee/di';
 import {
@@ -9,7 +10,7 @@ import {
 } from 'fs';
 import { join } from 'path';
 import { Database } from '../data-source';
-import { DetectionEvent } from './detection.entity';
+import { DetectionEvent, FrameDetection } from './detection.entity';
 import { CameraService } from '../camera/camera.service';
 import { WebSocketService } from '../websocket/websocket.service';
 
@@ -98,6 +99,22 @@ export const COCO_SSD_LABELS = [
 ] as const;
 
 /**
+ * A tracked object correlated across frames via spatial overlap.
+ */
+interface TrackedObject {
+  id: string;
+  label: string;
+  bbox: { x: number; y: number; width: number; height: number };
+  confidence: number;
+  firstSeen: Date;
+  lastSeen: Date;
+  eventId: string;
+  frameWidth: number;
+  frameHeight: number;
+  snapshotFilename: string | null;
+}
+
+/**
  * DetectionService runs periodic frame extraction and object detection
  * using TensorFlow.js with COCO-SSD model.
  */
@@ -127,7 +144,19 @@ export class DetectionService {
     process.env.DETECTION_THRESHOLD || '0.6'
   );
   private readonly _interval =
-    parseInt(process.env.DETECTION_INTERVAL || '3', 10) * 1000; // Convert to ms
+    parseInt(process.env.DETECTION_INTERVAL || '1', 10) * 1000; // Convert to ms
+
+  /** In-memory tracked objects correlated across frames */
+  private _trackedObjects = new Map<string, TrackedObject>();
+
+  /** Minimum IoU (Intersection over Union) to consider two boxes the same object */
+  private readonly _iouThreshold = parseFloat(
+    process.env.IOU_THRESHOLD || '0.3'
+  );
+
+  /** How long (ms) before a tracked object is considered stale and removed */
+  private readonly _staleTimeoutMs =
+    parseInt(process.env.TRACK_STALE_SECONDS || '5', 10) * 1000;
 
   private get _dataDir(): string {
     return (
@@ -369,7 +398,8 @@ export class DetectionService {
   }
 
   /**
-   * Extract a frame from the RTSP stream and run detection
+   * Extract a frame from the RTSP stream, run detection, and correlate
+   * detections across frames using spatial overlap (IoU).
    */
   private async _detectFrame(): Promise<void> {
     if (!this._model || !this._tf) {
@@ -405,20 +435,109 @@ export class DetectionService {
       // Clean up tensor
       tensor.dispose();
 
-      // Process predictions
-      for (const prediction of predictions) {
-        if (
-          prediction.score >= this._threshold &&
-          this._enabledLabels.has(prediction.class)
-        ) {
-          await this._handleDetection(
+      // Filter predictions by threshold and enabled labels
+      const filtered = predictions.filter(
+        (p: any) =>
+          p.score >= this._threshold && this._enabledLabels.has(p.class)
+      );
+
+      const now = new Date();
+      const matchedTrackIds = new Set<string>();
+      const frameDetections: FrameDetection[] = [];
+
+      for (const prediction of filtered) {
+        const [x, y, width, height] = prediction.bbox;
+        const bbox = { x, y, width, height };
+
+        // Try to match against existing tracked objects of the same label
+        let bestMatch: TrackedObject | null = null;
+        let bestIoU = 0;
+
+        for (const tracked of this._trackedObjects.values()) {
+          if (tracked.label !== prediction.class) continue;
+          if (matchedTrackIds.has(tracked.id)) continue; // already matched
+          const iou = this._computeIoU(bbox, tracked.bbox);
+          if (iou >= this._iouThreshold && iou > bestIoU) {
+            bestMatch = tracked;
+            bestIoU = iou;
+          }
+        }
+
+        if (bestMatch) {
+          // Continuing tracked object — update in-place, no new DB event
+          bestMatch.bbox = bbox;
+          bestMatch.confidence = prediction.score;
+          bestMatch.lastSeen = now;
+          bestMatch.frameWidth = info.width;
+          bestMatch.frameHeight = info.height;
+          matchedTrackIds.add(bestMatch.id);
+
+          frameDetections.push({
+            id: bestMatch.eventId,
+            label: bestMatch.label,
+            confidence: bestMatch.confidence,
+            bbox: bestMatch.bbox,
+            frameWidth: info.width,
+            frameHeight: info.height,
+          });
+        } else {
+          // New object — save to DB, start tracking, emit event for feed
+          const saved = await this._createDetectionEvent(
             prediction,
             frameBuffer,
             info.width,
             info.height
           );
+
+          const trackId = randomUUID();
+          this._trackedObjects.set(trackId, {
+            id: trackId,
+            label: prediction.class,
+            bbox,
+            confidence: prediction.score,
+            firstSeen: now,
+            lastSeen: now,
+            eventId: saved.id,
+            frameWidth: info.width,
+            frameHeight: info.height,
+            snapshotFilename: saved.snapshotFilename,
+          });
+
+          // Emit individual 'detection' event for the event feed (new objects only)
+          this._wsService.emitDetection({
+            id: saved.id,
+            timestamp: saved.timestamp,
+            label: saved.label,
+            confidence: saved.confidence,
+            snapshotFilename: saved.snapshotFilename || null,
+            bbox: saved.bbox,
+            frameWidth: saved.frameWidth,
+            frameHeight: saved.frameHeight,
+            pinned: saved.pinned,
+          });
+
+          frameDetections.push({
+            id: saved.id,
+            label: saved.label,
+            confidence: saved.confidence,
+            bbox: saved.bbox,
+            frameWidth: info.width,
+            frameHeight: info.height,
+          });
+
+          console.log(
+            `🎯 New: ${prediction.class} (${Math.round(
+              prediction.score * 100
+            )}%)${saved.snapshotFilename ? ` → ${saved.snapshotFilename}` : ''}`
+          );
         }
       }
+
+      // Emit all current-frame detections for the live overlay
+      this._wsService.emitFrameDetections(frameDetections);
+
+      // Age out tracked objects not seen recently
+      this._ageOutTrackedObjects(now);
     } catch (err) {
       console.error('Frame processing error:', err);
     }
@@ -481,14 +600,15 @@ export class DetectionService {
   }
 
   /**
-   * Handle a confirmed detection: save snapshot, store event, emit via WebSocket
+   * Create a new detection event: save snapshot and store in DB.
+   * Does NOT emit via WebSocket — the caller handles that.
    */
-  private async _handleDetection(
+  private async _createDetectionEvent(
     prediction: { bbox: number[]; class: string; score: number },
     frameBuffer: Buffer,
     frameWidth: number,
     frameHeight: number
-  ): Promise<void> {
+  ): Promise<DetectionEvent> {
     const [x, y, width, height] = prediction.bbox;
 
     // Save snapshot for high-confidence detections
@@ -518,26 +638,37 @@ export class DetectionService {
       frameHeight,
     });
 
-    const saved = await this._repository.save(event);
+    return this._repository.save(event);
+  }
 
-    // Emit real-time event via WebSocket
-    this._wsService.emitDetection({
-      id: saved.id,
-      timestamp: saved.timestamp,
-      label: saved.label,
-      confidence: saved.confidence,
-      snapshotFilename: saved.snapshotFilename || null,
-      bbox: saved.bbox,
-      frameWidth: saved.frameWidth,
-      frameHeight: saved.frameHeight,
-      pinned: saved.pinned,
-    });
+  /**
+   * Compute Intersection over Union for two bounding boxes.
+   */
+  private _computeIoU(
+    a: { x: number; y: number; width: number; height: number },
+    b: { x: number; y: number; width: number; height: number }
+  ): number {
+    const x1 = Math.max(a.x, b.x);
+    const y1 = Math.max(a.y, b.y);
+    const x2 = Math.min(a.x + a.width, b.x + b.width);
+    const y2 = Math.min(a.y + a.height, b.y + b.height);
+    const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    const areaA = a.width * a.height;
+    const areaB = b.width * b.height;
+    const union = areaA + areaB - intersection;
 
-    console.log(
-      `🎯 Detected: ${prediction.class} (${Math.round(
-        prediction.score * 100
-      )}%)${snapshotFilename ? ` → ${snapshotFilename}` : ''}`
-    );
+    return union > 0 ? intersection / union : 0;
+  }
+
+  /**
+   * Remove tracked objects that haven't been seen within the stale timeout.
+   */
+  private _ageOutTrackedObjects(now: Date): void {
+    for (const [id, tracked] of this._trackedObjects) {
+      if (now.getTime() - tracked.lastSeen.getTime() > this._staleTimeoutMs) {
+        this._trackedObjects.delete(id);
+      }
+    }
   }
 
   /**

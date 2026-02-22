@@ -1,5 +1,8 @@
 import { Server as SocketIOServer } from 'socket.io';
-import { DetectionEventOut } from '../detection/detection.entity';
+import {
+  DetectionEventOut,
+  FrameDetection,
+} from '../detection/detection.entity';
 
 /**
  * WebSocketService manages the Socket.io instance and provides
@@ -32,11 +35,20 @@ export class WebSocketService {
   }
 
   /**
-   * Emit a detection event to all connected clients
+   * Emit a detection event to all connected clients (new objects only, for event feed)
    */
   emitDetection(event: DetectionEventOut): void {
     if (this._io) {
       this._io.emit('detection', event);
+    }
+  }
+
+  /**
+   * Emit all detections from the current frame (for live overlay)
+   */
+  emitFrameDetections(detections: FrameDetection[]): void {
+    if (this._io) {
+      this._io.emit('frame-detections', detections);
     }
   }
 

@@ -63,6 +63,16 @@ export const DetectionEventOutSchema = z.object({
 
 export type DetectionEventOut = z.infer<typeof DetectionEventOutSchema>;
 
+/** Lightweight detection data emitted per frame for the live overlay. */
+export interface FrameDetection {
+  id: string;
+  label: string;
+  confidence: number;
+  bbox: { x: number; y: number; width: number; height: number };
+  frameWidth: number;
+  frameHeight: number;
+}
+
 export const DetectionStatsSchema = z.object({
   totalEvents: z.number(),
   todayEvents: z.number(),

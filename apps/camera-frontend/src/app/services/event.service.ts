@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { environment } from '../../environments/environment';
-import { DetectionEvent } from './camera-api.service';
+import { DetectionEvent, FrameDetection } from './camera-api.service';
 
 /**
  * EventService connects to the backend via Socket.io
@@ -13,6 +13,9 @@ export class EventService implements OnDestroy {
 
   /** Signal holding the latest detection events (most recent first) */
   readonly recentEvents = signal<DetectionEvent[]>([]);
+
+  /** Signal holding all detections from the latest frame (for live overlay) */
+  readonly currentFrameDetections = signal<FrameDetection[]>([]);
 
   /** Signal indicating connection status */
   readonly connected = signal(false);
@@ -55,6 +58,10 @@ export class EventService implements OnDestroy {
         const updated = [event, ...events];
         return updated.slice(0, this.maxEvents);
       });
+    });
+
+    this.socket.on('frame-detections', (detections: FrameDetection[]) => {
+      this.currentFrameDetections.set(detections);
     });
 
     this.socket.on('connect_error', (error: Error) => {
