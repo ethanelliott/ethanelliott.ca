@@ -189,16 +189,18 @@ export class StreamService {
       outputPath,
 
       // ── Output #1: JPEG frames piped to stdout for detection ──
+      // Scale down to 640x360 — COCO-SSD resizes to 300x300 internally
+      // so full 1080p is wasteful and stalls the pipe.
       '-map',
       '0:v',
       '-vf',
-      `fps=${this._detectionFps}`,
+      `fps=${this._detectionFps},scale=640:360`,
       '-f',
       'image2pipe',
       '-c:v',
       'mjpeg',
       '-q:v',
-      '5',
+      '8',
       '-an',
       'pipe:1',
     ];
