@@ -68,6 +68,7 @@ import { ButtonDirective } from 'primeng/button';
 
     :host ::ng-deep .toolbar {
       background: var(--bg-secondary) !important;
+      border: none;
       border-bottom: 1px solid var(--border-color);
       border-radius: 0;
       color: var(--text-primary) !important;
