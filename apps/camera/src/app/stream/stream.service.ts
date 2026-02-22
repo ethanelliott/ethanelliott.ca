@@ -10,6 +10,11 @@ import {
 import { join } from 'path';
 import { CameraService } from '../camera/camera.service';
 
+/** JPEG Start-Of-Image marker */
+const JPEG_SOI = Buffer.from([0xff, 0xd8]);
+/** JPEG End-Of-Image marker */
+const JPEG_EOI = Buffer.from([0xff, 0xd9]);
+
 /**
  * StreamService manages the FFmpeg process that converts
  * RTSP to HLS for browser-based live streaming.
@@ -26,6 +31,17 @@ export class StreamService {
 
   /** How long (ms) without a new segment before we consider the stream stalled */
   private readonly _watchdogTimeoutMs = 30_000;
+
+  /** FPS for the detection frame pipe (second FFmpeg output) */
+  private readonly _detectionFps = Math.ceil(
+    parseFloat(process.env.DETECTION_FPS || '5')
+  );
+
+  // ── JPEG frame pipe (piggybacked on the same FFmpeg process) ──
+  /** The most recently received complete JPEG frame */
+  private _latestFrame: Buffer | null = null;
+  /** Accumulator for incoming JPEG bytes from stdout */
+  private _framePipeBuffer: Buffer = Buffer.alloc(0);
 
   private readonly _hlsDir = process.env.HLS_DIR || join(this._dataDir, 'hls');
 
@@ -69,6 +85,8 @@ export class StreamService {
       this._ffmpegProcess.kill('SIGTERM');
       this._ffmpegProcess = null;
     }
+    this._latestFrame = null;
+    this._framePipeBuffer = Buffer.alloc(0);
   }
 
   /**
@@ -83,6 +101,14 @@ export class StreamService {
    */
   isRunning(): boolean {
     return this._isRunning;
+  }
+
+  /**
+   * Get the latest JPEG frame captured by the detection pipe.
+   * Returns null if no complete frame has been received yet.
+   */
+  getLatestFrame(): Buffer | null {
+    return this._latestFrame;
   }
 
   /**
@@ -134,8 +160,13 @@ export class StreamService {
       '-i',
       rtspUrl,
 
+      // ── Output #0: HLS for the live player ──
+      '-map',
+      '0:v',
+      '-map',
+      '0:a',
       // Video codec: transcode for HLS compatibility
-      '-c:v',
+      '-c:v:0',
       'libx264',
       '-preset',
       'ultrafast',
@@ -145,13 +176,11 @@ export class StreamService {
       '30', // keyframe interval
       '-sc_threshold',
       '0',
-
       // Audio codec
       '-c:a',
       'aac',
       '-b:a',
       '128k',
-
       // HLS output settings
       '-f',
       'hls',
@@ -163,10 +192,23 @@ export class StreamService {
       'delete_segments+independent_segments',
       '-hls_segment_filename',
       join(this._hlsDir, 'segment_%03d.ts'),
-
       // Overwrite output
       '-y',
       outputPath,
+
+      // ── Output #1: JPEG frames piped to stdout for detection ──
+      '-map',
+      '0:v',
+      '-vf',
+      `fps=${this._detectionFps}`,
+      '-f',
+      'image2pipe',
+      '-c:v:1',
+      'mjpeg',
+      '-q:v',
+      '5',
+      '-an',
+      'pipe:1',
     ];
 
     console.log('🎬 Starting FFmpeg with args:', args.join(' '));
@@ -176,6 +218,13 @@ export class StreamService {
     });
 
     this._isRunning = true;
+
+    // Parse JPEG frames from stdout (detection pipe output)
+    this._framePipeBuffer = Buffer.alloc(0);
+    this._latestFrame = null;
+    this._ffmpegProcess.stdout?.on('data', (chunk: Buffer) => {
+      this._onFrameData(chunk);
+    });
 
     this._ffmpegProcess.stderr?.on('data', (data: Buffer) => {
       const msg = data.toString().trim();
@@ -274,6 +323,35 @@ export class StreamService {
       }
     } catch {
       // directory may not exist yet
+    }
+  }
+
+  /**
+   * Handle incoming data from the FFmpeg JPEG pipe (stdout).
+   * Accumulate bytes and extract complete JPEG frames using SOI/EOI markers.
+   * Always keeps only the latest complete frame.
+   */
+  private _onFrameData(chunk: Buffer): void {
+    this._framePipeBuffer = Buffer.concat([this._framePipeBuffer, chunk]);
+
+    while (true) {
+      const soiIdx = this._framePipeBuffer.indexOf(JPEG_SOI);
+      if (soiIdx === -1) {
+        this._framePipeBuffer = Buffer.alloc(0);
+        break;
+      }
+
+      const eoiIdx = this._framePipeBuffer.indexOf(JPEG_EOI, soiIdx + 2);
+      if (eoiIdx === -1) {
+        if (soiIdx > 0) {
+          this._framePipeBuffer = this._framePipeBuffer.subarray(soiIdx);
+        }
+        break;
+      }
+
+      const frameEnd = eoiIdx + 2;
+      this._latestFrame = this._framePipeBuffer.subarray(soiIdx, frameEnd);
+      this._framePipeBuffer = this._framePipeBuffer.subarray(frameEnd);
     }
   }
 }

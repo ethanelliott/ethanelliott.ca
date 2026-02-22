@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { ChildProcess, spawn } from 'child_process';
 import { inject } from '@ee/di';
 import {
   existsSync,
@@ -15,13 +14,8 @@ import {
   DetectionSettingsEntity,
   FrameDetection,
 } from './detection.entity';
-import { CameraService } from '../camera/camera.service';
 import { WebSocketService } from '../websocket/websocket.service';
-
-/** JPEG Start-Of-Image marker */
-const JPEG_SOI = Buffer.from([0xff, 0xd8]);
-/** JPEG End-Of-Image marker */
-const JPEG_EOI = Buffer.from([0xff, 0xd9]);
+import { StreamService } from '../stream/stream.service';
 
 /** All 80 COCO-SSD labels */
 export const COCO_SSD_LABELS = [
@@ -129,7 +123,7 @@ interface TrackedObject {
  */
 export class DetectionService {
   private readonly _db = inject(Database);
-  private readonly _cameraService = inject(CameraService);
+  private readonly _streamService = inject(StreamService);
   private readonly _wsService = inject(WebSocketService);
   private readonly _repository = this._db.repositoryFor(DetectionEvent);
   private readonly _settingsRepo = this._db.repositoryFor(
@@ -172,12 +166,6 @@ export class DetectionService {
   private readonly _staleTimeoutMs =
     parseInt(process.env.TRACK_STALE_SECONDS || '5', 10) * 1000;
 
-  // ── Persistent frame pipe ──
-  private _framePipeProc: ChildProcess | null = null;
-  /** The most recently received complete JPEG frame from the pipe */
-  private _latestFrame: Buffer | null = null;
-  /** Accumulator for incoming JPEG data from the pipe */
-  private _framePipeBuffer: Buffer = Buffer.alloc(0);
   /** Whether the detection loop is currently running */
   private _detectLoopRunning = false;
   /** Abort controller for the detection loop */
@@ -226,10 +214,8 @@ export class DetectionService {
 
     this._isRunning = true;
 
-    // Start the persistent frame pipe from RTSP
-    await this._startFramePipe();
-
-    // Start the detection loop (runs as fast as inference allows, up to target FPS)
+    // Start the detection loop — reads frames from the stream service’s
+    // combined FFmpeg process (no separate RTSP connection needed)
     this._detectAbort = new AbortController();
     this._runDetectLoop();
 
@@ -263,7 +249,6 @@ export class DetectionService {
       clearInterval(this._purgeTimer);
       this._purgeTimer = null;
     }
-    this._stopFramePipe();
   }
 
   /**
@@ -504,7 +489,7 @@ export class DetectionService {
   }
 
   /**
-   * Run detection on the latest frame from the persistent pipe, and correlate
+   * Run detection on the latest frame from the stream service, and correlate
    * detections across frames using spatial overlap (IoU).
    */
   private async _detectFrame(): Promise<void> {
@@ -512,7 +497,8 @@ export class DetectionService {
       return;
     }
 
-    const frameBuffer = this._latestFrame;
+    // Read the latest frame from the stream service's combined FFmpeg process
+    const frameBuffer = this._streamService.getLatestFrame();
     if (!frameBuffer) {
       return; // No frame available yet
     }
@@ -642,138 +628,6 @@ export class DetectionService {
       this._ageOutTrackedObjects(now);
     } catch (err) {
       console.error('Frame processing error:', err);
-    }
-  }
-
-  // ── Persistent Frame Pipe ──
-
-  /**
-   * Start a long-lived FFmpeg process that continuously decodes RTSP
-   * and outputs JPEG frames to stdout via image2pipe.
-   * We buffer the byte stream and extract complete JPEGs using SOI/EOI markers.
-   */
-  private async _startFramePipe(): Promise<void> {
-    this._stopFramePipe();
-
-    const rtspUrl = await this._cameraService.getRtspUrl();
-    const fps = Math.ceil(this._targetFps);
-
-    const args = [
-      '-rtsp_transport',
-      'tcp',
-      '-rtsp_flags',
-      'prefer_tcp',
-      '-timeout',
-      '10000000', // 10s in microseconds
-      '-i',
-      rtspUrl,
-      // Output 1 frame per target-FPS
-      '-vf',
-      `fps=${fps}`,
-      '-f',
-      'image2pipe',
-      '-c:v',
-      'mjpeg',
-      '-q:v',
-      '5',
-      '-an', // no audio
-      'pipe:1',
-    ];
-
-    console.log(`📷 Starting persistent frame pipe at ${fps} fps`);
-
-    this._framePipeBuffer = Buffer.alloc(0);
-    this._latestFrame = null;
-
-    const proc = spawn('ffmpeg', args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    this._framePipeProc = proc;
-
-    proc.stdout?.on('data', (chunk: Buffer) => {
-      this._onFramePipeData(chunk);
-    });
-
-    proc.stderr?.on('data', (data: Buffer) => {
-      const msg = data.toString().trim();
-      // Suppress noisy FFmpeg log lines; only print warnings/errors
-      if (
-        msg &&
-        (msg.includes('Error') ||
-          msg.includes('error') ||
-          msg.includes('Warning'))
-      ) {
-        console.log(`FFmpeg(pipe): ${msg}`);
-      }
-    });
-
-    proc.on('close', (code) => {
-      console.log(`📷 Frame pipe exited with code ${code}`);
-      this._framePipeProc = null;
-
-      // Auto-restart if the pipeline is still supposed to be running
-      if (this._isRunning) {
-        console.log('🔄 Restarting frame pipe in 3s...');
-        setTimeout(() => {
-          if (this._isRunning) {
-            this._startFramePipe().catch((err) =>
-              console.error('Frame pipe restart failed:', err)
-            );
-          }
-        }, 3000);
-      }
-    });
-
-    proc.on('error', (err) => {
-      console.error('❌ Frame pipe spawn error:', err);
-    });
-  }
-
-  /**
-   * Stop the persistent frame pipe
-   */
-  private _stopFramePipe(): void {
-    if (this._framePipeProc) {
-      this._framePipeProc.kill('SIGTERM');
-      this._framePipeProc = null;
-    }
-    this._latestFrame = null;
-    this._framePipeBuffer = Buffer.alloc(0);
-  }
-
-  /**
-   * Handle incoming data from the frame pipe.
-   * Accumulate bytes and extract complete JPEG frames between SOI (0xFFD8)
-   * and EOI (0xFFD9) markers. Always keep only the latest complete frame.
-   */
-  private _onFramePipeData(chunk: Buffer): void {
-    this._framePipeBuffer = Buffer.concat([this._framePipeBuffer, chunk]);
-
-    // Extract all complete JPEGs from the buffer
-    while (true) {
-      const soiIdx = this._framePipeBuffer.indexOf(JPEG_SOI);
-      if (soiIdx === -1) {
-        // No SOI in buffer, discard everything
-        this._framePipeBuffer = Buffer.alloc(0);
-        break;
-      }
-
-      // Search for EOI after the SOI (EOI is 2 bytes, look past SOI)
-      const eoiIdx = this._framePipeBuffer.indexOf(JPEG_EOI, soiIdx + 2);
-      if (eoiIdx === -1) {
-        // Incomplete frame — trim everything before SOI and wait for more data
-        if (soiIdx > 0) {
-          this._framePipeBuffer = this._framePipeBuffer.subarray(soiIdx);
-        }
-        break;
-      }
-
-      // Complete JPEG from SOI to EOI (inclusive of the 2-byte EOI marker)
-      const frameEnd = eoiIdx + 2;
-      this._latestFrame = this._framePipeBuffer.subarray(soiIdx, frameEnd);
-
-      // Advance past this frame
-      this._framePipeBuffer = this._framePipeBuffer.subarray(frameEnd);
     }
   }
 
