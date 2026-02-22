@@ -12,6 +12,9 @@ permissions:
 jobs:
   lint-and-build:
     runs-on: ubuntu-latest
+    env:
+      NX_BASE: ${{ github.event.before }}
+      NX_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,6 +49,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      NX_BASE: ${{ github.event.before }}
+      NX_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
