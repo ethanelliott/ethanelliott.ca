@@ -1,6 +1,12 @@
 import { ChildProcess, spawn } from 'child_process';
 import { inject } from '@ee/di';
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  unlinkSync,
+} from 'fs';
 import { join } from 'path';
 import { CameraService } from '../camera/camera.service';
 
@@ -43,6 +49,10 @@ export class StreamService {
     if (!existsSync(this._hlsDir)) {
       mkdirSync(this._hlsDir, { recursive: true });
     }
+
+    // Purge stale HLS files from previous runs so the player doesn't
+    // loop over old segments after a restart.
+    this._cleanHlsDir();
 
     const rtspUrl = await this._cameraService.getRtspUrl();
     this._restartAttempts = 0;
@@ -121,12 +131,6 @@ export class StreamService {
       // RTSP/network timeout to detect stalled cameras
       '-timeout',
       '10000000', // 10 seconds in microseconds
-      '-reconnect',
-      '1',
-      '-reconnect_streamed',
-      '1',
-      '-reconnect_delay_max',
-      '5',
       '-i',
       rtspUrl,
 
@@ -156,7 +160,7 @@ export class StreamService {
       '-hls_list_size',
       '10', // Keep 10 segments in playlist
       '-hls_flags',
-      'delete_segments+append_list',
+      'delete_segments+independent_segments',
       '-hls_segment_filename',
       join(this._hlsDir, 'segment_%03d.ts'),
 
@@ -246,6 +250,30 @@ export class StreamService {
     if (this._watchdogTimer) {
       clearInterval(this._watchdogTimer);
       this._watchdogTimer = null;
+    }
+  }
+
+  /**
+   * Remove all .m3u8 and .ts files from the HLS directory so the player
+   * doesn't serve stale segments from a previous FFmpeg run.
+   */
+  private _cleanHlsDir(): void {
+    try {
+      const files = readdirSync(this._hlsDir).filter(
+        (f) => f.endsWith('.m3u8') || f.endsWith('.ts')
+      );
+      for (const file of files) {
+        try {
+          unlinkSync(join(this._hlsDir, file));
+        } catch {
+          // ignore individual failures
+        }
+      }
+      if (files.length > 0) {
+        console.log(`🧹 Cleaned ${files.length} stale HLS files`);
+      }
+    } catch {
+      // directory may not exist yet
     }
   }
 }
