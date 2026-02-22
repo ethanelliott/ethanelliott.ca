@@ -150,9 +150,7 @@ export class DetectionService {
   );
 
   /** Target detection FPS (default 5). Controls minimum ms between detections. */
-  private readonly _targetFps = parseFloat(
-    process.env.DETECTION_FPS || '5'
-  );
+  private readonly _targetFps = parseFloat(process.env.DETECTION_FPS || '5');
   private readonly _minFrameIntervalMs = 1000 / this._targetFps;
 
   /** In-memory tracked objects correlated across frames */
@@ -240,9 +238,7 @@ export class DetectionService {
     );
 
     console.log(
-      `🧠 Detection running at up to ${this._targetFps} FPS (threshold: ${
-        this._threshold
-      }, retention: ${this._retentionDays}d)`
+      `🧠 Detection running at up to ${this._targetFps} FPS (threshold: ${this._threshold}, retention: ${this._retentionDays}d)`
     );
   }
 
@@ -603,15 +599,23 @@ export class DetectionService {
     const fps = Math.ceil(this._targetFps);
 
     const args = [
-      '-rtsp_transport', 'tcp',
-      '-rtsp_flags', 'prefer_tcp',
-      '-stimeout', '10000000',
-      '-i', rtspUrl,
+      '-rtsp_transport',
+      'tcp',
+      '-rtsp_flags',
+      'prefer_tcp',
+      '-timeout',
+      '10000000', // 10s in microseconds
+      '-i',
+      rtspUrl,
       // Output 1 frame per target-FPS
-      '-vf', `fps=${fps}`,
-      '-f', 'image2pipe',
-      '-c:v', 'mjpeg',
-      '-q:v', '5',
+      '-vf',
+      `fps=${fps}`,
+      '-f',
+      'image2pipe',
+      '-c:v',
+      'mjpeg',
+      '-q:v',
+      '5',
       '-an', // no audio
       'pipe:1',
     ];
@@ -633,7 +637,12 @@ export class DetectionService {
     proc.stderr?.on('data', (data: Buffer) => {
       const msg = data.toString().trim();
       // Suppress noisy FFmpeg log lines; only print warnings/errors
-      if (msg && (msg.includes('Error') || msg.includes('error') || msg.includes('Warning'))) {
+      if (
+        msg &&
+        (msg.includes('Error') ||
+          msg.includes('error') ||
+          msg.includes('Warning'))
+      ) {
         console.log(`FFmpeg(pipe): ${msg}`);
       }
     });

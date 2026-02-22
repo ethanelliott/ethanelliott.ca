@@ -118,11 +118,9 @@ export class StreamService {
       'tcp',
       '-rtsp_flags',
       'prefer_tcp',
-      // RTSP/network timeouts to detect stalled cameras
-      '-stimeout',
-      '10000000', // 10 seconds in microseconds
+      // RTSP/network timeout to detect stalled cameras
       '-timeout',
-      '10000000', // UDP timeout in microseconds
+      '10000000', // 10 seconds in microseconds
       '-reconnect',
       '1',
       '-reconnect_streamed',
