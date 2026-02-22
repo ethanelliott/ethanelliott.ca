@@ -10,7 +10,11 @@ import {
 } from 'fs';
 import { join } from 'path';
 import { Database } from '../data-source';
-import { DetectionEvent, FrameDetection } from './detection.entity';
+import {
+  DetectionEvent,
+  DetectionSettingsEntity,
+  FrameDetection,
+} from './detection.entity';
 import { CameraService } from '../camera/camera.service';
 import { WebSocketService } from '../websocket/websocket.service';
 
@@ -128,6 +132,8 @@ export class DetectionService {
   private readonly _cameraService = inject(CameraService);
   private readonly _wsService = inject(WebSocketService);
   private readonly _repository = this._db.repositoryFor(DetectionEvent);
+  private readonly _settingsRepo =
+    this._db.repositoryFor(DetectionSettingsEntity);
 
   private _model: any = null;
   private _tf: any = null;
@@ -199,6 +205,9 @@ export class DetectionService {
     if (!existsSync(this._snapshotDir)) {
       mkdirSync(this._snapshotDir, { recursive: true });
     }
+
+    // Restore persisted settings (labels, retention) before anything else
+    await this._loadSettings();
 
     // Load TensorFlow.js and COCO-SSD model
     try {
@@ -380,6 +389,7 @@ export class DetectionService {
     console.log(
       `🏷️ Enabled labels updated: ${this._enabledLabels.size} of ${COCO_SSD_LABELS.length}`
     );
+    this._saveSettings();
   }
 
   /**
@@ -388,6 +398,55 @@ export class DetectionService {
   setRetentionDays(days: number): void {
     this._retentionDays = Math.max(1, Math.min(days, 365));
     console.log(`🗓️ Retention updated to ${this._retentionDays} days`);
+    this._saveSettings();
+  }
+
+  /**
+   * Load persisted settings from the database. If no row exists yet,
+   * create a default one so future saves can update it.
+   */
+  private async _loadSettings(): Promise<void> {
+    try {
+      let row = await this._settingsRepo.findOne({ where: {} });
+      if (row) {
+        this._enabledLabels = new Set(
+          (row.enabledLabels ?? []).filter((l: string) =>
+            (COCO_SSD_LABELS as readonly string[]).includes(l)
+          )
+        );
+        this._retentionDays = row.retentionDays ?? 7;
+        console.log(
+          `⚙️ Loaded persisted settings: ${this._enabledLabels.size} labels, ${this._retentionDays}d retention`
+        );
+      } else {
+        // Seed the settings row with defaults
+        row = this._settingsRepo.create({
+          enabledLabels: [...COCO_SSD_LABELS],
+          retentionDays: this._retentionDays,
+        });
+        await this._settingsRepo.save(row);
+        console.log('⚙️ Initialised default detection settings in DB');
+      }
+    } catch (err) {
+      console.error('Failed to load detection settings:', err);
+    }
+  }
+
+  /**
+   * Persist current in-memory settings to the database.
+   */
+  private async _saveSettings(): Promise<void> {
+    try {
+      let row = await this._settingsRepo.findOne({ where: {} });
+      if (!row) {
+        row = this._settingsRepo.create();
+      }
+      row.enabledLabels = [...this._enabledLabels];
+      row.retentionDays = this._retentionDays;
+      await this._settingsRepo.save(row);
+    } catch (err) {
+      console.error('Failed to persist detection settings:', err);
+    }
   }
 
   /**

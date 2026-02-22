@@ -104,4 +104,24 @@ export type UpdateDetectionSettings = z.infer<
   typeof UpdateDetectionSettingsSchema
 >;
 
+/**
+ * Single-row table that persists user-configurable detection settings
+ * across backend restarts.
+ */
+@Entity('detection_settings')
+export class DetectionSettingsEntity {
+  /** Always 'singleton' — ensures only one row exists. */
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  /** JSON array of enabled COCO-SSD label strings */
+  @Column('simple-json')
+  enabledLabels!: string[];
+
+  /** How many days to keep detection events before purging */
+  @Column('integer', { default: 7 })
+  retentionDays!: number;
+}
+
 provide(ENTITIES, DetectionEvent);
+provide(ENTITIES, DetectionSettingsEntity);
