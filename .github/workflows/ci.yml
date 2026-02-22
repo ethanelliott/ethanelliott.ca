@@ -1,4 +1,4 @@
-name: Dev CI
+name: CI
 
 on:
   push:
@@ -11,38 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  # Check if this is a release commit - if so, skip this workflow
-  check-skip:
-    runs-on: ubuntu-latest
-    outputs:
-      should_skip: ${{ steps.check.outputs.should_skip }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Check if release commit
-        id: check
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            COMMIT_MSG=$(git log -1 --pretty=%B)
-            echo "Commit message: $COMMIT_MSG"
-            
-            # Check if commit message starts with "chore(release): publish" (works with squash merge)
-            if [[ "$COMMIT_MSG" == chore\(release\):\ publish* ]]; then
-              echo "should_skip=true" >> $GITHUB_OUTPUT
-              echo "This is a release commit - skipping Dev CI"
-            else
-              echo "should_skip=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "should_skip=false" >> $GITHUB_OUTPUT
-          fi
-
   lint-and-build:
-    needs: check-skip
-    if: needs.check-skip.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,12 +41,9 @@ jobs:
       - name: Build
         run: bun nx affected -t build --parallel=3
 
-  build-and-push-dev:
-    needs: [check-skip, lint-and-build]
-    if: |
-      needs.check-skip.outputs.should_skip != 'true' &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main'
+  deploy:
+    needs: lint-and-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -131,9 +97,6 @@ jobs:
 
           echo "🐳 Building affected containers with tag sha-${SHORT_SHA}..."
           bun nx affected -t container --tag=sha-${SHORT_SHA} --parallel=3
-
-          echo "🐳 Tagging affected containers as latest..."
-          bun nx affected -t container --tag=latest --updateDeployment=false --parallel=3
 
           echo "✅ All affected containers built and pushed"
 
