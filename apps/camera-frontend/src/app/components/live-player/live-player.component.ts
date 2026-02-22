@@ -191,6 +191,9 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
   });
 
   private hls: Hls | null = null;
+  private stallCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private lastPlaybackTime = 0;
+  private stallCount = 0;
 
   /** Color map for common detection labels */
   private readonly labelColors: Record<string, string> = {
@@ -215,6 +218,7 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyPlayer();
+    this.stopStallCheck();
   }
 
   retry(): void {
@@ -263,6 +267,7 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
         video.play().catch(() => {});
         this.isPlaying.set(true);
         this.error.set(null);
+        this.startStallCheck();
       });
 
       this.hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -295,10 +300,54 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
   }
 
   private destroyPlayer(): void {
+    this.stopStallCheck();
     if (this.hls) {
       this.hls.destroy();
       this.hls = null;
     }
     this.isPlaying.set(false);
+  }
+
+  /**
+   * Periodically check if the video is actually advancing.
+   * If playback stalls (same currentTime for 8+ seconds), attempt recovery.
+   */
+  private startStallCheck(): void {
+    this.stopStallCheck();
+    this.stallCount = 0;
+    this.lastPlaybackTime = 0;
+
+    this.stallCheckTimer = setInterval(() => {
+      if (!this.hls || !this.isPlaying()) return;
+
+      const video = this.videoRef?.nativeElement;
+      if (!video) return;
+
+      const currentTime = video.currentTime;
+
+      if (
+        currentTime > 0 &&
+        Math.abs(currentTime - this.lastPlaybackTime) < 0.1
+      ) {
+        this.stallCount++;
+        if (this.stallCount >= 4) {
+          // Stalled for ~8 seconds
+          console.warn('⏱️ Stream stall detected — recovering');
+          this.stallCount = 0;
+          this.hls!.recoverMediaError();
+        }
+      } else {
+        this.stallCount = 0;
+      }
+
+      this.lastPlaybackTime = currentTime;
+    }, 2000);
+  }
+
+  private stopStallCheck(): void {
+    if (this.stallCheckTimer) {
+      clearInterval(this.stallCheckTimer);
+      this.stallCheckTimer = null;
+    }
   }
 }

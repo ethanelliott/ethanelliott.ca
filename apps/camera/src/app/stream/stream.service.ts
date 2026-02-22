@@ -15,6 +15,11 @@ export class StreamService {
   private _restartAttempts = 0;
   private _maxRestartAttempts = 10;
   private _restartDelay = 5000; // ms
+  private _watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private _lastSegmentTime = 0;
+
+  /** How long (ms) without a new segment before we consider the stream stalled */
+  private readonly _watchdogTimeoutMs = 30_000;
 
   private readonly _hlsDir = process.env.HLS_DIR || join(this._dataDir, 'hls');
 
@@ -49,6 +54,7 @@ export class StreamService {
    */
   stop(): void {
     this._isRunning = false;
+    this._stopWatchdog();
     if (this._ffmpegProcess) {
       this._ffmpegProcess.kill('SIGTERM');
       this._ffmpegProcess = null;
@@ -112,6 +118,17 @@ export class StreamService {
       'tcp',
       '-rtsp_flags',
       'prefer_tcp',
+      // RTSP/network timeouts to detect stalled cameras
+      '-stimeout',
+      '10000000', // 10 seconds in microseconds
+      '-timeout',
+      '10000000', // UDP timeout in microseconds
+      '-reconnect',
+      '1',
+      '-reconnect_streamed',
+      '1',
+      '-reconnect_delay_max',
+      '5',
       '-i',
       rtspUrl,
 
@@ -161,6 +178,12 @@ export class StreamService {
     this._ffmpegProcess.stderr?.on('data', (data: Buffer) => {
       const msg = data.toString().trim();
       if (msg) {
+        // Track segment output: FFmpeg logs "Opening 'segment_xxx.ts' for writing"
+        if (msg.includes('.ts') && msg.includes('Opening')) {
+          this._lastSegmentTime = Date.now();
+          // Reset restart counter on healthy output
+          this._restartAttempts = 0;
+        }
         // Log all FFmpeg messages prefixed for easy grep
         console.log(`FFmpeg: ${msg}`);
       }
@@ -190,5 +213,41 @@ export class StreamService {
       console.error('❌ FFmpeg spawn error:', err);
       this._isRunning = false;
     });
+
+    // Start segment watchdog
+    this._lastSegmentTime = Date.now();
+    this._startWatchdog(rtspUrl);
+  }
+
+  /**
+   * Watchdog: checks that FFmpeg is still producing segments.
+   * If no new segment arrives within the timeout, kill and restart.
+   */
+  private _startWatchdog(rtspUrl: string): void {
+    this._stopWatchdog();
+    this._watchdogTimer = setInterval(() => {
+      if (!this._isRunning || !this._ffmpegProcess) return;
+
+      const elapsed = Date.now() - this._lastSegmentTime;
+      if (elapsed > this._watchdogTimeoutMs) {
+        console.warn(
+          `⏱️ Stream watchdog: no new segment for ${Math.round(
+            elapsed / 1000
+          )}s — restarting FFmpeg`
+        );
+        // Kill stalled process; the 'close' handler will restart
+        this._ffmpegProcess?.kill('SIGKILL');
+      }
+    }, 10_000); // check every 10s
+  }
+
+  /**
+   * Stop the watchdog timer
+   */
+  private _stopWatchdog(): void {
+    if (this._watchdogTimer) {
+      clearInterval(this._watchdogTimer);
+      this._watchdogTimer = null;
+    }
   }
 }
