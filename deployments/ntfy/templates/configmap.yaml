@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ntfy.fullname" . }}-config
+  labels:
+    {{- include "ntfy.labels" . | nindent 4 }}
+data:
+  server.yml: |
+    base-url: {{ .Values.config.baseUrl | quote }}
+    listen-http: ":80"
+    behind-proxy: {{ .Values.config.behindProxy }}
+    cache-file: "/var/cache/ntfy/cache.db"
+    cache-duration: {{ .Values.config.cacheDuration | quote }}
+    attachment-cache-dir: {{ .Values.config.attachmentCacheDir | quote }}
+    attachment-total-size-limit: {{ .Values.config.attachmentTotalSizeLimit | quote }}
+    attachment-file-size-limit: {{ .Values.config.attachmentFileSizeLimit | quote }}
+    attachment-expiry-duration: {{ .Values.config.attachmentExpiryDuration | quote }}

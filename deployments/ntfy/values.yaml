@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: binwiederhier/ntfy
+  tag: v2.11.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  hostname: 'ntfy.elliott.haus'
+
+resources:
+  limits:
+    cpu: '500m'
+    memory: 256Mi
+  requests:
+    cpu: '100m'
+    memory: 128Mi
+
+storage:
+  size: 5Gi
+
+config:
+  baseUrl: 'https://ntfy.elliott.haus'
+  behindProxy: true
+  # Cache duration for messages (how long they're kept for offline clients)
+  cacheDuration: '24h'
+  # Attachment settings
+  attachmentCacheDir: '/var/cache/ntfy/attachments'
+  attachmentTotalSizeLimit: '1G'
+  attachmentFileSizeLimit: '15M'
+  attachmentExpiryDuration: '24h'

@@ -7,12 +7,15 @@ import { CameraRouter } from './camera/camera.router';
 import { StreamRouter } from './stream/stream.router';
 import { DetectionRouter } from './detection/detection.router';
 import { SnapshotRouter } from './snapshot/snapshot.router';
+import { NotificationRouter } from './notification/notification.router';
 import { WebSocketService } from './websocket/websocket.service';
 import { StreamService } from './stream/stream.service';
 import { DetectionService } from './detection/detection.service';
+import { NotificationService } from './notification/notification.service';
 
 // Import entities to register them
 import './detection';
+import './notification';
 
 export async function Application(fastify: FastifyInstance) {
   // Initialize Socket.io on the underlying HTTP server
@@ -52,6 +55,10 @@ export async function Application(fastify: FastifyInstance) {
     .withTypeProvider<ZodTypeProvider>()
     .register(SnapshotRouter, { prefix: '/snapshots' });
 
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(NotificationRouter, { prefix: '/notifications' });
+
   // Start the stream and detection pipeline after server is ready
   fastify.addHook('onReady', async () => {
     const streamService = inject(StreamService);
@@ -69,6 +76,14 @@ export async function Application(fastify: FastifyInstance) {
       console.log('🧠 Detection service started');
     } catch (err) {
       console.error('❌ Failed to start detection service:', err);
+    }
+
+    const notificationService = inject(NotificationService);
+    try {
+      await notificationService.initialize();
+      console.log('🔔 Notification service initialized');
+    } catch (err) {
+      console.error('❌ Failed to initialize notification service:', err);
     }
   });
 

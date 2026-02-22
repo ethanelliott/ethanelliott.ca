@@ -16,6 +16,7 @@ import {
 } from './detection.entity';
 import { WebSocketService } from '../websocket/websocket.service';
 import { StreamService } from '../stream/stream.service';
+import { NotificationService } from '../notification/notification.service';
 
 /** All 80 COCO-SSD labels */
 export const COCO_SSD_LABELS = [
@@ -125,6 +126,7 @@ export class DetectionService {
   private readonly _db = inject(Database);
   private readonly _streamService = inject(StreamService);
   private readonly _wsService = inject(WebSocketService);
+  private readonly _notificationService = inject(NotificationService);
   private readonly _repository = this._db.repositoryFor(DetectionEvent);
   private readonly _settingsRepo = this._db.repositoryFor(
     DetectionSettingsEntity
@@ -619,6 +621,17 @@ export class DetectionService {
             frameWidth: info.width,
             frameHeight: info.height,
           });
+
+          // Fire-and-forget notification (don't block the detection loop)
+          this._notificationService
+            .onDetection({
+              label: saved.label,
+              confidence: saved.confidence,
+              snapshotFilename: saved.snapshotFilename,
+            })
+            .catch((err) =>
+              console.error('Notification dispatch error:', err)
+            );
 
           console.log(
             `🎯 New: ${prediction.class} (${Math.round(
