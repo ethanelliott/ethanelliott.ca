@@ -70,7 +70,7 @@ import { EventService } from '../../services/event.service';
     .feed-container {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      max-height: 600px;
     }
 
     .feed-header {

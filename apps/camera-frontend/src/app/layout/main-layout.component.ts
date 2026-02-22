@@ -50,6 +50,15 @@ import { ButtonDirective } from 'primeng/button';
               <i class="pi pi-images"></i>
               Archive
             </a>
+            <a
+              pButton
+              [text]="true"
+              routerLink="/settings"
+              routerLinkActive="active-link"
+            >
+              <i class="pi pi-cog"></i>
+              Settings
+            </a>
           </nav>
         </ng-template>
       </p-toolbar>
