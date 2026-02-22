@@ -88,10 +88,11 @@ jobs:
         id: deploy
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
-          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          TAG="s-${SHORT_SHA}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-          echo "🐳 Building containers with tag ${SHORT_SHA}..."
-          bun nx ${{ steps.mode.outputs.cmd }} -t container --tag=${SHORT_SHA} --parallel
+          echo "🐳 Building containers with tag ${TAG}..."
+          bun nx ${{ steps.mode.outputs.cmd }} -t container --tag=${TAG} --parallel
 
           echo "✅ All containers built and pushed"
 
@@ -106,7 +107,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No deployment changes to commit"
           else
-            git commit -m "ci(deploy): update image tags to ${{ steps.deploy.outputs.sha }} [skip ci]"
+            git commit -m "ci(deploy): update image tags to ${{ steps.deploy.outputs.tag }} [skip ci]"
             git push
             echo "✅ Deployment manifests updated — ArgoCD will auto-sync"
           fi
