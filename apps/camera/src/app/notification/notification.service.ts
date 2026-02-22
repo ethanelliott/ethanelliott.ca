@@ -55,6 +55,29 @@ export class NotificationService {
         });
         await this._settingsRepo.save(row);
         console.log('🔔 Initialized default notification settings');
+      } else {
+        // Sync env-var overrides into the persisted row so that
+        // changing the deployment env vars takes effect on restart.
+        let dirty = false;
+        const envUrl = process.env.NTFY_SERVER_URL;
+        const envTopic = process.env.NTFY_TOPIC;
+        const envToken = process.env.NTFY_AUTH_TOKEN;
+        if (envUrl && row.serverUrl !== envUrl) {
+          row.serverUrl = envUrl;
+          dirty = true;
+        }
+        if (envTopic && row.topic !== envTopic) {
+          row.topic = envTopic;
+          dirty = true;
+        }
+        if (envToken !== undefined && row.authToken !== (envToken || null)) {
+          row.authToken = envToken || null;
+          dirty = true;
+        }
+        if (dirty) {
+          await this._settingsRepo.save(row);
+          console.log('🔔 Synced notification settings from env vars');
+        }
       }
       this._settings = row;
       console.log(
@@ -249,27 +272,48 @@ export class NotificationService {
           putHeaders['Authorization'] = `Bearer ${s.authToken}`;
         }
 
-        const response = await fetch(
-          `${s.serverUrl}/${s.topic}`,
-          {
-            method: 'PUT',
-            headers: putHeaders,
-            body: imageData,
-          }
-        );
+        const response = await fetch(`${s.serverUrl}/${s.topic}`, {
+          method: 'PUT',
+          headers: putHeaders,
+          body: imageData,
+        });
 
         if (!response.ok) {
           console.warn(
             `ntfy image upload returned ${response.status}, falling back to JSON`
           );
-          await this._sendJsonNotification(url, headers, s.topic, title, message, tags, priority);
+          await this._sendJsonNotification(
+            url,
+            headers,
+            s.topic,
+            title,
+            message,
+            tags,
+            priority
+          );
         }
       } catch {
         // File read failed, fall back to JSON
-        await this._sendJsonNotification(url, headers, s.topic, title, message, tags, priority);
+        await this._sendJsonNotification(
+          url,
+          headers,
+          s.topic,
+          title,
+          message,
+          tags,
+          priority
+        );
       }
     } else {
-      await this._sendJsonNotification(url, headers, s.topic, title, message, tags, priority);
+      await this._sendJsonNotification(
+        url,
+        headers,
+        s.topic,
+        title,
+        message,
+        tags,
+        priority
+      );
     }
 
     console.log(`🔔 Notification sent: ${event.label} (${confidencePct}%)`);
