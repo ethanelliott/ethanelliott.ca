@@ -441,8 +441,15 @@ export class DetectionService {
   private async _loadModel(): Promise<void> {
     console.log('🧠 Loading TensorFlow.js and COCO-SSD model...');
 
-    // Dynamic import to handle potential missing packages
-    this._tf = await import('@tensorflow/tfjs');
+    // Prefer the native C++ backend (tfjs-node) for ~10-20x faster inference.
+    // Falls back to pure-JS tfjs if the native addon is unavailable.
+    try {
+      this._tf = await import('@tensorflow/tfjs-node');
+      console.log('⚡ Using native TensorFlow C++ backend (tfjs-node)');
+    } catch {
+      this._tf = await import('@tensorflow/tfjs');
+      console.log('⚠️ Native tfjs-node unavailable, using pure-JS backend');
+    }
 
     // Set the TFHUB cache dir for model caching
     const modelCacheDir = join(this._dataDir, 'models');
