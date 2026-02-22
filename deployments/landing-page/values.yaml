@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/landing
-  tag: latest
+  tag: sha-490010b
   pullPolicy: Always
 
 service:
