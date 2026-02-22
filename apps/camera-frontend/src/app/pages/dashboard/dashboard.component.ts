@@ -20,7 +20,12 @@ import { EventService } from '../../services/event.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, LivePlayerComponent, EventFeedComponent, DetectionSettingsComponent],
+  imports: [
+    CommonModule,
+    LivePlayerComponent,
+    EventFeedComponent,
+    DetectionSettingsComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">

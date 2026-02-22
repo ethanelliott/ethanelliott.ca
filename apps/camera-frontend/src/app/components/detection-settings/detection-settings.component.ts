@@ -18,7 +18,13 @@ import {
 @Component({
   selector: 'app-detection-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToggleSwitchModule, ButtonDirective, SelectModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ToggleSwitchModule,
+    ButtonDirective,
+    SelectModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="settings-container glass-card">
@@ -44,7 +50,8 @@ import {
           />
         </div>
         <span class="retention-hint">
-          Events and snapshots older than {{ retentionDays }} days are automatically deleted.
+          Events and snapshots older than {{ retentionDays }} days are
+          automatically deleted.
         </span>
       </div>
 
@@ -228,9 +235,11 @@ export class DetectionSettingsComponent implements OnInit {
   }
 
   onRetentionChange(): void {
-    this.api.updateDetectionSettings({ retentionDays: this.retentionDays }).subscribe({
-      next: (settings) => this._applySettings(settings),
-    });
+    this.api
+      .updateDetectionSettings({ retentionDays: this.retentionDays })
+      .subscribe({
+        next: (settings) => this._applySettings(settings),
+      });
   }
 
   enableAll(): void {
