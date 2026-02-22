@@ -37,6 +37,7 @@ export interface DetectionStats {
 export interface DetectionSettings {
   availableLabels: string[];
   enabledLabels: string[];
+  retentionDays: number;
 }
 
 export interface SnapshotInfo {
@@ -126,12 +127,13 @@ export class CameraApiService {
     );
   }
 
-  updateDetectionSettings(
-    enabledLabels: string[]
-  ): Observable<DetectionSettings> {
+  updateDetectionSettings(update: {
+    enabledLabels?: string[];
+    retentionDays?: number;
+  }): Observable<DetectionSettings> {
     return this.http.put<DetectionSettings>(
       `${this.baseUrl}/detections/settings`,
-      { enabledLabels }
+      update
     );
   }
 

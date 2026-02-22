@@ -109,7 +109,12 @@ export async function DetectionRouter(fastify: FastifyInstance) {
       },
     },
     async (request) => {
-      detectionService.setEnabledLabels(request.body.enabledLabels);
+      if (request.body.enabledLabels) {
+        detectionService.setEnabledLabels(request.body.enabledLabels);
+      }
+      if (request.body.retentionDays !== undefined) {
+        detectionService.setRetentionDays(request.body.retentionDays);
+      }
       return detectionService.getSettings();
     }
   );

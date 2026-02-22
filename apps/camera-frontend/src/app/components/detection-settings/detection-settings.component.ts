@@ -9,6 +9,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonDirective } from 'primeng/button';
+import { SelectModule } from 'primeng/select';
 import {
   CameraApiService,
   DetectionSettings,
@@ -17,13 +18,39 @@ import {
 @Component({
   selector: 'app-detection-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToggleSwitchModule, ButtonDirective],
+  imports: [CommonModule, FormsModule, ToggleSwitchModule, ButtonDirective, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="settings-container glass-card">
       <div class="settings-header">
         <i class="pi pi-sliders-h"></i>
-        <span>Detection Labels</span>
+        <span>Detection Settings</span>
+      </div>
+
+      <!-- Retention Period -->
+      <div class="retention-section">
+        <div class="retention-row">
+          <span class="retention-label">
+            <i class="pi pi-calendar"></i>
+            Data Retention
+          </span>
+          <p-select
+            [(ngModel)]="retentionDays"
+            [options]="retentionOptions"
+            optionLabel="label"
+            optionValue="value"
+            (ngModelChange)="onRetentionChange()"
+            [style]="{ width: '130px' }"
+          />
+        </div>
+        <span class="retention-hint">
+          Events and snapshots older than {{ retentionDays }} days are automatically deleted.
+        </span>
+      </div>
+
+      <!-- Labels Header -->
+      <div class="labels-header">
+        <span>Enabled Labels</span>
         <span class="spacer"></span>
         <span class="enabled-count">
           {{ enabledCount() }}/{{ totalCount() }}
@@ -93,6 +120,49 @@ import {
       padding: 4px 8px !important;
     }
 
+    .retention-section {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .retention-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .retention-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+
+      i {
+        color: var(--accent-yellow);
+        font-size: 16px;
+      }
+    }
+
+    .retention-hint {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .labels-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
     .label-list {
       padding: 8px 16px;
       max-height: 360px;
@@ -132,6 +202,18 @@ export class DetectionSettingsComponent implements OnInit {
   readonly enabledCount = signal(0);
   readonly totalCount = signal(0);
 
+  /** Retention period in days (bound to select) */
+  retentionDays = 7;
+
+  readonly retentionOptions = [
+    { label: '1 day', value: 1 },
+    { label: '3 days', value: 3 },
+    { label: '7 days', value: 7 },
+    { label: '14 days', value: 14 },
+    { label: '30 days', value: 30 },
+    { label: '90 days', value: 90 },
+  ];
+
   ngOnInit(): void {
     this.loading.set(true);
     this.api.getDetectionSettings().subscribe({
@@ -143,6 +225,12 @@ export class DetectionSettingsComponent implements OnInit {
   onToggle(): void {
     this._updateCounts();
     this._debouncedSave();
+  }
+
+  onRetentionChange(): void {
+    this.api.updateDetectionSettings({ retentionDays: this.retentionDays }).subscribe({
+      next: (settings) => this._applySettings(settings),
+    });
   }
 
   enableAll(): void {
@@ -164,6 +252,7 @@ export class DetectionSettingsComponent implements OnInit {
   private _applySettings(settings: DetectionSettings): void {
     this.availableLabels.set(settings.availableLabels);
     this.totalCount.set(settings.availableLabels.length);
+    this.retentionDays = settings.retentionDays;
 
     const enabledSet = new Set(settings.enabledLabels);
     this.labelStates = {};
@@ -192,7 +281,7 @@ export class DetectionSettingsComponent implements OnInit {
       .filter(([, enabled]) => enabled)
       .map(([label]) => label);
 
-    this.api.updateDetectionSettings(enabledLabels).subscribe({
+    this.api.updateDetectionSettings({ enabledLabels }).subscribe({
       next: (settings) => this._applySettings(settings),
     });
   }

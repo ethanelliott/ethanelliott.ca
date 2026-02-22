@@ -76,12 +76,14 @@ export type DetectionStats = z.infer<typeof DetectionStatsSchema>;
 export const DetectionSettingsSchema = z.object({
   availableLabels: z.array(z.string()),
   enabledLabels: z.array(z.string()),
+  retentionDays: z.number().int().min(1).max(365),
 });
 
 export type DetectionSettings = z.infer<typeof DetectionSettingsSchema>;
 
 export const UpdateDetectionSettingsSchema = z.object({
-  enabledLabels: z.array(z.string()),
+  enabledLabels: z.array(z.string()).optional(),
+  retentionDays: z.number().int().min(1).max(365).optional(),
 });
 
 export type UpdateDetectionSettings = z.infer<
