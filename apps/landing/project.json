@@ -8,7 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/apps/landing",
         "browser": "apps/landing/src/main.ts",
@@ -20,7 +22,9 @@
             "input": "apps/landing/public"
           }
         ],
-        "styles": ["apps/landing/src/styles.scss"]
+        "styles": [
+          "apps/landing/src/styles.scss"
+        ]
       },
       "configurations": {
         "production": {
@@ -78,18 +82,14 @@
       }
     },
     "container": {
-      "dependsOn": ["build"],
-      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
       "options": {
-        "commands": [
-          "TAG={args.tag} && docker build -f apps/landing/Dockerfile -t ethanelliottio/landing:$TAG . && docker push ethanelliottio/landing:$TAG"
-        ],
-        "parallel": false
-      },
-      "configurations": {
-        "latest": {
-          "tag": "latest"
-        }
+        "image": "ethanelliottio/landing",
+        "dockerfile": "apps/landing/Dockerfile",
+        "deployment": "landing-page"
       }
     }
   }

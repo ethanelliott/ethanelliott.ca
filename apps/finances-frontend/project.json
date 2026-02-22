@@ -8,7 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/apps/finances-frontend",
         "index": "apps/finances-frontend/src/index.html",
@@ -27,7 +29,9 @@
           "apps/finances-frontend/src/styles.scss"
         ],
         "stylePreprocessorOptions": {
-          "includePaths": ["apps/finances-frontend/src"]
+          "includePaths": [
+            "apps/finances-frontend/src"
+          ]
         },
         "scripts": []
       },
@@ -106,18 +110,14 @@
       }
     },
     "container": {
-      "dependsOn": ["build"],
-      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
       "options": {
-        "commands": [
-          "TAG={args.tag} && docker build -f apps/finances-frontend/Dockerfile -t ethanelliottio/finances-frontend:$TAG . && docker push ethanelliottio/finances-frontend:$TAG"
-        ],
-        "parallel": false
-      },
-      "configurations": {
-        "latest": {
-          "tag": "latest"
-        }
+        "image": "ethanelliottio/finances-frontend",
+        "dockerfile": "apps/finances-frontend/Dockerfile",
+        "deployment": "finances-frontend"
       }
     }
   }

@@ -1,0 +1,9 @@
+{
+  "executors": {
+    "container": {
+      "implementation": "./container/executor",
+      "schema": "./container/schema.json",
+      "description": "Build, push, and optionally update deployment manifests for a Docker container"
+    }
+  }
+}

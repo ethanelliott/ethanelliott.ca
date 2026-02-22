@@ -8,7 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/apps/wheel",
         "browser": "apps/wheel/src/main.ts",
@@ -20,7 +22,9 @@
             "input": "apps/wheel/public"
           }
         ],
-        "styles": ["apps/wheel/src/styles.scss"]
+        "styles": [
+          "apps/wheel/src/styles.scss"
+        ]
       },
       "configurations": {
         "production": {
@@ -78,18 +82,14 @@
       }
     },
     "container": {
-      "dependsOn": ["build"],
-      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
       "options": {
-        "commands": [
-          "TAG={args.tag} && docker build -f apps/wheel/Dockerfile -t ethanelliottio/wheel:$TAG . && docker push ethanelliottio/wheel:$TAG"
-        ],
-        "parallel": false
-      },
-      "configurations": {
-        "latest": {
-          "tag": "latest"
-        }
+        "image": "ethanelliottio/wheel",
+        "dockerfile": "apps/wheel/Dockerfile",
+        "deployment": "wheel"
       }
     }
   }

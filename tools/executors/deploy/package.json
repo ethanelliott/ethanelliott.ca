@@ -1,0 +1,6 @@
+{
+  "name": "@ethanelliott.ca/deploy",
+  "version": "1.0.0",
+  "private": true,
+  "executors": "./src/executors.json"
+}

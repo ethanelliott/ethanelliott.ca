@@ -7,16 +7,22 @@
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/recipes",
-        "format": ["esm"],
+        "format": [
+          "esm"
+        ],
         "bundle": true,
         "main": "apps/recipes/src/main.ts",
         "tsConfig": "apps/recipes/tsconfig.app.json",
-        "assets": ["apps/recipes/src/assets"],
+        "assets": [
+          "apps/recipes/src/assets"
+        ],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
@@ -46,7 +52,9 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "buildTarget": "recipes:build",
         "runBuildTargetDependencies": false
@@ -61,18 +69,14 @@
       }
     },
     "container": {
-      "dependsOn": ["build"],
-      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
       "options": {
-        "commands": [
-          "TAG={args.tag} && docker build -f apps/recipes/Dockerfile -t ethanelliottio/recipes:$TAG . && docker push ethanelliottio/recipes:$TAG"
-        ],
-        "parallel": false
-      },
-      "configurations": {
-        "latest": {
-          "tag": "latest"
-        }
+        "image": "ethanelliottio/recipes",
+        "dockerfile": "apps/recipes/Dockerfile",
+        "deployment": "recipes"
       }
     }
   }

@@ -7,16 +7,22 @@
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/ai-gateway",
-        "format": ["esm"],
+        "format": [
+          "esm"
+        ],
         "bundle": true,
         "main": "apps/ai-gateway/src/main.ts",
         "tsConfig": "apps/ai-gateway/tsconfig.app.json",
-        "assets": ["apps/ai-gateway/src/assets"],
+        "assets": [
+          "apps/ai-gateway/src/assets"
+        ],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
@@ -46,7 +52,9 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "buildTarget": "ai-gateway:build",
         "runBuildTargetDependencies": false
@@ -62,18 +70,14 @@
       }
     },
     "container": {
-      "dependsOn": ["build"],
-      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
       "options": {
-        "commands": [
-          "TAG={args.tag} && docker build -f apps/ai-gateway/Dockerfile -t ethanelliottio/ai-gateway:$TAG . && docker push ethanelliottio/ai-gateway:$TAG"
-        ],
-        "parallel": false
-      },
-      "configurations": {
-        "latest": {
-          "tag": "latest"
-        }
+        "image": "ethanelliottio/ai-gateway",
+        "dockerfile": "apps/ai-gateway/Dockerfile",
+        "deployment": "ai-gateway"
       }
     }
   }

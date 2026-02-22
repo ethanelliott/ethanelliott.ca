@@ -72,17 +72,11 @@
       "dependsOn": [
         "build"
       ],
-      "executor": "nx:run-commands",
+      "executor": "./tools/executors/deploy:container",
       "options": {
-        "commands": [
-          "TAG={args.tag} && docker build -f apps/camera/Dockerfile -t ethanelliottio/camera:$TAG . && docker push ethanelliottio/camera:$TAG"
-        ],
-        "parallel": false
-      },
-      "configurations": {
-        "latest": {
-          "tag": "latest"
-        }
+        "image": "ethanelliottio/camera",
+        "dockerfile": "apps/camera/Dockerfile",
+        "deployment": "camera"
       }
     }
   }

@@ -7,12 +7,16 @@
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/aritzia-scanner",
-        "format": ["esm"],
+        "format": [
+          "esm"
+        ],
         "bundle": true,
         "main": "apps/aritzia-scanner/src/main.ts",
         "tsConfig": "apps/aritzia-scanner/tsconfig.app.json",
@@ -56,7 +60,9 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "buildTarget": "aritzia-scanner:build",
         "runBuildTargetDependencies": false
@@ -71,18 +77,14 @@
       }
     },
     "container": {
-      "dependsOn": ["build"],
-      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
       "options": {
-        "commands": [
-          "TAG={args.tag} && docker build -f apps/aritzia-scanner/Dockerfile -t ethanelliottio/aritzia-scanner:$TAG . && docker push ethanelliottio/aritzia-scanner:$TAG"
-        ],
-        "parallel": false
-      },
-      "configurations": {
-        "latest": {
-          "tag": "latest"
-        }
+        "image": "ethanelliottio/aritzia-scanner",
+        "dockerfile": "apps/aritzia-scanner/Dockerfile",
+        "deployment": "aritzia-scanner"
       }
     }
   }

@@ -85,31 +85,16 @@ jobs:
 
       - name: Get project versions and build Docker images
         run: |
-          echo "Building and pushing Docker images with version tags..."
+          VERSION=${{ needs.check-release.outputs.version }}
+          echo "Building and pushing Docker images with version tag ${VERSION}..."
 
-          # Get list of all apps
-          APPS=$(ls -d apps/*/ | xargs -n 1 basename)
+          # Build all containers with the release version tag (also updates deployments)
+          bun nx run-many -t container --tag=${VERSION} --parallel=3
 
-          for APP in $APPS; do
-            # Check if app has a package.json
-            if [ -f "apps/$APP/package.json" ]; then
-              # Get version from package.json
-              VERSION=$(bun -e "console.log(require('./apps/$APP/package.json').version)")
-              
-              # Check if app has container target
-              if bun nx show project $APP --json 2>/dev/null | grep -q '"container"'; then
-                echo "Building $APP:$VERSION..."
-                
-                # Build and push with version tag
-                bun nx run $APP:container --tag=$VERSION
-                
-                # Also tag and push as latest
-                bun nx run $APP:container --tag=latest
-                
-                echo "✅ Successfully built and pushed $APP:$VERSION and $APP:latest"
-              fi
-            fi
-          done
+          # Also push as latest (without re-updating deployments)
+          bun nx run-many -t container --tag=latest --updateDeployment=false --parallel=3
+
+          echo "✅ All containers built and pushed with tags: ${VERSION}, latest"
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
