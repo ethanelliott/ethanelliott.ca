@@ -18,7 +18,10 @@
       "default": "."
     },
     "tag": {
-      "type": "string",
+      "type": [
+        "string",
+        "number"
+      ],
       "description": "Image tag to apply (e.g. sha-abc1234, latest)",
       "default": "latest"
     },

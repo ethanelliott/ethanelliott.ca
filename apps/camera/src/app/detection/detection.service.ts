@@ -132,8 +132,9 @@ export class DetectionService {
   private readonly _cameraService = inject(CameraService);
   private readonly _wsService = inject(WebSocketService);
   private readonly _repository = this._db.repositoryFor(DetectionEvent);
-  private readonly _settingsRepo =
-    this._db.repositoryFor(DetectionSettingsEntity);
+  private readonly _settingsRepo = this._db.repositoryFor(
+    DetectionSettingsEntity
+  );
 
   private _model: any = null;
   private _tf: any = null;

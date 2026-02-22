@@ -7,7 +7,7 @@ export interface ContainerExecutorOptions {
   image: string;
   dockerfile: string;
   context: string;
-  tag: string;
+  tag: string | number;
   deployment?: string;
   pushImage: boolean;
   updateDeployment: boolean;
@@ -21,11 +21,13 @@ export default async function containerExecutor(
     image,
     dockerfile,
     context: buildContext = '.',
-    tag = 'latest',
+    tag: rawTag = 'latest',
     deployment,
     pushImage = true,
     updateDeployment = true,
   } = options;
+
+  const tag = String(rawTag);
 
   const workspaceRoot = context.root;
   const fullImage = `${image}:${tag}`;
