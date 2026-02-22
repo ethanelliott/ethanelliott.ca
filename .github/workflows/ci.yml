@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: 'Build all container apps (not just affected)'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   actions: read
@@ -46,13 +53,21 @@ jobs:
       - name: Check for affected container projects
         id: check-affected
         run: |
-          AFFECTED=$(bun nx show projects --affected --with-target container 2>/dev/null || echo "")
-          if [ -z "$AFFECTED" ]; then
-            echo "has_affected=false" >> $GITHUB_OUTPUT
-            echo "No affected container projects — skipping Docker builds"
-          else
+          BUILD_ALL="${{ github.event.inputs.build_all }}"
+          if [ "$BUILD_ALL" = "true" ]; then
             echo "has_affected=true" >> $GITHUB_OUTPUT
-            echo "Affected container projects: $AFFECTED"
+            echo "build_all=true" >> $GITHUB_OUTPUT
+            echo "Manual trigger — building ALL container projects"
+          else
+            AFFECTED=$(bun nx show projects --affected --with-target container 2>/dev/null || echo "")
+            if [ -z "$AFFECTED" ]; then
+              echo "has_affected=false" >> $GITHUB_OUTPUT
+              echo "No affected container projects — skipping Docker builds"
+            else
+              echo "has_affected=true" >> $GITHUB_OUTPUT
+              echo "build_all=false" >> $GITHUB_OUTPUT
+              echo "Affected container projects: $AFFECTED"
+            fi
           fi
 
       - name: Docker Login
@@ -69,10 +84,16 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-          echo "🐳 Building affected containers with tag ${SHORT_SHA}..."
-          bun nx affected -t container --tag=${SHORT_SHA} --parallel=3
+          BUILD_ALL="${{ steps.check-affected.outputs.build_all }}"
+          if [ "$BUILD_ALL" = "true" ]; then
+            echo "🐳 Building ALL containers with tag ${SHORT_SHA}..."
+            bun nx run-many -t container --tag=${SHORT_SHA} --parallel=3
+          else
+            echo "🐳 Building affected containers with tag ${SHORT_SHA}..."
+            bun nx affected -t container --tag=${SHORT_SHA} --parallel=3
+          fi
 
-          echo "✅ All affected containers built and pushed"
+          echo "✅ All containers built and pushed"
 
       - name: Commit and push deployment updates
         if: steps.check-affected.outputs.has_affected == 'true'
