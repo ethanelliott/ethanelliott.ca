@@ -33,7 +33,10 @@ export class StreamService {
   );
 
   /** Path where FFmpeg writes the latest detection JPEG frame */
-  private readonly _detectionFramePath = join(this._dataDir, 'detection_frame.jpg');
+  private readonly _detectionFramePath = join(
+    this._dataDir,
+    'detection_frame.jpg'
+  );
 
   private readonly _hlsDir = process.env.HLS_DIR || join(this._dataDir, 'hls');
 
@@ -163,19 +166,13 @@ export class StreamService {
       '-i',
       rtspUrl,
 
-      // ── Output #0: HLS for the live player ──
+      // ── Output #0: HLS for the live player (video only, no audio) ──
       '-map',
       '0:v',
-      '-map',
-      '0:a',
+      '-an',
       // Video codec: passthrough (camera already outputs H.264)
       '-c:v',
       'copy',
-      // Audio codec
-      '-c:a',
-      'aac',
-      '-b:a',
-      '128k',
       // HLS output settings
       '-f',
       'hls',
@@ -316,6 +313,4 @@ export class StreamService {
       // directory may not exist yet
     }
   }
-
-
 }
