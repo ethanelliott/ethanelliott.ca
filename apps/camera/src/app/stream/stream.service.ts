@@ -165,17 +165,9 @@ export class StreamService {
       '0:v',
       '-map',
       '0:a',
-      // Video codec: transcode for HLS compatibility
-      '-c:v:0',
-      'libx264',
-      '-preset',
-      'ultrafast',
-      '-tune',
-      'zerolatency',
-      '-g',
-      '30', // keyframe interval
-      '-sc_threshold',
-      '0',
+      // Video codec: passthrough (camera already outputs H.264)
+      '-c:v',
+      'copy',
       // Audio codec
       '-c:a',
       'aac',
@@ -203,7 +195,7 @@ export class StreamService {
       `fps=${this._detectionFps}`,
       '-f',
       'image2pipe',
-      '-c:v:1',
+      '-c:v',
       'mjpeg',
       '-q:v',
       '5',
