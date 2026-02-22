@@ -1,19 +1,5 @@
-@use '@angular/material' as mat;
-
-// ── Angular Material Theme ──
-html {
-  @include mat.theme(
-    (
-      color: (
-        theme-type: dark,
-        primary: mat.$blue-palette,
-        tertiary: mat.$cyan-palette,
-      ),
-      typography: Inter,
-      density: 0,
-    )
-  );
-}
+// ── PrimeNG & PrimeIcons ──
+@import 'primeicons/primeicons.css';
 
 // ── Global Styles ──
 *,

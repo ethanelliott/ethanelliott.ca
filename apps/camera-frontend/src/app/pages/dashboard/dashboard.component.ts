@@ -6,9 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
+
 import { LivePlayerComponent } from '../../components/live-player/live-player.component';
 import { EventFeedComponent } from '../../components/event-feed/event-feed.component';
 import {
@@ -21,21 +19,14 @@ import { EventService } from '../../services/event.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatIconModule,
-    MatCardModule,
-    MatButtonModule,
-    LivePlayerComponent,
-    EventFeedComponent,
-  ],
+  imports: [CommonModule, LivePlayerComponent, EventFeedComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
       <!-- Stats Bar -->
       <div class="stats-row">
         <div class="stat-card glass-card">
-          <mat-icon class="stat-icon camera-icon">videocam</mat-icon>
+          <i class="pi pi-video stat-icon camera-icon"></i>
           <div class="stat-content">
             <span class="stat-label">Camera</span>
             <span class="stat-value">
@@ -51,7 +42,7 @@ import { EventService } from '../../services/event.service';
         </div>
 
         <div class="stat-card glass-card">
-          <mat-icon class="stat-icon ws-icon">sync_alt</mat-icon>
+          <i class="pi pi-sync stat-icon ws-icon"></i>
           <div class="stat-content">
             <span class="stat-label">WebSocket</span>
             <span class="stat-value">
@@ -65,7 +56,7 @@ import { EventService } from '../../services/event.service';
         </div>
 
         <div class="stat-card glass-card">
-          <mat-icon class="stat-icon detect-icon">sensors</mat-icon>
+          <i class="pi pi-wave-pulse stat-icon detect-icon"></i>
           <div class="stat-content">
             <span class="stat-label">Today&rsquo;s Detections</span>
             <span class="stat-value">
@@ -75,7 +66,7 @@ import { EventService } from '../../services/event.service';
         </div>
 
         <div class="stat-card glass-card">
-          <mat-icon class="stat-icon total-icon">analytics</mat-icon>
+          <i class="pi pi-chart-bar stat-icon total-icon"></i>
           <div class="stat-content">
             <span class="stat-label">Total Events</span>
             <span class="stat-value">

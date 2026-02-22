@@ -9,19 +9,18 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
+import { ButtonDirective } from 'primeng/button';
 import Hls from 'hls.js';
 
 @Component({
   selector: 'app-live-player',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
+  imports: [CommonModule, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="player-container glass-card">
       <div class="player-header">
-        <mat-icon>live_tv</mat-icon>
+        <i class="pi pi-desktop"></i>
         <span>Live Stream</span>
         <span class="spacer"></span>
         @if (isPlaying()) {
@@ -42,17 +41,20 @@ import Hls from 'hls.js';
 
         @if (!isPlaying() && !error()) {
         <div class="overlay">
-          <mat-icon class="overlay-icon">videocam_off</mat-icon>
+          <i class="pi pi-video overlay-icon"></i>
           <p>Connecting to stream...</p>
         </div>
         } @if (error()) {
         <div class="overlay error-overlay">
-          <mat-icon class="overlay-icon">error_outline</mat-icon>
+          <i class="pi pi-exclamation-circle overlay-icon"></i>
           <p>{{ error() }}</p>
-          <button mat-stroked-button (click)="retry()">
-            <mat-icon>refresh</mat-icon>
-            Retry
-          </button>
+          <button
+            pButton
+            [outlined]="true"
+            icon="pi pi-refresh"
+            label="Retry"
+            (click)="retry()"
+          ></button>
         </div>
         }
       </div>
@@ -71,11 +73,9 @@ import Hls from 'hls.js';
       border-bottom: 1px solid var(--border-color);
       font-weight: 500;
 
-      mat-icon {
+      i {
         color: var(--accent-blue);
         font-size: 20px;
-        width: 20px;
-        height: 20px;
       }
     }
 
@@ -110,8 +110,6 @@ import Hls from 'hls.js';
 
     .overlay-icon {
       font-size: 48px;
-      width: 48px;
-      height: 48px;
       opacity: 0.6;
     }
 

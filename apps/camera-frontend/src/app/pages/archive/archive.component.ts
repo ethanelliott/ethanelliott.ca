@@ -7,11 +7,9 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { Select } from 'primeng/select';
+import { Paginator, PaginatorState } from 'primeng/paginator';
+import { ButtonDirective } from 'primeng/button';
 import { SnapshotGalleryComponent } from '../../components/snapshot-gallery/snapshot-gallery.component';
 import {
   CameraApiService,
@@ -24,11 +22,9 @@ import {
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatPaginatorModule,
+    Select,
+    Paginator,
+    ButtonDirective,
     SnapshotGalleryComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,27 +33,28 @@ import {
       <div class="page-header">
         <h1 class="page-title">Snapshot Archive</h1>
         <span class="spacer"></span>
-        <button mat-stroked-button (click)="loadSnapshots()">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
+        <button
+          pButton
+          [outlined]="true"
+          icon="pi pi-refresh"
+          label="Refresh"
+          (click)="loadSnapshots()"
+        ></button>
       </div>
 
       <!-- Filters -->
       <div class="filters glass-card">
-        <mat-form-field appearance="outline">
-          <mat-label>Filter by Label</mat-label>
-          <mat-select
+        <div class="filter-field">
+          <label>Filter by Label</label>
+          <p-select
             [(ngModel)]="labelFilter"
-            (selectionChange)="loadSnapshots()"
-          >
-            <mat-option value="">All</mat-option>
-            <mat-option value="person">Person</mat-option>
-            <mat-option value="car">Car</mat-option>
-            <mat-option value="cat">Cat</mat-option>
-            <mat-option value="dog">Dog</mat-option>
-          </mat-select>
-        </mat-form-field>
+            [options]="labelOptions"
+            placeholder="All"
+            (onChange)="loadSnapshots()"
+            [showClear]="true"
+            styleClass="filter-select"
+          />
+        </div>
 
         <span class="total-count">
           {{ totalSnapshots() }} snapshots total
@@ -66,12 +63,12 @@ import {
 
       <app-snapshot-gallery [snapshots]="snapshots" />
 
-      <mat-paginator
-        [length]="totalSnapshots()"
-        [pageSize]="pageSize"
-        [pageSizeOptions]="[24, 48, 96]"
-        (page)="onPageChange($event)"
-        showFirstLastButtons
+      <p-paginator
+        [rows]="pageSize"
+        [totalRecords]="totalSnapshots()"
+        [rowsPerPageOptions]="[24, 48, 96]"
+        (onPageChange)="onPageChange($event)"
+        [showFirstLastIcon]="true"
       />
     </div>
   `,
@@ -98,24 +95,30 @@ import {
 
     .filters {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       gap: 16px;
       padding: 16px;
       margin-bottom: 20px;
+    }
 
-      mat-form-field {
-        width: 180px;
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      label {
+        font-size: 12px;
+        color: var(--text-muted);
       }
+    }
+
+    :host ::ng-deep .filter-select {
+      width: 180px;
     }
 
     .total-count {
       color: var(--text-muted);
       font-size: 13px;
-    }
-
-    mat-paginator {
-      margin-top: 20px;
-      background: transparent !important;
     }
   `,
 })
@@ -125,9 +128,16 @@ export class ArchiveComponent implements OnInit {
   readonly snapshots = signal<SnapshotInfo[]>([]);
   readonly totalSnapshots = signal(0);
 
-  labelFilter = '';
+  labelFilter: string | null = null;
   pageSize = 48;
   pageIndex = 0;
+
+  readonly labelOptions = [
+    { label: 'Person', value: 'person' },
+    { label: 'Car', value: 'car' },
+    { label: 'Cat', value: 'cat' },
+    { label: 'Dog', value: 'dog' },
+  ];
 
   ngOnInit(): void {
     this.loadSnapshots();
@@ -149,9 +159,9 @@ export class ArchiveComponent implements OnInit {
       });
   }
 
-  onPageChange(event: PageEvent): void {
-    this.pageSize = event.pageSize;
-    this.pageIndex = event.pageIndex;
+  onPageChange(event: PaginatorState): void {
+    this.pageSize = event.rows ?? this.pageSize;
+    this.pageIndex = event.page ?? 0;
     this.loadSnapshots();
   }
 }

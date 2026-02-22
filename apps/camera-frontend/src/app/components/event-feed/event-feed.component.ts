@@ -6,19 +6,17 @@ import {
   computed,
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
 import { DetectionEvent } from '../../services/camera-api.service';
 
 @Component({
   selector: 'app-event-feed',
   standalone: true,
-  imports: [CommonModule, DatePipe, MatIconModule, MatListModule],
+  imports: [CommonModule, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="feed-container glass-card">
       <div class="feed-header">
-        <mat-icon>notifications_active</mat-icon>
+        <i class="pi pi-bell"></i>
         <span>Detection Feed</span>
         <span class="spacer"></span>
         <span class="event-count">{{ events().length }} events</span>
@@ -28,7 +26,7 @@ import { DetectionEvent } from '../../services/camera-api.service';
         @for (event of events(); track event.id) {
         <div class="event-item">
           <div class="event-icon">
-            <mat-icon>{{ getIcon(event.label) }}</mat-icon>
+            <i [class]="'pi ' + getIcon(event.label)"></i>
           </div>
           <div class="event-details">
             <div class="event-label">
@@ -42,12 +40,12 @@ import { DetectionEvent } from '../../services/camera-api.service';
             </div>
           </div>
           @if (event.snapshotFilename) {
-          <mat-icon class="snapshot-indicator">photo_camera</mat-icon>
+          <i class="pi pi-camera snapshot-indicator"></i>
           }
         </div>
         } @empty {
         <div class="empty-state">
-          <mat-icon>sensors_off</mat-icon>
+          <i class="pi pi-ban empty-icon"></i>
           <p>No detections yet</p>
         </div>
         }
@@ -69,11 +67,9 @@ import { DetectionEvent } from '../../services/camera-api.service';
       border-bottom: 1px solid var(--border-color);
       font-weight: 500;
 
-      mat-icon {
+      i {
         color: var(--accent-yellow);
         font-size: 20px;
-        width: 20px;
-        height: 20px;
       }
     }
 
@@ -115,11 +111,9 @@ import { DetectionEvent } from '../../services/camera-api.service';
       border-radius: 50%;
       background: rgba(59, 130, 246, 0.15);
 
-      mat-icon {
+      i {
         color: var(--accent-blue);
         font-size: 18px;
-        width: 18px;
-        height: 18px;
       }
     }
 
@@ -155,8 +149,6 @@ import { DetectionEvent } from '../../services/camera-api.service';
     .snapshot-indicator {
       color: var(--text-muted);
       font-size: 16px;
-      width: 16px;
-      height: 16px;
     }
 
     .empty-state {
@@ -167,13 +159,11 @@ import { DetectionEvent } from '../../services/camera-api.service';
       gap: 8px;
       padding: 48px 16px;
       color: var(--text-muted);
+    }
 
-      mat-icon {
-        font-size: 40px;
-        width: 40px;
-        height: 40px;
-        opacity: 0.5;
-      }
+    .empty-icon {
+      font-size: 40px;
+      opacity: 0.5;
     }
   `,
 })
@@ -182,16 +172,16 @@ export class EventFeedComponent {
 
   getIcon(label: string): string {
     const iconMap: Record<string, string> = {
-      person: 'person',
-      car: 'directions_car',
-      truck: 'local_shipping',
-      bicycle: 'pedal_bike',
-      motorcycle: 'two_wheeler',
-      bus: 'directions_bus',
-      cat: 'pets',
-      dog: 'pets',
-      bird: 'flutter_dash',
+      person: 'pi-user',
+      car: 'pi-car',
+      truck: 'pi-truck',
+      bicycle: 'pi-wrench',
+      motorcycle: 'pi-wrench',
+      bus: 'pi-truck',
+      cat: 'pi-heart',
+      dog: 'pi-heart',
+      bird: 'pi-sun',
     };
-    return iconMap[label] || 'visibility';
+    return iconMap[label] || 'pi-eye';
   }
 }

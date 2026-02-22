@@ -1,10 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterModule, RouterLink, RouterLinkActive } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatListModule } from '@angular/material/list';
+import { Toolbar } from 'primeng/toolbar';
+import { ButtonDirective } from 'primeng/button';
 
 @Component({
   selector: 'app-main-layout',
@@ -13,34 +10,49 @@ import { MatListModule } from '@angular/material/list';
     RouterModule,
     RouterLink,
     RouterLinkActive,
-    MatToolbarModule,
-    MatButtonModule,
-    MatIconModule,
-    MatSidenavModule,
-    MatListModule,
+    Toolbar,
+    ButtonDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="layout">
-      <mat-toolbar class="toolbar">
-        <mat-icon class="toolbar-icon">videocam</mat-icon>
-        <span class="toolbar-title">Camera Dashboard</span>
-        <span class="spacer"></span>
-        <nav class="nav-links">
-          <a mat-button routerLink="/dashboard" routerLinkActive="active-link">
-            <mat-icon>dashboard</mat-icon>
-            Dashboard
-          </a>
-          <a mat-button routerLink="/events" routerLinkActive="active-link">
-            <mat-icon>notifications</mat-icon>
-            Events
-          </a>
-          <a mat-button routerLink="/archive" routerLinkActive="active-link">
-            <mat-icon>photo_library</mat-icon>
-            Archive
-          </a>
-        </nav>
-      </mat-toolbar>
+      <p-toolbar styleClass="toolbar">
+        <ng-template #start>
+          <i class="pi pi-video toolbar-icon"></i>
+          <span class="toolbar-title">Camera Dashboard</span>
+        </ng-template>
+        <ng-template #end>
+          <nav class="nav-links">
+            <a
+              pButton
+              [text]="true"
+              routerLink="/dashboard"
+              routerLinkActive="active-link"
+            >
+              <i class="pi pi-objects-column"></i>
+              Dashboard
+            </a>
+            <a
+              pButton
+              [text]="true"
+              routerLink="/events"
+              routerLinkActive="active-link"
+            >
+              <i class="pi pi-bell"></i>
+              Events
+            </a>
+            <a
+              pButton
+              [text]="true"
+              routerLink="/archive"
+              routerLinkActive="active-link"
+            >
+              <i class="pi pi-images"></i>
+              Archive
+            </a>
+          </nav>
+        </ng-template>
+      </p-toolbar>
 
       <main class="content">
         <router-outlet />
@@ -54,25 +66,24 @@ import { MatListModule } from '@angular/material/list';
       height: 100vh;
     }
 
-    .toolbar {
+    :host ::ng-deep .toolbar {
       background: var(--bg-secondary) !important;
       border-bottom: 1px solid var(--border-color);
+      border-radius: 0;
       color: var(--text-primary) !important;
       z-index: 100;
+      padding: 0.5rem 1rem;
     }
 
     .toolbar-icon {
       margin-right: 8px;
       color: var(--accent-blue);
+      font-size: 1.25rem;
     }
 
     .toolbar-title {
       font-weight: 600;
       font-size: 18px;
-    }
-
-    .spacer {
-      flex: 1;
     }
 
     .nav-links {
@@ -82,18 +93,20 @@ import { MatListModule } from '@angular/material/list';
       a {
         color: var(--text-secondary) !important;
         font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
 
-        mat-icon {
-          margin-right: 4px;
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
+        i {
+          font-size: 16px;
         }
       }
 
       .active-link {
         color: var(--accent-blue) !important;
         background: rgba(59, 130, 246, 0.1);
+        border-radius: var(--radius-sm);
       }
     }
 

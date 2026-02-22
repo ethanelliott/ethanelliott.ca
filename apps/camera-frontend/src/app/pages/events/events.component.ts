@@ -7,12 +7,9 @@ import {
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { Select } from 'primeng/select';
+import { Paginator, PaginatorState } from 'primeng/paginator';
+import { ButtonDirective } from 'primeng/button';
 import {
   CameraApiService,
   DetectionEvent,
@@ -25,12 +22,9 @@ import {
     CommonModule,
     DatePipe,
     FormsModule,
-    MatIconModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatPaginatorModule,
+    Select,
+    Paginator,
+    ButtonDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -39,39 +33,35 @@ import {
 
       <!-- Filters -->
       <div class="filters glass-card">
-        <mat-form-field appearance="outline">
-          <mat-label>Label</mat-label>
-          <mat-select
+        <div class="filter-field">
+          <label>Label</label>
+          <p-select
             [(ngModel)]="labelFilter"
-            (selectionChange)="loadEvents()"
-          >
-            <mat-option value="">All</mat-option>
-            <mat-option value="person">Person</mat-option>
-            <mat-option value="car">Car</mat-option>
-            <mat-option value="truck">Truck</mat-option>
-            <mat-option value="bicycle">Bicycle</mat-option>
-            <mat-option value="cat">Cat</mat-option>
-            <mat-option value="dog">Dog</mat-option>
-          </mat-select>
-        </mat-form-field>
+            [options]="labelOptions"
+            placeholder="All"
+            (onChange)="loadEvents()"
+            [showClear]="true"
+            styleClass="filter-select"
+          />
+        </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Min Confidence</mat-label>
-          <mat-select
+        <div class="filter-field">
+          <label>Min Confidence</label>
+          <p-select
             [(ngModel)]="minConfidenceFilter"
-            (selectionChange)="loadEvents()"
-          >
-            <mat-option [value]="0">Any</mat-option>
-            <mat-option [value]="0.5">50%+</mat-option>
-            <mat-option [value]="0.7">70%+</mat-option>
-            <mat-option [value]="0.9">90%+</mat-option>
-          </mat-select>
-        </mat-form-field>
+            [options]="confidenceOptions"
+            (onChange)="loadEvents()"
+            styleClass="filter-select"
+          />
+        </div>
 
-        <button mat-stroked-button (click)="loadEvents()">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
+        <button
+          pButton
+          [outlined]="true"
+          icon="pi pi-refresh"
+          label="Refresh"
+          (click)="loadEvents()"
+        ></button>
       </div>
 
       <!-- Events Table -->
@@ -113,26 +103,26 @@ import {
               target="_blank"
               class="snapshot-link"
             >
-              <mat-icon>photo</mat-icon>
+              <i class="pi pi-image"></i>
             </a>
             } @else {
-            <mat-icon class="no-snapshot">remove</mat-icon>
+            <i class="pi pi-minus no-snapshot"></i>
             }
           </span>
         </div>
         } @empty {
         <div class="empty-row">
-          <mat-icon>search_off</mat-icon>
+          <i class="pi pi-search empty-icon"></i>
           <p>No events found</p>
         </div>
         }
 
-        <mat-paginator
-          [length]="totalEvents()"
-          [pageSize]="pageSize"
-          [pageSizeOptions]="[25, 50, 100]"
-          (page)="onPageChange($event)"
-          showFirstLastButtons
+        <p-paginator
+          [rows]="pageSize"
+          [totalRecords]="totalEvents()"
+          [rowsPerPageOptions]="[25, 50, 100]"
+          (onPageChange)="onPageChange($event)"
+          [showFirstLastIcon]="true"
         />
       </div>
     </div>
@@ -151,14 +141,25 @@ import {
 
     .filters {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       gap: 16px;
       padding: 16px;
       margin-bottom: 20px;
+    }
 
-      mat-form-field {
-        width: 180px;
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      label {
+        font-size: 12px;
+        color: var(--text-muted);
       }
+    }
+
+    :host ::ng-deep .filter-select {
+      width: 180px;
     }
 
     .events-table {
@@ -226,18 +227,12 @@ import {
 
     .snapshot-link {
       color: var(--accent-blue);
-      mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-      }
+      i { font-size: 18px; }
     }
 
     .no-snapshot {
       color: var(--text-muted);
       font-size: 18px;
-      width: 18px;
-      height: 18px;
     }
 
     .empty-row {
@@ -247,13 +242,11 @@ import {
       gap: 8px;
       padding: 48px;
       color: var(--text-muted);
+    }
 
-      mat-icon {
-        font-size: 40px;
-        width: 40px;
-        height: 40px;
-        opacity: 0.4;
-      }
+    .empty-icon {
+      font-size: 40px;
+      opacity: 0.4;
     }
   `,
 })
@@ -263,10 +256,26 @@ export class EventsComponent implements OnInit {
   readonly events = signal<DetectionEvent[]>([]);
   readonly totalEvents = signal(0);
 
-  labelFilter = '';
+  labelFilter: string | null = null;
   minConfidenceFilter = 0;
   pageSize = 50;
   pageIndex = 0;
+
+  readonly labelOptions = [
+    { label: 'Person', value: 'person' },
+    { label: 'Car', value: 'car' },
+    { label: 'Truck', value: 'truck' },
+    { label: 'Bicycle', value: 'bicycle' },
+    { label: 'Cat', value: 'cat' },
+    { label: 'Dog', value: 'dog' },
+  ];
+
+  readonly confidenceOptions = [
+    { label: 'Any', value: 0 },
+    { label: '50%+', value: 0.5 },
+    { label: '70%+', value: 0.7 },
+    { label: '90%+', value: 0.9 },
+  ];
 
   ngOnInit(): void {
     this.loadEvents();
@@ -289,9 +298,9 @@ export class EventsComponent implements OnInit {
       });
   }
 
-  onPageChange(event: PageEvent): void {
-    this.pageSize = event.pageSize;
-    this.pageIndex = event.pageIndex;
+  onPageChange(event: PaginatorState): void {
+    this.pageSize = event.rows ?? this.pageSize;
+    this.pageIndex = event.page ?? 0;
     this.loadEvents();
   }
 
