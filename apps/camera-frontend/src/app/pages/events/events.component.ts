@@ -42,6 +42,7 @@ import {
             (onChange)="loadEvents()"
             [showClear]="true"
             styleClass="filter-select"
+            appendTo="body"
           />
         </div>
 
@@ -52,6 +53,7 @@ import {
             [options]="confidenceOptions"
             (onChange)="loadEvents()"
             styleClass="filter-select"
+            appendTo="body"
           />
         </div>
 
@@ -163,7 +165,7 @@ import {
     }
 
     .events-table {
-      overflow: hidden;
+      overflow: visible;
     }
 
     .table-header {

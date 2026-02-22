@@ -53,6 +53,7 @@ import {
             (onChange)="loadSnapshots()"
             [showClear]="true"
             styleClass="filter-select"
+            appendTo="body"
           />
         </div>
 
