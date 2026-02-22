@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/finances-frontend
-  tag: s-6cead0b
+  tag: s-9e978c1
   pullPolicy: Always
 
 service:
