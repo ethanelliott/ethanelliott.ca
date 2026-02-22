@@ -44,19 +44,26 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Determine build mode
+        id: mode
+        run: |
+          if [ "${{ github.event.inputs.build_all }}" = "true" ]; then
+            echo "cmd=run-many --all" >> $GITHUB_OUTPUT
+          else
+            echo "cmd=affected" >> $GITHUB_OUTPUT
+          fi
+
       - name: Lint
-        run: bun nx affected -t lint --parallel=3
+        run: bun nx ${{ steps.mode.outputs.cmd }} -t lint --parallel=3
 
       - name: Build
-        run: bun nx affected -t build --parallel=3
+        run: bun nx ${{ steps.mode.outputs.cmd }} -t build --parallel=3
 
       - name: Check for affected container projects
         id: check-affected
         run: |
-          BUILD_ALL="${{ github.event.inputs.build_all }}"
-          if [ "$BUILD_ALL" = "true" ]; then
+          if [ "${{ steps.mode.outputs.cmd }}" = "run-many --all" ]; then
             echo "has_affected=true" >> $GITHUB_OUTPUT
-            echo "build_all=true" >> $GITHUB_OUTPUT
             echo "Manual trigger — building ALL container projects"
           else
             AFFECTED=$(bun nx show projects --affected --with-target container 2>/dev/null || echo "")
@@ -65,7 +72,6 @@ jobs:
               echo "No affected container projects — skipping Docker builds"
             else
               echo "has_affected=true" >> $GITHUB_OUTPUT
-              echo "build_all=false" >> $GITHUB_OUTPUT
               echo "Affected container projects: $AFFECTED"
             fi
           fi
@@ -84,14 +90,8 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-          BUILD_ALL="${{ steps.check-affected.outputs.build_all }}"
-          if [ "$BUILD_ALL" = "true" ]; then
-            echo "🐳 Building ALL containers with tag ${SHORT_SHA}..."
-            bun nx run-many -t container --tag=${SHORT_SHA} --parallel=3
-          else
-            echo "🐳 Building affected containers with tag ${SHORT_SHA}..."
-            bun nx affected -t container --tag=${SHORT_SHA} --parallel=3
-          fi
+          echo "🐳 Building containers with tag ${SHORT_SHA}..."
+          bun nx ${{ steps.mode.outputs.cmd }} -t container --tag=${SHORT_SHA} --parallel=3
 
           echo "✅ All containers built and pushed"
 
