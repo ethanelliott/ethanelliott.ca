@@ -7,6 +7,90 @@ import { DetectionEvent } from './detection.entity';
 import { CameraService } from '../camera/camera.service';
 import { WebSocketService } from '../websocket/websocket.service';
 
+/** All 80 COCO-SSD labels */
+export const COCO_SSD_LABELS = [
+  'person',
+  'bicycle',
+  'car',
+  'motorcycle',
+  'airplane',
+  'bus',
+  'train',
+  'truck',
+  'boat',
+  'traffic light',
+  'fire hydrant',
+  'stop sign',
+  'parking meter',
+  'bench',
+  'bird',
+  'cat',
+  'dog',
+  'horse',
+  'sheep',
+  'cow',
+  'elephant',
+  'bear',
+  'zebra',
+  'giraffe',
+  'backpack',
+  'umbrella',
+  'handbag',
+  'tie',
+  'suitcase',
+  'frisbee',
+  'skis',
+  'snowboard',
+  'sports ball',
+  'kite',
+  'baseball bat',
+  'baseball glove',
+  'skateboard',
+  'surfboard',
+  'tennis racket',
+  'bottle',
+  'wine glass',
+  'cup',
+  'fork',
+  'knife',
+  'spoon',
+  'bowl',
+  'banana',
+  'apple',
+  'sandwich',
+  'orange',
+  'broccoli',
+  'carrot',
+  'hot dog',
+  'pizza',
+  'donut',
+  'cake',
+  'chair',
+  'couch',
+  'potted plant',
+  'bed',
+  'dining table',
+  'toilet',
+  'tv',
+  'laptop',
+  'mouse',
+  'remote',
+  'keyboard',
+  'cell phone',
+  'microwave',
+  'oven',
+  'toaster',
+  'sink',
+  'refrigerator',
+  'book',
+  'clock',
+  'vase',
+  'scissors',
+  'teddy bear',
+  'hair drier',
+  'toothbrush',
+] as const;
+
 /**
  * DetectionService runs periodic frame extraction and object detection
  * using TensorFlow.js with COCO-SSD model.
@@ -21,6 +105,9 @@ export class DetectionService {
   private _tf: any = null;
   private _isRunning = false;
   private _detectionTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Labels currently enabled for detection reporting */
+  private _enabledLabels: Set<string> = new Set(COCO_SSD_LABELS);
 
   private readonly _threshold = parseFloat(
     process.env.DETECTION_THRESHOLD || '0.6'
@@ -181,6 +268,31 @@ export class DetectionService {
   }
 
   /**
+   * Get available labels and which ones are currently enabled
+   */
+  getSettings(): {
+    availableLabels: string[];
+    enabledLabels: string[];
+  } {
+    return {
+      availableLabels: [...COCO_SSD_LABELS],
+      enabledLabels: [...this._enabledLabels],
+    };
+  }
+
+  /**
+   * Update which labels are enabled for detection
+   */
+  setEnabledLabels(labels: string[]): void {
+    this._enabledLabels = new Set(
+      labels.filter((l) => (COCO_SSD_LABELS as readonly string[]).includes(l))
+    );
+    console.log(
+      `🏷️ Enabled labels updated: ${this._enabledLabels.size} of ${COCO_SSD_LABELS.length}`
+    );
+  }
+
+  /**
    * Load TF.js and COCO-SSD model
    */
   private async _loadModel(): Promise<void> {
@@ -242,7 +354,10 @@ export class DetectionService {
 
       // Process predictions
       for (const prediction of predictions) {
-        if (prediction.score >= this._threshold) {
+        if (
+          prediction.score >= this._threshold &&
+          this._enabledLabels.has(prediction.class)
+        ) {
           await this._handleDetection(
             prediction,
             frameBuffer,

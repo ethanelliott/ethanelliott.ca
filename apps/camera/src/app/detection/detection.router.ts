@@ -6,6 +6,8 @@ import { DetectionService } from './detection.service';
 import {
   DetectionEventOutSchema,
   DetectionStatsSchema,
+  DetectionSettingsSchema,
+  UpdateDetectionSettingsSchema,
 } from './detection.entity';
 
 export async function DetectionRouter(fastify: FastifyInstance) {
@@ -77,6 +79,38 @@ export async function DetectionRouter(fastify: FastifyInstance) {
         return reply.code(404).send({ error: 'Detection event not found' });
       }
       return event;
+    }
+  );
+
+  // Get detection label settings
+  fastify.withTypeProvider<ZodTypeProvider>().get(
+    '/settings',
+    {
+      schema: {
+        response: {
+          200: DetectionSettingsSchema,
+        },
+      },
+    },
+    async () => {
+      return detectionService.getSettings();
+    }
+  );
+
+  // Update detection label settings
+  fastify.withTypeProvider<ZodTypeProvider>().put(
+    '/settings',
+    {
+      schema: {
+        body: UpdateDetectionSettingsSchema,
+        response: {
+          200: DetectionSettingsSchema,
+        },
+      },
+    },
+    async (request) => {
+      detectionService.setEnabledLabels(request.body.enabledLabels);
+      return detectionService.getSettings();
     }
   );
 }

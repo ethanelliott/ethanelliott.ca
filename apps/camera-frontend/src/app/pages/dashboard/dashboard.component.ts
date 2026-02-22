@@ -9,6 +9,7 @@ import { CommonModule } from '@angular/common';
 
 import { LivePlayerComponent } from '../../components/live-player/live-player.component';
 import { EventFeedComponent } from '../../components/event-feed/event-feed.component';
+import { DetectionSettingsComponent } from '../../components/detection-settings/detection-settings.component';
 import {
   CameraApiService,
   CameraInfo,
@@ -19,7 +20,7 @@ import { EventService } from '../../services/event.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, LivePlayerComponent, EventFeedComponent],
+  imports: [CommonModule, LivePlayerComponent, EventFeedComponent, DetectionSettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
@@ -102,6 +103,7 @@ import { EventService } from '../../services/event.service';
 
         <div class="feed-column">
           <app-event-feed [events]="eventService.recentEvents" />
+          <app-detection-settings />
         </div>
       </div>
     </div>
@@ -168,6 +170,7 @@ import { EventService } from '../../services/event.service';
     .feed-column {
       display: flex;
       flex-direction: column;
+      gap: 16px;
       min-height: 500px;
     }
 

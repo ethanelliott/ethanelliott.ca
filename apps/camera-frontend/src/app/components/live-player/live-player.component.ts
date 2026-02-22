@@ -6,11 +6,15 @@ import {
   Input,
   OnDestroy,
   ViewChild,
+  inject,
   signal,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonDirective } from 'primeng/button';
 import Hls from 'hls.js';
+import { EventService } from '../../services/event.service';
+import { DetectionEvent } from '../../services/camera-api.service';
 
 @Component({
   selector: 'app-live-player',
@@ -23,6 +27,13 @@ import Hls from 'hls.js';
         <i class="pi pi-desktop"></i>
         <span>Live Stream</span>
         <span class="spacer"></span>
+        <button
+          pButton
+          [text]="true"
+          [icon]="showBoxes() ? 'pi pi-eye' : 'pi pi-eye-slash'"
+          (click)="showBoxes.set(!showBoxes())"
+          class="toggle-boxes"
+        ></button>
         @if (isPlaying()) {
         <span class="badge badge-online">● LIVE</span>
         } @else {
@@ -30,7 +41,7 @@ import Hls from 'hls.js';
         }
       </div>
 
-      <div class="video-wrapper">
+      <div class="video-wrapper" #videoWrapper>
         <video
           #videoPlayer
           autoplay
@@ -39,7 +50,39 @@ import Hls from 'hls.js';
           class="video-element"
         ></video>
 
-        @if (!isPlaying() && !error()) {
+        <!-- Bounding box overlay -->
+        @if (showBoxes() && isPlaying()) {
+        <svg class="bbox-overlay" viewBox="0 0 1 1" preserveAspectRatio="none">
+          @for (det of activeDetections(); track det.id) {
+          <rect
+            [attr.x]="det.bbox.x / det.frameWidth"
+            [attr.y]="det.bbox.y / det.frameHeight"
+            [attr.width]="det.bbox.width / det.frameWidth"
+            [attr.height]="det.bbox.height / det.frameHeight"
+            [attr.stroke]="getLabelColor(det.label)"
+            fill="none"
+            stroke-width="0.003"
+          />
+          <rect
+            [attr.x]="det.bbox.x / det.frameWidth"
+            [attr.y]="det.bbox.y / det.frameHeight - 0.028"
+            [attr.width]="0.15"
+            [attr.height]="0.028"
+            [attr.fill]="getLabelColor(det.label)"
+          />
+          <text
+            [attr.x]="det.bbox.x / det.frameWidth + 0.004"
+            [attr.y]="det.bbox.y / det.frameHeight - 0.006"
+            fill="white"
+            font-size="0.02"
+            font-family="Inter, sans-serif"
+            font-weight="600"
+          >
+            {{ det.label }} {{ (det.confidence * 100).toFixed(0) }}%
+          </text>
+          }
+        </svg>
+        } @if (!isPlaying() && !error()) {
         <div class="overlay">
           <i class="pi pi-video overlay-icon"></i>
           <p>Connecting to stream...</p>
@@ -83,6 +126,11 @@ import Hls from 'hls.js';
       flex: 1;
     }
 
+    .toggle-boxes {
+      font-size: 14px !important;
+      padding: 4px 8px !important;
+    }
+
     .video-wrapper {
       position: relative;
       width: 100%;
@@ -94,6 +142,15 @@ import Hls from 'hls.js';
       width: 100%;
       height: 100%;
       object-fit: contain;
+    }
+
+    .bbox-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
     }
 
     .overlay {
@@ -122,10 +179,50 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
   @Input() hlsUrl = '';
   @ViewChild('videoPlayer') videoRef!: ElementRef<HTMLVideoElement>;
 
+  private readonly eventService = inject(EventService);
+
   readonly isPlaying = signal(false);
   readonly error = signal<string | null>(null);
+  readonly showBoxes = signal(true);
+
+  /** Show detections from the last N seconds */
+  private readonly DETECTION_TTL_MS = 4000;
+
+  /** Active detections: most recent per-label within TTL */
+  readonly activeDetections = computed(() => {
+    const events = this.eventService.recentEvents();
+    const now = Date.now();
+    const seen = new Map<string, DetectionEvent>();
+
+    for (const evt of events) {
+      const age = now - new Date(evt.timestamp).getTime();
+      if (age > this.DETECTION_TTL_MS) break; // events are newest-first
+      // Keep only the latest detection per label
+      if (!seen.has(evt.label)) {
+        seen.set(evt.label, evt);
+      }
+    }
+    return [...seen.values()];
+  });
 
   private hls: Hls | null = null;
+
+  /** Color map for common detection labels */
+  private readonly labelColors: Record<string, string> = {
+    person: '#3b82f6',
+    car: '#22c55e',
+    truck: '#eab308',
+    bicycle: '#a855f7',
+    motorcycle: '#f97316',
+    bus: '#06b6d4',
+    cat: '#ec4899',
+    dog: '#f43f5e',
+    bird: '#14b8a6',
+  };
+
+  getLabelColor(label: string): string {
+    return this.labelColors[label] || '#3b82f6';
+  }
 
   ngAfterViewInit(): void {
     this.initPlayer();

@@ -34,6 +34,11 @@ export interface DetectionStats {
   averageConfidence: number;
 }
 
+export interface DetectionSettings {
+  availableLabels: string[];
+  enabledLabels: string[];
+}
+
 export interface SnapshotInfo {
   filename: string;
   label: string;
@@ -113,6 +118,21 @@ export class CameraApiService {
 
   getDetectionStats(): Observable<DetectionStats> {
     return this.http.get<DetectionStats>(`${this.baseUrl}/detections/stats`);
+  }
+
+  getDetectionSettings(): Observable<DetectionSettings> {
+    return this.http.get<DetectionSettings>(
+      `${this.baseUrl}/detections/settings`
+    );
+  }
+
+  updateDetectionSettings(
+    enabledLabels: string[]
+  ): Observable<DetectionSettings> {
+    return this.http.put<DetectionSettings>(
+      `${this.baseUrl}/detections/settings`,
+      { enabledLabels }
+    );
   }
 
   // ── Snapshots ──

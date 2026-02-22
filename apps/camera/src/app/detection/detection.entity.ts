@@ -73,4 +73,19 @@ export const DetectionStatsSchema = z.object({
 
 export type DetectionStats = z.infer<typeof DetectionStatsSchema>;
 
+export const DetectionSettingsSchema = z.object({
+  availableLabels: z.array(z.string()),
+  enabledLabels: z.array(z.string()),
+});
+
+export type DetectionSettings = z.infer<typeof DetectionSettingsSchema>;
+
+export const UpdateDetectionSettingsSchema = z.object({
+  enabledLabels: z.array(z.string()),
+});
+
+export type UpdateDetectionSettings = z.infer<
+  typeof UpdateDetectionSettingsSchema
+>;
+
 provide(ENTITIES, DetectionEvent);
