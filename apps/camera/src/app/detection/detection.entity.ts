@@ -35,6 +35,9 @@ export class DetectionEvent {
 
   @Column('integer', { default: 0 })
   frameHeight!: number;
+
+  @Column('boolean', { default: false })
+  pinned!: boolean;
 }
 
 // ── Zod Schemas ──
@@ -55,6 +58,7 @@ export const DetectionEventOutSchema = z.object({
   bbox: BboxSchema,
   frameWidth: z.number(),
   frameHeight: z.number(),
+  pinned: z.boolean(),
 });
 
 export type DetectionEventOut = z.infer<typeof DetectionEventOutSchema>;

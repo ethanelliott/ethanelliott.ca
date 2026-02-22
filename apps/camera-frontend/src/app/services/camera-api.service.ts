@@ -20,6 +20,7 @@ export interface DetectionEvent {
   bbox: { x: number; y: number; width: number; height: number };
   frameWidth: number;
   frameHeight: number;
+  pinned: boolean;
 }
 
 export interface DetectionEventsResponse {
@@ -119,6 +120,13 @@ export class CameraApiService {
 
   getDetectionStats(): Observable<DetectionStats> {
     return this.http.get<DetectionStats>(`${this.baseUrl}/detections/stats`);
+  }
+
+  togglePinEvent(id: string): Observable<DetectionEvent> {
+    return this.http.patch<DetectionEvent>(
+      `${this.baseUrl}/detections/${id}/pin`,
+      {}
+    );
   }
 
   getDetectionSettings(): Observable<DetectionSettings> {

@@ -300,6 +300,17 @@ export class DetectionService {
   }
 
   /**
+   * Toggle the pinned status of a detection event.
+   * Pinned events are exempt from retention purge.
+   */
+  async togglePin(id: string): Promise<DetectionEvent | null> {
+    const event = await this._repository.findOne({ where: { id } });
+    if (!event) return null;
+    event.pinned = !event.pinned;
+    return this._repository.save(event);
+  }
+
+  /**
    * Get available labels and which ones are currently enabled
    */
   getSettings(): {
@@ -519,6 +530,7 @@ export class DetectionService {
       bbox: saved.bbox,
       frameWidth: saved.frameWidth,
       frameHeight: saved.frameHeight,
+      pinned: saved.pinned,
     });
 
     console.log(
@@ -542,6 +554,7 @@ export class DetectionService {
       .select('event.snapshotFilename')
       .where('event.timestamp < :cutoff', { cutoff })
       .andWhere('event.snapshotFilename IS NOT NULL')
+      .andWhere('event.pinned = :pinned', { pinned: false })
       .getRawMany();
 
     // Delete snapshot files
@@ -591,11 +604,12 @@ export class DetectionService {
       // Snapshot dir may not exist yet
     }
 
-    // Bulk delete expired rows from the database
+    // Bulk delete expired rows from the database (skip pinned)
     const result = await this._repository
       .createQueryBuilder()
       .delete()
       .where('timestamp < :cutoff', { cutoff })
+      .andWhere('pinned = :pinned', { pinned: false })
       .execute();
 
     const rowsDeleted = result.affected || 0;

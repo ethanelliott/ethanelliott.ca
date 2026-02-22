@@ -82,6 +82,29 @@ export async function DetectionRouter(fastify: FastifyInstance) {
     }
   );
 
+  // Toggle pin status of a detection event
+  fastify.withTypeProvider<ZodTypeProvider>().patch(
+    '/:id/pin',
+    {
+      schema: {
+        params: z.object({
+          id: z.string().uuid(),
+        }),
+        response: {
+          200: DetectionEventOutSchema,
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const event = await detectionService.togglePin(request.params.id);
+      if (!event) {
+        return reply.code(404).send({ error: 'Detection event not found' });
+      }
+      return event;
+    }
+  );
+
   // Get detection label settings
   fastify.withTypeProvider<ZodTypeProvider>().get(
     '/settings',

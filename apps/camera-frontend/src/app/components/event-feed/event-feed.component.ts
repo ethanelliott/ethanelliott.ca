@@ -2,16 +2,22 @@ import {
   ChangeDetectionStrategy,
   Component,
   Input,
+  inject,
   signal,
   computed,
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { DetectionEvent } from '../../services/camera-api.service';
+import { ButtonDirective } from 'primeng/button';
+import {
+  CameraApiService,
+  DetectionEvent,
+} from '../../services/camera-api.service';
+import { EventService } from '../../services/event.service';
 
 @Component({
   selector: 'app-event-feed',
   standalone: true,
-  imports: [CommonModule, DatePipe],
+  imports: [CommonModule, DatePipe, ButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="feed-container glass-card">
@@ -24,7 +30,7 @@ import { DetectionEvent } from '../../services/camera-api.service';
 
       <div class="feed-list">
         @for (event of events(); track event.id) {
-        <div class="event-item">
+        <div class="event-item" [class.pinned]="event.pinned">
           <div class="event-icon">
             <i [class]="'pi ' + getIcon(event.label)"></i>
           </div>
@@ -42,6 +48,14 @@ import { DetectionEvent } from '../../services/camera-api.service';
           @if (event.snapshotFilename) {
           <i class="pi pi-camera snapshot-indicator"></i>
           }
+          <button
+            pButton
+            [text]="true"
+            [icon]="event.pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+            (click)="togglePin(event)"
+            class="pin-btn"
+            [class.pinned]="event.pinned"
+          ></button>
         </div>
         } @empty {
         <div class="empty-state">
@@ -151,6 +165,30 @@ import { DetectionEvent } from '../../services/camera-api.service';
       font-size: 16px;
     }
 
+    .pin-btn {
+      flex-shrink: 0;
+      font-size: 14px !important;
+      padding: 4px !important;
+      opacity: 0;
+      transition: opacity 0.15s;
+      color: var(--text-muted) !important;
+
+      &.pinned {
+        opacity: 1;
+        color: var(--accent-yellow) !important;
+      }
+    }
+
+    .event-item:hover .pin-btn {
+      opacity: 1;
+    }
+
+    .event-item.pinned {
+      background: rgba(234, 179, 8, 0.06);
+      border-left: 2px solid var(--accent-yellow);
+      padding-left: 10px;
+    }
+
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -168,7 +206,21 @@ import { DetectionEvent } from '../../services/camera-api.service';
   `,
 })
 export class EventFeedComponent {
+  private readonly api = inject(CameraApiService);
+  private readonly eventService = inject(EventService);
+
   @Input() events = signal<DetectionEvent[]>([]);
+
+  togglePin(event: DetectionEvent): void {
+    this.api.togglePinEvent(event.id).subscribe({
+      next: (updated) => {
+        // Update the event in the recentEvents signal
+        this.eventService.recentEvents.update((events) =>
+          events.map((e) => (e.id === updated.id ? updated : e))
+        );
+      },
+    });
+  }
 
   getIcon(label: string): string {
     const iconMap: Record<string, string> = {
