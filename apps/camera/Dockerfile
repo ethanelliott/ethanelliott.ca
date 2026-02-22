@@ -1,7 +1,9 @@
 # Runtime-only Docker image for pre-built camera backend
 # Uses Debian (not Alpine) because @tensorflow/tfjs-node ships
 # pre-built native binaries linked against glibc.
-FROM docker.io/node:lts-slim
+# Pinned to Node 20 because tfjs-node 4.x calls util.isNullOrUndefined
+# which was removed in Node 22.
+FROM docker.io/node:20-slim
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
