@@ -226,9 +226,7 @@ export class CameraApiService {
   // ── Notifications ──
 
   getNotificationSettings(): Observable<NotificationSettings> {
-    return this.http.get<NotificationSettings>(
-      `${this.baseUrl}/notifications`
-    );
+    return this.http.get<NotificationSettings>(`${this.baseUrl}/notifications`);
   }
 
   updateNotificationSettings(
@@ -259,10 +257,7 @@ export class CameraApiService {
     if (params?.limit) httpParams = httpParams.set('limit', params.limit);
     if (params?.offset) httpParams = httpParams.set('offset', params.offset);
     if (params?.detectionEventId)
-      httpParams = httpParams.set(
-        'detectionEventId',
-        params.detectionEventId
-      );
+      httpParams = httpParams.set('detectionEventId', params.detectionEventId);
     if (params?.label) httpParams = httpParams.set('label', params.label);
 
     return this.http.get<SceneAnalysesResponse>(`${this.baseUrl}/analysis`, {
@@ -270,18 +265,14 @@ export class CameraApiService {
     });
   }
 
-  getAnalysisByDetection(
-    detectionEventId: string
-  ): Observable<SceneAnalysis> {
+  getAnalysisByDetection(detectionEventId: string): Observable<SceneAnalysis> {
     return this.http.get<SceneAnalysis>(
       `${this.baseUrl}/analysis/by-detection/${detectionEventId}`
     );
   }
 
   getAnalysisSettings(): Observable<AnalysisSettings> {
-    return this.http.get<AnalysisSettings>(
-      `${this.baseUrl}/analysis/settings`
-    );
+    return this.http.get<AnalysisSettings>(`${this.baseUrl}/analysis/settings`);
   }
 
   updateAnalysisSettings(

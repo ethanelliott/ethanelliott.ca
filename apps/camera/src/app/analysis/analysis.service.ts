@@ -33,7 +33,8 @@ export class AnalysisService {
   private readonly _inFlight = new Set<string>();
 
   private readonly _ollamaUrl =
-    process.env.OLLAMA_URL || 'http://ollama.elliott-haus.svc.cluster.local:11434';
+    process.env.OLLAMA_URL ||
+    'http://ollama.elliott-haus.svc.cluster.local:11434';
 
   private get _dataDir(): string {
     return (
@@ -76,14 +77,18 @@ export class AnalysisService {
           const data = (await resp.json()) as { models?: { name: string }[] };
           const models = data.models?.map((m) => m.name) ?? [];
           console.log(
-            `🔬 Ollama connected at ${this._ollamaUrl} (models: ${models.join(', ') || 'none'})`
+            `🔬 Ollama connected at ${this._ollamaUrl} (models: ${
+              models.join(', ') || 'none'
+            })`
           );
 
           // Check if the configured model is available
           const configuredModel = this._settings.model;
           if (!models.some((m) => m.startsWith(configuredModel))) {
             console.warn(
-              `⚠️ Model "${configuredModel}" not found on Ollama. Available: ${models.join(', ')}. Pulling...`
+              `⚠️ Model "${configuredModel}" not found on Ollama. Available: ${models.join(
+                ', '
+              )}. Pulling...`
             );
             this._pullModel(configuredModel).catch((err) =>
               console.error(`Failed to pull model ${configuredModel}:`, err)
@@ -101,7 +106,9 @@ export class AnalysisService {
       }
 
       console.log(
-        `🔬 Scene analysis ${this._settings.enabled ? 'ENABLED' : 'disabled'} → ${this._ollamaUrl} (model: ${this._settings.model})`
+        `🔬 Scene analysis ${
+          this._settings.enabled ? 'ENABLED' : 'disabled'
+        } → ${this._ollamaUrl} (model: ${this._settings.model})`
       );
     } catch (err) {
       console.error('Failed to load analysis settings:', err);
@@ -345,7 +352,9 @@ export class AnalysisService {
       });
 
       console.log(
-        `🔬 Analysis complete for ${params.label} in ${durationMs}ms: "${description.slice(0, 80)}..."`
+        `🔬 Analysis complete for ${
+          params.label
+        } in ${durationMs}ms: "${description.slice(0, 80)}..."`
       );
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
@@ -376,7 +385,10 @@ export class AnalysisService {
       } else {
         const body = await response.text();
         console.error(
-          `Failed to pull model ${modelName}: ${response.status} ${body.slice(0, 200)}`
+          `Failed to pull model ${modelName}: ${response.status} ${body.slice(
+            0,
+            200
+          )}`
         );
       }
     } catch (err) {

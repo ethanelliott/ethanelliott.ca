@@ -78,7 +78,11 @@ import {
         </div>
 
         @for (event of events(); track event.id) {
-        <div class="table-row" (click)="toggleExpand(event.id)" [class.expandable]="analysisCache.has(event.id)">
+        <div
+          class="table-row"
+          (click)="toggleExpand(event.id)"
+          [class.expandable]="analysisCache.has(event.id)"
+        >
           <span class="col-time">
             {{ event.timestamp | date : 'MMM d, HH:mm:ss' }}
           </span>
@@ -97,20 +101,20 @@ import {
           </span>
           <span class="col-analysis">
             @if (analysisCache.has(event.id)) {
-              <span class="analysis-badge">
-                <i class="pi pi-sparkles"></i>
-                AI
-              </span>
+            <span class="analysis-badge">
+              <i class="pi pi-sparkles"></i>
+              AI
+            </span>
             } @else if (loadingAnalysis().has(event.id)) {
-              <i class="pi pi-spin pi-spinner analysis-loading"></i>
+            <i class="pi pi-spin pi-spinner analysis-loading"></i>
             } @else {
-              <button
-                pButton
-                [text]="true"
-                icon="pi pi-sparkles"
-                class="load-analysis-btn"
-                (click)="loadAnalysis(event.id); $event.stopPropagation()"
-              ></button>
+            <button
+              pButton
+              [text]="true"
+              icon="pi pi-sparkles"
+              class="load-analysis-btn"
+              (click)="loadAnalysis(event.id); $event.stopPropagation()"
+            ></button>
             }
           </span>
           <span class="col-snapshot">
@@ -134,14 +138,19 @@ import {
             <div class="analysis-header">
               <i class="pi pi-sparkles"></i>
               <span>Scene Analysis</span>
-              <span class="analysis-model">{{ analysisCache.get(event.id)!.model }}</span>
-              <span class="analysis-duration">{{ analysisCache.get(event.id)!.durationMs }}ms</span>
+              <span class="analysis-model">{{
+                analysisCache.get(event.id)!.model
+              }}</span>
+              <span class="analysis-duration"
+                >{{ analysisCache.get(event.id)!.durationMs }}ms</span
+              >
             </div>
-            <p class="analysis-description">{{ analysisCache.get(event.id)!.description }}</p>
+            <p class="analysis-description">
+              {{ analysisCache.get(event.id)!.description }}
+            </p>
           </div>
         </div>
-        }
-        } @empty {
+        } } @empty {
         <div class="empty-row">
           <i class="pi pi-search empty-icon"></i>
           <p>No events found</p>

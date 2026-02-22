@@ -60,7 +60,9 @@ export async function AnalysisRouter(fastify: FastifyInstance) {
         request.params.detectionEventId
       );
       if (!analysis) {
-        return reply.code(404).send({ error: 'No analysis found for this detection event' });
+        return reply
+          .code(404)
+          .send({ error: 'No analysis found for this detection event' });
       }
       return analysis;
     }
