@@ -11,6 +11,7 @@ import { ButtonDirective } from 'primeng/button';
 import {
   CameraApiService,
   DetectionEvent,
+  SceneAnalysis,
 } from '../../services/camera-api.service';
 import { EventService } from '../../services/event.service';
 
@@ -44,6 +45,12 @@ import { EventService } from '../../services/event.service';
             <div class="event-time">
               {{ event.timestamp | date : 'HH:mm:ss' }}
             </div>
+            @if (getAnalysis(event.id); as analysis) {
+            <div class="event-analysis">
+              <i class="pi pi-sparkles analysis-icon"></i>
+              <span class="analysis-text">{{ analysis.description }}</span>
+            </div>
+            }
           </div>
           @if (event.snapshotFilename) {
           <i class="pi pi-camera snapshot-indicator"></i>
@@ -160,6 +167,34 @@ import { EventService } from '../../services/event.service';
       color: var(--text-muted);
     }
 
+    .event-analysis {
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: rgba(168, 85, 247, 0.08);
+      border-radius: var(--radius-sm);
+      border-left: 2px solid #a855f7;
+    }
+
+    .analysis-icon {
+      color: #a855f7;
+      font-size: 12px;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .analysis-text {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
     .snapshot-indicator {
       color: var(--text-muted);
       font-size: 16px;
@@ -210,6 +245,10 @@ export class EventFeedComponent {
   private readonly eventService = inject(EventService);
 
   @Input() events = signal<DetectionEvent[]>([]);
+
+  getAnalysis(detectionEventId: string): SceneAnalysis | undefined {
+    return this.eventService.analysisMap().get(detectionEventId);
+  }
 
   togglePin(event: DetectionEvent): void {
     this.api.togglePinEvent(event.id).subscribe({

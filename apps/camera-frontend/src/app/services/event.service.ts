@@ -1,7 +1,11 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { environment } from '../../environments/environment';
-import { DetectionEvent, FrameDetection } from './camera-api.service';
+import {
+  DetectionEvent,
+  FrameDetection,
+  SceneAnalysis,
+} from './camera-api.service';
 
 /**
  * EventService connects to the backend via Socket.io
@@ -16,6 +20,12 @@ export class EventService implements OnDestroy {
 
   /** Signal holding all detections from the latest frame (for live overlay) */
   readonly currentFrameDetections = signal<FrameDetection[]>([]);
+
+  /** Signal holding recent scene analyses (most recent first) */
+  readonly recentAnalyses = signal<SceneAnalysis[]>([]);
+
+  /** Map of detectionEventId → SceneAnalysis for quick lookup */
+  readonly analysisMap = signal<Map<string, SceneAnalysis>>(new Map());
 
   /** Signal indicating connection status */
   readonly connected = signal(false);
@@ -62,6 +72,18 @@ export class EventService implements OnDestroy {
 
     this.socket.on('frame-detections', (detections: FrameDetection[]) => {
       this.currentFrameDetections.set(detections);
+    });
+
+    this.socket.on('scene-analysis', (analysis: SceneAnalysis) => {
+      this.recentAnalyses.update((analyses) => {
+        const updated = [analysis, ...analyses];
+        return updated.slice(0, this.maxEvents);
+      });
+      this.analysisMap.update((map) => {
+        const updated = new Map(map);
+        updated.set(analysis.detectionEventId, analysis);
+        return updated;
+      });
     });
 
     this.socket.on('connect_error', (error: Error) => {

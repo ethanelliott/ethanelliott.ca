@@ -13,6 +13,7 @@ import { ButtonDirective } from 'primeng/button';
 import {
   CameraApiService,
   DetectionEvent,
+  SceneAnalysis,
 } from '../../services/camera-api.service';
 
 @Component({
@@ -72,12 +73,12 @@ import {
           <span class="col-time">Time</span>
           <span class="col-label">Label</span>
           <span class="col-confidence">Confidence</span>
-          <span class="col-bbox">Bounding Box</span>
+          <span class="col-analysis">Analysis</span>
           <span class="col-snapshot">Snapshot</span>
         </div>
 
         @for (event of events(); track event.id) {
-        <div class="table-row">
+        <div class="table-row" (click)="toggleExpand(event.id)" [class.expandable]="analysisCache.has(event.id)">
           <span class="col-time">
             {{ event.timestamp | date : 'MMM d, HH:mm:ss' }}
           </span>
@@ -94,9 +95,23 @@ import {
             </span>
             {{ (event.confidence * 100).toFixed(1) }}%
           </span>
-          <span class="col-bbox mono">
-            {{ event.bbox.x.toFixed(0) }},{{ event.bbox.y.toFixed(0) }}
-            {{ event.bbox.width.toFixed(0) }}×{{ event.bbox.height.toFixed(0) }}
+          <span class="col-analysis">
+            @if (analysisCache.has(event.id)) {
+              <span class="analysis-badge">
+                <i class="pi pi-sparkles"></i>
+                AI
+              </span>
+            } @else if (loadingAnalysis().has(event.id)) {
+              <i class="pi pi-spin pi-spinner analysis-loading"></i>
+            } @else {
+              <button
+                pButton
+                [text]="true"
+                icon="pi pi-sparkles"
+                class="load-analysis-btn"
+                (click)="loadAnalysis(event.id); $event.stopPropagation()"
+              ></button>
+            }
           </span>
           <span class="col-snapshot">
             @if (event.snapshotFilename) {
@@ -104,6 +119,7 @@ import {
               [href]="getSnapshotUrl(event.snapshotFilename)"
               target="_blank"
               class="snapshot-link"
+              (click)="$event.stopPropagation()"
             >
               <i class="pi pi-image"></i>
             </a>
@@ -112,6 +128,19 @@ import {
             }
           </span>
         </div>
+        @if (expandedId() === event.id && analysisCache.has(event.id)) {
+        <div class="analysis-row">
+          <div class="analysis-content">
+            <div class="analysis-header">
+              <i class="pi pi-sparkles"></i>
+              <span>Scene Analysis</span>
+              <span class="analysis-model">{{ analysisCache.get(event.id)!.model }}</span>
+              <span class="analysis-duration">{{ analysisCache.get(event.id)!.durationMs }}ms</span>
+            </div>
+            <p class="analysis-description">{{ analysisCache.get(event.id)!.description }}</p>
+          </div>
+        </div>
+        }
         } @empty {
         <div class="empty-row">
           <i class="pi pi-search empty-icon"></i>
@@ -188,10 +217,91 @@ import {
       padding: 10px 16px;
       align-items: center;
       border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      cursor: pointer;
 
       &:hover {
         background: var(--bg-card-hover);
       }
+
+      &.expandable {
+        cursor: pointer;
+      }
+    }
+
+    .analysis-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(168, 85, 247, 0.15);
+      color: #a855f7;
+
+      i { font-size: 12px; }
+    }
+
+    .analysis-loading {
+      color: #a855f7;
+      font-size: 16px;
+    }
+
+    .load-analysis-btn {
+      font-size: 14px !important;
+      padding: 4px !important;
+      color: var(--text-muted) !important;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .table-row:hover .load-analysis-btn {
+      opacity: 1;
+    }
+
+    .analysis-row {
+      padding: 0 16px 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      background: rgba(168, 85, 247, 0.03);
+    }
+
+    .analysis-content {
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid #a855f7;
+      background: rgba(168, 85, 247, 0.06);
+    }
+
+    .analysis-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #a855f7;
+
+      i { font-size: 14px; }
+    }
+
+    .analysis-model {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .analysis-duration {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .analysis-description {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      white-space: pre-wrap;
     }
 
     .event-label-badge {
@@ -257,6 +367,11 @@ export class EventsComponent implements OnInit {
 
   readonly events = signal<DetectionEvent[]>([]);
   readonly totalEvents = signal(0);
+  readonly expandedId = signal<string | null>(null);
+  readonly loadingAnalysis = signal<Set<string>>(new Set());
+
+  /** Cache of fetched analyses keyed by detectionEventId */
+  readonly analysisCache = new Map<string, SceneAnalysis>();
 
   labelFilter: string | null = null;
   minConfidenceFilter = 0;
@@ -284,6 +399,7 @@ export class EventsComponent implements OnInit {
   }
 
   loadEvents(): void {
+    this.expandedId.set(null);
     this.api
       .getDetections({
         limit: this.pageSize,
@@ -308,6 +424,40 @@ export class EventsComponent implements OnInit {
 
   getSnapshotUrl(filename: string): string {
     return this.api.getSnapshotUrl(filename);
+  }
+
+  toggleExpand(eventId: string): void {
+    if (this.expandedId() === eventId) {
+      this.expandedId.set(null);
+    } else {
+      this.expandedId.set(eventId);
+      // Auto-load analysis if not cached
+      if (!this.analysisCache.has(eventId)) {
+        this.loadAnalysis(eventId);
+      }
+    }
+  }
+
+  loadAnalysis(eventId: string): void {
+    if (this.analysisCache.has(eventId)) return;
+    const loading = new Set(this.loadingAnalysis());
+    loading.add(eventId);
+    this.loadingAnalysis.set(loading);
+
+    this.api.getAnalysisByDetection(eventId).subscribe({
+      next: (analysis) => {
+        this.analysisCache.set(eventId, analysis);
+        const l = new Set(this.loadingAnalysis());
+        l.delete(eventId);
+        this.loadingAnalysis.set(l);
+        this.expandedId.set(eventId);
+      },
+      error: () => {
+        const l = new Set(this.loadingAnalysis());
+        l.delete(eventId);
+        this.loadingAnalysis.set(l);
+      },
+    });
   }
 
   getConfidenceColor(confidence: number): string {

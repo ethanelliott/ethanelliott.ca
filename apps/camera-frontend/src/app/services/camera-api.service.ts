@@ -85,6 +85,31 @@ export interface NotificationTestResult {
   message: string;
 }
 
+export interface SceneAnalysis {
+  id: string;
+  timestamp: string;
+  detectionEventId: string;
+  label: string;
+  model: string;
+  description: string;
+  durationMs: number;
+  snapshotFilename: string | null;
+}
+
+export interface SceneAnalysesResponse {
+  analyses: SceneAnalysis[];
+  total: number;
+}
+
+export interface AnalysisSettings {
+  enabled: boolean;
+  model: string;
+  prompt: string;
+  cooldownSeconds: number;
+  analyzeLabels: string[];
+  minConfidence: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CameraApiService {
   private readonly baseUrl = environment.apiUrl;
@@ -219,6 +244,52 @@ export class CameraApiService {
     return this.http.post<NotificationTestResult>(
       `${this.baseUrl}/notifications/test`,
       {}
+    );
+  }
+
+  // ── Scene Analysis ──
+
+  getAnalyses(params?: {
+    limit?: number;
+    offset?: number;
+    detectionEventId?: string;
+    label?: string;
+  }): Observable<SceneAnalysesResponse> {
+    let httpParams = new HttpParams();
+    if (params?.limit) httpParams = httpParams.set('limit', params.limit);
+    if (params?.offset) httpParams = httpParams.set('offset', params.offset);
+    if (params?.detectionEventId)
+      httpParams = httpParams.set(
+        'detectionEventId',
+        params.detectionEventId
+      );
+    if (params?.label) httpParams = httpParams.set('label', params.label);
+
+    return this.http.get<SceneAnalysesResponse>(`${this.baseUrl}/analysis`, {
+      params: httpParams,
+    });
+  }
+
+  getAnalysisByDetection(
+    detectionEventId: string
+  ): Observable<SceneAnalysis> {
+    return this.http.get<SceneAnalysis>(
+      `${this.baseUrl}/analysis/by-detection/${detectionEventId}`
+    );
+  }
+
+  getAnalysisSettings(): Observable<AnalysisSettings> {
+    return this.http.get<AnalysisSettings>(
+      `${this.baseUrl}/analysis/settings`
+    );
+  }
+
+  updateAnalysisSettings(
+    update: Partial<AnalysisSettings>
+  ): Observable<AnalysisSettings> {
+    return this.http.put<AnalysisSettings>(
+      `${this.baseUrl}/analysis/settings`,
+      update
     );
   }
 }
