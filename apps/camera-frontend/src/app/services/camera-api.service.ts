@@ -69,6 +69,22 @@ export interface StreamStatus {
   hlsFiles: string[];
 }
 
+export interface NotificationSettings {
+  enabled: boolean;
+  serverUrl: string;
+  topic: string;
+  authToken: string | null;
+  cooldownSeconds: number;
+  minConfidence: number;
+  notifyLabels: string[];
+  attachSnapshot: boolean;
+}
+
+export interface NotificationTestResult {
+  success: boolean;
+  message: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CameraApiService {
   private readonly baseUrl = environment.apiUrl;
@@ -179,6 +195,30 @@ export class CameraApiService {
   deleteSnapshot(filename: string): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(
       `${this.baseUrl}/snapshots/${filename}`
+    );
+  }
+
+  // ── Notifications ──
+
+  getNotificationSettings(): Observable<NotificationSettings> {
+    return this.http.get<NotificationSettings>(
+      `${this.baseUrl}/notifications`
+    );
+  }
+
+  updateNotificationSettings(
+    update: Partial<NotificationSettings>
+  ): Observable<NotificationSettings> {
+    return this.http.put<NotificationSettings>(
+      `${this.baseUrl}/notifications`,
+      update
+    );
+  }
+
+  sendTestNotification(): Observable<NotificationTestResult> {
+    return this.http.post<NotificationTestResult>(
+      `${this.baseUrl}/notifications/test`,
+      {}
     );
   }
 }
