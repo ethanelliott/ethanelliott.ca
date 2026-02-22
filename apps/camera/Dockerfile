@@ -1,5 +1,7 @@
 # Runtime-only Docker image for pre-built camera backend
-FROM docker.io/node:lts-alpine
+# Uses Debian (not Alpine) because @tensorflow/tfjs-node ships
+# pre-built native binaries linked against glibc.
+FROM docker.io/node:lts-slim
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
@@ -8,11 +10,13 @@ ENV CI=true
 WORKDIR /app
 
 # Install runtime dependencies: FFmpeg for RTSP→HLS, build tools for native modules
-RUN apk add --no-cache python3 make g++ libc6-compat ffmpeg
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 make g++ ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN addgroup --system server && \
-    adduser --system -G server server
+    adduser --system --ingroup server server
 
 # Create data directories for HLS segments, snapshots, and database
 RUN mkdir -p /app/data/hls /app/data/snapshots /app/data/models && \
