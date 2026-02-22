@@ -58,7 +58,9 @@ export class NotificationService {
       }
       this._settings = row;
       console.log(
-        `🔔 Notifications ${row.enabled ? 'ENABLED' : 'disabled'} → ${row.serverUrl}/${row.topic}`
+        `🔔 Notifications ${row.enabled ? 'ENABLED' : 'disabled'} → ${
+          row.serverUrl
+        }/${row.topic}`
       );
     } catch (err) {
       console.error('Failed to load notification settings:', err);
@@ -110,7 +112,9 @@ export class NotificationService {
     this._settings = row;
 
     console.log(
-      `🔔 Notification settings updated: ${row.enabled ? 'ENABLED' : 'disabled'} → ${row.serverUrl}/${row.topic}`
+      `🔔 Notification settings updated: ${
+        row.enabled ? 'ENABLED' : 'disabled'
+      } → ${row.serverUrl}/${row.topic}`
     );
 
     return this.getSettings();
@@ -125,11 +129,9 @@ export class NotificationService {
     }
 
     try {
-      const url = `${this._settings.serverUrl}/${this._settings.topic}`;
+      const url = `${this._settings.serverUrl}`;
       const headers: Record<string, string> = {
-        Title: '🧪 Camera Test Notification',
-        Tags: 'test_tube,camera',
-        Priority: '3',
+        'Content-Type': 'application/json',
       };
 
       if (this._settings.authToken) {
@@ -139,7 +141,13 @@ export class NotificationService {
       const response = await fetch(url, {
         method: 'POST',
         headers,
-        body: `Test notification from camera service at ${new Date().toLocaleString()}`,
+        body: JSON.stringify({
+          topic: this._settings.topic,
+          title: 'Camera Test Notification',
+          message: `Test notification from camera service at ${new Date().toLocaleString()}`,
+          tags: ['test_tube', 'camera'],
+          priority: 3,
+        }),
       });
 
       if (!response.ok) {
@@ -154,7 +162,9 @@ export class NotificationService {
     } catch (err) {
       return {
         success: false,
-        message: `Failed to send: ${err instanceof Error ? err.message : String(err)}`,
+        message: `Failed to send: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
       };
     }
   }
@@ -205,104 +215,114 @@ export class NotificationService {
     snapshotFilename: string | null;
   }): Promise<void> {
     const s = this._settings!;
-    const url = `${s.serverUrl}/${s.topic}`;
+    const url = `${s.serverUrl}`;
     const confidencePct = Math.round(event.confidence * 100);
-    const title = `🎯 ${event.label} detected (${confidencePct}%)`;
-    const body = `Camera detected: ${event.label} with ${confidencePct}% confidence at ${new Date().toLocaleString()}`;
+    const title = `${event.label} detected (${confidencePct}%)`;
+    const message = `Camera detected: ${
+      event.label
+    } with ${confidencePct}% confidence at ${new Date().toLocaleString()}`;
+    const tags = this._labelToTags(event.label);
+    const priority = this._labelToPriority(event.label);
 
     const headers: Record<string, string> = {
-      Title: title,
-      Tags: this._labelToTag(event.label),
-      Priority: this._labelToPriority(event.label),
+      'Content-Type': 'application/json',
     };
-
     if (s.authToken) {
       headers['Authorization'] = `Bearer ${s.authToken}`;
     }
 
-    // If snapshot attachment is enabled and we have a file, send it as the body
+    // If snapshot attachment is enabled and we have a file, upload it via PUT
+    // (binary upload requires header-based metadata — keep ASCII only)
     if (s.attachSnapshot && event.snapshotFilename) {
       const snapshotPath = join(this._snapshotDir, event.snapshotFilename);
       try {
         const imageData = readFileSync(snapshotPath);
-        headers['Filename'] = event.snapshotFilename;
-        headers['Content-Type'] = 'image/jpeg';
-        // Put the title in a message header since the body is the image
-        headers['Message'] = body;
+        const putHeaders: Record<string, string> = {
+          Title: title,
+          Message: message,
+          Tags: tags.join(','),
+          Priority: String(priority),
+          Filename: event.snapshotFilename,
+          'Content-Type': 'image/jpeg',
+        };
+        if (s.authToken) {
+          putHeaders['Authorization'] = `Bearer ${s.authToken}`;
+        }
 
-        const response = await fetch(url, {
-          method: 'PUT',
-          headers,
-          body: imageData,
-        });
+        const response = await fetch(
+          `${s.serverUrl}/${s.topic}`,
+          {
+            method: 'PUT',
+            headers: putHeaders,
+            body: imageData,
+          }
+        );
 
         if (!response.ok) {
           console.warn(
-            `ntfy image upload returned ${response.status}, falling back to text`
+            `ntfy image upload returned ${response.status}, falling back to JSON`
           );
-          // Fall back to text-only notification
-          await this._sendTextNotification(url, headers, body);
+          await this._sendJsonNotification(url, headers, s.topic, title, message, tags, priority);
         }
       } catch {
-        // File read failed, fall back to text
-        await this._sendTextNotification(url, headers, body);
+        // File read failed, fall back to JSON
+        await this._sendJsonNotification(url, headers, s.topic, title, message, tags, priority);
       }
     } else {
-      await this._sendTextNotification(url, headers, body);
+      await this._sendJsonNotification(url, headers, s.topic, title, message, tags, priority);
     }
 
     console.log(`🔔 Notification sent: ${event.label} (${confidencePct}%)`);
   }
 
   /**
-   * Send a plain text notification.
+   * Send a notification using ntfy's JSON API (supports UTF-8 natively).
    */
-  private async _sendTextNotification(
+  private async _sendJsonNotification(
     url: string,
     headers: Record<string, string>,
-    body: string
+    topic: string,
+    title: string,
+    message: string,
+    tags: string[],
+    priority: number
   ): Promise<void> {
-    // Remove image-specific headers for text fallback
-    delete headers['Filename'];
-    headers['Content-Type'] = 'text/plain';
-    delete headers['Message'];
-
     await fetch(url, {
       method: 'POST',
       headers,
-      body,
+      body: JSON.stringify({ topic, title, message, tags, priority }),
     });
   }
 
   /**
    * Map a detection label to relevant ntfy tags (emoji shortcodes).
    */
-  private _labelToTag(label: string): string {
-    const tagMap: Record<string, string> = {
-      person: 'bust_in_silhouette,warning',
-      car: 'car,warning',
-      truck: 'truck,warning',
-      dog: 'dog',
-      cat: 'cat',
-      bird: 'bird',
-      bicycle: 'bicycle',
-      motorcycle: 'motorcycle',
-      bus: 'bus',
-      bear: 'bear,rotating_light',
+  private _labelToTags(label: string): string[] {
+    const tagMap: Record<string, string[]> = {
+      person: ['bust_in_silhouette', 'warning'],
+      car: ['car', 'warning'],
+      truck: ['truck', 'warning'],
+      dog: ['dog'],
+      cat: ['cat'],
+      bird: ['bird'],
+      bicycle: ['bicycle'],
+      motorcycle: ['motorcycle'],
+      bus: ['bus'],
+      bear: ['bear', 'rotating_light'],
     };
-    return tagMap[label] ?? 'camera,eyes';
+    return tagMap[label] ?? ['camera', 'eyes'];
   }
 
   /**
    * Map a detection label to ntfy priority level (1-5).
    */
-  private _labelToPriority(label: string): string {
-    const priorityMap: Record<string, string> = {
-      person: '4', // high
-      bear: '5', // urgent
-      car: '3', // default
-      truck: '3',
+  private _labelToPriority(label: string): number {
+    const priorityMap: Record<string, number> = {
+      person: 4, // high
+      bear: 5, // urgent
+      car: 3, // default
+      truck: 3,
     };
-    return priorityMap[label] ?? '3';
+    return priorityMap[label] ?? 3;
   }
 }
