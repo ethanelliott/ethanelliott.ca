@@ -69,8 +69,8 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-          echo "🐳 Building affected containers with tag sha-${SHORT_SHA}..."
-          bun nx affected -t container --tag=sha-${SHORT_SHA} --parallel=3
+          echo "🐳 Building affected containers with tag ${SHORT_SHA}..."
+          bun nx affected -t container --tag=${SHORT_SHA} --parallel=3
 
           echo "✅ All affected containers built and pushed"
 
@@ -85,7 +85,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No deployment changes to commit"
           else
-            git commit -m "ci(deploy): update image tags to sha-${{ steps.deploy.outputs.sha }} [skip ci]"
+            git commit -m "ci(deploy): update image tags to ${{ steps.deploy.outputs.sha }} [skip ci]"
             git push
             echo "✅ Deployment manifests updated — ArgoCD will auto-sync"
           fi
