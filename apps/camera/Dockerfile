@@ -11,10 +11,21 @@ ENV CI=true
 
 WORKDIR /app
 
-# Install runtime dependencies: FFmpeg for RTSP→HLS, build tools for native modules
+# Install build tools for native modules (python3, make, g++)
+# and wget/xz-utils to download FFmpeg static build
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 make g++ ffmpeg && \
+    apt-get install -y --no-install-recommends python3 make g++ wget xz-utils && \
     rm -rf /var/lib/apt/lists/*
+
+# Install static FFmpeg 7.1 (GPL build with all codecs)
+# Debian 12 ships FFmpeg 5.1 which is too old; the BtbN static builds
+# provide up-to-date binaries linked against glibc.
+RUN wget -q -O /tmp/ffmpeg.tar.xz \
+      https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz && \
+    tar xf /tmp/ffmpeg.tar.xz --strip-components=2 -C /usr/local/bin/ \
+      --wildcards '*/bin/ffmpeg' '*/bin/ffprobe' && \
+    rm /tmp/ffmpeg.tar.xz && \
+    ffmpeg -version | head -1
 
 # Create non-root user
 RUN addgroup --system server && \
