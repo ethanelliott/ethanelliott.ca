@@ -10,11 +10,6 @@ import {
 import { join } from 'path';
 import { CameraService } from '../camera/camera.service';
 
-/** JPEG Start-Of-Image marker */
-const JPEG_SOI = Buffer.from([0xff, 0xd8]);
-/** JPEG End-Of-Image marker */
-const JPEG_EOI = Buffer.from([0xff, 0xd9]);
-
 /**
  * StreamService manages the FFmpeg process that converts
  * RTSP to HLS for browser-based live streaming.
@@ -32,16 +27,13 @@ export class StreamService {
   /** How long (ms) without a new segment before we consider the stream stalled */
   private readonly _watchdogTimeoutMs = 30_000;
 
-  /** FPS for the detection frame pipe (second FFmpeg output) */
+  /** FPS for the detection frame output (second FFmpeg output) */
   private readonly _detectionFps = Math.ceil(
     parseFloat(process.env.DETECTION_FPS || '5')
   );
 
-  // ── JPEG frame pipe (piggybacked on the same FFmpeg process) ──
-  /** The most recently received complete JPEG frame */
-  private _latestFrame: Buffer | null = null;
-  /** Accumulator for incoming JPEG bytes from stdout */
-  private _framePipeBuffer: Buffer = Buffer.alloc(0);
+  /** Path where FFmpeg writes the latest detection JPEG frame */
+  private readonly _detectionFramePath = join(this._dataDir, 'detection_frame.jpg');
 
   private readonly _hlsDir = process.env.HLS_DIR || join(this._dataDir, 'hls');
 
@@ -85,8 +77,14 @@ export class StreamService {
       this._ffmpegProcess.kill('SIGTERM');
       this._ffmpegProcess = null;
     }
-    this._latestFrame = null;
-    this._framePipeBuffer = Buffer.alloc(0);
+    // Clean up detection frame file
+    try {
+      if (existsSync(this._detectionFramePath)) {
+        unlinkSync(this._detectionFramePath);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   /**
@@ -104,11 +102,16 @@ export class StreamService {
   }
 
   /**
-   * Get the latest JPEG frame captured by the detection pipe.
-   * Returns null if no complete frame has been received yet.
+   * Get the latest JPEG frame written by FFmpeg for detection.
+   * Reads the file each time — no pipe backpressure.
+   * Returns null if no frame file exists yet or during a partial write.
    */
   getLatestFrame(): Buffer | null {
-    return this._latestFrame;
+    try {
+      return readFileSync(this._detectionFramePath);
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -188,37 +191,31 @@ export class StreamService {
       '-y',
       outputPath,
 
-      // ── Output #1: JPEG frames piped to stdout for detection ──
-      // Scale down to 640x360 — COCO-SSD resizes to 300x300 internally
-      // so full 1080p is wasteful and stalls the pipe.
+      // ── Output #1: latest JPEG frame for detection (written to file) ──
+      // Uses -update 1 to continuously overwrite a single file.
+      // This eliminates stdout pipe backpressure that was throttling
+      // the entire FFmpeg process when Node.js was busy with inference.
       '-map',
       '0:v',
       '-vf',
       `fps=${this._detectionFps},scale=640:360`,
       '-f',
-      'image2pipe',
-      '-c:v',
-      'mjpeg',
+      'image2',
+      '-update',
+      '1',
       '-q:v',
       '8',
       '-an',
-      'pipe:1',
+      this._detectionFramePath,
     ];
 
     console.log('🎬 Starting FFmpeg with args:', args.join(' '));
 
     this._ffmpegProcess = spawn('ffmpeg', args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ['pipe', 'ignore', 'pipe'],
     });
 
     this._isRunning = true;
-
-    // Parse JPEG frames from stdout (detection pipe output)
-    this._framePipeBuffer = Buffer.alloc(0);
-    this._latestFrame = null;
-    this._ffmpegProcess.stdout?.on('data', (chunk: Buffer) => {
-      this._onFrameData(chunk);
-    });
 
     this._ffmpegProcess.stderr?.on('data', (data: Buffer) => {
       const msg = data.toString().trim();
@@ -320,32 +317,5 @@ export class StreamService {
     }
   }
 
-  /**
-   * Handle incoming data from the FFmpeg JPEG pipe (stdout).
-   * Accumulate bytes and extract complete JPEG frames using SOI/EOI markers.
-   * Always keeps only the latest complete frame.
-   */
-  private _onFrameData(chunk: Buffer): void {
-    this._framePipeBuffer = Buffer.concat([this._framePipeBuffer, chunk]);
 
-    while (true) {
-      const soiIdx = this._framePipeBuffer.indexOf(JPEG_SOI);
-      if (soiIdx === -1) {
-        this._framePipeBuffer = Buffer.alloc(0);
-        break;
-      }
-
-      const eoiIdx = this._framePipeBuffer.indexOf(JPEG_EOI, soiIdx + 2);
-      if (eoiIdx === -1) {
-        if (soiIdx > 0) {
-          this._framePipeBuffer = this._framePipeBuffer.subarray(soiIdx);
-        }
-        break;
-      }
-
-      const frameEnd = eoiIdx + 2;
-      this._latestFrame = this._framePipeBuffer.subarray(soiIdx, frameEnd);
-      this._framePipeBuffer = this._framePipeBuffer.subarray(frameEnd);
-    }
-  }
 }
