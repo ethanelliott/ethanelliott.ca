@@ -8,14 +8,17 @@ import { StreamRouter } from './stream/stream.router';
 import { DetectionRouter } from './detection/detection.router';
 import { SnapshotRouter } from './snapshot/snapshot.router';
 import { NotificationRouter } from './notification/notification.router';
+import { AnalysisRouter } from './analysis/analysis.router';
 import { WebSocketService } from './websocket/websocket.service';
 import { StreamService } from './stream/stream.service';
 import { DetectionService } from './detection/detection.service';
 import { NotificationService } from './notification/notification.service';
+import { AnalysisService } from './analysis/analysis.service';
 
 // Import entities to register them
 import './detection';
 import './notification';
+import './analysis';
 
 export async function Application(fastify: FastifyInstance) {
   // Initialize Socket.io on the underlying HTTP server
@@ -59,6 +62,10 @@ export async function Application(fastify: FastifyInstance) {
     .withTypeProvider<ZodTypeProvider>()
     .register(NotificationRouter, { prefix: '/notifications' });
 
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(AnalysisRouter, { prefix: '/analysis' });
+
   // Start the stream and detection pipeline after server is ready
   fastify.addHook('onReady', async () => {
     const streamService = inject(StreamService);
@@ -84,6 +91,14 @@ export async function Application(fastify: FastifyInstance) {
       console.log('🔔 Notification service initialized');
     } catch (err) {
       console.error('❌ Failed to initialize notification service:', err);
+    }
+
+    const analysisService = inject(AnalysisService);
+    try {
+      await analysisService.initialize();
+      console.log('🔬 Analysis service initialized');
+    } catch (err) {
+      console.error('❌ Failed to initialize analysis service:', err);
     }
   });
 

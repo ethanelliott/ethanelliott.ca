@@ -31,10 +31,7 @@ ollama:
 
   # Models to pull on startup (optional)
   models:
-    []
-    # - llama3.2
-    # - codellama
-    # - mistral
+    - qwen3-vl:4b
 
 ingress:
   enabled: true

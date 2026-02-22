@@ -3,6 +3,7 @@ import {
   DetectionEventOut,
   FrameDetection,
 } from '../detection/detection.entity';
+import { SceneAnalysisOut } from '../analysis/analysis.entity';
 
 /**
  * WebSocketService manages the Socket.io instance and provides
@@ -49,6 +50,15 @@ export class WebSocketService {
   emitFrameDetections(detections: FrameDetection[]): void {
     if (this._io) {
       this._io.emit('frame-detections', detections);
+    }
+  }
+
+  /**
+   * Emit a scene analysis result to all connected clients
+   */
+  emitSceneAnalysis(analysis: SceneAnalysisOut): void {
+    if (this._io) {
+      this._io.emit('scene-analysis', analysis);
     }
   }
 

@@ -17,6 +17,7 @@ import {
 import { WebSocketService } from '../websocket/websocket.service';
 import { StreamService } from '../stream/stream.service';
 import { NotificationService } from '../notification/notification.service';
+import { AnalysisService } from '../analysis/analysis.service';
 
 /** All 80 COCO-SSD labels */
 export const COCO_SSD_LABELS = [
@@ -127,6 +128,7 @@ export class DetectionService {
   private readonly _streamService = inject(StreamService);
   private readonly _wsService = inject(WebSocketService);
   private readonly _notificationService = inject(NotificationService);
+  private readonly _analysisService = inject(AnalysisService);
   private readonly _repository = this._db.repositoryFor(DetectionEvent);
   private readonly _settingsRepo = this._db.repositoryFor(
     DetectionSettingsEntity
@@ -631,6 +633,18 @@ export class DetectionService {
             })
             .catch((err) =>
               console.error('Notification dispatch error:', err)
+            );
+
+          // Fire-and-forget scene analysis via Ollama vision model
+          this._analysisService
+            .onDetection({
+              detectionEventId: saved.id,
+              label: saved.label,
+              confidence: saved.confidence,
+              snapshotFilename: saved.snapshotFilename,
+            })
+            .catch((err) =>
+              console.error('Scene analysis dispatch error:', err)
             );
 
           console.log(

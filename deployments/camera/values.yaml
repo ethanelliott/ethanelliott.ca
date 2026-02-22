@@ -39,6 +39,8 @@ env:
   DATA_DIR: '/app/data'
   NTFY_SERVER_URL: 'http://ntfy.elliott-haus.svc.cluster.local'
   NTFY_TOPIC: 'camera-detections'
+  OLLAMA_URL: 'http://ollama.elliott-haus.svc.cluster.local:11434'
+  OLLAMA_MODEL: 'qwen3-vl:4b'
 
 # Camera credentials from Kubernetes Secret
 secretEnv:
