@@ -1,7 +1,10 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ],
     "production": [
       "default",
       "!{projectRoot}/.eslintrc.json",
@@ -15,8 +18,13 @@
   "targetDefaults": {
     "@angular-devkit/build-angular:application": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "production",
+        "^production"
+      ]
     },
     "@nx/eslint:lint": {
       "cache": true,
@@ -29,13 +37,23 @@
     },
     "@nx/esbuild:esbuild": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "production",
+        "^production"
+      ]
     },
     "@angular/build:application": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "production",
+        "^production"
+      ]
     }
   },
   "generators": {
@@ -101,7 +119,6 @@
     }
   },
   "defaultProject": "ethanelliott.ca",
-  "nxCloudAccessToken": "YTYxNTY4MDEtMDRkOS00MTcwLTljMGUtMzlmYjAzOGI4ZTdjfHJlYWQtd3JpdGU=",
   "defaultBase": "main",
   "plugins": [
     {
@@ -112,7 +129,9 @@
     }
   ],
   "release": {
-    "projects": ["apps/*"],
+    "projects": [
+      "apps/*"
+    ],
     "projectsRelationship": "independent",
     "version": {
       "conventionalCommits": true,
