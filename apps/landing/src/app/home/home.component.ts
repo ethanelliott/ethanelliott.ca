@@ -375,7 +375,7 @@ export class HomeComponent {
       url: 'https://camera.elliott.haus',
       description: 'Live camera feed with object detection.',
       icon: 'mdi:cctv',
-      color: '#06b6d4',
+      color: '#0ea5e9',
     },
     {
       name: 'ArgoCD',
