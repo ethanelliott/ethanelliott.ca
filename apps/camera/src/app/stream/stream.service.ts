@@ -40,6 +40,7 @@ export class StreamService {
     }
 
     const rtspUrl = await this._cameraService.getRtspUrl();
+    this._restartAttempts = 0;
     this._startFfmpeg(rtspUrl);
   }
 
@@ -106,13 +107,15 @@ export class StreamService {
     const outputPath = join(this._hlsDir, 'stream.m3u8');
 
     const args = [
-      // Input options
+      // Input options – keep RTSP connection alive
       '-rtsp_transport',
       'tcp',
+      '-rtsp_flags',
+      'prefer_tcp',
       '-i',
       rtspUrl,
 
-      // Video codec: copy if possible for lowest latency, transcode as fallback
+      // Video codec: transcode for HLS compatibility
       '-c:v',
       'libx264',
       '-preset',
@@ -154,13 +157,12 @@ export class StreamService {
     });
 
     this._isRunning = true;
-    this._restartAttempts = 0;
 
     this._ffmpegProcess.stderr?.on('data', (data: Buffer) => {
       const msg = data.toString().trim();
-      // Only log non-verbose FFmpeg output
-      if (msg.includes('Error') || msg.includes('error')) {
-        console.error(`FFmpeg: ${msg}`);
+      if (msg) {
+        // Log all FFmpeg messages prefixed for easy grep
+        console.log(`FFmpeg: ${msg}`);
       }
     });
 

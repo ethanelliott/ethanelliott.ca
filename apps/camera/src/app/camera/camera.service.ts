@@ -121,7 +121,25 @@ export class CameraService {
                 reject(err);
                 return;
               }
-              resolve(stream.uri);
+              // Inject credentials into the ONVIF-discovered URI
+              // ONVIF often returns URLs without auth embedded
+              try {
+                const url = new URL(stream.uri);
+                if (!url.username) {
+                  url.username = username;
+                  url.password = password;
+                }
+                resolve(url.toString());
+              } catch {
+                // If URL parsing fails, inject manually
+                const authUrl = stream.uri.replace(
+                  'rtsp://',
+                  `rtsp://${encodeURIComponent(username)}:${encodeURIComponent(
+                    password
+                  )}@`
+                );
+                resolve(authUrl);
+              }
             }
           );
         }
