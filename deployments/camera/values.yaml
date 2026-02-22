@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/camera
-  tag: s-9e978c1
+  tag: s-2543cb3
   pullPolicy: Always
 
 service:
