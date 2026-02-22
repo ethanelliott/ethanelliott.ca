@@ -30,7 +30,7 @@ export async function StreamRouter(fastify: FastifyInstance) {
 
   // Serve HLS playlist (m3u8)
   fastify.get('/hls/stream.m3u8', async (_request, reply) => {
-    const data = streamService.readHlsFile('stream.m3u8');
+    const data = await streamService.readHlsFile('stream.m3u8');
     if (!data) {
       reply.code(404).send({ error: 'Stream not available' });
       return;
@@ -55,7 +55,7 @@ export async function StreamRouter(fastify: FastifyInstance) {
         return;
       }
 
-      const data = streamService.readHlsFile(filename);
+      const data = await streamService.readHlsFile(filename);
       if (!data) {
         reply.code(404).send({ error: 'Segment not found' });
         return;

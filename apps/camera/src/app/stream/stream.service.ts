@@ -7,6 +7,7 @@ import {
   readdirSync,
   unlinkSync,
 } from 'fs';
+import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { CameraService } from '../camera/camera.service';
 
@@ -26,6 +27,16 @@ export class StreamService {
 
   /** How long (ms) without a new segment before we consider the stream stalled */
   private readonly _watchdogTimeoutMs = 30_000;
+
+  /**
+   * Short-lived in-memory cache for HLS files.
+   * Prevents redundant disk reads when multiple viewers request
+   * the same segment simultaneously. Entries expire after 2s.
+   */
+  private readonly _hlsCache = new Map<
+    string,
+    { data: Buffer; expires: number }
+  >();
 
   /** FPS for the detection frame output (second FFmpeg output) */
   private readonly _detectionFps = Math.ceil(
@@ -118,9 +129,13 @@ export class StreamService {
   }
 
   /**
-   * Read a file from the HLS directory
+   * Read a file from the HLS directory (async, cached).
+   * The short-lived cache ensures that when N viewers request the same
+   * segment at roughly the same time, only one disk read is performed.
+   * m3u8 playlists are cached for 500ms; .ts segments for 4s (they are
+   * immutable once written).
    */
-  readHlsFile(filename: string): Buffer | null {
+  async readHlsFile(filename: string): Promise<Buffer | null> {
     const filePath = join(this._hlsDir, filename);
 
     // Prevent directory traversal
@@ -128,8 +143,27 @@ export class StreamService {
       return null;
     }
 
+    // Check cache
+    const now = Date.now();
+    const cached = this._hlsCache.get(filename);
+    if (cached && cached.expires > now) {
+      return cached.data;
+    }
+
     try {
-      return readFileSync(filePath);
+      const data = await readFile(filePath);
+      // Playlist changes frequently; segments are immutable
+      const ttl = filename.endsWith('.m3u8') ? 500 : 4_000;
+      this._hlsCache.set(filename, { data, expires: now + ttl });
+
+      // Lazily prune expired entries
+      if (this._hlsCache.size > 20) {
+        for (const [key, entry] of this._hlsCache) {
+          if (entry.expires <= now) this._hlsCache.delete(key);
+        }
+      }
+
+      return data;
     } catch {
       return null;
     }
