@@ -264,7 +264,9 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
       this.hls.attachMedia(video);
 
       this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {});
+        video.play().catch(() => {
+          /* autoplay may be blocked */
+        });
         this.isPlaying.set(true);
         this.error.set(null);
         this.startStallCheck();
@@ -291,7 +293,9 @@ export class LivePlayerComponent implements AfterViewInit, OnDestroy {
       // Native HLS (Safari)
       video.src = this.hlsUrl;
       video.addEventListener('loadedmetadata', () => {
-        video.play().catch(() => {});
+        video.play().catch(() => {
+          /* autoplay may be blocked */
+        });
         this.isPlaying.set(true);
       });
     } else {

@@ -468,7 +468,7 @@ export class ChatService {
           catchError((err) => of({ name, result: { error: err.message } }))
         );
 
-      case 'get_recent_transactions':
+      case 'get_recent_transactions': {
         const filters: Record<string, unknown> = {};
         if (args['search']) filters['search'] = args['search'];
         if (args['category']) filters['categoryId'] = args['category'];
@@ -490,6 +490,7 @@ export class ChatService {
           }),
           catchError((err) => of({ name, result: { error: err.message } }))
         );
+      }
 
       case 'get_dashboard':
         return this._financeApi.getDashboard().pipe(

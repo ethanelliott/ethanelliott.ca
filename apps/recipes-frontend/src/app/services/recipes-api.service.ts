@@ -437,11 +437,13 @@ export class RecipesApiService {
           const decoder = new TextDecoder();
           let buffer = '';
 
-          while (true) {
-            const { done, value } = await reader.read();
+          let done = false;
+          while (!done) {
+            const result = await reader.read();
+            done = result.done;
             if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(result.value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
 
@@ -559,11 +561,13 @@ export class RecipesApiService {
           const decoder = new TextDecoder();
           let buffer = '';
 
-          while (true) {
-            const { done, value } = await reader.read();
+          let done = false;
+          while (!done) {
+            const result = await reader.read();
+            done = result.done;
             if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(result.value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
 
