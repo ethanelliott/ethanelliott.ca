@@ -297,7 +297,15 @@ export class ConversationService {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
-      return JSON.parse(raw) as Conversation[];
+      const convos = JSON.parse(raw) as Conversation[];
+      // Strip cached renderedHtml — it's a transient cache that should be
+      // re-rendered with the current markdown pipeline on each load
+      for (const convo of convos) {
+        for (const msg of convo.displayMessages) {
+          delete msg.renderedHtml;
+        }
+      }
+      return convos;
     } catch {
       return [];
     }
