@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/test-server
-  tag: s-fa4b603
+  tag: s-979d5af
   pullPolicy: Always
 
 service:
