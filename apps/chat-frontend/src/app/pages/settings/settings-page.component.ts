@@ -365,6 +365,12 @@ interface ModelOption {
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      height: 100%;
+      overflow: hidden;
+    }
+
     .settings-page {
       max-width: 640px;
       margin: 0 auto;

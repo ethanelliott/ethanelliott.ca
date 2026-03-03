@@ -343,6 +343,12 @@ interface ModelOption {
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      height: 100%;
+      overflow: hidden;
+    }
+
     .control-panel {
       max-width: 740px;
       margin: 0 auto;
