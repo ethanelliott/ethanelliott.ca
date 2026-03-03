@@ -62,6 +62,7 @@ class ApprovalManager {
     tool: string,
     input: Record<string, unknown>,
     options: {
+      approvalId?: string;
       message?: string;
       userParametersSchema?: MCPToolSchema;
       agentName?: string;
@@ -73,7 +74,7 @@ class ApprovalManager {
       throw new Error('Too many pending approvals. Please try again later.');
     }
 
-    const approvalId = randomUUID();
+    const approvalId = options.approvalId || randomUUID();
     const timeoutMs = options.timeoutMs || this.defaultTimeoutMs;
 
     const request: ApprovalRequest = {

@@ -12,6 +12,7 @@ import { getOllamaClient, OllamaClient } from '../ollama';
 import { getToolRegistry } from '../mcp';
 import { StreamEmitter } from '../streaming';
 import { getApprovalManager } from '../approval';
+import { randomUUID } from 'crypto';
 
 /**
  * Base Agent Class
@@ -213,9 +214,10 @@ export class Agent {
           if (tool?.approval?.required && emitter) {
             // Request approval and wait for response
             const approvalManager = getApprovalManager();
+            const approvalId = randomUUID();
 
             // Emit approval required event
-            emitter.approvalRequired(toolName, toolName, args, {
+            emitter.approvalRequired(approvalId, toolName, args, {
               message: tool.approval.message,
               userParametersSchema: tool.approval.userParametersSchema,
               agentName: this.config.name,
@@ -227,6 +229,7 @@ export class Agent {
                 toolName,
                 args,
                 {
+                  approvalId,
                   message: tool.approval.message,
                   userParametersSchema: tool.approval.userParametersSchema,
                   agentName: this.config.name,
