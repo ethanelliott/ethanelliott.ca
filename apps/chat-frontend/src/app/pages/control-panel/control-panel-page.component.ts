@@ -168,6 +168,23 @@ interface ModelOption {
             <span class="slider-value">{{ orchMaxDelegations() }}</span>
           </div>
         </div>
+        <div class="setting-row vertical">
+          <div class="setting-info">
+            <label>System Prompt</label>
+            <span class="setting-desc"
+              >Instructions that control how the orchestrator routes and
+              delegates tasks. Leave empty to use the built-in default.</span
+            >
+          </div>
+          <textarea
+            pTextarea
+            [(ngModel)]="orchSystemPrompt"
+            [rows]="8"
+            [autoResize]="true"
+            class="prompt-textarea"
+            placeholder="Leave empty to use the default orchestrator prompt..."
+          ></textarea>
+        </div>
       </section>
 
       <!-- Sub-Agents -->
@@ -740,6 +757,7 @@ export class ControlPanelPageComponent implements OnInit {
   // Form state for orchestrator
   readonly orchModel = signal('');
   readonly orchMaxDelegations = signal(5);
+  readonly orchSystemPrompt = signal('');
 
   // Form state for each sub-agent (keyed by name)
   agentForms: Record<
@@ -754,7 +772,7 @@ export class ControlPanelPageComponent implements OnInit {
   > = {};
 
   // Snapshot of original values for dirty checking
-  private orchOriginal = { model: '', maxDelegations: 5 };
+  private orchOriginal = { model: '', maxDelegations: 5, systemPrompt: '' };
   private agentOriginals: Record<string, string> = {}; // JSON snapshots
 
   // Tool addition selection state
@@ -786,7 +804,8 @@ export class ControlPanelPageComponent implements OnInit {
   readonly orchestratorDirty = computed(() => {
     return (
       this.orchModel() !== this.orchOriginal.model ||
-      this.orchMaxDelegations() !== this.orchOriginal.maxDelegations
+      this.orchMaxDelegations() !== this.orchOriginal.maxDelegations ||
+      this.orchSystemPrompt() !== this.orchOriginal.systemPrompt
     );
   });
 
@@ -831,9 +850,11 @@ export class ControlPanelPageComponent implements OnInit {
   private initOrchestratorForm(cfg: GatewayConfig): void {
     this.orchModel.set(cfg.orchestrator.model || '');
     this.orchMaxDelegations.set(cfg.orchestrator.maxDelegations || 5);
+    this.orchSystemPrompt.set(cfg.orchestrator.systemPrompt || '');
     this.orchOriginal = {
       model: this.orchModel(),
       maxDelegations: this.orchMaxDelegations(),
+      systemPrompt: this.orchSystemPrompt(),
     };
   }
 
@@ -913,12 +934,16 @@ export class ControlPanelPageComponent implements OnInit {
     if (this.orchMaxDelegations() !== this.orchOriginal.maxDelegations) {
       updates['maxDelegations'] = this.orchMaxDelegations();
     }
+    if (this.orchSystemPrompt() !== this.orchOriginal.systemPrompt) {
+      updates['systemPrompt'] = this.orchSystemPrompt();
+    }
 
     this.gateway.updateOrchestrator(updates as any).subscribe({
       next: (res) => {
         this.orchOriginal = {
           model: this.orchModel(),
           maxDelegations: this.orchMaxDelegations(),
+          systemPrompt: this.orchSystemPrompt(),
         };
         this.messageService.add({
           severity: 'success',

@@ -25,6 +25,7 @@ export const ConfigRouter: FastifyPluginAsync = async (
       orchestrator: {
         name: config.name,
         model: config.model,
+        systemPrompt: config.systemPrompt,
         maxDelegations: config.maxDelegations,
         routerModel: config.routerModel,
       },
@@ -63,6 +64,7 @@ export const ConfigRouter: FastifyPluginAsync = async (
       schema: {
         body: z.object({
           model: z.string().optional(),
+          systemPrompt: z.string().optional(),
           maxDelegations: z.number().min(1).max(20).optional(),
           routerModel: z.string().optional(),
         }),
@@ -78,6 +80,7 @@ export const ConfigRouter: FastifyPluginAsync = async (
         orchestrator: {
           name: config.name,
           model: config.model,
+          systemPrompt: config.systemPrompt,
           maxDelegations: config.maxDelegations,
           routerModel: config.routerModel,
         },

@@ -158,6 +158,7 @@ export interface SubAgentDefinition {
 export interface OrchestratorConfig {
   name: string;
   model?: string;
+  systemPrompt?: string;
   subAgents: SubAgentDefinition[];
   routerModel?: string; // Model for fast tool/agent selection
   maxDelegations?: number;

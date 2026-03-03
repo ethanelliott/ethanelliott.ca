@@ -304,6 +304,10 @@ export class OrchestratorAgent {
    * Build the orchestrator's system prompt
    */
   private buildOrchestratorPrompt(): string {
+    if (this.config.systemPrompt) {
+      return this.config.systemPrompt;
+    }
+
     const agentDescriptions = Array.from(this.config.subAgents)
       .map(
         (def) =>
@@ -426,7 +430,7 @@ ALWAYS delegate. NEVER respond directly.`;
    */
   updateConfig(
     updates: Partial<
-      Pick<OrchestratorConfig, 'model' | 'maxDelegations' | 'routerModel'>
+      Pick<OrchestratorConfig, 'model' | 'maxDelegations' | 'routerModel' | 'systemPrompt'>
     >
   ): void {
     if (updates.model !== undefined) this.config.model = updates.model;
@@ -434,6 +438,8 @@ ALWAYS delegate. NEVER respond directly.`;
       this.config.maxDelegations = updates.maxDelegations;
     if (updates.routerModel !== undefined)
       this.config.routerModel = updates.routerModel;
+    if (updates.systemPrompt !== undefined)
+      this.config.systemPrompt = updates.systemPrompt;
   }
 
   /**

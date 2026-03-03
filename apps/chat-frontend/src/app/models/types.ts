@@ -95,6 +95,7 @@ export interface GatewayConfig {
 export interface GatewayOrchestratorConfig {
   name: string;
   model?: string;
+  systemPrompt?: string;
   maxDelegations?: number;
   routerModel?: string;
 }

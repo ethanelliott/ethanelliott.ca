@@ -26,7 +26,7 @@ export class GatewayApiService {
     updates: Partial<
       Pick<
         GatewayOrchestratorConfig,
-        'model' | 'maxDelegations' | 'routerModel'
+        'model' | 'systemPrompt' | 'maxDelegations' | 'routerModel'
       >
     >
   ): Observable<{ success: boolean; orchestrator: GatewayOrchestratorConfig }> {
