@@ -123,10 +123,11 @@ const ToolResultSchema = z.object({
 // Message schema - matches Ollama's native format for proper context
 // This allows the LLM to understand tool call history natively
 const MessageSchema = z.discriminatedUnion('role', [
-  // User message
+  // User message (with optional base64 images for vision models)
   z.object({
     role: z.literal('user'),
     content: z.string(),
+    images: z.array(z.string()).optional(),
   }),
   // Assistant message (may include tool calls)
   z.object({
@@ -349,6 +350,10 @@ export const ChatRouter: FastifyPluginAsync = async (
               msg.role === 'assistant' && 'tool_calls' in msg
                 ? msg.tool_calls
                 : undefined,
+            images:
+              msg.role === 'user' && 'images' in msg
+                ? msg.images
+                : undefined,
           });
         } else if (msg.role === 'tool') {
           // Tool result messages - the model will see these as tool responses
@@ -393,7 +398,8 @@ export const ChatRouter: FastifyPluginAsync = async (
 
       try {
         // Run the orchestrator with streaming
-        const result = await orchestrator.run(lastMessage.content, emitter);
+        const userImages = 'images' in lastMessage ? lastMessage.images : undefined;
+        const result = await orchestrator.run(lastMessage.content, emitter, userImages);
 
         // Build the response messages in Ollama's native format
         // This includes tool calls and tool results so the model can reference them

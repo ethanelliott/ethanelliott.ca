@@ -60,6 +60,7 @@ export interface OllamaMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   tool_calls?: OllamaToolCall[];
+  images?: string[];
 }
 
 export interface OllamaToolCall {

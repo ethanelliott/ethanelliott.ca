@@ -118,10 +118,12 @@ export class OrchestratorAgent {
    * Run the orchestrator with a user query
    * @param query The user's question or request
    * @param emitter Optional stream emitter for real-time updates
+   * @param images Optional base64-encoded images for vision models
    */
   async run(
     query: string,
-    emitter?: StreamEmitter
+    emitter?: StreamEmitter,
+    images?: string[]
   ): Promise<OrchestratorResult> {
     const startTime = Date.now();
     const delegations: DelegationResult[] = [];
@@ -132,10 +134,14 @@ export class OrchestratorAgent {
     const systemPrompt = this.buildOrchestratorPrompt();
 
     // Build messages
+    const userMessage: OllamaMessage = { role: 'user', content: query };
+    if (images?.length) {
+      userMessage.images = images;
+    }
     const messages: OllamaMessage[] = [
       { role: 'system', content: systemPrompt },
       ...this.conversationHistory,
-      { role: 'user', content: query },
+      userMessage,
     ];
 
     // Create the delegation tool with emitter support

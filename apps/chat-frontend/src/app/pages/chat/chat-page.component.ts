@@ -7,6 +7,7 @@ import {
   computed,
   signal,
   viewChild,
+  HostListener,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -19,15 +20,21 @@ import {
   DisplayMessage,
   StreamEvent,
   DisplayToolCall,
+  FileAttachment,
 } from '../../models/types';
 import { MessageListComponent } from './message-list.component';
-import { ChatInputComponent } from './chat-input.component';
+import {
+  ChatInputComponent,
+  SendMessageEvent,
+} from './chat-input.component';
 import { ModelSelectorComponent } from './model-selector.component';
 import {
   ApprovalDialogComponent,
   ApprovalRequest,
   ApprovalResponse,
 } from './approval-dialog.component';
+
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 @Component({
   selector: 'app-chat-page',
@@ -40,7 +47,13 @@ import {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="chat-page">
+    <div
+      class="chat-page"
+      [class.drag-over]="isDragOver()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+    >
       <div class="chat-header">
         <app-model-selector />
       </div>
@@ -48,9 +61,10 @@ import {
         [messages]="displayMessages()"
         [isStreaming]="conversationService.isStreaming()"
         [statusText]="statusText()"
-        (suggestionSelected)="onSendMessage($event)"
+        (suggestionSelected)="onSuggestionSelected($event)"
       />
       <app-chat-input
+        #chatInput
         [isStreaming]="conversationService.isStreaming()"
         (sendMessage)="onSendMessage($event)"
         (stopGeneration)="onStopGeneration()"
@@ -61,6 +75,14 @@ import {
         (approve)="onApprovalResponse($event)"
       />
       }
+      @if (isDragOver()) {
+      <div class="drop-overlay">
+        <div class="drop-overlay-content">
+          <i class="pi pi-upload"></i>
+          <span>Drop files here</span>
+        </div>
+      </div>
+      }
     </div>
   `,
   styles: `
@@ -69,6 +91,7 @@ import {
       flex-direction: column;
       height: 100%;
       overflow: hidden;
+      position: relative;
     }
 
     .chat-header {
@@ -78,6 +101,33 @@ import {
       padding: 8px 16px;
       border-bottom: 1px solid var(--p-surface-800);
       flex-shrink: 0;
+    }
+
+    .drop-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(59, 130, 246, 0.1);
+      border: 2px dashed var(--p-primary-color);
+      border-radius: 8px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .drop-overlay-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--p-primary-color);
+      font-size: 1.1rem;
+      font-weight: 600;
+
+      i {
+        font-size: 2rem;
+      }
     }
   `,
 })
@@ -91,9 +141,12 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
   readonly statusText = signal('');
   readonly pendingApproval = signal<ApprovalRequest | null>(null);
+  readonly isDragOver = signal(false);
+  private readonly chatInput = viewChild<ChatInputComponent>('chatInput');
 
   private streamSub: Subscription | null = null;
   private routeSub: Subscription | null = null;
+  private dragCounter = 0;
 
   readonly displayMessages = computed(() => {
     const convo = this.conversationService.activeConversation();
@@ -120,7 +173,56 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     this.streamSub?.unsubscribe();
   }
 
-  onSendMessage(text: string): void {
+  onSuggestionSelected(text: string): void {
+    this.onSendMessage({ text, attachments: [] });
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragCounter++;
+    this.isDragOver.set(true);
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragCounter--;
+    if (this.dragCounter <= 0) {
+      this.dragCounter = 0;
+      this.isDragOver.set(false);
+    }
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragCounter = 0;
+    this.isDragOver.set(false);
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    if (files.length) {
+      this.chatInput()?.addFiles(files);
+    }
+  }
+
+  onSendMessage(event: SendMessageEvent): void {
+    const { text, attachments } = event;
+
+    // Separate images and text files
+    const imageAttachments = attachments.filter((a) =>
+      IMAGE_TYPES.includes(a.type)
+    );
+    const textAttachments = attachments.filter(
+      (a) => !IMAGE_TYPES.includes(a.type)
+    );
+
+    // Build content: original text + inlined text file contents
+    let fullContent = text;
+    for (const att of textAttachments) {
+      const decoded = decodeURIComponent(escape(atob(att.base64)));
+      fullContent += `\n\n--- ${att.name} ---\n${decoded}`;
+    }
+
     // Ensure we have an active conversation
     let convoId = this.conversationService.activeConversationId();
     if (!convoId) {
@@ -141,11 +243,18 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     }
 
     // Add user message
-    const userMessage: ChatMessage = { role: 'user', content: text };
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: fullContent,
+      images: imageAttachments.length
+        ? imageAttachments.map((a) => a.base64)
+        : undefined,
+    };
     const userDisplay: DisplayMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: text,
+      content: text || (attachments.length ? `[${attachments.length} file(s) attached]` : ''),
+      attachments: attachments.length ? attachments : undefined,
       timestamp: Date.now(),
     };
     this.conversationService.addMessage(convoId, userMessage, userDisplay);

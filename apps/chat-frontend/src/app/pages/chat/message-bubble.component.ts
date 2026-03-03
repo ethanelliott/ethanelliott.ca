@@ -32,6 +32,25 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         [class.assistant-bubble]="message().role === 'assistant'"
       >
         @if (message().role === 'user') {
+        <!-- User attachments -->
+        @if (message().attachments?.length) {
+        <div class="user-attachments">
+          @for (att of message().attachments; track att.name) { @if
+          (isImageType(att.type)) {
+          <div class="attachment-image">
+            <img
+              [src]="'data:' + att.type + ';base64,' + att.base64"
+              [alt]="att.name"
+            />
+          </div>
+          } @else {
+          <div class="attachment-file">
+            <i class="pi pi-file"></i>
+            <span>{{ att.name }}</span>
+          </div>
+          } }
+        </div>
+        }
         <div class="message-text">{{ message().content }}</div>
         } @else {
         <!-- Thinking section -->
@@ -445,6 +464,43 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
     .delegation-result-content {
       color: var(--p-text-color);
     }
+
+    /* User attachments */
+    .user-attachments {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .attachment-image {
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 200px;
+
+      img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-height: 180px;
+        object-fit: cover;
+      }
+    }
+
+    .attachment-file {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      opacity: 0.85;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 3px 8px;
+
+      i {
+        font-size: 0.7rem;
+      }
+    }
   `,
 })
 export class MessageBubbleComponent {
@@ -491,5 +547,11 @@ export class MessageBubbleComponent {
   truncate(text: string, maxLen: number): string {
     if (text.length <= maxLen) return text;
     return text.slice(0, maxLen) + '... (truncated)';
+  }
+
+  isImageType(type: string): boolean {
+    return ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(
+      type
+    );
   }
 }
