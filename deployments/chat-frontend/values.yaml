@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/chat-frontend
-  tag: s-f4c3e0e
+  tag: s-c0f2260
   pullPolicy: Always
 
 service:
