@@ -176,13 +176,15 @@ export class OrchestratorAgent {
           `Orchestrator thinking (iteration ${iterations}/${maxIterations})...`
         );
 
-        // Don't stream when using tools - tool calls don't work reliably with streaming
-        // The orchestrator needs tool calls to delegate, so we use non-streaming here
-        const response = await ollama.chat({
-          model: this.config.model || 'functiongemma',
-          messages,
-          tools: delegateTools,
-        });
+        // Use streaming when we have an emitter so tokens arrive in real-time
+        // streamOrchestratorChat handles both text and tool_call responses
+        const response = emitter
+          ? await this.streamOrchestratorChat(messages, delegateTools, emitter)
+          : await ollama.chat({
+              model: this.config.model || 'functiongemma',
+              messages,
+              tools: delegateTools,
+            });
 
         messages.push(response.message);
 
@@ -193,35 +195,6 @@ export class OrchestratorAgent {
             { role: 'user', content: query },
             response.message
           );
-
-          // Emit tokens for the final response (optimized chunking)
-          if (emitter && response.message.content) {
-            const content = response.message.content;
-            const chunkSize = 50;
-            let i = 0;
-            while (i < content.length) {
-              let end = Math.min(i + chunkSize, content.length);
-              if (end < content.length) {
-                const sentenceEnd = content
-                  .slice(i, end + 20)
-                  .search(/[.!?]\s/);
-                if (sentenceEnd > 0 && sentenceEnd < chunkSize + 20) {
-                  end = i + sentenceEnd + 2;
-                } else {
-                  const spacePos = content.lastIndexOf(' ', end);
-                  if (spacePos > i) end = spacePos + 1;
-                }
-              }
-              emitter.token(
-                content.slice(i, end),
-                'orchestrator',
-                undefined,
-                false
-              );
-              i = end;
-            }
-            emitter.token('', 'orchestrator', undefined, true);
-          }
 
           return {
             success: true,
@@ -264,47 +237,29 @@ export class OrchestratorAgent {
         }
       }
 
-      // Max iterations - get final response
+      // Max iterations - get final response with streaming
       emitter?.status('Generating final response...');
 
-      const finalResponse = await ollama.chat({
-        model: this.config.model || 'functiongemma',
-        messages: [
-          ...messages,
-          {
-            role: 'user',
-            content:
-              'Please provide a final response based on all the information gathered.',
-          },
-        ],
-      });
+      const finalMessages = [
+        ...messages,
+        {
+          role: 'user' as const,
+          content:
+            'Please provide a final response based on all the information gathered.',
+        },
+      ];
+
+      const finalResponse = emitter
+        ? await this.streamOrchestratorChat(finalMessages, [], emitter)
+        : await ollama.chat({
+            model: this.config.model || 'functiongemma',
+            messages: finalMessages,
+          });
 
       this.conversationHistory.push(
         { role: 'user', content: query },
         finalResponse.message
       );
-
-      // Emit the final response as tokens
-      if (emitter && finalResponse.message.content) {
-        const content = finalResponse.message.content;
-        const chunkSize = 50;
-        let i = 0;
-        while (i < content.length) {
-          let end = Math.min(i + chunkSize, content.length);
-          if (end < content.length) {
-            const spacePos = content.lastIndexOf(' ', end);
-            if (spacePos > i) end = spacePos + 1;
-          }
-          emitter.token(
-            content.slice(i, end),
-            'orchestrator',
-            undefined,
-            false
-          );
-          i = end;
-        }
-        emitter.token('', 'orchestrator', undefined, true);
-      }
 
       return {
         success: true,

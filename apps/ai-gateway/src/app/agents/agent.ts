@@ -146,59 +146,32 @@ export class Agent {
           this.config.maxIterations || 10
         );
 
-        // Tool calling doesn't work reliably with streaming in Ollama
-        // Use non-streaming when tools are available
-        const response = await this.ollama.chat({
-          model: this.config.model || 'functiongemma',
-          messages,
-          tools: tools.length > 0 ? tools : undefined,
-          options: {
-            temperature: this.config.temperature,
-          },
-        });
+        // Use streaming when we have an emitter so tokens arrive in real-time
+        // streamChat handles both text and tool_call responses
+        const response = emitter
+          ? await this.streamChat(
+              messages,
+              tools.length > 0 ? tools : undefined,
+              emitter
+            )
+          : await this.ollama.chat({
+              model: this.config.model || 'functiongemma',
+              messages,
+              tools: tools.length > 0 ? tools : undefined,
+              options: {
+                temperature: this.config.temperature,
+              },
+            });
 
         messages.push(response.message);
 
-        // If no tool calls, we're done - stream the final response if we have content
+        // If no tool calls, we're done
         if (!response.message.tool_calls?.length) {
           // Save to conversation history
           this.conversationHistory.push(
             { role: 'user', content: task },
             response.message
           );
-
-          // Emit tokens for the final response content (optimized chunking)
-          if (emitter && response.message.content) {
-            // Emit content in optimized chunks (sentences or ~50 char chunks)
-            // This balances UX responsiveness with event overhead
-            const content = response.message.content;
-            const chunkSize = 50;
-            let i = 0;
-            while (i < content.length) {
-              // Try to break at sentence boundaries or spaces
-              let end = Math.min(i + chunkSize, content.length);
-              if (end < content.length) {
-                // Look for natural break points
-                const sentenceEnd = content
-                  .slice(i, end + 20)
-                  .search(/[.!?]\s/);
-                if (sentenceEnd > 0 && sentenceEnd < chunkSize + 20) {
-                  end = i + sentenceEnd + 2;
-                } else {
-                  const spacePos = content.lastIndexOf(' ', end);
-                  if (spacePos > i) end = spacePos + 1;
-                }
-              }
-              emitter.token(
-                content.slice(i, end),
-                'agent',
-                this.config.name,
-                false
-              );
-              i = end;
-            }
-            emitter.token('', 'agent', this.config.name, true);
-          }
 
           // Emit agent response (final content)
           emitter?.agentResponse(this.config.name, response.message.content);
