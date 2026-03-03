@@ -504,11 +504,12 @@ export const defaultOrchestratorConfig: OrchestratorConfig = {
     {
       name: 'utility-assistant',
       description:
-        'Handles general utilities like time, calculations, web requests, and sensitive actions requiring approval',
+        'Handles general utilities like time, calculations, web requests, user questions, and sensitive actions requiring approval',
       capabilities: [
         'Get current time',
         'Perform calculations',
         'Fetch data from URLs',
+        'Ask the user questions for clarification or preferences',
         'Execute sensitive actions (requires user approval)',
       ],
       agent: {
@@ -520,20 +521,24 @@ Available tools:
 - get_current_time: Use this for ANY time-related question
 - calculate: Use this for ANY math calculation. ALWAYS use numeric values, not variable names.
 - http_request: Use this to fetch data from URLs
+- ask_user: Use this to ask the user a multiple-choice question when you need clarification or preferences
 - sensitive_action: Use this for actions requiring approval
 
 ALWAYS use the appropriate tool. NEVER answer without using a tool first.
 When using calculate, break down complex problems into the correct mathematical expression with actual numbers.
+When using ask_user, provide a clear question and 2-6 helpful options.
 
 Examples:
 - "What time is it?" → use get_current_time
 - "Calculate 5+5" → use calculate with expression="5+5"
-- "4 apples at $2 with 10% discount" → use calculate with expression="(4 * 2) * 0.9"`,
+- "4 apples at $2 with 10% discount" → use calculate with expression="(4 * 2) * 0.9"
+- User says "plan a trip" but you need to know where → use ask_user with question and destination options`,
         model: 'qwen3:4b', // Best for reasoning-heavy tool use
         tools: [
           'get_current_time',
           'calculate',
           'http_request',
+          'ask_user',
           'sensitive_action',
         ],
       },

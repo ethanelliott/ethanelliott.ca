@@ -31,6 +31,11 @@ import {
   ApprovalRequest,
   ApprovalResponse,
 } from './approval-dialog.component';
+import {
+  QuestionnaireDialogComponent,
+  QuestionnaireRequest,
+  QuestionnaireResponse,
+} from './questionnaire-dialog.component';
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
@@ -42,6 +47,7 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     ChatInputComponent,
     ModelSelectorComponent,
     ApprovalDialogComponent,
+    QuestionnaireDialogComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -71,6 +77,11 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       <app-approval-dialog
         [request]="pendingApproval()"
         (approve)="onApprovalResponse($event)"
+      />
+      } @if (pendingQuestion()) {
+      <app-questionnaire-dialog
+        [request]="pendingQuestion()"
+        (respond)="onQuestionnaireResponse($event)"
       />
       } @if (isDragOver()) {
       <div class="drop-overlay">
@@ -145,6 +156,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
   readonly statusText = signal('');
   readonly pendingApproval = signal<ApprovalRequest | null>(null);
+  readonly pendingQuestion = signal<QuestionnaireRequest | null>(null);
   readonly isDragOver = signal(false);
   private readonly chatInput = viewChild<ChatInputComponent>('chatInput');
 
@@ -354,6 +366,23 @@ export class ChatPageComponent implements OnInit, OnDestroy {
             severity: 'error',
             summary: 'Approval Failed',
             detail: 'Could not send approval response.',
+            life: 4000,
+          });
+        },
+      });
+  }
+
+  onQuestionnaireResponse(response: QuestionnaireResponse): void {
+    this.pendingQuestion.set(null);
+    this.chatApi
+      .approveToolCall(response.approvalId, true, { answer: response.answer })
+      .subscribe({
+        error: (err) => {
+          console.error('Questionnaire response failed:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Response Failed',
+            detail: 'Could not send your answer.',
             life: 4000,
           });
         },
@@ -578,21 +607,40 @@ export class ChatPageComponent implements OnInit, OnDestroy {
       case 'approval_required': {
         const approvalId = (event.data['approvalId'] as string) || '';
         const tool = (event.data['tool'] as string) || '';
+        const toolInput =
+          (event.data['input'] as Record<string, unknown>) || {};
+        const agentName =
+          (event.data['agentName'] as string) ||
+          (event.data['agent'] as string) ||
+          undefined;
+
         this.conversationService.updateToolCallOnLastAssistant(convoId, tool, {
           status: 'approval-required',
           approvalId,
         });
-        this.pendingApproval.set({
-          approvalId,
-          tool,
-          input: (event.data['input'] as Record<string, unknown>) || {},
-          message: event.data['message'] as string | undefined,
-          agentName:
-            (event.data['agentName'] as string) ||
-            (event.data['agent'] as string) ||
-            undefined,
-        });
-        this.statusText.set('Waiting for approval...');
+
+        // ask_user tool → show questionnaire dialog instead of approval
+        if (tool === 'ask_user') {
+          const options = (toolInput['options'] as string[]) || [];
+          const allowFreeText = toolInput['allow_free_text'] !== false;
+          this.pendingQuestion.set({
+            approvalId,
+            question: (toolInput['question'] as string) || 'Please choose:',
+            options,
+            allowFreeText,
+            agentName,
+          });
+          this.statusText.set('Waiting for your answer...');
+        } else {
+          this.pendingApproval.set({
+            approvalId,
+            tool,
+            input: toolInput,
+            message: event.data['message'] as string | undefined,
+            agentName,
+          });
+          this.statusText.set('Waiting for approval...');
+        }
         break;
       }
 

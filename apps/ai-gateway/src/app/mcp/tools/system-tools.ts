@@ -326,11 +326,80 @@ const sensitiveAction = createTool(
   }
 );
 
+/**
+ * Ask User Tool - Interactive questionnaire for gathering user input
+ *
+ * Allows the LLM to ask the user a question with multiple-choice options.
+ * The user can select an option or provide a free-text response.
+ * Uses the approval flow to pause execution until the user responds.
+ */
+const askUser = createTool(
+  {
+    name: 'ask_user',
+    description:
+      'Ask the user a question with multiple-choice options. Use this when you need clarification, preferences, or input from the user before proceeding. The user can pick an option or type a custom answer.',
+    category: 'System',
+    tags: ['interactive', 'questionnaire', 'user-input'],
+    parameters: {
+      type: 'object',
+      properties: {
+        question: {
+          type: 'string',
+          description: 'The question to ask the user',
+        },
+        options: {
+          type: 'array',
+          description:
+            'Multiple-choice options for the user to pick from (2-6 options recommended)',
+          items: {
+            type: 'string',
+            description: 'An option label',
+          },
+        },
+        allow_free_text: {
+          type: 'boolean',
+          description:
+            'Whether the user can type a custom answer instead of picking an option. Defaults to true.',
+        },
+      },
+      required: ['question', 'options'],
+    },
+    // Uses approval flow to pause and wait for the user's response
+    approval: {
+      required: true,
+      message: 'The assistant has a question for you.',
+      userParametersSchema: {
+        type: 'object',
+        properties: {
+          answer: {
+            type: 'string',
+            description: "The user's selected or typed answer",
+          },
+        },
+        required: ['answer'],
+      },
+    },
+  },
+  async (params, userParams) => {
+    const question = params.question as string;
+    const answer = (userParams?.answer as string) || 'No answer provided';
+
+    return {
+      success: true,
+      data: {
+        question,
+        answer,
+      },
+    };
+  }
+);
+
 // Register all system tools
 const registry = getToolRegistry();
 registry.register(getCurrentTime);
 registry.register(calculate);
 registry.register(httpRequest);
 registry.register(sensitiveAction);
+registry.register(askUser);
 
-export { getCurrentTime, calculate, httpRequest, sensitiveAction };
+export { getCurrentTime, calculate, httpRequest, sensitiveAction, askUser };
