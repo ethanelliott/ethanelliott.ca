@@ -272,9 +272,6 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         cursor: pointer;
         padding: 2px 8px;
         font-size: 0.75rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
         border-radius: 4px;
         transition: color 0.15s ease, background 0.15s ease;
 
@@ -286,6 +283,12 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         &.copied {
           color: #22c55e;
         }
+      }
+
+      .code-copy-btn-inner {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
 
         svg {
           flex-shrink: 0;

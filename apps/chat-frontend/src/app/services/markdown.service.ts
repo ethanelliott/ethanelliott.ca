@@ -105,10 +105,10 @@ export class MarkdownService {
         const text = code ? code.textContent || '' : '';
         this.copyToClipboard(text).then((ok) => {
           if (ok) {
-            btn.innerHTML = `${this.CHECK_ICON}<span>Copied</span>`;
+            btn.innerHTML = `<span class="code-copy-btn-inner">${this.CHECK_ICON}<span>Copied</span></span>`;
             btn.classList.add('copied');
             setTimeout(() => {
-              btn.innerHTML = `${this.COPY_ICON}<span>Copy</span>`;
+              btn.innerHTML = `<span class="code-copy-btn-inner">${this.COPY_ICON}<span>Copy</span></span>`;
               btn.classList.remove('copied');
             }, 2000);
           }
@@ -169,7 +169,7 @@ export class MarkdownService {
   }
 
   private wrapCodeBlocks(html: string): string {
-    const copyBtn = `<button class="code-copy-btn" type="button" title="Copy code">${this.COPY_ICON}<span>Copy</span></button>`;
+    const copyBtn = `<button class="code-copy-btn" type="button" title="Copy code"><span class="code-copy-btn-inner">${this.COPY_ICON}<span>Copy</span></span></button>`;
 
     // Wrap <pre><code class="hljs language-xxx"> blocks with header (language label + copy button)
     let result = html.replace(
