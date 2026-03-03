@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/landing
-  tag: s-85e9b15
+  tag: s-fa4b603
   pullPolicy: Always
 
 service:
