@@ -79,10 +79,7 @@ import { ConversationService } from '../services/conversation.service';
               class="search-input"
             />
             @if (searchQuery()) {
-            <button
-              class="search-clear"
-              (click)="searchQuery.set('')"
-            >
+            <button class="search-clear" (click)="searchQuery.set('')">
               <i class="pi pi-times"></i>
             </button>
             }
@@ -169,10 +166,7 @@ import { ConversationService } from '../services/conversation.service';
               class="search-input"
             />
             @if (searchQuery()) {
-            <button
-              class="search-clear"
-              (click)="searchQuery.set('')"
-            >
+            <button class="search-clear" (click)="searchQuery.set('')">
               <i class="pi pi-times"></i>
             </button>
             }
