@@ -5,6 +5,7 @@ import { ToolsRouter } from './tools/tools.router';
 import { AgentsRouter } from './agents/agents.router';
 import { ServicesRouter } from './services/services.router';
 import { MetricsRouter } from './metrics/metrics.router';
+import { ConfigRouter } from './config/config.router';
 import { initializeToolRegistry } from './mcp/tool-registry';
 import { initializeAgents } from './agents';
 
@@ -34,4 +35,7 @@ export async function Application(fastify: FastifyInstance) {
   fastify
     .withTypeProvider<ZodTypeProvider>()
     .register(MetricsRouter, { prefix: '/app-metrics' });
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(ConfigRouter, { prefix: '/config' });
 }

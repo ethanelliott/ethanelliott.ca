@@ -45,6 +45,13 @@ export class Agent {
   }
 
   /**
+   * Update agent configuration at runtime
+   */
+  updateConfig(updates: Partial<AgentConfig>): void {
+    this.config = { ...this.config, ...updates };
+  }
+
+  /**
    * Reset conversation history
    */
   reset(): void {

@@ -3,6 +3,7 @@ import {
   OrchestratorResult,
   DelegationResult,
   SubAgentDefinition,
+  AgentConfig,
   AgentResult,
   OllamaMessage,
   OllamaChatResponse,
@@ -418,6 +419,51 @@ ALWAYS delegate. NEVER respond directly.`;
    */
   getConfig(): OrchestratorConfig {
     return this.config;
+  }
+
+  /**
+   * Update orchestrator configuration at runtime
+   */
+  updateConfig(
+    updates: Partial<
+      Pick<OrchestratorConfig, 'model' | 'maxDelegations' | 'routerModel'>
+    >
+  ): void {
+    if (updates.model !== undefined) this.config.model = updates.model;
+    if (updates.maxDelegations !== undefined)
+      this.config.maxDelegations = updates.maxDelegations;
+    if (updates.routerModel !== undefined)
+      this.config.routerModel = updates.routerModel;
+  }
+
+  /**
+   * Update a sub-agent's configuration
+   */
+  updateSubAgent(name: string, updates: Partial<AgentConfig>): boolean {
+    const agent = this.subAgents.get(name);
+    if (!agent) return false;
+    agent.updateConfig(updates);
+    // Also update the config definition
+    const def = this.config.subAgents.find((sa) => sa.name === name);
+    if (def) {
+      def.agent = { ...def.agent, ...updates };
+    }
+    return true;
+  }
+
+  /**
+   * Get sub-agent names
+   */
+  getSubAgentNames(): string[] {
+    return Array.from(this.subAgents.keys());
+  }
+
+  /**
+   * Get a sub-agent's config
+   */
+  getSubAgentConfig(name: string): AgentConfig | null {
+    const agent = this.subAgents.get(name);
+    return agent ? agent.getConfig() : null;
   }
 }
 

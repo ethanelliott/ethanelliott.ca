@@ -82,3 +82,62 @@ export interface FileAttachment {
   base64: string;
   previewUrl?: string;
 }
+
+// --- Gateway Config Types ---
+
+export interface GatewayConfig {
+  orchestrator: GatewayOrchestratorConfig;
+  subAgents: GatewaySubAgentDefinition[];
+  tools: GatewayToolInfo[];
+  categories: string[];
+}
+
+export interface GatewayOrchestratorConfig {
+  name: string;
+  model?: string;
+  maxDelegations?: number;
+  routerModel?: string;
+}
+
+export interface GatewaySubAgentDefinition {
+  name: string;
+  description: string;
+  capabilities: string[];
+  agent: GatewayAgentConfig;
+}
+
+export interface GatewayAgentConfig {
+  name: string;
+  description: string;
+  model?: string;
+  systemPrompt: string;
+  tools?: string[];
+  maxIterations?: number;
+  temperature?: number;
+}
+
+export interface GatewayToolInfo {
+  name: string;
+  description: string;
+  category?: string;
+  tags?: string[];
+  parameters?: unknown;
+  approval?: { required: boolean; message?: string };
+  enabled: boolean;
+}
+
+export interface GatewayModelInfo {
+  name: string;
+  sizeGb: number;
+  family?: string;
+  parameterSize?: string;
+  quantization?: string;
+}
+
+export interface GatewayHealthInfo {
+  status: 'healthy' | 'degraded';
+  ollama: 'connected' | 'disconnected';
+  orchestratorModel?: string;
+  subAgentCount: number;
+  toolCount: number;
+}

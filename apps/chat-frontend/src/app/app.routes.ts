@@ -28,6 +28,13 @@ export const appRoutes: Route[] = [
             (m) => m.SettingsPageComponent
           ),
       },
+      {
+        path: 'control-panel',
+        loadComponent: () =>
+          import('./pages/control-panel/control-panel-page.component').then(
+            (m) => m.ControlPanelPageComponent
+          ),
+      },
     ],
   },
 ];

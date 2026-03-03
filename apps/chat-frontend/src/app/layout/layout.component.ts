@@ -126,6 +126,14 @@ import { ConversationService } from '../services/conversation.service';
         <div class="sidebar-footer">
           <a
             class="nav-link"
+            routerLink="/control-panel"
+            (click)="drawerVisible.set(false)"
+          >
+            <i class="pi pi-sliders-h"></i>
+            <span>Control Panel</span>
+          </a>
+          <a
+            class="nav-link"
             routerLink="/settings"
             (click)="drawerVisible.set(false)"
           >
@@ -206,6 +214,10 @@ import { ConversationService } from '../services/conversation.service';
           }
         </div>
         <div class="sidebar-footer">
+          <a class="nav-link" routerLink="/control-panel">
+            <i class="pi pi-sliders-h"></i>
+            <span>Control Panel</span>
+          </a>
           <a class="nav-link" routerLink="/settings">
             <i class="pi pi-cog"></i>
             <span>Settings</span>
