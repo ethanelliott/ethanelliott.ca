@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { environment } from '../../environments/environment';
@@ -128,74 +129,13 @@ export class ChatApiService {
 
   /**
    * Generate a short title for a conversation based on the first message.
-   * Uses the chat stream endpoint with a special system prompt to get a title.
+   * Calls the dedicated /chat/title endpoint which goes direct to Ollama.
    */
   generateTitle(userMessage: string): Observable<string> {
-    return new Observable((subscriber) => {
-      const messages = [
-        {
-          role: 'system',
-          content:
-            'Generate a very short title (max 6 words) for a conversation that starts with the following user message. Reply ONLY with the title, no quotes, no punctuation at the end, no explanation.',
-        },
-        { role: 'user', content: userMessage },
-      ];
-
-      fetch(`${this.baseUrl}/chat/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages,
-          config: { temperature: 0.3 },
-        }),
+    return this.http
+      .post<{ title: string }>(`${this.baseUrl}/chat/title`, {
+        message: userMessage,
       })
-        .then(async (response) => {
-          if (!response.ok || !response.body) {
-            subscriber.error(new Error('Title generation failed'));
-            return;
-          }
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-          let title = '';
-          let done = false;
-
-          while (!done) {
-            const result = await reader.read();
-            done = result.done;
-            if (done) break;
-            buffer += decoder.decode(result.value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed) continue;
-              try {
-                const parsed = JSON.parse(trimmed);
-                const eventType = parsed.type ?? parsed.event;
-                if (eventType === 'token' || eventType === 'content') {
-                  title +=
-                    (parsed.data?.token as string) ||
-                    (parsed.data?.content as string) ||
-                    '';
-                }
-                if (eventType === 'done' || eventType === 'error') {
-                  done = true;
-                  break;
-                }
-              } catch {
-                // skip
-              }
-            }
-          }
-
-          const cleaned = title.trim().replace(/^["']|["']$/g, '');
-          if (cleaned) {
-            subscriber.next(cleaned);
-          }
-          subscriber.complete();
-        })
-        .catch((err) => subscriber.error(err));
-    });
+      .pipe(map((res) => res.title));
   }
 }

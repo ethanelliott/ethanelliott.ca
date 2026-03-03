@@ -569,6 +569,54 @@ export const ChatRouter: FastifyPluginAsync = async (
   );
 
   /**
+   * POST /chat/title
+   * Generate a short conversation title from the first user message.
+   * Goes direct to Ollama with a single user message (no agents, no system prompt).
+   */
+  app.post(
+    '/title',
+    {
+      schema: {
+        body: z.object({
+          message: z.string().min(1),
+        }),
+        response: {
+          200: z.object({
+            title: z.string(),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const { message } = request.body;
+      const { getOllamaClient } = await import('../ollama');
+      const ollama = getOllamaClient();
+
+      const response = await ollama.chat({
+        model: 'qwen3:4b',
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a very short title (max 6 words) for a conversation that starts with the following message. Reply ONLY with the title — no quotes, no punctuation at the end, no explanation, no thinking.\n\nMessage: ${message}`,
+          },
+        ],
+        options: { temperature: 0.3 },
+      });
+
+      const raw = response.message.content || '';
+      // Strip thinking tags, quotes, trailing punctuation
+      const cleaned = raw
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .trim()
+        .replace(/^["']|["']$/g, '')
+        .replace(/[.!?]+$/, '')
+        .trim();
+
+      return { title: cleaned || 'New Chat' };
+    }
+  );
+
+  /**
    * DELETE /chat/:conversationId
    * End a conversation and clean up
    */
