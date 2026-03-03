@@ -1,0 +1,94 @@
+{
+  "name": "chat-frontend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/chat-frontend/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/apps/chat-frontend",
+        "index": "apps/chat-frontend/src/index.html",
+        "browser": "apps/chat-frontend/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "apps/chat-frontend/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/chat-frontend/public"
+          }
+        ],
+        "styles": [
+          "apps/chat-frontend/src/styles.scss"
+        ],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "800kb",
+              "maximumError": "1.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            }
+          ],
+          "optimization": {
+            "scripts": true,
+            "styles": {
+              "minify": true,
+              "inlineCritical": false
+            },
+            "fonts": true
+          },
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/chat-frontend/src/environments/environment.ts",
+              "with": "apps/chat-frontend/src/environments/environment.prod.ts"
+            }
+          ]
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "chat-frontend:build:production"
+        },
+        "development": {
+          "buildTarget": "chat-frontend:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "container": {
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
+      "options": {
+        "image": "ethanelliottio/chat-frontend",
+        "dockerfile": "apps/chat-frontend/Dockerfile",
+        "deployment": "chat-frontend"
+      }
+    }
+  }
+}
