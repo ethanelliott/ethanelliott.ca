@@ -110,7 +110,7 @@ export interface OllamaChatResponse {
 export interface OllamaStreamChunk {
   model: string;
   created_at: string;
-  message: Partial<OllamaMessage>;
+  message: Partial<OllamaMessage> & { thinking?: string };
   done: boolean;
 }
 

@@ -68,11 +68,8 @@ export class Agent {
     emitter: StreamEmitter
   ): Promise<OllamaChatResponse> {
     let content = '';
-    let thinking = '';
     let toolCalls: OllamaChatResponse['message']['tool_calls'] = undefined;
     let lastChunk: any = null;
-    let inThinking = false;
-    let tagBuffer = '';
 
     for await (const chunk of this.ollama.chatStream({
       model: this.config.model || 'functiongemma',
@@ -84,52 +81,19 @@ export class Agent {
     })) {
       lastChunk = chunk;
 
-      // Parse content for <think> tags and separate thinking from content
-      if (chunk.message?.content) {
-        const raw = chunk.message.content;
-        tagBuffer += raw;
+      // Ollama surfaces thinking in a dedicated field
+      if (chunk.message?.thinking) {
+        emitter.thinkingToken(
+          chunk.message.thinking,
+          'agent',
+          this.config.name
+        );
+      }
 
-        while (tagBuffer.length > 0) {
-          if (inThinking) {
-            const closeIdx = tagBuffer.indexOf('</think>');
-            if (closeIdx === -1) {
-              if (tagBuffer.length > 8) {
-                const toEmit = tagBuffer.slice(0, -8);
-                thinking += toEmit;
-                emitter.thinkingToken(toEmit, 'agent', this.config.name);
-                tagBuffer = tagBuffer.slice(-8);
-              }
-              break;
-            } else {
-              const thinkContent = tagBuffer.slice(0, closeIdx);
-              if (thinkContent) {
-                thinking += thinkContent;
-                emitter.thinkingToken(thinkContent, 'agent', this.config.name);
-              }
-              tagBuffer = tagBuffer.slice(closeIdx + 8);
-              inThinking = false;
-            }
-          } else {
-            const openIdx = tagBuffer.indexOf('<think>');
-            if (openIdx === -1) {
-              if (tagBuffer.length > 7) {
-                const toEmit = tagBuffer.slice(0, -7);
-                content += toEmit;
-                emitter.token(toEmit, 'agent', this.config.name, false);
-                tagBuffer = tagBuffer.slice(-7);
-              }
-              break;
-            } else {
-              const before = tagBuffer.slice(0, openIdx);
-              if (before) {
-                content += before;
-                emitter.token(before, 'agent', this.config.name, false);
-              }
-              tagBuffer = tagBuffer.slice(openIdx + 7);
-              inThinking = true;
-            }
-          }
-        }
+      // Regular content tokens
+      if (chunk.message?.content) {
+        content += chunk.message.content;
+        emitter.token(chunk.message.content, 'agent', this.config.name, false);
       }
 
       // Accumulate tool calls
@@ -137,18 +101,8 @@ export class Agent {
         toolCalls = chunk.message.tool_calls;
       }
 
-      // If done, flush remaining buffer and emit final token
+      // Emit final token on done
       if (chunk.done) {
-        if (tagBuffer) {
-          if (inThinking) {
-            thinking += tagBuffer;
-            emitter.thinkingToken(tagBuffer, 'agent', this.config.name);
-          } else {
-            content += tagBuffer;
-            emitter.token(tagBuffer, 'agent', this.config.name, false);
-          }
-          tagBuffer = '';
-        }
         emitter.token('', 'agent', this.config.name, true);
       }
     }
