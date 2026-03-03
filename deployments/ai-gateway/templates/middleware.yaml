@@ -23,6 +23,10 @@ spec:
       - "X-Requested-With"
     accessControlAllowOriginList:
 {{ toYaml .Values.ingress.cors.allowOrigins | indent 6 }}
+    {{- if .Values.ingress.cors.allowOriginsRegex }}
+    accessControlAllowOriginListRegex:
+{{ toYaml .Values.ingress.cors.allowOriginsRegex | indent 6 }}
+    {{- end }}
     accessControlMaxAge: 100
     addVaryHeader: true
 {{- end }}

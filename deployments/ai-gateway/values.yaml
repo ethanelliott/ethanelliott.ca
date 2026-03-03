@@ -18,7 +18,9 @@ ingress:
       - https://recipes.elliott.haus
       - https://finances.elliott.haus
       - https://elliott.haus
-      - https://*.elliott.haus
+      - https://chat.elliott.haus
+    allowOriginsRegex:
+      - https://.*\.elliott\.haus
 
 resources:
   limits:
