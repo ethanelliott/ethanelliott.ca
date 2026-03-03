@@ -223,8 +223,6 @@ export class OrchestratorAgent {
             emitter.token('', 'orchestrator', undefined, true);
           }
 
-          emitter?.content(response.message.content, false);
-
           return {
             success: true,
             response: response.message.content,
@@ -286,7 +284,27 @@ export class OrchestratorAgent {
         finalResponse.message
       );
 
-      emitter?.content(finalResponse.message.content, false);
+      // Emit the final response as tokens
+      if (emitter && finalResponse.message.content) {
+        const content = finalResponse.message.content;
+        const chunkSize = 50;
+        let i = 0;
+        while (i < content.length) {
+          let end = Math.min(i + chunkSize, content.length);
+          if (end < content.length) {
+            const spacePos = content.lastIndexOf(' ', end);
+            if (spacePos > i) end = spacePos + 1;
+          }
+          emitter.token(
+            content.slice(i, end),
+            'orchestrator',
+            undefined,
+            false
+          );
+          i = end;
+        }
+        emitter.token('', 'orchestrator', undefined, true);
+      }
 
       return {
         success: true,
