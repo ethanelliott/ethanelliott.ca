@@ -10,6 +10,7 @@ import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { InputTextModule } from 'primeng/inputtext';
+import { TextareaModule } from 'primeng/textarea';
 
 export interface QuestionnaireRequest {
   approvalId: string;
@@ -33,6 +34,7 @@ export interface QuestionnaireResponse {
     ButtonModule,
     RadioButtonModule,
     InputTextModule,
+    TextareaModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -53,6 +55,8 @@ export interface QuestionnaireResponse {
         </div>
         }
         <div class="question-text">{{ request()!.question }}</div>
+        @if (hasOptions()) {
+        <!-- Multiple choice mode -->
         <div class="options-list">
           @for (option of request()!.options; track option) {
           <label
@@ -92,6 +96,19 @@ export interface QuestionnaireResponse {
           </div>
           } }
         </div>
+        } @else {
+        <!-- Open-ended text mode -->
+        <div class="open-ended-wrapper">
+          <textarea
+            pTextarea
+            [(ngModel)]="freeTextValue"
+            placeholder="Type your answer..."
+            [autoResize]="true"
+            [rows]="3"
+            class="open-ended-input"
+          ></textarea>
+        </div>
+        }
       </div>
       }
       <ng-template #footer>
@@ -190,6 +207,14 @@ export interface QuestionnaireResponse {
       width: 100%;
     }
 
+    .open-ended-wrapper {
+      margin-top: 2px;
+    }
+
+    .open-ended-input {
+      width: 100%;
+    }
+
     .dialog-footer {
       display: flex;
       justify-content: flex-end;
@@ -206,7 +231,15 @@ export class QuestionnaireDialogComponent {
 
   readonly selectedOption = signal<string>('');
 
+  readonly hasOptions = () => {
+    const req = this.request();
+    return req && req.options && req.options.length > 0;
+  };
+
   readonly canSubmit = () => {
+    if (!this.hasOptions()) {
+      return this.freeTextValue.trim().length > 0;
+    }
     const sel = this.selectedOption();
     if (!sel) return false;
     if (sel === '__other__') return this.freeTextValue.trim().length > 0;
@@ -221,10 +254,14 @@ export class QuestionnaireDialogComponent {
     const req = this.request();
     if (!req || !this.canSubmit()) return;
 
-    const answer =
-      this.selectedOption() === '__other__'
-        ? this.freeTextValue.trim()
-        : this.selectedOption();
+    let answer: string;
+    if (!this.hasOptions()) {
+      answer = this.freeTextValue.trim();
+    } else if (this.selectedOption() === '__other__') {
+      answer = this.freeTextValue.trim();
+    } else {
+      answer = this.selectedOption();
+    }
 
     this.respond.emit({
       approvalId: req.approvalId,
