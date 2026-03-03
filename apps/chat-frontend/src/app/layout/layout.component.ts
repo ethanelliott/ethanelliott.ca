@@ -4,17 +4,27 @@ import {
   signal,
   inject,
   computed,
+  HostListener,
 } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { DrawerModule } from 'primeng/drawer';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { InputTextModule } from 'primeng/inputtext';
 import { ConversationService } from '../services/conversation.service';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [RouterModule, DrawerModule, ButtonModule, TooltipModule],
+  imports: [
+    RouterModule,
+    FormsModule,
+    DrawerModule,
+    ButtonModule,
+    TooltipModule,
+    InputTextModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Mobile Header -->
@@ -59,8 +69,27 @@ import { ConversationService } from '../services/conversation.service';
           [style]="{ width: '100%' }"
           (click)="newChat(); drawerVisible.set(false)"
         />
+        <div class="search-box">
+          <span class="p-input-icon-left search-input-wrapper">
+            <i class="pi pi-search"></i>
+            <input
+              pInputText
+              [(ngModel)]="searchQuery"
+              placeholder="Search conversations..."
+              class="search-input"
+            />
+            @if (searchQuery()) {
+            <button
+              class="search-clear"
+              (click)="searchQuery.set('')"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+            }
+          </span>
+        </div>
         <div class="conversations-list">
-          @for (convo of sortedConversations(); track convo.id) {
+          @for (convo of filteredConversations(); track convo.id) {
           <div
             class="conversation-item"
             [class.active]="
@@ -84,8 +113,13 @@ import { ConversationService } from '../services/conversation.service';
           </div>
           } @empty {
           <div class="empty-conversations">
+            @if (searchQuery()) {
+            <i class="pi pi-search"></i>
+            <span>No matching conversations</span>
+            } @else {
             <i class="pi pi-comments"></i>
             <span>No conversations yet</span>
+            }
           </div>
           }
         </div>
@@ -116,8 +150,28 @@ import { ConversationService } from '../services/conversation.service';
           [style]="{ width: '100%' }"
           (click)="newChat()"
         />
+        <div class="search-box">
+          <span class="p-input-icon-left search-input-wrapper">
+            <i class="pi pi-search"></i>
+            <input
+              #searchInput
+              pInputText
+              [(ngModel)]="searchQuery"
+              placeholder="Search... (⌘K)"
+              class="search-input"
+            />
+            @if (searchQuery()) {
+            <button
+              class="search-clear"
+              (click)="searchQuery.set('')"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+            }
+          </span>
+        </div>
         <div class="conversations-list">
-          @for (convo of sortedConversations(); track convo.id) {
+          @for (convo of filteredConversations(); track convo.id) {
           <div
             class="conversation-item"
             [class.active]="
@@ -141,8 +195,13 @@ import { ConversationService } from '../services/conversation.service';
           </div>
           } @empty {
           <div class="empty-conversations">
+            @if (searchQuery()) {
+            <i class="pi pi-search"></i>
+            <span>No matching conversations</span>
+            } @else {
             <i class="pi pi-comments"></i>
             <span>No conversations yet</span>
+            }
           </div>
           }
         </div>
@@ -243,6 +302,55 @@ import { ConversationService } from '../services/conversation.service';
       gap: 2px;
       margin: 0 -4px;
       padding: 0 4px;
+    }
+
+    .search-box {
+      flex-shrink: 0;
+    }
+
+    .search-input-wrapper {
+      display: flex;
+      align-items: center;
+      position: relative;
+      width: 100%;
+
+      > i.pi-search {
+        position: absolute;
+        left: 10px;
+        color: var(--p-text-muted-color);
+        font-size: 0.82rem;
+        z-index: 1;
+        pointer-events: none;
+      }
+    }
+
+    .search-input {
+      width: 100%;
+      font-size: 0.82rem;
+      padding-left: 32px !important;
+      padding-right: 28px !important;
+      background: var(--p-surface-800) !important;
+      border-color: var(--p-surface-700) !important;
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 6px;
+      background: none;
+      border: none;
+      color: var(--p-text-muted-color);
+      cursor: pointer;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      border-radius: 50%;
+
+      &:hover {
+        color: var(--p-text-color);
+        background: var(--p-surface-700);
+      }
+
+      i { font-size: 0.7rem; }
     }
 
     .conversation-item {
@@ -366,12 +474,41 @@ export class LayoutComponent {
   readonly conversationService = inject(ConversationService);
   private readonly router = inject(Router);
   drawerVisible = signal(false);
+  searchQuery = signal('');
 
   readonly sortedConversations = computed(() =>
     [...this.conversationService.conversations()].sort(
       (a, b) => b.updatedAt - a.updatedAt
     )
   );
+
+  readonly filteredConversations = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const sorted = this.sortedConversations();
+    if (!query) return sorted;
+    return sorted.filter(
+      (c) =>
+        c.title.toLowerCase().includes(query) ||
+        c.displayMessages.some((m) => m.content.toLowerCase().includes(query))
+    );
+  });
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    const isMeta = event.metaKey || event.ctrlKey;
+    if (isMeta && event.key === 'k') {
+      event.preventDefault();
+      const el = document.querySelector<HTMLInputElement>('.search-input');
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    }
+    if (isMeta && event.key === 'n') {
+      event.preventDefault();
+      this.newChat();
+    }
+  }
 
   newChat(): void {
     const convo = this.conversationService.createConversation();

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { MessageService } from 'primeng/api';
 import { ConversationService } from '../../services/conversation.service';
 import { ChatApiService } from '../../services/chat-api.service';
 import { MarkdownService } from '../../services/markdown.service';
@@ -23,10 +24,7 @@ import {
   FileAttachment,
 } from '../../models/types';
 import { MessageListComponent } from './message-list.component';
-import {
-  ChatInputComponent,
-  SendMessageEvent,
-} from './chat-input.component';
+import { ChatInputComponent, SendMessageEvent } from './chat-input.component';
 import { ModelSelectorComponent } from './model-selector.component';
 import {
   ApprovalDialogComponent,
@@ -74,8 +72,7 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         [request]="pendingApproval()"
         (approve)="onApprovalResponse($event)"
       />
-      }
-      @if (isDragOver()) {
+      } @if (isDragOver()) {
       <div class="drop-overlay">
         <div class="drop-overlay-content">
           <i class="pi pi-upload"></i>
@@ -138,6 +135,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   private readonly chatApi = inject(ChatApiService);
   private readonly markdown = inject(MarkdownService);
   private readonly settings = inject(SettingsService);
+  private readonly messageService = inject(MessageService);
 
   readonly statusText = signal('');
   readonly pendingApproval = signal<ApprovalRequest | null>(null);
@@ -240,6 +238,14 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         convoId,
         text.slice(0, 50) + (text.length > 50 ? '...' : '')
       );
+      // Background LLM call to refine the title
+      this.chatApi.generateTitle(text).subscribe({
+        next: (title) => {
+          if (title) {
+            this.conversationService.renameConversation(convoId!, title);
+          }
+        },
+      });
     }
 
     // Add user message
@@ -253,7 +259,9 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     const userDisplay: DisplayMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: text || (attachments.length ? `[${attachments.length} file(s) attached]` : ''),
+      content:
+        text ||
+        (attachments.length ? `[${attachments.length} file(s) attached]` : ''),
       attachments: attachments.length ? attachments : undefined,
       timestamp: Date.now(),
     };
@@ -300,6 +308,12 @@ export class ChatPageComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Stream error:', error);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Stream Error',
+          detail: 'Failed to get response. Please try again.',
+          life: 5000,
+        });
         this.conversationService.updateLastAssistantMessage(
           convoId!,
           '\n\n*Error: Failed to get response. Please try again.*'
@@ -328,7 +342,15 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         response.rejectionReason
       )
       .subscribe({
-        error: (err) => console.error('Approval failed:', err),
+        error: (err) => {
+          console.error('Approval failed:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Approval Failed',
+            detail: 'Could not send approval response.',
+            life: 4000,
+          });
+        },
       });
   }
 
@@ -367,6 +389,12 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
       case 'error': {
         const errorMsg = (event.data['error'] as string) || 'Unknown error';
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: errorMsg,
+          life: 5000,
+        });
         this.conversationService.updateLastAssistantMessage(
           convoId,
           `\n\n*Error: ${errorMsg}*`

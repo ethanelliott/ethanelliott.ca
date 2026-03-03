@@ -29,6 +29,26 @@ body {
   color-scheme: dark;
 }
 
+// Font size preference
+html[data-font-size='small'] {
+  font-size: 13px;
+}
+html[data-font-size='medium'] {
+  font-size: 15px;
+}
+html[data-font-size='large'] {
+  font-size: 17px;
+}
+
+// Light mode overrides
+html:not(.dark-mode) {
+  color-scheme: light;
+
+  body {
+    color-scheme: light;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

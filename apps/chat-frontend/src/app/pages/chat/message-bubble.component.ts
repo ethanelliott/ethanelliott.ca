@@ -234,6 +234,41 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         overflow-x: auto;
         margin: 8px 0;
         font-size: 0.85rem;
+        position: relative;
+      }
+
+      .code-copy-btn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: var(--p-surface-700);
+        border: 1px solid var(--p-surface-600);
+        border-radius: 6px;
+        color: var(--p-text-muted-color);
+        cursor: pointer;
+        padding: 4px 6px;
+        font-size: 0.78rem;
+        opacity: 0;
+        transition: opacity 0.15s ease, background 0.15s ease;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+
+        &:hover {
+          background: var(--p-surface-600);
+          color: var(--p-text-color);
+        }
+
+        &.copied {
+          color: #22c55e;
+          opacity: 1;
+        }
+
+        i { font-size: 0.82rem; }
+      }
+
+      pre:hover .code-copy-btn {
+        opacity: 1;
       }
 
       code {

@@ -39,6 +39,11 @@ export class SettingsService {
   readonly promptTemplates = signal(this.data.promptTemplates);
 
   constructor() {
+    // Apply dark mode on init
+    this.applyDarkMode(this.data.darkMode);
+    this.applyFontSize(this.data.fontSize);
+
+    // Persist all settings to localStorage whenever any signal changes
     effect(() => {
       const settings: SettingsData = {
         defaultModel: this.defaultModel(),
@@ -52,6 +57,28 @@ export class SettingsService {
       };
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     });
+
+    // React to dark mode changes
+    effect(() => {
+      this.applyDarkMode(this.darkMode());
+    });
+
+    // React to font size changes
+    effect(() => {
+      this.applyFontSize(this.fontSize());
+    });
+  }
+
+  private applyDarkMode(dark: boolean): void {
+    if (dark) {
+      document.documentElement.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+    }
+  }
+
+  private applyFontSize(size: 'small' | 'medium' | 'large'): void {
+    document.documentElement.setAttribute('data-font-size', size);
   }
 
   private loadFromStorage(): SettingsData {

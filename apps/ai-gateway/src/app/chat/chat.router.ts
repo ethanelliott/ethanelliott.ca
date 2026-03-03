@@ -351,9 +351,7 @@ export const ChatRouter: FastifyPluginAsync = async (
                 ? msg.tool_calls
                 : undefined,
             images:
-              msg.role === 'user' && 'images' in msg
-                ? msg.images
-                : undefined,
+              msg.role === 'user' && 'images' in msg ? msg.images : undefined,
           });
         } else if (msg.role === 'tool') {
           // Tool result messages - the model will see these as tool responses
@@ -398,8 +396,13 @@ export const ChatRouter: FastifyPluginAsync = async (
 
       try {
         // Run the orchestrator with streaming
-        const userImages = 'images' in lastMessage ? lastMessage.images : undefined;
-        const result = await orchestrator.run(lastMessage.content, emitter, userImages);
+        const userImages =
+          'images' in lastMessage ? lastMessage.images : undefined;
+        const result = await orchestrator.run(
+          lastMessage.content,
+          emitter,
+          userImages
+        );
 
         // Build the response messages in Ollama's native format
         // This includes tool calls and tool results so the model can reference them

@@ -277,9 +277,7 @@ export class ChatInputComponent {
     viewChild<ElementRef<HTMLTextAreaElement>>('textareaEl');
 
   readonly acceptTypes =
-    IMAGE_TYPES.join(',') +
-    ',' +
-    TEXT_EXTENSIONS.map((e) => e).join(',');
+    IMAGE_TYPES.join(',') + ',' + TEXT_EXTENSIONS.map((e) => e).join(',');
 
   canSend(): boolean {
     return !!(this.messageText.trim() || this.attachments().length);
@@ -388,9 +386,7 @@ export class ChatInputComponent {
       const base64Full = reader.result as string;
       // Strip data URL prefix for the API (just the raw base64)
       const base64 = base64Full.split(',')[1] || base64Full;
-      const previewUrl = isImage
-        ? URL.createObjectURL(file)
-        : undefined;
+      const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
       this.attachments.update((atts) => [
         ...atts,
         { name: file.name, type: file.type, base64, previewUrl },
@@ -407,7 +403,11 @@ export class ChatInputComponent {
       // but we'll inline it as text when building the message
       this.attachments.update((atts) => [
         ...atts,
-        { name: file.name, type: file.type || 'text/plain', base64: btoa(unescape(encodeURIComponent(text))) },
+        {
+          name: file.name,
+          type: file.type || 'text/plain',
+          base64: btoa(unescape(encodeURIComponent(text))),
+        },
       ]);
     };
     reader.readAsText(file);
