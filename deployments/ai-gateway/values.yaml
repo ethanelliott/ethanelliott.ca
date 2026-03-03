@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/ai-gateway
-  tag: s-6ed8ddf
+  tag: s-170b369
   pullPolicy: Always
 
 service:
