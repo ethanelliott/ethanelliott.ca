@@ -169,6 +169,7 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
       gap: 10px;
       padding: 8px 0;
       align-items: flex-start;
+      min-width: 0;
 
       &.user {
         justify-content: flex-end;
@@ -205,6 +206,8 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
       border-radius: 16px;
       line-height: 1.55;
       font-size: 0.9rem;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .user-bubble {
