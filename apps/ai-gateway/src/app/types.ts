@@ -234,6 +234,7 @@ export interface MCPEndpointToolsResponse {
 export type StreamEventType =
   | 'status'
   | 'thinking'
+  | 'thinking_token'
   | 'token'
   | 'delegation_start'
   | 'delegation_end'

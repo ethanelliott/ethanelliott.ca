@@ -68,6 +68,17 @@ export class StreamEmitter {
   }
 
   /**
+   * Emit a reasoning/thinking token from the LLM's chain-of-thought
+   */
+  thinkingToken(
+    token: string,
+    role: 'assistant' | 'orchestrator' | 'agent' = 'assistant',
+    agentName?: string
+  ): void {
+    this.emit('thinking_token', { token, role, agentName });
+  }
+
+  /**
    * Emit a token from streaming LLM output
    * @param token - The token text
    * @param role - Who is generating this token (orchestrator, agent name, etc.)

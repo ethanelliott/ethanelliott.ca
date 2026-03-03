@@ -75,8 +75,11 @@ export class OrchestratorAgent {
   ): Promise<OllamaChatResponse> {
     const ollama = getOllamaClient();
     let content = '';
+    let thinking = '';
     let toolCalls: OllamaChatResponse['message']['tool_calls'] = undefined;
     let lastChunk: any = null;
+    let inThinking = false;
+    let tagBuffer = '';
 
     for await (const chunk of ollama.chatStream({
       model: this.config.model || 'functiongemma',
@@ -85,10 +88,58 @@ export class OrchestratorAgent {
     })) {
       lastChunk = chunk;
 
-      // Emit token if there's content
+      // Parse content for <think> tags and separate thinking from content
       if (chunk.message?.content) {
-        emitter.token(chunk.message.content, 'orchestrator', undefined, false);
-        content += chunk.message.content;
+        const raw = chunk.message.content;
+        tagBuffer += raw;
+
+        // Process the buffer for complete tags
+        while (tagBuffer.length > 0) {
+          if (inThinking) {
+            const closeIdx = tagBuffer.indexOf('</think>');
+            if (closeIdx === -1) {
+              // Still inside thinking, emit all buffered as thinking tokens
+              // But keep last 8 chars in buffer in case </think> is split across chunks
+              if (tagBuffer.length > 8) {
+                const toEmit = tagBuffer.slice(0, -8);
+                thinking += toEmit;
+                emitter.thinkingToken(toEmit, 'orchestrator');
+                tagBuffer = tagBuffer.slice(-8);
+              }
+              break;
+            } else {
+              // Found close tag
+              const thinkContent = tagBuffer.slice(0, closeIdx);
+              if (thinkContent) {
+                thinking += thinkContent;
+                emitter.thinkingToken(thinkContent, 'orchestrator');
+              }
+              tagBuffer = tagBuffer.slice(closeIdx + 8); // skip </think>
+              inThinking = false;
+            }
+          } else {
+            const openIdx = tagBuffer.indexOf('<think>');
+            if (openIdx === -1) {
+              // No think tag, but keep last 7 chars in buffer in case <think> is split
+              if (tagBuffer.length > 7) {
+                const toEmit = tagBuffer.slice(0, -7);
+                content += toEmit;
+                emitter.token(toEmit, 'orchestrator', undefined, false);
+                tagBuffer = tagBuffer.slice(-7);
+              }
+              break;
+            } else {
+              // Found open tag - emit content before it
+              const before = tagBuffer.slice(0, openIdx);
+              if (before) {
+                content += before;
+                emitter.token(before, 'orchestrator', undefined, false);
+              }
+              tagBuffer = tagBuffer.slice(openIdx + 7); // skip <think>
+              inThinking = true;
+            }
+          }
+        }
       }
 
       // Accumulate tool calls
@@ -96,8 +147,18 @@ export class OrchestratorAgent {
         toolCalls = chunk.message.tool_calls;
       }
 
-      // If done, emit final token event
+      // If done, flush remaining buffer and emit final token
       if (chunk.done) {
+        if (tagBuffer) {
+          if (inThinking) {
+            thinking += tagBuffer;
+            emitter.thinkingToken(tagBuffer, 'orchestrator');
+          } else {
+            content += tagBuffer;
+            emitter.token(tagBuffer, 'orchestrator', undefined, false);
+          }
+          tagBuffer = '';
+        }
         emitter.token('', 'orchestrator', undefined, true);
       }
     }

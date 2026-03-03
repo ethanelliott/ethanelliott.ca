@@ -55,20 +55,27 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         } @else {
         <!-- Thinking section -->
         @if (message().thinking) {
-        <div class="thinking-section" [class.collapsed]="!thinkingExpanded()">
+        <div
+          class="thinking-section"
+          [class.active]="isStreaming() && !message().content"
+        >
           <div
             class="thinking-header"
             (click)="thinkingExpanded.set(!thinkingExpanded())"
           >
-            <i class="pi pi-lightbulb"></i>
+            @if (isStreaming() && !message().content) {
+            <i class="pi pi-spin pi-spinner thinking-icon"></i>
+            } @else {
+            <i class="pi pi-lightbulb thinking-icon"></i>
+            }
             <span>Thinking</span>
             <i
               class="pi"
-              [class.pi-chevron-down]="!thinkingExpanded()"
-              [class.pi-chevron-up]="thinkingExpanded()"
+              [class.pi-chevron-down]="!isThinkingVisible()"
+              [class.pi-chevron-up]="isThinkingVisible()"
             ></i>
           </div>
-          @if (thinkingExpanded()) {
+          @if (isThinkingVisible()) {
           <div class="thinking-content">{{ message().thinking }}</div>
           }
         </div>
@@ -386,6 +393,11 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
       margin-bottom: 8px;
       overflow: hidden;
       background: var(--p-surface-900);
+      transition: border-color 0.3s ease;
+
+      &.active {
+        border-color: #f59e0b55;
+      }
     }
 
     .thinking-header {
@@ -403,9 +415,16 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         background: var(--p-surface-800);
       }
 
+      .thinking-icon {
+        font-size: 0.85rem;
+      }
+
       .pi-lightbulb {
         color: #f59e0b;
-        font-size: 0.85rem;
+      }
+
+      .pi-spinner {
+        color: #f59e0b;
       }
 
       .pi-chevron-down, .pi-chevron-up {
@@ -568,6 +587,13 @@ export class MessageBubbleComponent {
 
   thinkingExpanded = signal(false);
   private expandedDelegations = signal<Set<string>>(new Set());
+
+  readonly isThinkingVisible = computed(() => {
+    const msg = this.message();
+    // Auto-expand while streaming thinking (before content arrives)
+    if (this.isStreaming() && msg.thinking && !msg.content) return true;
+    return this.thinkingExpanded();
+  });
 
   readonly renderedContent = computed(() => {
     const msg = this.message();

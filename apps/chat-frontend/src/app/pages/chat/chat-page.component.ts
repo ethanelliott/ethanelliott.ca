@@ -431,6 +431,28 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         break;
       }
 
+      case 'thinking_token': {
+        // Reasoning tokens from <think> tags — stream into the thinking section
+        const thinkToken = (event.data['token'] as string) || '';
+        const thinkRole = (event.data['role'] as string) || 'assistant';
+        const thinkAgentName = event.data['agentName'] as string | undefined;
+        if (thinkToken) {
+          if (thinkRole === 'agent' && thinkAgentName) {
+            this.conversationService.appendDelegationThinking(
+              convoId,
+              thinkAgentName,
+              thinkToken
+            );
+          } else {
+            this.conversationService.updateLastAssistantThinking(
+              convoId,
+              thinkToken
+            );
+          }
+        }
+        break;
+      }
+
       case 'tool_call_start': {
         const toolCall: DisplayToolCall = {
           name: (event.data['tool'] as string) || 'unknown',
