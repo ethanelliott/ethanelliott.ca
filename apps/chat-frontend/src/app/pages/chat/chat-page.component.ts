@@ -83,6 +83,12 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      height: 100%;
+      overflow: hidden;
+    }
+
     .chat-page {
       display: flex;
       flex-direction: column;

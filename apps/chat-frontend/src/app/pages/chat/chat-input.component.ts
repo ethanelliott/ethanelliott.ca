@@ -138,6 +138,12 @@ export interface SendMessageEvent {
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      flex-shrink: 0;
+      margin-top: auto;
+    }
+
     .chat-input-container {
       padding: 12px 16px 16px;
       background: var(--p-surface-950);
