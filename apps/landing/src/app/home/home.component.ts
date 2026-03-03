@@ -405,6 +405,13 @@ export class HomeComponent {
       icon: 'simple-icons:homeassistant',
       color: '#18bcf2',
     },
+    {
+      name: 'AI Chat',
+      url: 'https://chat.elliott.haus',
+      description: 'AI assistant powered by local LLMs.',
+      icon: 'mdi:chat-processing',
+      color: '#3b82f6',
+    },
   ]);
 
   readonly services = computed(() => this.appLinks());
