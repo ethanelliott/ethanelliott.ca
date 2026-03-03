@@ -430,7 +430,10 @@ ALWAYS delegate. NEVER respond directly.`;
    */
   updateConfig(
     updates: Partial<
-      Pick<OrchestratorConfig, 'model' | 'maxDelegations' | 'routerModel' | 'systemPrompt'>
+      Pick<
+        OrchestratorConfig,
+        'model' | 'maxDelegations' | 'routerModel' | 'systemPrompt'
+      >
     >
   ): void {
     if (updates.model !== undefined) this.config.model = updates.model;
