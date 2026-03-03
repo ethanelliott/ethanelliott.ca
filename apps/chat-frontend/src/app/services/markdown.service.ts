@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js/lib/core';
@@ -67,6 +68,8 @@ hljs.registerLanguage('toml', ini);
 
 @Injectable({ providedIn: 'root' })
 export class MarkdownService {
+  private readonly sanitizer = inject(DomSanitizer);
+
   private readonly COPY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
   private readonly CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 
@@ -140,17 +143,17 @@ export class MarkdownService {
     }
   }
 
-  render(markdown: string): string {
+  render(markdown: string): SafeHtml {
     if (!markdown) return '';
     try {
       const html = marked.parse(markdown, { async: false }) as string;
-      return this.wrapCodeBlocks(html);
+      return this.sanitizer.bypassSecurityTrustHtml(this.wrapCodeBlocks(html));
     } catch {
       return markdown;
     }
   }
 
-  renderStreaming(partial: string): string {
+  renderStreaming(partial: string): SafeHtml {
     if (!partial) return '';
     try {
       let text = partial;
@@ -159,7 +162,7 @@ export class MarkdownService {
         text += '\n```';
       }
       const html = marked.parse(text, { async: false }) as string;
-      return this.wrapCodeBlocks(html);
+      return this.sanitizer.bypassSecurityTrustHtml(this.wrapCodeBlocks(html));
     } catch {
       return partial;
     }

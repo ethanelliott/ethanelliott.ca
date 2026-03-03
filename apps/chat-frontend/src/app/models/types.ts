@@ -29,7 +29,7 @@ export interface DisplayMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  renderedHtml?: string;
+  renderedHtml?: any; // SafeHtml from DomSanitizer
   toolCalls?: DisplayToolCall[];
   thinking?: string;
   delegations?: DisplayDelegation[];
