@@ -448,9 +448,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
           toolName,
           {
             status: success ? 'success' : 'error',
-            output: output
-              ? JSON.stringify(output, null, 2)
-              : undefined,
+            output: output ? JSON.stringify(output, null, 2) : undefined,
             durationMs: event.data['durationMs'] as number | undefined,
           }
         );
@@ -502,9 +500,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
           (event.data['agent'] as string) ||
           'sub-agent';
         const iteration = event.data['iteration'] as number | undefined;
-        const maxIterations = event.data['maxIterations'] as
-          | number
-          | undefined;
+        const maxIterations = event.data['maxIterations'] as number | undefined;
         const statusMsg =
           iteration && maxIterations
             ? `${agentName} thinking (${iteration}/${maxIterations})...`
