@@ -3,6 +3,8 @@ import {
   Conversation,
   ChatMessage,
   DisplayMessage,
+  DisplayToolCall,
+  DisplayDelegation,
   ChatConfig,
 } from '../models/types';
 
@@ -105,6 +107,154 @@ export class ConversationService {
           displayMessages[displayMessages.length - 1] = {
             ...last,
             content: last.content + token,
+          };
+        }
+        return { ...c, displayMessages, updatedAt: Date.now() };
+      })
+    );
+  }
+
+  updateLastAssistantThinking(conversationId: string, token: string): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const displayMessages = [...c.displayMessages];
+        const last = displayMessages[displayMessages.length - 1];
+        if (last && last.role === 'assistant') {
+          displayMessages[displayMessages.length - 1] = {
+            ...last,
+            thinking: (last.thinking || '') + token,
+          };
+        }
+        return { ...c, displayMessages, updatedAt: Date.now() };
+      })
+    );
+  }
+
+  addToolCallToLastAssistant(
+    conversationId: string,
+    toolCall: DisplayToolCall
+  ): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const displayMessages = [...c.displayMessages];
+        const last = displayMessages[displayMessages.length - 1];
+        if (last && last.role === 'assistant') {
+          displayMessages[displayMessages.length - 1] = {
+            ...last,
+            toolCalls: [...(last.toolCalls || []), toolCall],
+          };
+        }
+        return { ...c, displayMessages, updatedAt: Date.now() };
+      })
+    );
+  }
+
+  updateToolCallOnLastAssistant(
+    conversationId: string,
+    toolName: string,
+    update: Partial<DisplayToolCall>
+  ): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const displayMessages = [...c.displayMessages];
+        const last = displayMessages[displayMessages.length - 1];
+        if (last && last.role === 'assistant' && last.toolCalls) {
+          const toolCalls = [...last.toolCalls];
+          // Find last matching tool call (most recent)
+          for (let i = toolCalls.length - 1; i >= 0; i--) {
+            if (
+              toolCalls[i].name === toolName &&
+              toolCalls[i].status === 'pending'
+            ) {
+              toolCalls[i] = { ...toolCalls[i], ...update };
+              break;
+            }
+          }
+          displayMessages[displayMessages.length - 1] = {
+            ...last,
+            toolCalls,
+          };
+        }
+        return { ...c, displayMessages, updatedAt: Date.now() };
+      })
+    );
+  }
+
+  addDelegationToLastAssistant(
+    conversationId: string,
+    delegation: DisplayDelegation
+  ): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const displayMessages = [...c.displayMessages];
+        const last = displayMessages[displayMessages.length - 1];
+        if (last && last.role === 'assistant') {
+          displayMessages[displayMessages.length - 1] = {
+            ...last,
+            delegations: [...(last.delegations || []), delegation],
+          };
+        }
+        return { ...c, displayMessages, updatedAt: Date.now() };
+      })
+    );
+  }
+
+  updateDelegationOnLastAssistant(
+    conversationId: string,
+    agentName: string,
+    update: Partial<DisplayDelegation>
+  ): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const displayMessages = [...c.displayMessages];
+        const last = displayMessages[displayMessages.length - 1];
+        if (last && last.role === 'assistant' && last.delegations) {
+          const delegations = [...last.delegations];
+          for (let i = delegations.length - 1; i >= 0; i--) {
+            if (delegations[i].agentName === agentName) {
+              delegations[i] = { ...delegations[i], ...update };
+              break;
+            }
+          }
+          displayMessages[displayMessages.length - 1] = {
+            ...last,
+            delegations,
+          };
+        }
+        return { ...c, displayMessages, updatedAt: Date.now() };
+      })
+    );
+  }
+
+  appendDelegationThinking(
+    conversationId: string,
+    agentName: string,
+    token: string
+  ): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const displayMessages = [...c.displayMessages];
+        const last = displayMessages[displayMessages.length - 1];
+        if (last && last.role === 'assistant' && last.delegations) {
+          const delegations = [...last.delegations];
+          for (let i = delegations.length - 1; i >= 0; i--) {
+            if (delegations[i].agentName === agentName) {
+              delegations[i] = {
+                ...delegations[i],
+                thinking: (delegations[i].thinking || '') + token,
+              };
+              break;
+            }
+          }
+          displayMessages[displayMessages.length - 1] = {
+            ...last,
+            delegations,
           };
         }
         return { ...c, displayMessages, updatedAt: Date.now() };

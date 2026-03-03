@@ -4,14 +4,16 @@ import {
   input,
   inject,
   computed,
+  signal,
 } from '@angular/core';
 import { DisplayMessage } from '../../models/types';
 import { MarkdownService } from '../../services/markdown.service';
+import { ToolCallChipComponent } from './tool-call-chip.component';
 
 @Component({
   selector: 'app-message-bubble',
   standalone: true,
-  imports: [],
+  imports: [ToolCallChipComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -32,11 +34,101 @@ import { MarkdownService } from '../../services/markdown.service';
         @if (message().role === 'user') {
         <div class="message-text">{{ message().content }}</div>
         } @else {
+        <!-- Thinking section -->
+        @if (message().thinking) {
+        <div class="thinking-section" [class.collapsed]="!thinkingExpanded()">
+          <div
+            class="thinking-header"
+            (click)="thinkingExpanded.set(!thinkingExpanded())"
+          >
+            <i class="pi pi-lightbulb"></i>
+            <span>Thinking</span>
+            <i
+              class="pi"
+              [class.pi-chevron-down]="!thinkingExpanded()"
+              [class.pi-chevron-up]="thinkingExpanded()"
+            ></i>
+          </div>
+          @if (thinkingExpanded()) {
+          <div class="thinking-content">{{ message().thinking }}</div>
+          }
+        </div>
+        }
+
+        <!-- Delegations -->
+        @if (message().delegations?.length) { @for (delegation of
+        message().delegations; track delegation.agentName) {
+        <div
+          class="delegation-chip"
+          [class.complete]="delegation.status === 'complete'"
+        >
+          <div
+            class="delegation-header"
+            (click)="toggleDelegation(delegation.agentName)"
+          >
+            <div class="delegation-left">
+              @if (delegation.status === 'pending') {
+              <i class="pi pi-spin pi-spinner delegation-icon"></i>
+              } @else {
+              <i class="pi pi-check-circle delegation-icon complete"></i>
+              }
+              <span class="delegation-agent">{{ delegation.agentName }}</span>
+              @if (delegation.task) {
+              <span class="delegation-task">{{ delegation.task }}</span>
+              }
+            </div>
+            <div class="delegation-right">
+              @if (delegation.durationMs) {
+              <span class="delegation-duration">{{
+                formatDuration(delegation.durationMs)
+              }}</span>
+              }
+              <i
+                class="pi"
+                [class.pi-chevron-down]="
+                  !isDelegationExpanded(delegation.agentName)
+                "
+                [class.pi-chevron-up]="
+                  isDelegationExpanded(delegation.agentName)
+                "
+              ></i>
+            </div>
+          </div>
+          @if (isDelegationExpanded(delegation.agentName)) {
+          <div class="delegation-body">
+            @if (delegation.thinking) {
+            <div class="delegation-thinking">
+              <div class="delegation-sub-label">Thinking</div>
+              <div class="delegation-thinking-content">
+                {{ delegation.thinking }}
+              </div>
+            </div>
+            } @if (delegation.content) {
+            <div class="delegation-result">
+              <div class="delegation-sub-label">Result</div>
+              <div class="delegation-result-content">
+                {{ truncate(delegation.content, 1000) }}
+              </div>
+            </div>
+            }
+          </div>
+          }
+        </div>
+        } }
+
+        <!-- Tool calls -->
+        @if (message().toolCalls?.length) { @for (tc of message().toolCalls;
+        track tc.name + $index) {
+        <app-tool-call-chip [toolCall]="tc" />
+        } }
+
+        <!-- Main content -->
+        @if (message().content) {
         <div
           class="message-text markdown-content"
           [innerHTML]="renderedContent()"
         ></div>
-        }
+        } }
       </div>
       @if (message().role === 'user') {
       <div class="avatar user-avatar">
@@ -210,6 +302,149 @@ import { MarkdownService } from '../../services/markdown.service';
         font-size: 0.75rem;
       }
     }
+
+    /* Thinking section */
+    .thinking-section {
+      border: 1px solid var(--p-surface-600);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      background: var(--p-surface-900);
+    }
+
+    .thinking-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--p-text-muted-color);
+      transition: background 0.15s ease;
+
+      &:hover {
+        background: var(--p-surface-800);
+      }
+
+      .pi-lightbulb {
+        color: #f59e0b;
+        font-size: 0.85rem;
+      }
+
+      .pi-chevron-down, .pi-chevron-up {
+        margin-left: auto;
+        font-size: 0.7rem;
+      }
+    }
+
+    .thinking-content {
+      padding: 8px 10px;
+      border-top: 1px solid var(--p-surface-600);
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--p-text-muted-color);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    /* Delegation chips */
+    .delegation-chip {
+      border: 1px solid var(--p-surface-600);
+      border-radius: 8px;
+      margin: 6px 0;
+      overflow: hidden;
+      background: var(--p-surface-900);
+      font-size: 0.8rem;
+    }
+
+    .delegation-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+
+      &:hover {
+        background: var(--p-surface-800);
+      }
+    }
+
+    .delegation-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .delegation-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--p-text-muted-color);
+      font-size: 0.75rem;
+
+      i { font-size: 0.7rem; }
+    }
+
+    .delegation-icon {
+      font-size: 0.85rem;
+      color: var(--p-primary-color);
+
+      &.complete { color: #22c55e; }
+    }
+
+    .delegation-agent {
+      font-weight: 600;
+      color: var(--p-text-color);
+    }
+
+    .delegation-task {
+      color: var(--p-text-muted-color);
+      font-size: 0.75rem;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .delegation-duration {
+      color: var(--p-text-muted-color);
+    }
+
+    .delegation-body {
+      border-top: 1px solid var(--p-surface-600);
+      padding: 8px 10px;
+    }
+
+    .delegation-sub-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--p-text-muted-color);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .delegation-thinking-content,
+    .delegation-result-content {
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--p-text-muted-color);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 8px;
+
+      &:last-child { margin-bottom: 0; }
+    }
+
+    .delegation-result-content {
+      color: var(--p-text-color);
+    }
   `,
 })
 export class MessageBubbleComponent {
@@ -217,6 +452,9 @@ export class MessageBubbleComponent {
   readonly isStreaming = input(false);
 
   private readonly markdown = inject(MarkdownService);
+
+  thinkingExpanded = signal(false);
+  private expandedDelegations = signal<Set<string>>(new Set());
 
   readonly renderedContent = computed(() => {
     const msg = this.message();
@@ -228,4 +466,30 @@ export class MessageBubbleComponent {
     if (msg.renderedHtml) return msg.renderedHtml;
     return this.markdown.render(msg.content);
   });
+
+  toggleDelegation(agentName: string): void {
+    this.expandedDelegations.update((set) => {
+      const next = new Set(set);
+      if (next.has(agentName)) {
+        next.delete(agentName);
+      } else {
+        next.add(agentName);
+      }
+      return next;
+    });
+  }
+
+  isDelegationExpanded(agentName: string): boolean {
+    return this.expandedDelegations().has(agentName);
+  }
+
+  formatDuration(ms: number): string {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  truncate(text: string, maxLen: number): string {
+    if (text.length <= maxLen) return text;
+    return text.slice(0, maxLen) + '... (truncated)';
+  }
 }

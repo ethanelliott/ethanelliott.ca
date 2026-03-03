@@ -32,8 +32,18 @@ export interface DisplayMessage {
   renderedHtml?: string;
   toolCalls?: DisplayToolCall[];
   thinking?: string;
+  delegations?: DisplayDelegation[];
   attachments?: FileAttachment[];
   timestamp: number;
+}
+
+export interface DisplayDelegation {
+  agentName: string;
+  task?: string;
+  status: 'pending' | 'complete';
+  content?: string;
+  thinking?: string;
+  durationMs?: number;
 }
 
 export interface DisplayToolCall {

@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   input,
+  output,
   signal,
   viewChild,
   ElementRef,
@@ -10,12 +11,13 @@ import {
 } from '@angular/core';
 import { DisplayMessage } from '../../models/types';
 import { MessageBubbleComponent } from './message-bubble.component';
+import { SuggestionChipsComponent } from './suggestion-chips.component';
 import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'app-message-list',
   standalone: true,
-  imports: [MessageBubbleComponent, ButtonModule],
+  imports: [MessageBubbleComponent, SuggestionChipsComponent, ButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="message-list-container" #scrollContainer (scroll)="onScroll()">
@@ -26,6 +28,9 @@ import { ButtonModule } from 'primeng/button';
         </div>
         <h2>How can I help you today?</h2>
         <p>Start a conversation by typing a message below.</p>
+        <app-suggestion-chips
+          (selectSuggestion)="suggestionSelected.emit($event)"
+        />
       </div>
       } @else {
       <div class="messages-wrapper">
@@ -150,6 +155,7 @@ export class MessageListComponent implements AfterViewInit {
   readonly messages = input<DisplayMessage[]>([]);
   readonly isStreaming = input(false);
   readonly statusText = input('');
+  readonly suggestionSelected = output<string>();
 
   showScrollButton = signal(false);
   private readonly scrollContainer =

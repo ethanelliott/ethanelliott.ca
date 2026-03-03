@@ -14,27 +14,53 @@ import { ConversationService } from '../../services/conversation.service';
 import { ChatApiService } from '../../services/chat-api.service';
 import { MarkdownService } from '../../services/markdown.service';
 import { SettingsService } from '../../services/settings.service';
-import { ChatMessage, DisplayMessage, StreamEvent } from '../../models/types';
+import {
+  ChatMessage,
+  DisplayMessage,
+  StreamEvent,
+  DisplayToolCall,
+} from '../../models/types';
 import { MessageListComponent } from './message-list.component';
 import { ChatInputComponent } from './chat-input.component';
+import { ModelSelectorComponent } from './model-selector.component';
+import {
+  ApprovalDialogComponent,
+  ApprovalRequest,
+  ApprovalResponse,
+} from './approval-dialog.component';
 
 @Component({
   selector: 'app-chat-page',
   standalone: true,
-  imports: [MessageListComponent, ChatInputComponent],
+  imports: [
+    MessageListComponent,
+    ChatInputComponent,
+    ModelSelectorComponent,
+    ApprovalDialogComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="chat-page">
+      <div class="chat-header">
+        <app-model-selector />
+      </div>
       <app-message-list
         [messages]="displayMessages()"
         [isStreaming]="conversationService.isStreaming()"
         [statusText]="statusText()"
+        (suggestionSelected)="onSendMessage($event)"
       />
       <app-chat-input
         [isStreaming]="conversationService.isStreaming()"
         (sendMessage)="onSendMessage($event)"
         (stopGeneration)="onStopGeneration()"
       />
+      @if (pendingApproval()) {
+      <app-approval-dialog
+        [request]="pendingApproval()"
+        (approve)="onApprovalResponse($event)"
+      />
+      }
     </div>
   `,
   styles: `
@@ -43,6 +69,15 @@ import { ChatInputComponent } from './chat-input.component';
       flex-direction: column;
       height: 100%;
       overflow: hidden;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--p-surface-800);
+      flex-shrink: 0;
     }
   `,
 })
@@ -55,6 +90,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   private readonly settings = inject(SettingsService);
 
   readonly statusText = signal('');
+  readonly pendingApproval = signal<ApprovalRequest | null>(null);
 
   private streamSub: Subscription | null = null;
   private routeSub: Subscription | null = null;
@@ -173,14 +209,24 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  onApprovalResponse(response: ApprovalResponse): void {
+    this.pendingApproval.set(null);
+    this.chatApi
+      .approveToolCall(
+        response.approvalId,
+        response.approved,
+        undefined,
+        response.rejectionReason
+      )
+      .subscribe({
+        error: (err) => console.error('Approval failed:', err),
+      });
+  }
+
   private handleStreamEvent(convoId: string, event: StreamEvent): void {
     switch (event.type) {
       case 'status':
         this.statusText.set((event.data['message'] as string) || '');
-        break;
-
-      case 'thinking':
-        // For phase 1, just skip thinking tokens
         break;
 
       case 'token': {
@@ -219,16 +265,124 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         break;
       }
 
-      // Phase 2 events — skip for now
-      case 'tool_call_start':
-      case 'tool_call_end':
-      case 'delegation_start':
-      case 'delegation_end':
-      case 'agent_thinking':
-      case 'agent_response':
-      case 'approval_required':
-      case 'approval_received':
+      case 'thinking': {
+        const thinkingToken = (event.data['token'] as string) || '';
+        if (thinkingToken) {
+          this.conversationService.updateLastAssistantThinking(
+            convoId,
+            thinkingToken
+          );
+        }
         break;
+      }
+
+      case 'tool_call_start': {
+        const toolCall: DisplayToolCall = {
+          name: (event.data['tool'] as string) || 'unknown',
+          status: 'pending',
+          input: event.data['input'] as Record<string, unknown> | undefined,
+        };
+        this.conversationService.addToolCallToLastAssistant(convoId, toolCall);
+        this.statusText.set(`Using tool: ${toolCall.name}...`);
+        break;
+      }
+
+      case 'tool_call_end': {
+        const toolName = (event.data['tool'] as string) || '';
+        const success = event.data['success'] !== false;
+        this.conversationService.updateToolCallOnLastAssistant(
+          convoId,
+          toolName,
+          {
+            status: success ? 'success' : 'error',
+            output: event.data['output'] as string | undefined,
+            durationMs: event.data['durationMs'] as number | undefined,
+          }
+        );
+        this.statusText.set('');
+        break;
+      }
+
+      case 'delegation_start': {
+        this.conversationService.addDelegationToLastAssistant(convoId, {
+          agentName: (event.data['agent'] as string) || 'sub-agent',
+          task: event.data['task'] as string | undefined,
+          status: 'pending',
+        });
+        this.statusText.set(
+          `Delegating to ${event.data['agent'] || 'sub-agent'}...`
+        );
+        break;
+      }
+
+      case 'delegation_end': {
+        const agentName = (event.data['agent'] as string) || 'sub-agent';
+        this.conversationService.updateDelegationOnLastAssistant(
+          convoId,
+          agentName,
+          {
+            status: 'complete',
+            content: event.data['content'] as string | undefined,
+            durationMs: event.data['durationMs'] as number | undefined,
+          }
+        );
+        this.statusText.set('');
+        break;
+      }
+
+      case 'agent_thinking': {
+        const agentName = (event.data['agent'] as string) || 'sub-agent';
+        const token = (event.data['token'] as string) || '';
+        if (token) {
+          this.conversationService.appendDelegationThinking(
+            convoId,
+            agentName,
+            token
+          );
+        }
+        break;
+      }
+
+      case 'agent_response': {
+        const agentName = (event.data['agent'] as string) || 'sub-agent';
+        const content = (event.data['content'] as string) || '';
+        if (content) {
+          this.conversationService.updateDelegationOnLastAssistant(
+            convoId,
+            agentName,
+            { content }
+          );
+        }
+        break;
+      }
+
+      case 'approval_required': {
+        const approvalId = (event.data['approvalId'] as string) || '';
+        const tool = (event.data['tool'] as string) || '';
+        this.conversationService.updateToolCallOnLastAssistant(convoId, tool, {
+          status: 'approval-required',
+          approvalId,
+        });
+        this.pendingApproval.set({
+          approvalId,
+          tool,
+          input: (event.data['input'] as Record<string, unknown>) || {},
+          message: event.data['message'] as string | undefined,
+          agentName: event.data['agent'] as string | undefined,
+        });
+        this.statusText.set('Waiting for approval...');
+        break;
+      }
+
+      case 'approval_received': {
+        const tool = (event.data['tool'] as string) || '';
+        const approved = event.data['approved'] !== false;
+        this.conversationService.updateToolCallOnLastAssistant(convoId, tool, {
+          status: approved ? 'pending' : 'error',
+        });
+        this.statusText.set(approved ? `Approved: running ${tool}...` : '');
+        break;
+      }
     }
   }
 
