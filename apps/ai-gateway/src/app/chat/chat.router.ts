@@ -123,6 +123,11 @@ const ToolResultSchema = z.object({
 // Message schema - matches Ollama's native format for proper context
 // This allows the LLM to understand tool call history natively
 const MessageSchema = z.discriminatedUnion('role', [
+  // System message (system prompt)
+  z.object({
+    role: z.literal('system'),
+    content: z.string(),
+  }),
   // User message (with optional base64 images for vision models)
   z.object({
     role: z.literal('user'),
