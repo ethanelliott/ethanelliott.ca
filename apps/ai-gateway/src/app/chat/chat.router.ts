@@ -460,6 +460,7 @@ export const ChatRouter: FastifyPluginAsync = async (
           delegations: result.delegations,
           totalDurationMs: result.totalDurationMs,
           enabledTools,
+          stats: result.stats,
         });
       } catch (error) {
         emitter.error(error instanceof Error ? error.message : 'Unknown error');

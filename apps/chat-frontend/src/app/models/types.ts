@@ -25,6 +25,18 @@ export interface ToolCall {
   };
 }
 
+export interface MessageStats {
+  model?: string;
+  tokensPerSecond?: number;
+  totalTokens?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  reasoningTokens?: number;
+  reasoningDurationMs?: number;
+  timeToFirstTokenMs?: number;
+  totalDurationMs?: number;
+}
+
 export interface DisplayMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -34,6 +46,7 @@ export interface DisplayMessage {
   thinking?: string;
   delegations?: DisplayDelegation[];
   attachments?: FileAttachment[];
+  stats?: MessageStats;
   timestamp: number;
 }
 

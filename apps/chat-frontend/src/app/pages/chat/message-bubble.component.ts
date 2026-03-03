@@ -154,6 +154,48 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
           class="message-text markdown-content"
           [innerHTML]="renderedContent()"
         ></div>
+        }
+
+        <!-- Stats bar (hover-revealed) -->
+        @if (message().stats) {
+        <div class="message-stats">
+          @if (message().stats?.model) {
+          <span class="stat-item" title="Model">
+            <i class="pi pi-box"></i>
+            {{ message().stats?.model }}
+          </span>
+          } @if (message().stats?.tokensPerSecond) {
+          <span class="stat-item" title="Tokens per second">
+            <i class="pi pi-bolt"></i>
+            {{ formatStat(message().stats?.tokensPerSecond) }} tok/s
+          </span>
+          } @if (message().stats?.completionTokens) {
+          <span class="stat-item" title="Completion tokens">
+            <i class="pi pi-hashtag"></i>
+            {{ message().stats?.completionTokens }} tokens
+          </span>
+          } @if (message().stats?.reasoningTokens) {
+          <span class="stat-item" title="Reasoning tokens">
+            <i class="pi pi-lightbulb"></i>
+            {{ message().stats?.reasoningTokens }} reasoning
+          </span>
+          } @if (message().stats?.reasoningDurationMs) {
+          <span class="stat-item" title="Time spent reasoning">
+            <i class="pi pi-clock"></i>
+            {{ formatDuration(message().stats!.reasoningDurationMs!) }} thinking
+          </span>
+          } @if (message().stats?.timeToFirstTokenMs) {
+          <span class="stat-item" title="Time to first token">
+            <i class="pi pi-forward"></i>
+            {{ formatDuration(message().stats!.timeToFirstTokenMs!) }} TTFT
+          </span>
+          } @if (message().stats?.totalDurationMs) {
+          <span class="stat-item" title="Total duration">
+            <i class="pi pi-stopwatch"></i>
+            {{ formatDuration(message().stats!.totalDurationMs!) }}
+          </span>
+          }
+        </div>
         } }
       </div>
       @if (message().role === 'user') {
@@ -379,6 +421,36 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
       img {
         max-width: 100%;
         border-radius: 8px;
+      }
+    }
+
+    /* Message stats bar */
+    .message-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 6px 0 0;
+      margin-top: 6px;
+      border-top: 1px solid var(--p-surface-700);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      font-size: 0.7rem;
+      color: var(--p-text-muted-color);
+    }
+
+    .bubble:hover .message-stats {
+      opacity: 1;
+    }
+
+    .stat-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+
+      i {
+        font-size: 0.65rem;
+        opacity: 0.7;
       }
     }
 
@@ -631,8 +703,13 @@ export class MessageBubbleComponent {
   }
 
   formatDuration(ms: number): string {
-    if (ms < 1000) return `${ms}ms`;
+    if (ms < 1000) return `${Math.round(ms)}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  formatStat(value: number | undefined): string {
+    if (value === undefined || value === null) return '';
+    return value.toFixed(1);
   }
 
   truncate(text: string, maxLen: number): string {

@@ -399,6 +399,27 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         if (messages) {
           this.conversationService.setMessagesFromDone(convoId, messages);
         }
+        // Attach stats to the last assistant display message
+        const stats = event.data['stats'] as
+          | Record<string, unknown>
+          | undefined;
+        if (stats) {
+          this.conversationService.setLastAssistantStats(convoId, {
+            model: stats['model'] as string | undefined,
+            tokensPerSecond: stats['tokensPerSecond'] as number | undefined,
+            totalTokens: stats['totalTokens'] as number | undefined,
+            promptTokens: stats['promptTokens'] as number | undefined,
+            completionTokens: stats['completionTokens'] as number | undefined,
+            reasoningTokens: stats['reasoningTokens'] as number | undefined,
+            reasoningDurationMs: stats['reasoningDurationMs'] as
+              | number
+              | undefined,
+            timeToFirstTokenMs: stats['timeToFirstTokenMs'] as
+              | number
+              | undefined,
+            totalDurationMs: stats['totalDurationMs'] as number | undefined,
+          });
+        }
         // Cache the final rendered HTML
         this.cacheRenderedHtml(convoId);
         break;

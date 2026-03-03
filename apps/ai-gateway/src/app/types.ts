@@ -112,6 +112,13 @@ export interface OllamaStreamChunk {
   created_at: string;
   message: Partial<OllamaMessage> & { thinking?: string };
   done: boolean;
+  done_reason?: string;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
 }
 
 /**
@@ -175,6 +182,7 @@ export interface OrchestratorResult {
   response: string;
   delegations: DelegationResult[];
   totalDurationMs: number;
+  stats?: Record<string, unknown>;
 }
 
 /**
@@ -286,6 +294,19 @@ export interface StreamEventData {
   conversationId?: string;
   delegations?: DelegationResult[];
   totalDurationMs?: number;
+
+  // Stats from Ollama
+  stats?: {
+    model?: string;
+    totalTokens?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    tokensPerSecond?: number;
+    reasoningTokens?: number;
+    reasoningDurationMs?: number;
+    timeToFirstTokenMs?: number;
+    totalDurationMs?: number;
+  };
 
   // Stateless endpoint extensions - messages in Ollama's native format
   messages?: Array<

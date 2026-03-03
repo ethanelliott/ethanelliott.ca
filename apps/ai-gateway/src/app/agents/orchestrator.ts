@@ -77,6 +77,11 @@ export class OrchestratorAgent {
     let content = '';
     let toolCalls: OllamaChatResponse['message']['tool_calls'] = undefined;
     let lastChunk: any = null;
+    const streamStart = Date.now();
+    let firstContentTokenTime: number | undefined;
+    let thinkingStart: number | undefined;
+    let thinkingEnd: number | undefined;
+    let thinkingTokenCount = 0;
 
     for await (const chunk of ollama.chatStream({
       model: this.config.model || 'functiongemma',
@@ -87,11 +92,15 @@ export class OrchestratorAgent {
 
       // Ollama surfaces thinking in a dedicated field
       if (chunk.message?.thinking) {
+        if (!thinkingStart) thinkingStart = Date.now();
+        thinkingEnd = Date.now();
+        thinkingTokenCount++;
         emitter.thinkingToken(chunk.message.thinking, 'orchestrator');
       }
 
       // Regular content tokens
       if (chunk.message?.content) {
+        if (!firstContentTokenTime) firstContentTokenTime = Date.now();
         content += chunk.message.content;
         emitter.token(chunk.message.content, 'orchestrator', undefined, false);
       }
@@ -107,6 +116,34 @@ export class OrchestratorAgent {
       }
     }
 
+    // Calculate stats from the final chunk
+    const evalCount = lastChunk?.eval_count;
+    const evalDuration = lastChunk?.eval_duration; // nanoseconds
+    const promptEvalCount = lastChunk?.prompt_eval_count;
+    const tokensPerSecond =
+      evalCount && evalDuration ? evalCount / (evalDuration / 1e9) : undefined;
+    const reasoningDurationMs =
+      thinkingStart && thinkingEnd ? thinkingEnd - thinkingStart : undefined;
+    const timeToFirstTokenMs = firstContentTokenTime
+      ? firstContentTokenTime - streamStart
+      : undefined;
+
+    const stats = {
+      model: lastChunk?.model || this.config.model,
+      totalTokens: (promptEvalCount || 0) + (evalCount || 0) || undefined,
+      promptTokens: promptEvalCount,
+      completionTokens: evalCount,
+      tokensPerSecond: tokensPerSecond
+        ? Math.round(tokensPerSecond * 10) / 10
+        : undefined,
+      reasoningTokens: thinkingTokenCount || undefined,
+      reasoningDurationMs,
+      timeToFirstTokenMs,
+      totalDurationMs: lastChunk?.total_duration
+        ? Math.round(lastChunk.total_duration / 1e6)
+        : undefined,
+    };
+
     return {
       model: lastChunk?.model || this.config.model || 'functiongemma',
       created_at: lastChunk?.created_at || new Date().toISOString(),
@@ -117,7 +154,9 @@ export class OrchestratorAgent {
       },
       done: true,
       done_reason: toolCalls?.length ? 'tool_calls' : 'stop',
-    };
+      // Attach stats to response for propagation
+      _stats: stats,
+    } as any;
   }
 
   /**
@@ -206,6 +245,7 @@ export class OrchestratorAgent {
             response: response.message.content,
             delegations,
             totalDurationMs: Date.now() - startTime,
+            stats: (response as any)?._stats,
           };
         }
 
@@ -271,6 +311,7 @@ export class OrchestratorAgent {
         response: finalResponse.message.content,
         delegations,
         totalDurationMs: Date.now() - startTime,
+        stats: (finalResponse as any)?._stats,
       };
     } finally {
       // Clean up the delegation tool

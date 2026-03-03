@@ -6,6 +6,7 @@ import {
   DisplayToolCall,
   DisplayDelegation,
   ChatConfig,
+  MessageStats,
 } from '../models/types';
 
 const STORAGE_KEY = 'chat-conversations';
@@ -267,6 +268,23 @@ export class ConversationService {
       convos.map((c) => {
         if (c.id !== conversationId) return c;
         return { ...c, messages, updatedAt: Date.now() };
+      })
+    );
+  }
+
+  setLastAssistantStats(conversationId: string, stats: MessageStats): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const displayMessages = [...c.displayMessages];
+        // Find the last assistant message and attach stats
+        for (let i = displayMessages.length - 1; i >= 0; i--) {
+          if (displayMessages[i].role === 'assistant') {
+            displayMessages[i] = { ...displayMessages[i], stats };
+            break;
+          }
+        }
+        return { ...c, displayMessages, updatedAt: Date.now() };
       })
     );
   }
