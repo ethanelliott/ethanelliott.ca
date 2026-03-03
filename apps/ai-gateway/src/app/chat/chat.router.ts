@@ -556,13 +556,13 @@ export const ChatRouter: FastifyPluginAsync = async (
       const startTime = Date.now();
       const response = await ollama.complete(
         message,
-        model || 'functiongemma',
+        model || 'qwen3:4b',
         systemPrompt
       );
 
       return {
         response,
-        model: model || 'llama3.1:8b',
+        model: model || 'qwen3:4b',
         durationMs: Date.now() - startTime,
       };
     }

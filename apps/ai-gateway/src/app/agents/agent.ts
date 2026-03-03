@@ -31,7 +31,7 @@ export class Agent {
     this.config = {
       maxIterations: 10,
       temperature: 0.7,
-      model: 'llama3.1:8b', // Best balance of tool calling and reasoning
+      model: 'qwen3:8b', // Best balance of tool calling and reasoning
       ...config,
     };
     this.ollama = getOllamaClient();

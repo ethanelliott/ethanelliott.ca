@@ -468,16 +468,9 @@ ALWAYS delegate. NEVER respond directly.`;
 }
 
 // Default orchestrator configuration
-// Model Selection Notes (based on benchmarks):
-// - functiongemma: Ultra fast (~2-3s), great for tool routing, poor at complex reasoning
-// - llama3.2:3b: Good balance (~12-17s), decent tool calling and reasoning
-// - llama3.1:8b: Best reasoning (~33-38s), excellent for complex multi-step problems
-// - mistral:7b: Inconsistent tool calling, sometimes calls wrong tools
-// - command-r7b: Doesn't use tools at all
-// - gemma3: Doesn't support tool calling
 export const defaultOrchestratorConfig: OrchestratorConfig = {
   name: 'main-orchestrator',
-  model: 'llama3.1:8b', // Best for complex reasoning and correct tool calling
+  model: 'qwen3:4b', // Best for complex reasoning and correct tool calling
   subAgents: [
     {
       name: 'utility-assistant',
@@ -507,7 +500,7 @@ Examples:
 - "What time is it?" → use get_current_time
 - "Calculate 5+5" → use calculate with expression="5+5"
 - "4 apples at $2 with 10% discount" → use calculate with expression="(4 * 2) * 0.9"`,
-        model: 'llama3.1:8b', // Best for reasoning-heavy tool use
+        model: 'qwen3:4b', // Best for reasoning-heavy tool use
         tools: [
           'get_current_time',
           'calculate',

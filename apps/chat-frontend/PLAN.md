@@ -531,8 +531,8 @@ Stateless NDJSON streaming. Send full message history each request; get back upd
   config?: {
     enabledTools?: string[];    // whitelist
     disabledTools?: string[];   // blacklist
-    model?: string;             // e.g. 'llama3.1:8b'
-    temperature?: number;       // 0–2
+    model?: string;             // e.g. 'qwen3:8b'
+    temperature?: number;       // 0-2
   };
 }
 ```

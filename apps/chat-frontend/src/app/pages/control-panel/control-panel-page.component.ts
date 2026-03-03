@@ -165,7 +165,7 @@ interface ModelOption {
               [step]="1"
               [style]="{ width: '140px' }"
             />
-            <span class="slider-value">{{ orchMaxDelegations }}</span>
+            <span class="slider-value">{{ orchMaxDelegations() }}</span>
           </div>
         </div>
       </section>
@@ -732,8 +732,8 @@ export class ControlPanelPageComponent implements OnInit {
   readonly error = signal<string | null>(null);
 
   // Form state for orchestrator
-  orchModel = '';
-  orchMaxDelegations = 5;
+  readonly orchModel = signal('');
+  readonly orchMaxDelegations = signal(5);
 
   // Form state for each sub-agent (keyed by name)
   agentForms: Record<
@@ -779,8 +779,8 @@ export class ControlPanelPageComponent implements OnInit {
 
   readonly orchestratorDirty = computed(() => {
     return (
-      this.orchModel !== this.orchOriginal.model ||
-      this.orchMaxDelegations !== this.orchOriginal.maxDelegations
+      this.orchModel() !== this.orchOriginal.model ||
+      this.orchMaxDelegations() !== this.orchOriginal.maxDelegations
     );
   });
 
@@ -823,11 +823,11 @@ export class ControlPanelPageComponent implements OnInit {
   }
 
   private initOrchestratorForm(cfg: GatewayConfig): void {
-    this.orchModel = cfg.orchestrator.model || '';
-    this.orchMaxDelegations = cfg.orchestrator.maxDelegations || 5;
+    this.orchModel.set(cfg.orchestrator.model || '');
+    this.orchMaxDelegations.set(cfg.orchestrator.maxDelegations || 5);
     this.orchOriginal = {
-      model: this.orchModel,
-      maxDelegations: this.orchMaxDelegations,
+      model: this.orchModel(),
+      maxDelegations: this.orchMaxDelegations(),
     };
   }
 
@@ -901,18 +901,18 @@ export class ControlPanelPageComponent implements OnInit {
 
   saveOrchestrator(): void {
     const updates: Record<string, unknown> = {};
-    if (this.orchModel !== this.orchOriginal.model) {
-      updates['model'] = this.orchModel || undefined;
+    if (this.orchModel() !== this.orchOriginal.model) {
+      updates['model'] = this.orchModel() || undefined;
     }
-    if (this.orchMaxDelegations !== this.orchOriginal.maxDelegations) {
-      updates['maxDelegations'] = this.orchMaxDelegations;
+    if (this.orchMaxDelegations() !== this.orchOriginal.maxDelegations) {
+      updates['maxDelegations'] = this.orchMaxDelegations();
     }
 
     this.gateway.updateOrchestrator(updates as any).subscribe({
       next: (res) => {
         this.orchOriginal = {
-          model: this.orchModel,
-          maxDelegations: this.orchMaxDelegations,
+          model: this.orchModel(),
+          maxDelegations: this.orchMaxDelegations(),
         };
         this.messageService.add({
           severity: 'success',
