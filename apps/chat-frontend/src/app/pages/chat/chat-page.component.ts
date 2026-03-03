@@ -375,7 +375,9 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   onQuestionnaireResponse(response: QuestionnaireResponse): void {
     this.pendingQuestion.set(null);
     this.chatApi
-      .approveToolCall(response.approvalId, true, { answer: response.answer })
+      .approveToolCall(response.approvalId, true, {
+        answers: JSON.stringify(response.answers),
+      })
       .subscribe({
         error: (err) => {
           console.error('Questionnaire response failed:', err);
@@ -621,13 +623,24 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
         // ask_user tool → show questionnaire dialog instead of approval
         if (tool === 'ask_user') {
-          const options = (toolInput['options'] as string[]) || [];
-          const allowFreeText = toolInput['allow_free_text'] !== false;
+          const rawQuestions =
+            (toolInput['questions'] as Array<Record<string, unknown>>) || [];
+          const questions = rawQuestions.map((q) => ({
+            question: (q['question'] as string) || 'Please answer:',
+            options: (q['options'] as string[]) || [],
+            allowFreeText: q['allow_free_text'] !== false,
+          }));
+          // Fallback: if no questions array, treat as single question (backward compat)
+          if (questions.length === 0) {
+            questions.push({
+              question: (toolInput['question'] as string) || 'Please choose:',
+              options: (toolInput['options'] as string[]) || [],
+              allowFreeText: toolInput['allow_free_text'] !== false,
+            });
+          }
           this.pendingQuestion.set({
             approvalId,
-            question: (toolInput['question'] as string) || 'Please choose:',
-            options,
-            allowFreeText,
+            questions,
             agentName,
           });
           this.statusText.set('Waiting for your answer...');

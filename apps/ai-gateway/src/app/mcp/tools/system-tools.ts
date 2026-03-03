@@ -337,58 +337,79 @@ const askUser = createTool(
   {
     name: 'ask_user',
     description:
-      'Ask the user a question. ALWAYS provide multiple-choice options when possible (2-6 options). Only omit options for truly open-ended questions like asking for a name or description. The user can always type a custom answer via an "Other" option.',
+      'Ask the user one or more questions at once. Supports multiple questions in a single call — the user will see a step-by-step wizard. ALWAYS provide multiple-choice options (2-6) when possible. Only omit options for truly open-ended questions like asking for a name or description. The user can always type a custom answer via an "Other" option.',
     category: 'System',
     tags: ['interactive', 'questionnaire', 'user-input'],
     parameters: {
       type: 'object',
       properties: {
-        question: {
-          type: 'string',
-          description: 'The question to ask the user',
-        },
-        options: {
+        questions: {
           type: 'array',
           description:
-            'Multiple-choice options for the user to pick from (2-6 options). Provide options whenever the question has a reasonable set of choices. Omit only for truly open-ended questions.',
+            'An array of questions to ask the user. You can ask 1 or more questions at once. Each question can have its own set of multiple-choice options.',
           items: {
-            type: 'string',
-            description: 'An option label',
+            type: 'object',
+            properties: {
+              question: {
+                type: 'string',
+                description: 'The question to ask the user',
+              },
+              options: {
+                type: 'array',
+                description:
+                  'Multiple-choice options (2-6). Provide whenever the question has a reasonable set of choices. Omit only for truly open-ended questions.',
+                items: {
+                  type: 'string',
+                  description: 'An option label',
+                },
+              },
+              allow_free_text: {
+                type: 'boolean',
+                description:
+                  'Whether the user can type a custom answer. Defaults to true.',
+              },
+            },
+            required: ['question'],
           },
         },
-        allow_free_text: {
-          type: 'boolean',
-          description:
-            'Whether the user can type a custom answer instead of picking an option. Defaults to true.',
-        },
       },
-      required: ['question'],
+      required: ['questions'],
     },
     // Uses approval flow to pause and wait for the user's response
     approval: {
       required: true,
-      message: 'The assistant has a question for you.',
+      message: 'The assistant has some questions for you.',
       userParametersSchema: {
         type: 'object',
         properties: {
-          answer: {
+          answers: {
             type: 'string',
-            description: "The user's selected or typed answer",
+            description:
+              'JSON-encoded array of { question: string, answer: string }',
           },
         },
-        required: ['answer'],
+        required: ['answers'],
       },
     },
   },
   async (params, userParams) => {
-    const question = params.question as string;
-    const answer = (userParams?.answer as string) || 'No answer provided';
+    const questions = (params.questions as Array<{ question: string }>) || [];
+    let answers: Array<{ question: string; answer: string }> = [];
+    try {
+      answers = JSON.parse((userParams?.answers as string) || '[]');
+    } catch {
+      answers = [];
+    }
 
     return {
       success: true,
       data: {
-        question,
-        answer,
+        questions_and_answers: answers.length
+          ? answers
+          : questions.map((q) => ({
+              question: q.question,
+              answer: 'No answer provided',
+            })),
       },
     };
   }
