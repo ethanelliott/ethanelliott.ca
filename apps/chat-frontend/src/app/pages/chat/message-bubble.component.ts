@@ -194,11 +194,14 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
     }
 
     .bubble {
-      max-width: 75%;
       padding: 10px 14px;
       border-radius: 16px;
       line-height: 1.55;
       font-size: 0.9rem;
+    }
+
+    .user-bubble {
+      max-width: 75%;
     }
 
     .user-bubble {
@@ -226,54 +229,73 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         }
       }
 
-      pre {
+      .code-block-wrapper {
+        position: relative;
         background: var(--p-surface-900);
         border: 1px solid var(--p-surface-600);
         border-radius: 8px;
-        padding: 12px;
-        overflow-x: auto;
         margin: 8px 0;
-        font-size: 0.85rem;
-        position: relative;
+        overflow: hidden;
+      }
+
+      .code-block-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 12px;
+        background: var(--p-surface-800);
+        border-bottom: 1px solid var(--p-surface-600);
+        font-size: 0.75rem;
+        color: var(--p-text-muted-color);
+      }
+
+      .code-lang {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
 
       .code-copy-btn {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        background: var(--p-surface-700);
-        border: 1px solid var(--p-surface-600);
-        border-radius: 6px;
+        background: transparent;
+        border: none;
         color: var(--p-text-muted-color);
         cursor: pointer;
-        padding: 4px 6px;
+        padding: 2px 6px;
         font-size: 0.78rem;
-        opacity: 0;
-        transition: opacity 0.15s ease, background 0.15s ease;
-        z-index: 1;
         display: flex;
         align-items: center;
+        gap: 4px;
+        border-radius: 4px;
+        transition: color 0.15s ease, background 0.15s ease;
 
         &:hover {
-          background: var(--p-surface-600);
           color: var(--p-text-color);
+          background: var(--p-surface-700);
         }
 
         &.copied {
           color: #22c55e;
-          opacity: 1;
         }
 
         i { font-size: 0.82rem; }
       }
 
-      pre:hover .code-copy-btn {
-        opacity: 1;
+      pre {
+        margin: 0;
+        padding: 12px;
+        overflow-x: auto;
+        font-size: 0.85rem;
+        background: transparent;
       }
 
       code {
         font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
         font-size: 0.85em;
+      }
+
+      pre code {
+        background: transparent;
+        padding: 0;
       }
 
       :not(pre) > code {
@@ -346,7 +368,7 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
     }
 
     @media (max-width: 768px) {
-      .bubble {
+      .user-bubble {
         max-width: 88%;
       }
 
