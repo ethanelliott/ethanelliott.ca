@@ -49,7 +49,13 @@ export class ChatApiService {
               const trimmed = line.trim();
               if (!trimmed) continue;
               try {
-                const parsed = JSON.parse(trimmed) as StreamEvent;
+                const raw = JSON.parse(trimmed);
+                // Backend sends "event" field; normalize to "type" for frontend
+                const parsed: StreamEvent = {
+                  type: raw.type ?? raw.event,
+                  timestamp: raw.timestamp,
+                  data: raw.data ?? {},
+                };
                 subscriber.next(parsed);
                 if (parsed.type === 'done' || parsed.type === 'error') {
                   subscriber.complete();
@@ -166,13 +172,14 @@ export class ChatApiService {
               if (!trimmed) continue;
               try {
                 const parsed = JSON.parse(trimmed);
-                if (parsed.type === 'token' || parsed.type === 'content') {
+                const eventType = parsed.type ?? parsed.event;
+                if (eventType === 'token' || eventType === 'content') {
                   title +=
                     (parsed.data?.token as string) ||
                     (parsed.data?.content as string) ||
                     '';
                 }
-                if (parsed.type === 'done' || parsed.type === 'error') {
+                if (eventType === 'done' || eventType === 'error') {
                   done = true;
                   break;
                 }

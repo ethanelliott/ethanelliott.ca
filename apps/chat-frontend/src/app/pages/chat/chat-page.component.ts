@@ -362,8 +362,19 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
       case 'token': {
         const token = (event.data['token'] as string) || '';
+        const role = (event.data['role'] as string) || 'assistant';
+        const agentName = event.data['agentName'] as string | undefined;
         if (token) {
-          this.conversationService.updateLastAssistantMessage(convoId, token);
+          // Tokens from sub-agents go into delegation thinking
+          if (role === 'agent' && agentName) {
+            this.conversationService.appendDelegationThinking(
+              convoId,
+              agentName,
+              token
+            );
+          } else {
+            this.conversationService.updateLastAssistantMessage(convoId, token);
+          }
         }
         break;
       }
@@ -403,12 +414,13 @@ export class ChatPageComponent implements OnInit, OnDestroy {
       }
 
       case 'thinking': {
-        const thinkingToken = (event.data['token'] as string) || '';
-        if (thinkingToken) {
-          this.conversationService.updateLastAssistantThinking(
-            convoId,
-            thinkingToken
-          );
+        // Backend sends { message } for orchestrator thinking status
+        const thinkingMsg =
+          (event.data['message'] as string) ||
+          (event.data['token'] as string) ||
+          '';
+        if (thinkingMsg) {
+          this.statusText.set(thinkingMsg);
         }
         break;
       }
@@ -426,13 +438,19 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
       case 'tool_call_end': {
         const toolName = (event.data['tool'] as string) || '';
-        const success = event.data['success'] !== false;
+        // Backend sends result object with success field
+        const output = event.data['output'] as
+          | Record<string, unknown>
+          | undefined;
+        const success = output ? output['success'] !== false : true;
         this.conversationService.updateToolCallOnLastAssistant(
           convoId,
           toolName,
           {
             status: success ? 'success' : 'error',
-            output: event.data['output'] as string | undefined,
+            output: output
+              ? JSON.stringify(output, null, 2)
+              : undefined,
             durationMs: event.data['durationMs'] as number | undefined,
           }
         );
@@ -441,25 +459,35 @@ export class ChatPageComponent implements OnInit, OnDestroy {
       }
 
       case 'delegation_start': {
+        // Backend sends agentName, not agent
+        const agentName =
+          (event.data['agentName'] as string) ||
+          (event.data['agent'] as string) ||
+          'sub-agent';
         this.conversationService.addDelegationToLastAssistant(convoId, {
-          agentName: (event.data['agent'] as string) || 'sub-agent',
+          agentName,
           task: event.data['task'] as string | undefined,
           status: 'pending',
         });
-        this.statusText.set(
-          `Delegating to ${event.data['agent'] || 'sub-agent'}...`
-        );
+        this.statusText.set(`Delegating to ${agentName}...`);
         break;
       }
 
       case 'delegation_end': {
-        const agentName = (event.data['agent'] as string) || 'sub-agent';
+        // Backend sends agentName + response (not agent + content)
+        const agentName =
+          (event.data['agentName'] as string) ||
+          (event.data['agent'] as string) ||
+          'sub-agent';
         this.conversationService.updateDelegationOnLastAssistant(
           convoId,
           agentName,
           {
             status: 'complete',
-            content: event.data['content'] as string | undefined,
+            content:
+              (event.data['response'] as string) ||
+              (event.data['content'] as string) ||
+              undefined,
             durationMs: event.data['durationMs'] as number | undefined,
           }
         );
@@ -468,20 +496,29 @@ export class ChatPageComponent implements OnInit, OnDestroy {
       }
 
       case 'agent_thinking': {
-        const agentName = (event.data['agent'] as string) || 'sub-agent';
-        const token = (event.data['token'] as string) || '';
-        if (token) {
-          this.conversationService.appendDelegationThinking(
-            convoId,
-            agentName,
-            token
-          );
-        }
+        // Backend sends { agentName, iteration, maxIterations }
+        const agentName =
+          (event.data['agentName'] as string) ||
+          (event.data['agent'] as string) ||
+          'sub-agent';
+        const iteration = event.data['iteration'] as number | undefined;
+        const maxIterations = event.data['maxIterations'] as
+          | number
+          | undefined;
+        const statusMsg =
+          iteration && maxIterations
+            ? `${agentName} thinking (${iteration}/${maxIterations})...`
+            : `${agentName} thinking...`;
+        this.statusText.set(statusMsg);
         break;
       }
 
       case 'agent_response': {
-        const agentName = (event.data['agent'] as string) || 'sub-agent';
+        // Backend sends agentName, not agent
+        const agentName =
+          (event.data['agentName'] as string) ||
+          (event.data['agent'] as string) ||
+          'sub-agent';
         const content = (event.data['content'] as string) || '';
         if (content) {
           this.conversationService.updateDelegationOnLastAssistant(
@@ -505,19 +542,38 @@ export class ChatPageComponent implements OnInit, OnDestroy {
           tool,
           input: (event.data['input'] as Record<string, unknown>) || {},
           message: event.data['message'] as string | undefined,
-          agentName: event.data['agent'] as string | undefined,
+          agentName:
+            (event.data['agentName'] as string) ||
+            (event.data['agent'] as string) ||
+            undefined,
         });
         this.statusText.set('Waiting for approval...');
         break;
       }
 
       case 'approval_received': {
-        const tool = (event.data['tool'] as string) || '';
+        // Backend sends { approvalId, approved, ... }
+        const approvalId = (event.data['approvalId'] as string) || '';
         const approved = event.data['approved'] !== false;
-        this.conversationService.updateToolCallOnLastAssistant(convoId, tool, {
-          status: approved ? 'pending' : 'error',
-        });
-        this.statusText.set(approved ? `Approved: running ${tool}...` : '');
+        // Find the tool that has this approvalId
+        const convo = this.conversationService.activeConversation();
+        if (convo) {
+          const lastMsg =
+            convo.displayMessages[convo.displayMessages.length - 1];
+          const pendingTool = lastMsg?.toolCalls?.find(
+            (tc) => tc.approvalId === approvalId
+          );
+          if (pendingTool) {
+            this.conversationService.updateToolCallOnLastAssistant(
+              convoId,
+              pendingTool.name,
+              {
+                status: approved ? 'pending' : 'error',
+              }
+            );
+          }
+        }
+        this.statusText.set(approved ? 'Approved, running...' : '');
         break;
       }
     }
