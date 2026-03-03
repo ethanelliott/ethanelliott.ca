@@ -67,6 +67,9 @@ hljs.registerLanguage('toml', ini);
 
 @Injectable({ providedIn: 'root' })
 export class MarkdownService {
+  private readonly COPY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+  private readonly CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
   constructor() {
     marked.use(
       markedHighlight({
@@ -91,24 +94,49 @@ export class MarkdownService {
           '.code-copy-btn'
         ) as HTMLButtonElement | null;
         if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
         const wrapper = btn.closest('.code-block-wrapper');
         if (!wrapper) return;
         const code = wrapper.querySelector('pre code');
         const text = code ? code.textContent || '' : '';
-        navigator.clipboard.writeText(text).then(
-          () => {
-            btn.innerHTML = '<i class="pi pi-check"></i> Copied';
+        this.copyToClipboard(text).then((ok) => {
+          if (ok) {
+            btn.innerHTML = `${this.CHECK_ICON}<span>Copied</span>`;
             btn.classList.add('copied');
             setTimeout(() => {
-              btn.innerHTML = '<i class="pi pi-copy"></i> Copy';
+              btn.innerHTML = `${this.COPY_ICON}<span>Copy</span>`;
               btn.classList.remove('copied');
             }, 2000);
-          },
-          () => {
-            // Fallback — silently fail
           }
-        );
+        });
       });
+    }
+  }
+
+  private async copyToClipboard(text: string): Promise<boolean> {
+    // Try modern clipboard API first
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // Fall through to fallback
+      }
+    }
+    // Fallback: textarea + execCommand
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
     }
   }
 
@@ -138,20 +166,22 @@ export class MarkdownService {
   }
 
   private wrapCodeBlocks(html: string): string {
+    const copyBtn = `<button class="code-copy-btn" type="button" title="Copy code">${this.COPY_ICON}<span>Copy</span></button>`;
+
     // Wrap <pre><code class="hljs language-xxx"> blocks with header (language label + copy button)
     let result = html.replace(
       /<pre><code\s+class="hljs language-(\w+)">/g,
       (_match, lang) =>
         `<div class="code-block-wrapper"><div class="code-block-header"><span class="code-lang">${this.escapeHtml(
           lang
-        )}</span><button class="code-copy-btn" type="button" title="Copy code"><i class="pi pi-copy"></i> Copy</button></div><pre><code class="hljs language-${lang}">`
+        )}</span>${copyBtn}</div><pre><code class="hljs language-${lang}">`
     );
 
     // Wrap remaining <pre><code> blocks that didn't have a language class
     result = result.replace(
       /<pre><code(?!\s+class="hljs)([^>]*)>/g,
       (_match, attrs) =>
-        `<div class="code-block-wrapper"><div class="code-block-header"><span class="code-lang">code</span><button class="code-copy-btn" type="button" title="Copy code"><i class="pi pi-copy"></i> Copy</button></div><pre><code${attrs}>`
+        `<div class="code-block-wrapper"><div class="code-block-header"><span class="code-lang">code</span>${copyBtn}</div><pre><code${attrs}>`
     );
 
     // Close wrapper divs after </code></pre>

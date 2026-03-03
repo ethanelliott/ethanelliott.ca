@@ -270,9 +270,9 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
         border: none;
         color: var(--p-text-muted-color);
         cursor: pointer;
-        padding: 2px 6px;
-        font-size: 0.78rem;
-        display: flex;
+        padding: 2px 8px;
+        font-size: 0.75rem;
+        display: inline-flex;
         align-items: center;
         gap: 4px;
         border-radius: 4px;
@@ -287,7 +287,9 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
           color: #22c55e;
         }
 
-        i { font-size: 0.82rem; }
+        svg {
+          flex-shrink: 0;
+        }
       }
 
       pre {
