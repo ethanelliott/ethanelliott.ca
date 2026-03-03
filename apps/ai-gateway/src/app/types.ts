@@ -287,6 +287,7 @@ export interface StreamEventData {
 
   // Stateless endpoint extensions - messages in Ollama's native format
   messages?: Array<
+    | { role: 'system'; content: string }
     | { role: 'user'; content: string }
     | {
         role: 'assistant';
