@@ -86,17 +86,23 @@ export interface TaskDropEvent {
     </div>
   `,
   styles: `
+    :host {
+      flex: 1 1 180px;
+      min-width: 180px;
+      min-height: 0;
+      display: flex;
+      scroll-snap-align: start;
+    }
+
     .column {
       display: flex;
       flex-direction: column;
-      flex: 1 1 180px;
-      min-width: 180px;
+      flex: 1;
+      min-height: 0;
       background: var(--p-surface-900);
       border-radius: 10px;
       border: 1px solid var(--p-surface-700);
       overflow: hidden;
-      scroll-snap-align: start;
-      min-height: 0;
     }
 
     .col-header {
