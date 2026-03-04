@@ -80,7 +80,8 @@ export class KanbanSseService implements OnDestroy {
     this.currentProject = project;
     this._connectionState$.next('connecting');
 
-    const url = new URL(`${environment.apiUrl}/tasks/events`);
+    const base = environment.apiUrl || window.location.origin;
+    const url = new URL(`${base}/tasks/events`);
     if (project) url.searchParams.set('project', project);
 
     const es = new EventSource(url.toString());
