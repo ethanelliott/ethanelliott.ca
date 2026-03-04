@@ -1,0 +1,81 @@
+{
+  "name": "kanban",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/kanban/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/apps/kanban",
+        "format": [
+          "esm"
+        ],
+        "bundle": true,
+        "main": "apps/kanban/src/main.ts",
+        "tsConfig": "apps/kanban/tsconfig.app.json",
+        "assets": [],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {
+          "thirdParty": false
+        },
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": [
+        "build"
+      ],
+      "options": {
+        "buildTarget": "kanban:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "kanban:build:development"
+        },
+        "production": {
+          "buildTarget": "kanban:build:production"
+        }
+      }
+    },
+    "container": {
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
+      "options": {
+        "image": "ethanelliottio/kanban",
+        "dockerfile": "apps/kanban/Dockerfile",
+        "deployment": "kanban"
+      }
+    }
+  }
+}
