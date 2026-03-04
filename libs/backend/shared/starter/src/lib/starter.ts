@@ -1,4 +1,6 @@
 import Fastify, { FastifyPluginAsync } from 'fastify';
+import pino from 'pino';
+import pretty from 'pino-pretty';
 import { AppConfig } from './app-config';
 import { MainPlugin } from './plugins';
 import { provide } from '@ee/di';
@@ -19,15 +21,18 @@ export async function starter<T extends FastifyPluginAsync>(
 
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Avoid pino-pretty's worker-thread transport — it requires `real-require`
-  // which cannot be resolved inside a `bun build --compile` binary.
-  const defaultLogger: Record<string, unknown> = {
-    level: isProduction ? 'info' : 'debug',
-  };
+  // Use pino-pretty as a synchronous in-process stream (not a worker-thread
+  // transport). sync:true avoids thread-stream / real-require, so this works
+  // inside a `bun build --compile` binary just as well as in `bun nx serve`.
+  const defaultLogger = isProduction
+    ? pino({ level: 'info' })
+    : pino({ level: 'debug' }, pretty({ colorize: true, sync: true }));
 
-  const server = Fastify({
-    logger: appConfig.logger !== undefined ? appConfig.logger : defaultLogger,
-  });
+  const server = Fastify(
+    appConfig.logger !== undefined
+      ? { logger: appConfig.logger }
+      : { loggerInstance: defaultLogger }
+  );
 
   await server.register(MainPlugin);
   await server.register(Application);
