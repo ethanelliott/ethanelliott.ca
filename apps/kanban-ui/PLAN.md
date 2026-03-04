@@ -14,7 +14,8 @@ Two deliverables on top of the existing `apps/kanban` backend:
 |                                                            |
 |   tauri::Builder                                           |
 |     +- spawn sidecar:  dist/kanban-server (SEA binary)     |
-|     |    reads PORT:{n} from sidecar stdout                |
+|     |    passes TAURI_IPC_PORT env var                     |
+|     |    sidecar connects back: {"port": n} JSON over TCP  |
 |     +- create WebviewWindow                                |
 |          http://127.0.0.1:{port}/ui/                       |
 |                                                            |
@@ -32,20 +33,20 @@ Two deliverables on top of the existing `apps/kanban` backend:
 
 ## Design Decisions
 
-| Decision                       | Choice                                                                                                                                                                               |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| API prefix on backend          | All API routes remain at `/tasks`, `/projects` (no `/api` prefix). Angular calls same-origin.                                                                                        |
-| UI route on backend            | `@fastify/static` serves Angular dist at `/ui/**`. Redirect `/` to `/ui/`.                                                                                                           |
-| Angular `base-href`            | Set to `/ui/` at build time (`--base-href /ui/`).                                                                                                                                    |
-| Real-time updates              | **Server-Sent Events (SSE)** — backend emits typed events on every mutation; Angular subscribes via `EventSource` wrapped in an RxJS `Observable`. No polling, no WebSocket handshake overhead. |
-| Tauri sidecar port selection   | Fastify picks a free port and prints `PORT:{port}` to stdout. The Rust main reads this and passes it to `WebviewWindow::url()`.                                                      |
-| Tauri data directory           | DB path from `app.path().app_data_dir()` — e.g. `~/Library/Application Support/ca.ethanelliott.kanban/kanban.db` on macOS.                                                          |
-| Tauri IPC                      | Minimal — port communicated via sidecar stdout. Angular uses `window.location.origin` so no IPC needed for the base URL.                                                             |
-| SQLite driver                  | **sql.js** (SQLite compiled to WASM). TypeORM `type: 'sqljs'` with `autoSave: true`. Zero native `.node` files — no rebuild step, works cleanly with Node.js SEA sidecar packaging. |
-| Tauri packaging                | `tauri build`: `dmg`/`zip` (macOS), `nsis`/`msi` (Windows), `deb`/`AppImage` (Linux). ~5-15 MB installer (no bundled Chromium).                                                     |
-| Angular conventions            | Match the rest of the repo: standalone, zoneless, OnPush, signals, inline templates, `inject()`.                                                                                     |
-| PrimeNG theme                  | **Aura Dark** (same as `chat-frontend` and `recipes-frontend`).                                                                                                                      |
-| Task auto-refresh              | SSE `Observable` + `takeUntilDestroyed` in each component. On SSE reconnect the component re-fetches the initial HTTP snapshot, then streams deltas.                                  |
+| Decision                     | Choice                                                                                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API prefix on backend        | All API routes remain at `/tasks`, `/projects` (no `/api` prefix). Angular calls same-origin.                                                                                                   |
+| UI route on backend          | `@fastify/static` serves Angular dist at `/ui/**`. Redirect `/` to `/ui/`.                                                                                                                      |
+| Angular `base-href`          | Set to `/ui/` at build time (`--base-href /ui/`).                                                                                                                                               |
+| Real-time updates            | **Server-Sent Events (SSE)** — backend emits typed events on every mutation; Angular subscribes via `EventSource` wrapped in an RxJS `Observable`. No polling, no WebSocket handshake overhead. |
+| Tauri sidecar port selection | Rust creates a one-shot TCP listener on `127.0.0.1:0`, passes `TAURI_IPC_PORT=<bound-port>` to the sidecar. Once Fastify is ready, the sidecar connects and sends `{"port": n}` JSON. Rust reads it and opens the window. |
+| Tauri data directory         | DB path from `app.path().app_data_dir()` — e.g. `~/Library/Application Support/ca.ethanelliott.kanban/kanban.db` on macOS.                                                                      |
+| Tauri IPC                    | Sidecar → Rust: loopback TCP JSON handshake (guaranteed delivery, no stdout parsing). Angular → Rust: not needed — Angular uses `window.location.origin` as its base URL.                      |
+| SQLite driver                | **sql.js** (SQLite compiled to WASM). TypeORM `type: 'sqljs'` with `autoSave: true`. Zero native `.node` files — no rebuild step, works cleanly with Node.js SEA sidecar packaging.             |
+| Tauri packaging              | `tauri build`: `dmg`/`zip` (macOS), `nsis`/`msi` (Windows), `deb`/`AppImage` (Linux). ~5-15 MB installer (no bundled Chromium).                                                                 |
+| Angular conventions          | Match the rest of the repo: standalone, zoneless, OnPush, signals, inline templates, `inject()`.                                                                                                |
+| PrimeNG theme                | **Aura Dark** (same as `chat-frontend` and `recipes-frontend`).                                                                                                                                 |
+| Task auto-refresh            | SSE `Observable` + `takeUntilDestroyed` in each component. On SSE reconnect the component re-fetches the initial HTTP snapshot, then streams deltas.                                            |
 
 ---
 
@@ -80,15 +81,24 @@ fastify.get('/', (_, reply) => {
 
 The Angular dist is copied into `dist/apps/kanban/ui/` by the build pipeline (see §3.7).
 
-### 1.2 Print port to stdout (for Tauri sidecar detection)
+### 1.2 IPC port handshake (sidecar → Tauri host)
 
-In `main.ts`, after the server starts:
+When running inside Tauri the sidecar receives `TAURI_IPC_PORT` in its environment. After Fastify is ready, `main.ts` connects to that loopback port, sends the chosen Fastify port as a JSON message, and closes the connection:
 
 ```ts
-console.log(`PORT:${address.port}`);
+import { createConnection } from 'net';
+
+// After fastify.listen(...)
+const ipcPort = process.env['TAURI_IPC_PORT'];
+if (ipcPort) {
+  const socket = createConnection({ host: '127.0.0.1', port: Number(ipcPort) }, () => {
+    socket.end(JSON.stringify({ port: address.port }));
+  });
+  socket.on('error', (err) => console.error('[tauri-ipc] handshake failed:', err));
+}
 ```
 
-Tauri reads this from the sidecar's stdout to open the WebviewWindow at the correct URL. In Docker/K8s deploys this line is harmlessly ignored.
+In Docker/K8s `TAURI_IPC_PORT` is not set, so the block is skipped entirely — no change to existing deployments.
 
 ### 1.3 Switch SQLite driver to sql.js
 
@@ -113,13 +123,13 @@ export const AppDataSource = new DataSource({
 
 **Why sql.js over better-sqlite3:**
 
-|                             | better-sqlite3             | sql.js           |
-| --------------------------- | -------------------------- | ---------------- |
-| Native `.node` binding      | Yes — must match Node ABI  | No — pure WASM   |
-| Works with Node.js SEA      | Problematic                | Yes              |
-| Rebuild step needed         | Yes                        | No               |
-| Windows cross-compile       | Hard                       | Trivial          |
-| Performance                 | Slightly faster            | ~10-15% slower   |
+|                        | better-sqlite3            | sql.js         |
+| ---------------------- | ------------------------- | -------------- |
+| Native `.node` binding | Yes — must match Node ABI | No — pure WASM |
+| Works with Node.js SEA | Problematic               | Yes            |
+| Rebuild step needed    | Yes                       | No             |
+| Windows cross-compile  | Hard                      | Trivial        |
+| Performance            | Slightly faster           | ~10-15% slower |
 
 Install: `bun add sql.js` — `sql.js` is a TypeORM peer dep; ensure it is explicitly listed.
 
@@ -133,13 +143,13 @@ Add a single SSE endpoint that broadcasts typed events to all connected clients 
 
 **Event types:**
 
-| Event name         | Payload                                    | Triggered when                                      |
-| ------------------ | ------------------------------------------ | --------------------------------------------------- |
-| `tasks:created`    | `{ task: TaskOut }`                        | `POST /tasks` or `POST /tasks/batch`                |
-| `tasks:updated`    | `{ task: TaskOut }`                        | `PATCH /tasks/:id`, `POST /tasks/:id/transition`    |
-| `tasks:deleted`    | `{ id: string }`                           | `DELETE /tasks/:id`                                 |
-| `tasks:expired`    | `{ ids: string[] }`                        | Expiry cron sweep                                   |
-| `projects:updated` | `{ projects: ProjectOut[] }`               | Any task mutation (downstream project counts change)|
+| Event name         | Payload                      | Triggered when                                       |
+| ------------------ | ---------------------------- | ---------------------------------------------------- |
+| `tasks:created`    | `{ task: TaskOut }`          | `POST /tasks` or `POST /tasks/batch`                 |
+| `tasks:updated`    | `{ task: TaskOut }`          | `PATCH /tasks/:id`, `POST /tasks/:id/transition`     |
+| `tasks:deleted`    | `{ id: string }`             | `DELETE /tasks/:id`                                  |
+| `tasks:expired`    | `{ ids: string[] }`          | Expiry cron sweep                                    |
+| `projects:updated` | `{ projects: ProjectOut[] }` | Any task mutation (downstream project counts change) |
 
 Implementation in `app.ts` uses a simple in-process event emitter (`EventEmitter`) shared across routers via the DI container:
 
@@ -234,13 +244,13 @@ apps/kanban-ui/
 
 ### 2.2 Routing
 
-| Route             | Component               | Description                                      |
-| ----------------- | ----------------------- | ------------------------------------------------ |
-| `/`               | redirect to `/dashboard`|                                                  |
-| `/dashboard`      | `DashboardComponent`    | Project summary cards + active agents widget     |
-| `/board/:project` | `BoardComponent`        | Kanban board for one project                     |
-| `/tasks/:id`      | `TaskDetailComponent`   | Full-page task detail (deep link)                |
-| `/agents`         | `AgentsComponent`       | All active IN_PROGRESS tasks across all projects |
+| Route             | Component                | Description                                      |
+| ----------------- | ------------------------ | ------------------------------------------------ |
+| `/`               | redirect to `/dashboard` |                                                  |
+| `/dashboard`      | `DashboardComponent`     | Project summary cards + active agents widget     |
+| `/board/:project` | `BoardComponent`         | Kanban board for one project                     |
+| `/tasks/:id`      | `TaskDetailComponent`    | Full-page task detail (deep link)                |
+| `/agents`         | `AgentsComponent`        | All active IN_PROGRESS tasks across all projects |
 
 All routes are lazy-loaded (`loadComponent: () => import(...)`).
 
@@ -323,13 +333,13 @@ Displayed in a `p-sidebar` (right-side panel, 480px) when invoked from the board
 
 **Tab view** (`p-tabs`):
 
-| Tab              | Content                                                                                                                                       |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Details**      | Editable description (markdown textarea), metadata fields, PATCH on blur                                                                      |
-| **Activity**     | `p-timeline` of all activity entries (system + comments). Comment input at the bottom.                                                        |
+| Tab              | Content                                                                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Details**      | Editable description (markdown textarea), metadata fields, PATCH on blur                                                                     |
+| **Activity**     | `p-timeline` of all activity entries (system + comments). Comment input at the bottom.                                                       |
 | **History**      | `p-timeline` of state transitions. Duration chips per state (e.g. "TODO: 5m / IN_PROGRESS: 1h 22m"). Bar chart (`p-chart`) of time-in-state. |
-| **Dependencies** | List of `dependsOn` tasks with state badges. Add dependency (UUID input or task search). Remove button per dep.                               |
-| **Subtasks**     | Checklist of subtasks. Progress bar (X/N done). Add subtask button. Click subtask opens nested detail.                                        |
+| **Dependencies** | List of `dependsOn` tasks with state badges. Add dependency (UUID input or task search). Remove button per dep.                              |
+| **Subtasks**     | Checklist of subtasks. Progress bar (X/N done). Add subtask button. Click subtask opens nested detail.                                       |
 
 ### 2.8 Agents Monitor Component
 
@@ -435,14 +445,14 @@ Build with `--base-href /ui/` so all asset URLs are relative to the backend moun
 
 ### Why Tauri over Electron
 
-|                          | Electron          | Tauri v2                           |
-| ------------------------ | ----------------- | ---------------------------------- |
-| Bundled Chromium         | Yes (~150 MB)     | No — uses OS webview               |
-| Installer size           | ~150-200 MB       | ~5-15 MB                           |
-| Runtime requirements     | None              | WebView2 (auto-installed on Win11) |
-| Main process language    | Node.js           | Rust                               |
-| Native module rebuild    | Required (SQLite) | Not needed (sql.js is pure WASM)   |
-| Security model           | contextIsolation  | Capability-based permissions       |
+|                       | Electron          | Tauri v2                           |
+| --------------------- | ----------------- | ---------------------------------- |
+| Bundled Chromium      | Yes (~150 MB)     | No — uses OS webview               |
+| Installer size        | ~150-200 MB       | ~5-15 MB                           |
+| Runtime requirements  | None              | WebView2 (auto-installed on Win11) |
+| Main process language | Node.js           | Rust                               |
+| Native module rebuild | Required (SQLite) | Not needed (sql.js is pure WASM)   |
+| Security model        | contextIsolation  | Capability-based permissions       |
 
 ### 3.1 Project Structure
 
@@ -468,11 +478,14 @@ apps/kanban-tauri/
 ### 3.2 Main Process (`main.rs`)
 
 The Rust main process:
-1. Spawns the Fastify server as a **sidecar** (via `tauri-plugin-shell`)
-2. Reads `PORT:{n}` from the sidecar's stdout
-3. Creates a `WebviewWindow` pointing at `http://127.0.0.1:{n}/ui/`
+1. Binds a one-shot TCP listener on `127.0.0.1:0` and gets the OS-assigned port
+2. Spawns the Fastify sidecar, passing `TAURI_IPC_PORT` in the environment
+3. Accepts one TCP connection from the sidecar, reads the JSON `{"port": n}`
+4. Creates a `WebviewWindow` pointing at `http://127.0.0.1:{n}/ui/`
 
 ```rust
+use std::io::Read;
+use std::net::TcpListener;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_shell::ShellExt;
 
@@ -484,28 +497,31 @@ pub fn run() {
             let data_dir = app.path().app_data_dir().unwrap();
             let db_path = data_dir.join("kanban.db");
 
+            // Bind an ephemeral TCP listener for the IPC handshake
+            let ipc_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let ipc_port = ipc_listener.local_addr().unwrap().port();
+
             let sidecar_cmd = app_handle
                 .shell()
                 .sidecar("kanban-server")
                 .unwrap()
                 .env("DB_PATH", db_path.to_str().unwrap())
-                .env("NODE_ENV", "production");
+                .env("NODE_ENV", "production")
+                .env("TAURI_IPC_PORT", ipc_port.to_string());
 
-            let (mut rx, _child) = sidecar_cmd.spawn().unwrap();
+            let (_rx, _child) = sidecar_cmd.spawn().unwrap();
 
             tauri::async_runtime::spawn(async move {
-                let mut port: Option<u16> = None;
-                while let Some(event) = rx.recv().await {
-                    if let tauri_plugin_shell::process::CommandEvent::Stdout(line) = event {
-                        let text = String::from_utf8_lossy(&line);
-                        if let Some(p) = text.strip_prefix("PORT:") {
-                            port = p.trim().parse().ok();
-                            break;
-                        }
-                    }
-                }
-                let port = port.unwrap_or(3333);
-                let url = format!("http://127.0.0.1:{}/ui/", port);
+                // Accept the single handshake connection (blocks until sidecar connects)
+                let (mut stream, _) = ipc_listener.accept().unwrap();
+                let mut buf = String::new();
+                stream.read_to_string(&mut buf).unwrap();
+
+                #[derive(serde::Deserialize)]
+                struct IpcMsg { port: u16 }
+                let msg: IpcMsg = serde_json::from_str(&buf).expect("invalid IPC message");
+
+                let url = format!("http://127.0.0.1:{}/ui/", msg.port);
                 WebviewWindowBuilder::new(
                     &app_handle,
                     "main",
@@ -682,28 +698,28 @@ apps/kanban/                    <- backend changes only
 └── src/app/
     ├── app.ts                  <- add @fastify/static + redirect
     ├── data-source.ts          <- switch to sql.js + DB_PATH env var
-    └── main.ts                 <- print PORT:{n} after listen
+    └── main.ts                 <- IPC handshake after listen
 ```
 
 ---
 
 ## Part 5 — UI Component Summary
 
-| Component             | PrimeNG Components Used                                                                                               |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `LayoutComponent`     | `p-menubar`, `p-sidebar`, `p-avatar`, `p-badge`                                                                       |
-| `DashboardComponent`  | `p-card`, `p-tag`, `p-progressBar`, `p-dataView`, `p-skeleton`                                                        |
-| `BoardComponent`      | `p-scrollPanel`, `p-card`, `p-inputText`, `p-multiSelect`, `p-slider`, `p-button`, `p-dialog`, `p-sidebar`            |
-| `TaskCardComponent`   | `p-tag`, `p-badge`, `p-chip`, `p-tooltip`, `p-ripple`                                                                 |
-| `TaskDetailComponent` | `p-tabs`, `p-inplace`, `p-tag`, `p-buttonGroup`, `p-timeline`, `p-chart`, `p-textarea`, `p-progressBar`, `p-divider`  |
-| `AgentsComponent`     | `p-table`, `p-tag`, `p-progressBar`, `p-button`, `p-tooltip`                                                          |
+| Component             | PrimeNG Components Used                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `LayoutComponent`     | `p-menubar`, `p-sidebar`, `p-avatar`, `p-badge`                                                                      |
+| `DashboardComponent`  | `p-card`, `p-tag`, `p-progressBar`, `p-dataView`, `p-skeleton`                                                       |
+| `BoardComponent`      | `p-scrollPanel`, `p-card`, `p-inputText`, `p-multiSelect`, `p-slider`, `p-button`, `p-dialog`, `p-sidebar`           |
+| `TaskCardComponent`   | `p-tag`, `p-badge`, `p-chip`, `p-tooltip`, `p-ripple`                                                                |
+| `TaskDetailComponent` | `p-tabs`, `p-inplace`, `p-tag`, `p-buttonGroup`, `p-timeline`, `p-chart`, `p-textarea`, `p-progressBar`, `p-divider` |
+| `AgentsComponent`     | `p-table`, `p-tag`, `p-progressBar`, `p-button`, `p-tooltip`                                                         |
 
 ---
 
 ## Part 6 — Implementation Steps
 
 1. **Backend: sql.js driver** — `bun add sql.js`, update `data-source.ts` to `type: 'sqljs'` + `autoSave: true` + `DB_PATH` env var, rebuild and smoke-test
-2. **Backend: static serving** — `bun add @fastify/static`, update `app.ts` with static middleware + redirect, update `main.ts` to print `PORT:{n}` sentinel
+2. **Backend: static serving** — `bun add @fastify/static`, update `app.ts` with static middleware + redirect, update `main.ts` with TCP IPC handshake (sends `{port}` JSON to Rust via `TAURI_IPC_PORT`)
 3. **Scaffold `kanban-ui`** — `project.json`, `tsconfig`, `app.config.ts` (zoneless), `styles.scss` (PrimeNG Aura Dark), `proxy.conf.json`
 4. **Types and API service** — `types.ts` matching the Zod schemas from kanban backend, `KanbanApiService` with all HTTP methods + `events()` SSE stream helper
 5. **Layout component** — sidebar shell, project nav links populated from `/projects`, router-outlet, SSE connection indicator
