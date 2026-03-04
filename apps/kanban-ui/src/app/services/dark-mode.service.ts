@@ -26,7 +26,9 @@ export class DarkModeService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored !== null) return stored === 'true';
-      return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+      return (
+        window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
+      );
     } catch {
       return true;
     }

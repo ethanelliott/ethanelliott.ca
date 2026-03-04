@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
+import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toObservable } from '@angular/core/rxjs-interop';
@@ -44,6 +45,7 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
     DragDropModule,
     ButtonModule,
     SkeletonModule,
+    ToastModule,
     BoardColumnComponent,
     NewTaskDialogComponent,
   ],
@@ -74,25 +76,21 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
 
       <!-- Board columns (desktop scroll / mobile snap) -->
       <div class="board-columns">
-        @if (loading()) {
-          @for (i of [0,1,2,3,4,5]; track i) {
-          <div class="skeleton-col">
-            <div class="skeleton-col-header"></div>
-            @for (j of [0,1,2]; track j) {
-            <div class="skeleton-card"></div>
-            }
-          </div>
+        @if (loading()) { @for (i of [0,1,2,3,4,5]; track i) {
+        <div class="skeleton-col">
+          <div class="skeleton-col-header"></div>
+          @for (j of [0,1,2]; track j) {
+          <div class="skeleton-card"></div>
           }
-        } @else {
-          @for (state of ALL_STATES; track state) {
-          <app-board-column
-            [state]="state"
-            [tasks]="columnTasks(state)"
-            [connectedTo]="connections(state)"
-            (taskDropped)="handleTransition($event)"
-          />
-          }
-        }
+        </div>
+        } } @else { @for (state of ALL_STATES; track state) {
+        <app-board-column
+          [state]="state"
+          [tasks]="columnTasks(state)"
+          [connectedTo]="connections(state)"
+          (taskDropped)="handleTransition($event)"
+        />
+        } }
       </div>
     </div>
 
@@ -101,6 +99,7 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
       [(visible)]="showNewTaskDialog"
       (taskCreated)="onTaskCreated($event)"
     />
+    <p-toast />
   `,
   styles: `
     :host {
@@ -265,7 +264,11 @@ export class BoardComponent implements OnInit {
         },
         error: (err) => {
           this.loading.set(false);
-          console.error('[BoardComponent] listTasks error', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Load failed',
+            detail: err?.error?.message ?? 'Could not load tasks.',
+          });
         },
       });
 
@@ -275,11 +278,16 @@ export class BoardComponent implements OnInit {
       .subscribe((e) => this.tasks.update((list) => [...list, e.payload]));
 
     // SSE: task updated / task expired (treated the same — replace in list)
+    // Preserves depCount/subtaskCount loaded by the REST list endpoint
     this.sse.taskUpdated$
       .pipe(takeUntilDestroyed())
       .subscribe((e) =>
         this.tasks.update((list) =>
-          list.map((t) => (t.id === e.payload.id ? e.payload : t))
+          list.map((t) =>
+            t.id === e.payload.id
+              ? { ...e.payload, depCount: t.depCount, subtaskCount: t.subtaskCount }
+              : t
+          )
         )
       );
 

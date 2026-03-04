@@ -48,7 +48,10 @@ import {
 
           @switch (entry.type) { @case (ActivityEntryType.COMMENT) {
           <div class="comment-bubble">
-            <div class="comment-text md-content" [innerHTML]="md.render(entry.content)"></div>
+            <div
+              class="comment-text md-content"
+              [innerHTML]="md.render(entry.content)"
+            ></div>
           </div>
           } @case (ActivityEntryType.STATE_CHANGE) {
           <div class="event-pill state-change">

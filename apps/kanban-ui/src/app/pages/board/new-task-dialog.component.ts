@@ -13,6 +13,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { AutoCompleteModule } from 'primeng/autocomplete';
 import { KanbanApiService } from '../../services/kanban-api.service';
 import { ProjectService } from '../../services/project.service';
 import { TaskOut, TaskState, ALL_STATES } from '../../models/task.model';
@@ -33,6 +34,7 @@ interface StateOption {
     TextareaModule,
     SelectModule,
     InputNumberModule,
+    AutoCompleteModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -102,6 +104,21 @@ interface StateOption {
           </div>
         </div>
 
+        <!-- Optional parent task -->
+        <div class="field">
+          <label>Parent Task <span class="opt">(optional)</span></label>
+          <p-autocomplete
+            [(ngModel)]="selectedParent"
+            name="parentTask"
+            [suggestions]="parentResults()"
+            (completeMethod)="searchParent($event)"
+            field="title"
+            [forceSelection]="true"
+            placeholder="Search task by title…"
+            [delay]="300"
+          />
+        </div>
+
         @if (errorMsg()) {
         <p class="error-msg">{{ errorMsg() }}</p>
         }
@@ -167,6 +184,12 @@ interface StateOption {
       color: var(--p-red-500, #ef4444);
     }
 
+    .opt {
+      color: var(--p-text-muted-color);
+      font-weight: 400;
+      font-size: 0.7rem;
+    }
+
     .error-msg {
       font-size: 0.8rem;
       color: var(--p-red-400, #f87171);
@@ -186,6 +209,10 @@ export class NewTaskDialogComponent {
   readonly saving = signal(false);
   readonly errorMsg = signal<string | null>(null);
 
+  /** For parent task autocomplete */
+  selectedParent: TaskOut | null = null;
+  readonly parentResults = signal<TaskOut[]>([]);
+
   form = {
     title: '',
     description: '',
@@ -197,6 +224,20 @@ export class NewTaskDialogComponent {
     label: s.replace('_', ' '),
     value: s,
   }));
+
+  searchParent(event: { query: string }): void {
+    const project = this.projectService.selectedProject();
+    if (!project || !event.query.trim()) {
+      this.parentResults.set([]);
+      return;
+    }
+    this.api
+      .listTasks({ project, search: event.query.trim() })
+      .subscribe({
+        next: (tasks) => this.parentResults.set(tasks.slice(0, 10)),
+        error: () => this.parentResults.set([]),
+      });
+  }
 
   submit(): void {
     if (!this.form.title.trim() || !this.form.description.trim()) return;
@@ -216,8 +257,7 @@ export class NewTaskDialogComponent {
         description: this.form.description.trim(),
         state: this.form.state,
         priority: this.form.priority,
-        project,
-      })
+        project,        ...(this.selectedParent ? { parentId: this.selectedParent.id } : {}),      })
       .subscribe({
         next: (task) => {
           this.saving.set(false);
@@ -246,6 +286,8 @@ export class NewTaskDialogComponent {
       state: TaskState.TODO,
       priority: 100,
     };
+    this.selectedParent = null;
+    this.parentResults.set([]);
     this.errorMsg.set(null);
   }
 }

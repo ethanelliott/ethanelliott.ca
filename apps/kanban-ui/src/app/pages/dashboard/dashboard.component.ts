@@ -56,7 +56,7 @@ const STATE_ACCENT: Record<TaskState, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard-page">
-          <!-- Page header -->
+      <!-- Page header -->
       <div class="dash-header">
         <h2 class="dash-title">
           Dashboard @if (projectService.selectedProject(); as p) {
@@ -72,26 +72,22 @@ const STATE_ACCENT: Record<TaskState, string> = {
 
       <!-- Stat cards (skeleton while loading) -->
       <div class="stat-row">
-        @if (loading()) {
-          @for (i of [0,1,2,3,4,5]; track i) {
-          <div class="stat-card stat-skeleton">
-            <p-skeleton width="60px" height="12px" />
-            <p-skeleton width="40px" height="24px" styleClass="mt-1" />
-          </div>
-          }
-        } @else {
-          @for (state of ALL_STATES; track state) {
-          <div
-            class="stat-card"
-            [style.--accent]="accent(state)"
-            (click)="filterState.set(filterState() === state ? null : state)"
-            [class.active]="filterState() === state"
-          >
-            <span class="stat-label">{{ stateLabel(state) }}</span>
-            <span class="stat-value">{{ countByState(state) }}</span>
-          </div>
-          }
-        }
+        @if (loading()) { @for (i of [0,1,2,3,4,5]; track i) {
+        <div class="stat-card stat-skeleton">
+          <p-skeleton width="60px" height="12px" />
+          <p-skeleton width="40px" height="24px" styleClass="mt-1" />
+        </div>
+        } } @else { @for (state of ALL_STATES; track state) {
+        <div
+          class="stat-card"
+          [style.--accent]="accent(state)"
+          (click)="filterState.set(filterState() === state ? null : state)"
+          [class.active]="filterState() === state"
+        >
+          <span class="stat-label">{{ stateLabel(state) }}</span>
+          <span class="stat-value">{{ countByState(state) }}</span>
+        </div>
+        } }
       </div>
 
       <!-- Main panels row -->
@@ -391,7 +387,9 @@ export class DashboardComponent {
           this.messageService.add({
             severity: 'error',
             summary: 'Load failed',
-            detail: err?.error?.message ?? 'Could not load tasks. Retrying on next update.',
+            detail:
+              err?.error?.message ??
+              'Could not load tasks. Retrying on next update.',
           });
         },
       });

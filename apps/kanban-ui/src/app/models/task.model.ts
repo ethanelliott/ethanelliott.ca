@@ -21,6 +21,10 @@ export interface TaskOut {
   parentId: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Number of dependencies this task has (populated by list + getById) */
+  depCount?: number;
+  /** Number of direct subtasks (populated by list + getById) */
+  subtaskCount?: number;
 }
 
 export interface TaskIn {

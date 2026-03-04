@@ -83,6 +83,20 @@ function formatElapsed(ms: number): string {
           ⏱ {{ elapsedLabel() }}
         </span>
         }
+
+        <!-- Dependency count -->
+        @if ((task().depCount ?? 0) > 0) {
+        <span class="meta-chip dep-chip" [pTooltip]="task().depCount + ' dependencies'">
+          🔗 {{ task().depCount }}
+        </span>
+        }
+
+        <!-- Subtask count -->
+        @if ((task().subtaskCount ?? 0) > 0) {
+        <span class="meta-chip sub-chip" [pTooltip]="task().subtaskCount + ' subtasks'">
+          📋 {{ task().subtaskCount }}
+        </span>
+        }
       </div>
 
       <!-- Quick-action overlay (shown on hover) -->
@@ -198,6 +212,15 @@ function formatElapsed(ms: number): string {
       &.severity-warn    { background: #f59e0b22; color: #fbbf24; }
       &.severity-danger  { background: #ef444422; color: #f87171; animation: pulse 1s infinite; }
     }
+
+    .meta-chip {
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+    .dep-chip { background: #fbbf2422; color: #fbbf24; }
+    .sub-chip { background: #34d39922; color: #34d399; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }

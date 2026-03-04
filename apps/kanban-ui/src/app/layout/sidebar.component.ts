@@ -100,7 +100,9 @@ import { TaskState } from '../models/task.model';
         class="dark-toggle"
         type="button"
         (click)="darkMode.toggle()"
-        [pTooltip]="darkMode.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        [pTooltip]="
+          darkMode.isDark() ? 'Switch to light mode' : 'Switch to dark mode'
+        "
         tooltipPosition="right"
       >
         <i [class]="darkMode.isDark() ? 'pi pi-sun' : 'pi pi-moon'"></i>

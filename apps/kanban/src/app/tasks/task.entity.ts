@@ -111,6 +111,8 @@ export const TaskOutSchema = z.object({
   parentId: z.string().uuid().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  depCount: z.number().int().default(0),
+  subtaskCount: z.number().int().default(0),
 });
 export type TaskOut = z.infer<typeof TaskOutSchema>;
 

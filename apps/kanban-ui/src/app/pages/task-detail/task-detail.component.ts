@@ -849,6 +849,13 @@ export class TaskDetailComponent implements OnInit {
         this.task.set(e.payload);
       }
     });
+
+    // SSE: live-append activity entries for the current task
+    this.sse.activityAdded$.pipe(takeUntilDestroyed()).subscribe((e) => {
+      if (this.task()?.id === e.payload.taskId) {
+        this.activity.update((list) => [...list, e.payload]);
+      }
+    });
   }
 
   private loadRelated(id: string): void {

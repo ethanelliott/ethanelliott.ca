@@ -81,7 +81,7 @@ export class TasksService {
 
   // ------------------------------------------------------------------ helpers
 
-  private mapToOut(task: Task): TaskOut {
+  private mapToOut(task: Task, depCount = 0, subtaskCount = 0): TaskOut {
     return {
       id: task.id,
       title: task.title,
@@ -94,6 +94,8 @@ export class TasksService {
       parentId: task.parentId ?? null,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
+      depCount,
+      subtaskCount,
     };
   }
 
@@ -378,13 +380,45 @@ export class TasksService {
 
     qb.orderBy('task.priority', 'ASC').addOrderBy('task.createdAt', 'ASC');
 
-    return (await qb.getMany()).map((r) => this.mapToOut(r));
+    const tasks = await qb.getMany();
+    if (tasks.length === 0) return [];
+
+    const ids = tasks.map((t) => t.id);
+    const [depRows, subRows] = await Promise.all([
+      this._deps
+        .createQueryBuilder('d')
+        .select('d.taskId', 'taskId')
+        .addSelect('COUNT(*)', 'cnt')
+        .where('d.taskId IN (:...ids)', { ids })
+        .groupBy('d.taskId')
+        .getRawMany<{ taskId: string; cnt: string }>(),
+      this._tasks
+        .createQueryBuilder('s')
+        .select('s.parentId', 'parentId')
+        .addSelect('COUNT(*)', 'cnt')
+        .where('s.parentId IN (:...ids) AND s.deletedAt IS NULL', { ids })
+        .groupBy('s.parentId')
+        .getRawMany<{ parentId: string; cnt: string }>(),
+    ]);
+
+    const depMap = new Map(depRows.map((r) => [r.taskId, parseInt(r.cnt, 10)]));
+    const subMap = new Map(
+      subRows.map((r) => [r.parentId, parseInt(r.cnt, 10)])
+    );
+
+    return tasks.map((t) =>
+      this.mapToOut(t, depMap.get(t.id) ?? 0, subMap.get(t.id) ?? 0)
+    );
   }
 
   async getById(id: string): Promise<TaskOut> {
     const task = await this._tasks.findOne({ where: { id } });
     if (!task) throw new HttpErrors.NotFound('Task not found');
-    return this.mapToOut(task);
+    const [depCount, subtaskCount] = await Promise.all([
+      this._deps.count({ where: { taskId: id } }),
+      this._tasks.count({ where: { parentId: id } }),
+    ]);
+    return this.mapToOut(task, depCount, subtaskCount);
   }
 
   async patch(id: string, input: TaskPatch): Promise<TaskOut> {
