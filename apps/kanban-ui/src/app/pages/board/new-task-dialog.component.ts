@@ -89,6 +89,7 @@ interface StateOption {
               [options]="stateOptions"
               optionLabel="label"
               optionValue="value"
+              appendTo="body"
             />
           </div>
           <div class="field">
@@ -116,6 +117,7 @@ interface StateOption {
             [forceSelection]="true"
             placeholder="Search task by title…"
             [delay]="300"
+            appendTo="body"
           />
         </div>
 
