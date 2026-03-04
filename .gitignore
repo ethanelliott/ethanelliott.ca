@@ -53,3 +53,4 @@ aritzia_stock.sqlite*
 apps/kanban/public/
 *.bun-build
 kanban.db
+.agent-logs/
