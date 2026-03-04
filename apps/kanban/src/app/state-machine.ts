@@ -28,4 +28,5 @@ export function canTransition(from: TaskState, to: TaskState): boolean {
 export const ASSIGNEE_CLEARING_STATES = new Set<TaskState>([
   TaskState.TODO,
   TaskState.BACKLOG,
+  TaskState.CHANGES_REQUESTED,
 ]);

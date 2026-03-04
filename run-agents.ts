@@ -170,10 +170,21 @@ Post activity comment:
 
 ### A1 — Set up a git worktree
 
-Create an isolated worktree before touching any code:
+First, discover where worktrees live in this repo:
+
+  git worktree list
+
+Look at the existing worktree paths. If any sibling worktrees exist, they
+will share a common parent directory — use that same parent. If none exist
+yet, the convention is a sibling directory named <reponame>.worktrees:
+
+  REPO_ROOT=$(git rev-parse --show-toplevel)
+  REPO_NAME=$(basename "$REPO_ROOT")
+  WORKTREE_BASE="$(dirname "$REPO_ROOT")/${REPO_NAME}.worktrees"
+  mkdir -p "$WORKTREE_BASE"
 
   BRANCH="task/${agentId}-<task-id>"
-  WORKTREE_PATH="/tmp/worktrees/${agentId}-<task-id>"
+  WORKTREE_PATH="${WORKTREE_BASE}/${agentId}-<task-id>"
   git worktree add -b "$BRANCH" "$WORKTREE_PATH"
   cd "$WORKTREE_PATH"
 
@@ -239,11 +250,24 @@ Post activity comment:
 
 ### B2 — Resume the worktree
 
-Check whether your worktree still exists at /tmp/worktrees/${agentId}-<task-id>.
-- If it exists: cd into it and pull latest.
-- If it doesn't: recreate it from the existing branch:
-    git worktree add "/tmp/worktrees/${agentId}-<task-id>" "task/${agentId}-<task-id>"
-    cd "/tmp/worktrees/${agentId}-<task-id>"
+Discover the worktree base the same way as Path A:
+
+  REPO_ROOT=$(git rev-parse --show-toplevel)
+  REPO_NAME=$(basename "$REPO_ROOT")
+  WORKTREE_BASE="$(dirname "$REPO_ROOT")/${REPO_NAME}.worktrees"
+  BRANCH="task/<assignee from activity log>-<task-id>"
+  WORKTREE_PATH="${WORKTREE_BASE}/<assignee from activity log>-<task-id>"
+
+(Read the original assignee and branch name from the task's activity log —
+the "Worktree created" comment records the exact path and branch.)
+
+- If the worktree directory already exists: cd into it and run `git pull`.
+- If it doesn't exist but the branch does (machine rebooted, /tmp cleared, etc.):
+    git worktree add "$WORKTREE_PATH" "$BRANCH"   # no -b flag — branch already exists
+    cd "$WORKTREE_PATH"
+- If neither exists (branch was deleted): recreate both:
+    git worktree add -b "$BRANCH" "$WORKTREE_PATH"
+    cd "$WORKTREE_PATH"
 
 Post activity comment:
   "Resumed worktree at <path>, on branch <branch>."
