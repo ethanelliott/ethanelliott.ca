@@ -26,6 +26,13 @@ export const appRoutes: Route[] = [
             (m) => m.TaskDetailComponent
           ),
       },
+      {
+        path: 'skill',
+        loadComponent: () =>
+          import('./pages/skill/skill.component').then(
+            (m) => m.SkillComponent
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: 'board' },

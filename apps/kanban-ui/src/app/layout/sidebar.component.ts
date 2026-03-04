@@ -89,6 +89,14 @@ import { TaskState } from '../models/task.model';
         <i class="pi pi-chart-bar"></i>
         <span>Dashboard</span>
       </a>
+      <a
+        class="nav-link"
+        routerLink="/skill"
+        routerLinkActive="active"
+      >
+        <i class="pi pi-book"></i>
+        <span>Skill File</span>
+      </a>
     </nav>
   `,
   styles: `
