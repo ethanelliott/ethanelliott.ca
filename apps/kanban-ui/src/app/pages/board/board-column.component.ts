@@ -71,17 +71,12 @@ export interface TaskDropEvent {
             taskDropped.emit({ task: $event.task, targetState: $event.state })
           "
         />
-        } @if (tasks().length === 0) { @if (isReceiving()) {
-        <div class="col-dropzone">
-          <i class="pi pi-arrow-circle-down"></i>
-          <span>Drop here</span>
-        </div>
-        } @else {
+        } @if (tasks().length === 0 && !isReceiving()) {
         <div class="col-empty">
           <i class="pi pi-inbox col-empty-icon"></i>
           <span>No tasks</span>
         </div>
-        } }
+        }
       </div>
     </div>
   `,
@@ -161,25 +156,21 @@ export interface TaskDropEvent {
       gap: 6px;
     }
 
-    .col-dropzone {
-      flex: 1;
-      min-height: 64px;
+    :host ::ng-deep .cdk-drag-placeholder {
       border: 2px dashed var(--accent, var(--p-primary-color));
       border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      color: var(--accent, var(--p-primary-color));
       background: color-mix(
         in srgb,
         var(--accent, var(--p-primary-color)) 10%,
         transparent
       );
-      font-size: 0.75rem;
-      font-weight: 500;
+      min-height: 64px;
+      box-sizing: border-box;
       animation: dropzone-pulse 0.9s ease-in-out infinite alternate;
+    }
+
+    :host ::ng-deep .cdk-drag-placeholder > * {
+      visibility: hidden;
     }
 
     @keyframes dropzone-pulse {
