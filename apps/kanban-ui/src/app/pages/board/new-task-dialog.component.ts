@@ -1,0 +1,251 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  model,
+  output,
+  signal,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { TextareaModule } from 'primeng/textarea';
+import { SelectModule } from 'primeng/select';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { KanbanApiService } from '../../services/kanban-api.service';
+import { ProjectService } from '../../services/project.service';
+import { TaskOut, TaskState, ALL_STATES } from '../../models/task.model';
+
+interface StateOption {
+  label: string;
+  value: TaskState;
+}
+
+@Component({
+  selector: 'app-new-task-dialog',
+  standalone: true,
+  imports: [
+    FormsModule,
+    DialogModule,
+    ButtonModule,
+    InputTextModule,
+    TextareaModule,
+    SelectModule,
+    InputNumberModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <p-dialog
+      [visible]="visible()"
+      (visibleChange)="visible.set($event)"
+      header="New Task"
+      [modal]="true"
+      [draggable]="false"
+      [resizable]="false"
+      styleClass="new-task-dialog"
+      [style]="{ width: '500px' }"
+    >
+      <form (ngSubmit)="submit()" #f="ngForm" class="task-form">
+        <!-- Title -->
+        <div class="field">
+          <label for="title">Title <span class="req">*</span></label>
+          <input
+            id="title"
+            pInputText
+            [(ngModel)]="form.title"
+            name="title"
+            required
+            placeholder="Short task description"
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- Description -->
+        <div class="field">
+          <label for="desc">Description <span class="req">*</span></label>
+          <textarea
+            id="desc"
+            pTextarea
+            [(ngModel)]="form.description"
+            name="description"
+            required
+            rows="4"
+            placeholder="Detailed description of what needs to be done…"
+            style="width:100%;resize:vertical"
+          ></textarea>
+        </div>
+
+        <!-- State + Priority row -->
+        <div class="field-row">
+          <div class="field">
+            <label for="state">Initial State</label>
+            <p-select
+              inputId="state"
+              [(ngModel)]="form.state"
+              name="state"
+              [options]="stateOptions"
+              optionLabel="label"
+              optionValue="value"
+            />
+          </div>
+          <div class="field">
+            <label for="priority">Priority</label>
+            <p-inputNumber
+              inputId="priority"
+              [(ngModel)]="form.priority"
+              name="priority"
+              [min]="1"
+              [max]="9999"
+              [step]="5"
+            />
+          </div>
+        </div>
+
+        @if (errorMsg()) {
+          <p class="error-msg">{{ errorMsg() }}</p>
+        }
+      </form>
+
+      <ng-template pTemplate="footer">
+        <p-button
+          label="Cancel"
+          severity="secondary"
+          [text]="true"
+          (onClick)="cancel()"
+        />
+        <p-button
+          label="Create Task"
+          icon="pi pi-plus"
+          [loading]="saving()"
+          (onClick)="submit()"
+          [disabled]="!form.title.trim() || !form.description.trim()"
+        />
+      </ng-template>
+    </p-dialog>
+  `,
+  styles: `
+    :host ::ng-deep .new-task-dialog .p-dialog-content {
+      padding-top: 8px;
+    }
+
+    .task-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+
+      label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--p-text-muted-color);
+      }
+
+      input, textarea {
+        width: 100%;
+        font-size: 0.875rem;
+      }
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    :host ::ng-deep .field-row p-select,
+    :host ::ng-deep .field-row p-inputnumber {
+      width: 100%;
+    }
+
+    .req {
+      color: var(--p-red-500, #ef4444);
+    }
+
+    .error-msg {
+      font-size: 0.8rem;
+      color: var(--p-red-400, #f87171);
+      margin: 0;
+    }
+  `,
+})
+export class NewTaskDialogComponent {
+  private readonly api = inject(KanbanApiService);
+  private readonly projectService = inject(ProjectService);
+
+  /** Two-way binding: parent controls visibility */
+  readonly visible = model<boolean>(false);
+  /** Emitted after a task is successfully created */
+  readonly taskCreated = output<TaskOut>();
+
+  readonly saving = signal(false);
+  readonly errorMsg = signal<string | null>(null);
+
+  form = {
+    title: '',
+    description: '',
+    state: TaskState.TODO as TaskState,
+    priority: 100,
+  };
+
+  readonly stateOptions: StateOption[] = ALL_STATES.map((s) => ({
+    label: s.replace('_', ' '),
+    value: s,
+  }));
+
+  submit(): void {
+    if (!this.form.title.trim() || !this.form.description.trim()) return;
+
+    const project = this.projectService.selectedProject();
+    if (!project) {
+      this.errorMsg.set('Select a project before creating tasks.');
+      return;
+    }
+
+    this.saving.set(true);
+    this.errorMsg.set(null);
+
+    this.api
+      .createTask({
+        title: this.form.title.trim(),
+        description: this.form.description.trim(),
+        state: this.form.state,
+        priority: this.form.priority,
+        project,
+      })
+      .subscribe({
+        next: (task) => {
+          this.saving.set(false);
+          this.taskCreated.emit(task);
+          this.resetForm();
+          this.visible.set(false);
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.errorMsg.set(
+            err?.error?.message ?? 'Failed to create task. Please try again.'
+          );
+        },
+      });
+  }
+
+  cancel(): void {
+    this.resetForm();
+    this.visible.set(false);
+  }
+
+  private resetForm(): void {
+    this.form = {
+      title: '',
+      description: '',
+      state: TaskState.TODO,
+      priority: 100,
+    };
+    this.errorMsg.set(null);
+  }
+}
