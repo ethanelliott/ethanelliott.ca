@@ -50,7 +50,6 @@ export interface TaskDropEvent {
     <div class="column" [style.--accent]="accent()">
       <!-- Column header -->
       <div class="col-header">
-        <span class="col-dot"></span>
         <span class="col-label">{{ label() }}</span>
         <span class="col-count">{{ tasks().length }}</span>
       </div>
@@ -110,14 +109,6 @@ export interface TaskDropEvent {
       gap: 7px;
       padding: 10px 12px;
       border-bottom: 2px solid var(--accent, var(--p-surface-600));
-      flex-shrink: 0;
-    }
-
-    .col-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent, var(--p-surface-500));
       flex-shrink: 0;
     }
 
