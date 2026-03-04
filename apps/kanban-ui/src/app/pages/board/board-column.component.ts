@@ -22,6 +22,7 @@ const STATE_LABELS: Record<TaskState, string> = {
   [TaskState.IN_PROGRESS]: 'In Progress',
   [TaskState.BLOCKED]: 'Blocked',
   [TaskState.IN_REVIEW]: 'In Review',
+  [TaskState.CHANGES_REQUESTED]: 'Changes Requested',
   [TaskState.DONE]: 'Done',
 };
 
@@ -31,6 +32,7 @@ const STATE_ACCENT: Record<TaskState, string> = {
   [TaskState.IN_PROGRESS]: '#a78bfa',
   [TaskState.BLOCKED]: '#f87171',
   [TaskState.IN_REVIEW]: '#fbbf24',
+  [TaskState.CHANGES_REQUESTED]: '#f97316',
   [TaskState.DONE]: '#34d399',
 };
 

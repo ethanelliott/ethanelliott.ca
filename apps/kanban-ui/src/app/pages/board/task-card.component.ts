@@ -342,6 +342,7 @@ export class TaskCardComponent {
       [TaskState.IN_PROGRESS]: 'IP',
       [TaskState.BLOCKED]: 'BK',
       [TaskState.IN_REVIEW]: 'IR',
+      [TaskState.CHANGES_REQUESTED]: 'CR',
       [TaskState.DONE]: 'DN',
     };
     return map[state] ?? state.slice(0, 2);

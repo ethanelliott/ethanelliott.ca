@@ -16,6 +16,7 @@ const STATE_ACCENT: Record<TaskState, string> = {
   [TaskState.IN_PROGRESS]: '#a78bfa',
   [TaskState.BLOCKED]: '#f87171',
   [TaskState.IN_REVIEW]: '#fbbf24',
+  [TaskState.CHANGES_REQUESTED]: '#f97316',
   [TaskState.DONE]: '#34d399',
 };
 

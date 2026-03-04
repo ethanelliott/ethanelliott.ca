@@ -9,7 +9,12 @@ export const STATE_TRANSITIONS: Record<TaskState, TaskState[]> = {
     TaskState.TODO,
   ],
   [TaskState.BLOCKED]: [TaskState.TODO],
-  [TaskState.IN_REVIEW]: [TaskState.DONE, TaskState.IN_PROGRESS],
+  [TaskState.IN_REVIEW]: [
+    TaskState.DONE,
+    TaskState.IN_PROGRESS,
+    TaskState.CHANGES_REQUESTED,
+  ],
+  [TaskState.CHANGES_REQUESTED]: [TaskState.IN_PROGRESS],
   [TaskState.DONE]: [],
 };
 

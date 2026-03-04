@@ -5,6 +5,7 @@ export enum TaskState {
   IN_PROGRESS = 'IN_PROGRESS',
   BLOCKED = 'BLOCKED',
   IN_REVIEW = 'IN_REVIEW',
+  CHANGES_REQUESTED = 'CHANGES_REQUESTED',
   DONE = 'DONE',
 }
 
@@ -86,7 +87,12 @@ export const STATE_TRANSITIONS: Record<TaskState, TaskState[]> = {
     TaskState.TODO,
   ],
   [TaskState.BLOCKED]: [TaskState.TODO],
-  [TaskState.IN_REVIEW]: [TaskState.DONE, TaskState.IN_PROGRESS],
+  [TaskState.IN_REVIEW]: [
+    TaskState.DONE,
+    TaskState.IN_PROGRESS,
+    TaskState.CHANGES_REQUESTED,
+  ],
+  [TaskState.CHANGES_REQUESTED]: [TaskState.IN_PROGRESS],
   [TaskState.DONE]: [],
 };
 
@@ -96,6 +102,7 @@ export const ALL_STATES: TaskState[] = [
   TaskState.IN_PROGRESS,
   TaskState.BLOCKED,
   TaskState.IN_REVIEW,
+  TaskState.CHANGES_REQUESTED,
   TaskState.DONE,
 ];
 

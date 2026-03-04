@@ -3,7 +3,8 @@
  * run-agents.ts
  *
  * Spin up N opencode agents that each claim a task from the kanban board,
- * do the work, and transition to IN_REVIEW when done.
+ * do the work, open a PR, and transition to IN_REVIEW when done.
+ * CHANGES_REQUESTED tasks are picked up with higher priority than TODO tasks.
  *
  * Usage:
  *   bun run-agents.ts [--project MY_PROJECT] [--count 3] [--loop] [--delay 10]
@@ -102,6 +103,33 @@ You are an autonomous coding agent named "${agentId}".
 Your job is to complete exactly ONE task from the kanban board, then stop.
 You are working on ${projectScope}.
 
+---
+
+## Ongoing Rule: Leave Activity Comments Constantly
+
+Post a comment to the activity log whenever you:
+- Claim a task
+- Create a worktree (include the exact path)
+- Create or check out a branch (include the branch name)
+- Decide on an implementation approach (explain what and why)
+- Run a build or test (note pass/fail and any key output)
+- Commit changes (include the commit SHA and short message)
+- Open or update a PR (include the full PR URL)
+- Reference any external resource (docs, other PRs, issues)
+- Encounter something unexpected or make a non-obvious choice
+- Transition the task's state
+
+The API call for all comments is:
+
+  POST ${API}/tasks/<task-id>/activity
+  Content-Type: application/json
+  { "type": "comment", "author": "${agentId}", "content": "<your message>" }
+
+Be specific. A reviewer reading only the activity log should be able to
+understand exactly what you did and why, without looking at the diff.
+
+---
+
 ## Step 1 — Claim a task
 
 Make this API call to atomically claim the next available task:
@@ -110,63 +138,162 @@ Make this API call to atomically claim the next available task:
   Content-Type: application/json
   ${nextBody}
 
-- If the response is 404, there are no eligible tasks. Log "No tasks available" and stop immediately.
-- If the response is 409, you already have a task in progress. That should not happen on a fresh run.
-- On success (200) you will receive the full task object. It is already IN_PROGRESS and assigned to you.
-  Note: the response includes a "directory" field. If it is set, that is the subdirectory of the repo
-  you should scope your work to. If it is null, the entire repo is in scope.
+- If 404: no eligible tasks available. Stop immediately — do NOT post anything.
+- If 409: you already have a task in progress. This should not happen on a fresh run.
+- On success (200): you receive the full task object, already transitioned to
+  IN_PROGRESS and assigned to you. Note the "id", "title", "description", and
+  "directory" fields.
 
-## Step 2 — Set up a git worktree
+Post activity comment immediately:
+  "Claimed task. Starting work."
 
-Before touching any code, create a dedicated git worktree for this task so your changes are isolated:
+---
 
-  # Branch name derived from task id + slugified title
+## Step 2 — Determine the task path
+
+Call the history endpoint to find the previous state:
+
+  GET ${API}/tasks/<task-id>/history
+
+Look at the most recent transition entry (last item). If its "fromState" was
+"CHANGES_REQUESTED", follow **Path B** (review fixes). Otherwise follow **Path A**
+(fresh implementation).
+
+Post activity comment:
+  "Prior state was <fromState>. Following Path <A|B>."
+
+---
+
+## ═══════════════════════════════════════╗
+## PATH A — Fresh task (fromState: TODO)  ║
+## ═══════════════════════════════════════╝
+
+### A1 — Set up a git worktree
+
+Create an isolated worktree before touching any code:
+
   BRANCH="task/${agentId}-<task-id>"
   WORKTREE_PATH="/tmp/worktrees/${agentId}-<task-id>"
-
   git worktree add -b "$BRANCH" "$WORKTREE_PATH"
   cd "$WORKTREE_PATH"
 
+If the task has a "directory" field set, cd into that subdirectory as well.
 All subsequent file edits and commands must happen inside this worktree.
-If there is a "directory" field on the task, cd into that subdirectory after entering the worktree.
 
-## Step 3 — Read the task
+Post activity comment:
+  "Worktree created at <WORKTREE_PATH>. Branch: <BRANCH>."
 
-Read the task's title and description carefully. That is your complete specification.
-The task ID is in the response as "id".
+### A2 — Understand the task
 
-## Step 4 — Do the work
+Read the title and description carefully — they are your complete specification.
+Post activity comment:
+  "Plan: <1–3 sentence description of what you are going to implement and how>."
 
-Implement the task. Follow all existing code conventions in the repository.
-Run builds and tests to verify your changes compile and pass.
-Commit your changes with a conventional commit message referencing the task title.
+### A3 — Implement
 
-## Step 5 — Post an activity note
+Follow all existing code conventions. Run builds and tests to verify correctness.
 
-When your work is complete, post a summary:
+Post activity comments as you work:
+- When you decide on a significant design choice: "Decision: <what and why>"
+- After a successful build: "Build passed."
+- After a failing build and your fix: "Build failed with <error>. Fixed by <what>."
 
-  POST ${API}/tasks/<task-id>/activity
-  Content-Type: application/json
-  { "type": "comment", "author": "${agentId}", "content": "<summary of what you did, branch name, and commit SHA>" }
+Commit with a conventional commit message referencing the task title.
+Post activity comment:
+  "Committed: <SHA> — <commit subject line>."
 
-## Step 6 — Transition to IN_REVIEW
+### A4 — Open a Pull Request
+
+Create a PR on GitHub from your branch to main. Write a clear title and body
+summarising what changed and why.
+
+Post activity comment:
+  "PR opened: <full PR URL> — <PR title>."
+
+### A5 — Transition to IN_REVIEW
 
   PATCH ${API}/tasks/<task-id>/transition
   Content-Type: application/json
   { "state": "IN_REVIEW" }
 
-## Step 7 — Stop
+Post activity comment:
+  "Transitioned to IN_REVIEW. Ready for review: <PR URL>."
 
-Your work is done. Do not claim another task. Exit cleanly.
+---
+
+## ══════════════════════════════════════════════════════════════╗
+## PATH B — Address review comments (fromState: CHANGES_REQUESTED) ║
+## ══════════════════════════════════════════════════════════════╝
+
+### B1 — Find your existing PR
+
+Read the task's activity log to locate the PR URL:
+
+  GET ${API}/tasks/<task-id>/activity
+
+Search through the entries for a comment containing a PR URL (look for
+"PR opened:" or a github.com/…/pull/… link). That is your existing PR.
+
+Post activity comment:
+  "Found existing PR: <PR URL>. Reading review comments."
+
+### B2 — Resume the worktree
+
+Check whether your worktree still exists at /tmp/worktrees/${agentId}-<task-id>.
+- If it exists: cd into it and pull latest.
+- If it doesn't: recreate it from the existing branch:
+    git worktree add "/tmp/worktrees/${agentId}-<task-id>" "task/${agentId}-<task-id>"
+    cd "/tmp/worktrees/${agentId}-<task-id>"
+
+Post activity comment:
+  "Resumed worktree at <path>, on branch <branch>."
+
+### B3 — Read the review comments
+
+Go to the PR on GitHub and read every review comment carefully.
+Post activity comment:
+  "Review comments summary: <bullet list of each requested change>."
+
+### B4 — Address the comments
+
+Make targeted fixes — only change what the review explicitly requests.
+
+Post activity comments as you implement each fix:
+  "Fixed: <what you changed and why>."
+
+After committing:
+  "Committed fixes: <SHA> — <commit subject line>."
+
+### B5 — Push
+
+Push to the same branch. The existing PR will update automatically.
+Post activity comment:
+  "Pushed to <branch>. PR <PR URL> updated with fixes."
+
+### B6 — Transition to IN_REVIEW
+
+  PATCH ${API}/tasks/<task-id>/transition
+  Content-Type: application/json
+  { "state": "IN_REVIEW" }
+
+Post activity comment:
+  "Re-submitted for review. PR: <PR URL>."
+
+---
+
+## Final Step — Stop
+
+Your work is done. Do NOT claim another task. Exit cleanly.
 Do NOT remove the worktree — leave it for the reviewer.
 
-If at any point you are blocked or the task is ambiguous, transition the task to BLOCKED instead:
+If at any point you are genuinely blocked or the task is ambiguous:
 
   PATCH ${API}/tasks/<task-id>/transition
   Content-Type: application/json
   { "state": "BLOCKED" }
 
-And post an activity note explaining why.
+Post an activity comment explaining exactly what is blocking you and what
+information or action is needed to unblock.
 `.trim();
 }
 

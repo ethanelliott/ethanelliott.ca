@@ -33,7 +33,12 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
   [TaskState.TODO]: ['col-IN_PROGRESS', 'col-BACKLOG'],
   [TaskState.IN_PROGRESS]: ['col-IN_REVIEW', 'col-BLOCKED', 'col-TODO'],
   [TaskState.BLOCKED]: ['col-TODO'],
-  [TaskState.IN_REVIEW]: ['col-DONE', 'col-IN_PROGRESS'],
+  [TaskState.IN_REVIEW]: [
+    'col-DONE',
+    'col-IN_PROGRESS',
+    'col-CHANGES_REQUESTED',
+  ],
+  [TaskState.CHANGES_REQUESTED]: ['col-IN_PROGRESS'],
   [TaskState.DONE]: [],
 };
 

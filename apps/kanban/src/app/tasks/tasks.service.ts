@@ -582,37 +582,53 @@ export class TasksService {
         );
       }
 
-      // Fetch TODO candidates ordered by priority, then createdAt
-      const candidateQb = taskRepo
+      // First priority: CHANGES_REQUESTED tasks (already in-flight, skip dep check)
+      const changesQb = taskRepo
         .createQueryBuilder('t')
-        .andWhere('t.state = :state', { state: TaskState.TODO })
+        .andWhere('t.state = :crState', {
+          crState: TaskState.CHANGES_REQUESTED,
+        })
         .andWhere('t.deletedAt IS NULL')
         .orderBy('t.priority', 'ASC')
         .addOrderBy('t.createdAt', 'ASC');
-      if (project) candidateQb.andWhere('t.project = :project', { project });
-      const candidates = await candidateQb.getMany();
+      if (project) changesQb.andWhere('t.project = :project', { project });
+      const changesCandidates = await changesQb.getMany();
 
-      if (candidates.length === 0) return null;
+      let eligible: Task | null = changesCandidates[0] ?? null;
 
-      // Find first candidate whose active deps are all DONE
-      let eligible: Task | null = null;
-      for (const candidate of candidates) {
-        const deps = await depRepo.find({ where: { taskId: candidate.id } });
-        if (deps.length === 0) {
-          eligible = candidate;
-          break;
-        }
-
-        const depIds = deps.map((d) => d.dependsOnId);
-        const depTasks = await taskRepo
+      // Fall through to TODO if no CHANGES_REQUESTED tasks available
+      if (!eligible) {
+        // Fetch TODO candidates ordered by priority, then createdAt
+        const candidateQb = taskRepo
           .createQueryBuilder('t')
-          .where('t.id IN (:...ids)', { ids: depIds })
+          .andWhere('t.state = :state', { state: TaskState.TODO })
           .andWhere('t.deletedAt IS NULL')
-          .getMany();
+          .orderBy('t.priority', 'ASC')
+          .addOrderBy('t.createdAt', 'ASC');
+        if (project) candidateQb.andWhere('t.project = :project', { project });
+        const candidates = await candidateQb.getMany();
 
-        if (depTasks.every((t) => t.state === TaskState.DONE)) {
-          eligible = candidate;
-          break;
+        if (candidates.length === 0) return null;
+
+        // Find first candidate whose active deps are all DONE
+        for (const candidate of candidates) {
+          const deps = await depRepo.find({ where: { taskId: candidate.id } });
+          if (deps.length === 0) {
+            eligible = candidate;
+            break;
+          }
+
+          const depIds = deps.map((d) => d.dependsOnId);
+          const depTasks = await taskRepo
+            .createQueryBuilder('t')
+            .where('t.id IN (:...ids)', { ids: depIds })
+            .andWhere('t.deletedAt IS NULL')
+            .getMany();
+
+          if (depTasks.every((t) => t.state === TaskState.DONE)) {
+            eligible = candidate;
+            break;
+          }
         }
       }
 
