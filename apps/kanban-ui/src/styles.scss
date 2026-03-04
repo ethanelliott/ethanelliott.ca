@@ -1,0 +1,59 @@
+@use 'primeicons/primeicons.css';
+
+p-inputnumber,
+p-inputtext,
+p-multiselect,
+p-select,
+p-autocomplete,
+p-textarea {
+  display: block;
+  width: 100%;
+}
+
+input[pInputText],
+textarea[pTextarea] {
+  width: 100%;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+  background: var(--p-surface-ground);
+  color: var(--p-text-color);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--p-surface-400);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--p-surface-500);
+}

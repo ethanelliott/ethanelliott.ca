@@ -1,0 +1,94 @@
+{
+  "name": "kanban-ui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/kanban-ui/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/apps/kanban-ui",
+        "index": "apps/kanban-ui/src/index.html",
+        "browser": "apps/kanban-ui/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "apps/kanban-ui/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/kanban-ui/public"
+          }
+        ],
+        "styles": [
+          "apps/kanban-ui/src/styles.scss"
+        ],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "800kb",
+              "maximumError": "1.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            }
+          ],
+          "optimization": {
+            "scripts": true,
+            "styles": {
+              "minify": true,
+              "inlineCritical": false
+            },
+            "fonts": true
+          },
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/kanban-ui/src/environments/environment.ts",
+              "with": "apps/kanban-ui/src/environments/environment.prod.ts"
+            }
+          ]
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "kanban-ui:build:production"
+        },
+        "development": {
+          "buildTarget": "kanban-ui:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "container": {
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "./tools/executors/deploy:container",
+      "options": {
+        "image": "ethanelliottio/kanban-ui",
+        "dockerfile": "apps/kanban-ui/Dockerfile",
+        "deployment": "kanban-ui"
+      }
+    }
+  }
+}
