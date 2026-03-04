@@ -51,6 +51,36 @@ if (isNaN(COUNT) || COUNT < 1) {
 }
 
 // ---------------------------------------------------------------------------
+// Agent names — each pool slot gets a persistent name derived from its index
+// ---------------------------------------------------------------------------
+const AGENT_NAMES = [
+  'Ada',
+  'Turing',
+  'Grace',
+  'Knuth',
+  'Dijkstra',
+  'Linus',
+  'Ritchie',
+  'Thompson',
+  'Gosling',
+  'Wozniak',
+  'Hopper',
+  'Lovelace',
+  'Babbage',
+  'Stallman',
+  'Torvalds',
+  'Boole',
+  'Shannon',
+  'Neumann',
+  'McCarthy',
+  'Liskov',
+];
+
+function slotName(slotIndex: number): string {
+  return AGENT_NAMES[(slotIndex - 1) % AGENT_NAMES.length];
+}
+
+// ---------------------------------------------------------------------------
 // Log directory
 // ---------------------------------------------------------------------------
 const LOG_DIR = resolve(import.meta.dir, '.agent-logs');
@@ -143,14 +173,13 @@ And post an activity note explaining why.
 // ---------------------------------------------------------------------------
 // Spawn one agent
 // ---------------------------------------------------------------------------
-async function runAgent(index: number): Promise<void> {
-  const agentId = `agent-${index}`;
-  const logPath = `${LOG_DIR}/${agentId}-${Date.now()}.log`;
+async function runAgent(name: string): Promise<void> {
+  const logPath = `${LOG_DIR}/${name}-${Date.now()}.log`;
   const logStream = createWriteStream(logPath, { flags: 'a' });
 
-  const prompt = buildPrompt(agentId);
+  const prompt = buildPrompt(name);
 
-  console.log(`[${agentId}] starting  → log: ${logPath}`);
+  console.log(`[${name}] starting  → log: ${logPath}`);
 
   const proc = Bun.spawn(['opencode', 'run', ...MODEL_FLAG, prompt], {
     cwd: import.meta.dir,
@@ -160,7 +189,7 @@ async function runAgent(index: number): Promise<void> {
   });
 
   // Stream stdout + stderr to per-agent log file and our console
-  const prefix = `[${agentId}] `;
+  const prefix = `[${name}] `;
 
   async function streamToLog(
     reader: ReadableStream<Uint8Array>,
@@ -185,9 +214,9 @@ async function runAgent(index: number): Promise<void> {
   logStream.end();
 
   if (exitCode === 0) {
-    console.log(`[${agentId}] ✓ done (exit 0)`);
+    console.log(`[${name}] ✓ done (exit 0)`);
   } else {
-    console.error(`[${agentId}] ✗ exited with code ${exitCode}`);
+    console.error(`[${name}] ✗ exited with code ${exitCode}`);
   }
 }
 
@@ -201,8 +230,8 @@ console.log(
 );
 console.log(`Logs: ${LOG_DIR}/\n`);
 
-let agentSeq = 0;
-let totalFailed = 0;
+const slotNames = Array.from({ length: COUNT }, (_, i) => slotName(i + 1));
+console.log(`Agent names: ${slotNames.join(', ')}\n`);
 
 // Graceful shutdown on Ctrl-C
 process.on('SIGINT', () => {
@@ -213,7 +242,7 @@ process.on('SIGINT', () => {
 if (!LOOP) {
   // Non-loop: run exactly COUNT agents and wait for all to finish.
   const results = await Promise.allSettled(
-    Array.from({ length: COUNT }, () => runAgent(++agentSeq))
+    slotNames.map((name) => runAgent(name))
   );
   const failed = results.filter((r) => r.status === 'rejected').length;
   console.log(
@@ -221,23 +250,19 @@ if (!LOOP) {
   );
   if (failed > 0) process.exit(1);
 } else {
-  // Pool mode: fill the pool initially, then replace each agent as it finishes.
-  // Each slot is a self-perpetuating async chain.
-  async function slot(): Promise<void> {
+  // Pool mode: each slot has a fixed name and self-perpetuates indefinitely.
+  async function slot(name: string): Promise<void> {
     while (true) {
-      const id = ++agentSeq;
       try {
-        await runAgent(id);
+        await runAgent(name);
       } catch {
-        totalFailed++;
+        // keep the slot alive even on unexpected errors
       }
-      console.log(
-        `Replacing agent-${id} in ${DELAY_MS / 1000}s — Ctrl-C to stop.`
-      );
+      console.log(`[${name}] back in ${DELAY_MS / 1000}s — Ctrl-C to stop.`);
       await Bun.sleep(DELAY_MS);
     }
   }
 
   // Start COUNT independent slots — they run forever until interrupted.
-  await Promise.all(Array.from({ length: COUNT }, () => slot()));
+  await Promise.all(slotNames.map((name) => slot(name)));
 }
