@@ -7,23 +7,22 @@ export function startExpiryCron(): NodeJS.Timeout {
   const ttlMinutes = parseInt(process.env['TASK_TTL_MINUTES'] ?? '30', 10);
 
   console.log(
-    `[expiry] Starting stale task expiry cron (interval: ${CRON_INTERVAL_MINUTES}m, TTL: ${ttlMinutes}m)`,
+    `[expiry] Starting stale task expiry cron (interval: ${CRON_INTERVAL_MINUTES}m, TTL: ${ttlMinutes}m)`
   );
 
-  const interval = setInterval(
-    async () => {
-      try {
-        const tasksService = inject(TasksService);
-        const expired = await tasksService.expireStaleInProgressTasks(ttlMinutes);
-        if (expired > 0) {
-          console.log(`[expiry] Swept ${expired} stale IN_PROGRESS task(s) → TODO`);
-        }
-      } catch (err) {
-        console.error('[expiry] Error during stale task sweep:', err);
+  const interval = setInterval(async () => {
+    try {
+      const tasksService = inject(TasksService);
+      const expired = await tasksService.expireStaleInProgressTasks(ttlMinutes);
+      if (expired > 0) {
+        console.log(
+          `[expiry] Swept ${expired} stale IN_PROGRESS task(s) → TODO`
+        );
       }
-    },
-    CRON_INTERVAL_MINUTES * 60 * 1000,
-  );
+    } catch (err) {
+      console.error('[expiry] Error during stale task sweep:', err);
+    }
+  }, CRON_INTERVAL_MINUTES * 60 * 1000);
 
   // Allow process to exit even with the interval running
   interval.unref();

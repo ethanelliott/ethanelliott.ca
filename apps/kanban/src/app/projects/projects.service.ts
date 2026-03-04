@@ -43,7 +43,7 @@ export class ProjectsService {
     }
 
     return Array.from(projectMap.values()).sort((a, b) =>
-      a.project.localeCompare(b.project),
+      a.project.localeCompare(b.project)
     );
   }
 }

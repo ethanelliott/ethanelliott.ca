@@ -25,8 +25,8 @@ export class Database {
         console.log(
           `📊 Kanban DB initialized with entities: ${this._entities
             .map((e) => e.name)
-            .join(', ')}`,
-        ),
+            .join(', ')}`
+        )
       )
       .catch((error) => {
         console.error('Database initialization failed', error);

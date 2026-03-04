@@ -14,6 +14,6 @@ export async function ProjectsRouter(fastify: FastifyInstance) {
         response: { 200: z.array(ProjectSummarySchema) },
       },
     },
-    async () => projectsService.listProjects(),
+    async () => projectsService.listProjects()
   );
 }

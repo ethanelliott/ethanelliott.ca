@@ -1,5 +1,11 @@
 import { provide } from '@ee/di';
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { z } from 'zod';
 import { ENTITIES } from '../data-source';
 

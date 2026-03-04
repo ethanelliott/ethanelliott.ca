@@ -2,7 +2,13 @@ import { inject } from '@ee/di';
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { TasksService, TaskListFiltersSchema, NextTaskBodySchema, BatchCreateSchema, HistoryResponseSchema } from './tasks.service';
+import {
+  TasksService,
+  TaskListFiltersSchema,
+  NextTaskBodySchema,
+  BatchCreateSchema,
+  HistoryResponseSchema,
+} from './tasks.service';
 import {
   TaskInSchema,
   TaskPatchSchema,
@@ -10,7 +16,10 @@ import {
   TaskStateSchema,
 } from './task.entity';
 import { TaskDependencyOutSchema } from './task-dependency.entity';
-import { ActivityEntryOutSchema, ActivityCommentInSchema } from './activity-entry.entity';
+import {
+  ActivityEntryOutSchema,
+  ActivityCommentInSchema,
+} from './activity-entry.entity';
 
 export async function TasksRouter(fastify: FastifyInstance) {
   const tasksService = inject(TasksService);
@@ -28,7 +37,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
       const result = await tasksService.batchCreate(req.body);
       reply.code(201);
       return result;
-    },
+    }
   );
 
   // POST /tasks/next — must come before /:id routes
@@ -44,13 +53,16 @@ export async function TasksRouter(fastify: FastifyInstance) {
       },
     },
     async (req, reply) => {
-      const task = await tasksService.nextTask(req.body.assignee, req.body.project);
+      const task = await tasksService.nextTask(
+        req.body.assignee,
+        req.body.project
+      );
       if (!task) {
         reply.code(404);
         return { message: 'No eligible tasks available' };
       }
       return task;
-    },
+    }
   );
 
   // POST /tasks
@@ -66,7 +78,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
       const task = await tasksService.create(req.body);
       reply.code(201);
       return task;
-    },
+    }
   );
 
   // GET /tasks
@@ -78,7 +90,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: z.array(TaskOutSchema) },
       },
     },
-    async (req) => tasksService.list(req.query),
+    async (req) => tasksService.list(req.query)
   );
 
   // GET /tasks/:id
@@ -90,7 +102,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: TaskOutSchema },
       },
     },
-    async (req) => tasksService.getById(req.params.id),
+    async (req) => tasksService.getById(req.params.id)
   );
 
   // PATCH /tasks/:id
@@ -103,7 +115,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: TaskOutSchema },
       },
     },
-    async (req) => tasksService.patch(req.params.id, req.body),
+    async (req) => tasksService.patch(req.params.id, req.body)
   );
 
   // DELETE /tasks/:id
@@ -118,7 +130,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
     async (req, reply) => {
       await tasksService.delete(req.params.id);
       reply.code(204);
-    },
+    }
   );
 
   // POST /tasks/:id/transition
@@ -131,7 +143,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: TaskOutSchema },
       },
     },
-    async (req) => tasksService.transition(req.params.id, req.body.state),
+    async (req) => tasksService.transition(req.params.id, req.body.state)
   );
 
   // GET /tasks/:id/dependencies
@@ -143,7 +155,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: z.array(TaskDependencyOutSchema) },
       },
     },
-    async (req) => tasksService.listDependencies(req.params.id),
+    async (req) => tasksService.listDependencies(req.params.id)
   );
 
   // POST /tasks/:id/dependencies
@@ -157,10 +169,13 @@ export async function TasksRouter(fastify: FastifyInstance) {
       },
     },
     async (req, reply) => {
-      const dep = await tasksService.addDependency(req.params.id, req.body.dependsOnId);
+      const dep = await tasksService.addDependency(
+        req.params.id,
+        req.body.dependsOnId
+      );
       reply.code(201);
       return dep;
-    },
+    }
   );
 
   // DELETE /tasks/:id/dependencies/:dependsOnId
@@ -168,14 +183,20 @@ export async function TasksRouter(fastify: FastifyInstance) {
     '/:id/dependencies/:dependsOnId',
     {
       schema: {
-        params: z.object({ id: z.string().uuid(), dependsOnId: z.string().uuid() }),
+        params: z.object({
+          id: z.string().uuid(),
+          dependsOnId: z.string().uuid(),
+        }),
         response: { 204: z.void() },
       },
     },
     async (req, reply) => {
-      await tasksService.removeDependency(req.params.id, req.params.dependsOnId);
+      await tasksService.removeDependency(
+        req.params.id,
+        req.params.dependsOnId
+      );
       reply.code(204);
-    },
+    }
   );
 
   // GET /tasks/:id/subtasks
@@ -187,7 +208,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: z.array(TaskOutSchema) },
       },
     },
-    async (req) => tasksService.listSubtasks(req.params.id),
+    async (req) => tasksService.listSubtasks(req.params.id)
   );
 
   // GET /tasks/:id/history
@@ -199,7 +220,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: HistoryResponseSchema },
       },
     },
-    async (req) => tasksService.getHistory(req.params.id),
+    async (req) => tasksService.getHistory(req.params.id)
   );
 
   // GET /tasks/:id/activity
@@ -211,7 +232,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
         response: { 200: z.array(ActivityEntryOutSchema) },
       },
     },
-    async (req) => tasksService.getActivity(req.params.id),
+    async (req) => tasksService.getActivity(req.params.id)
   );
 
   // POST /tasks/:id/activity
@@ -228,6 +249,6 @@ export async function TasksRouter(fastify: FastifyInstance) {
       const entry = await tasksService.postComment(req.params.id, req.body);
       reply.code(201);
       return entry;
-    },
+    }
   );
 }
