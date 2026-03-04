@@ -357,7 +357,7 @@ export class BoardComponent implements OnInit {
   }
 
   onTaskCreated(task: TaskOut): void {
-    this.tasks.update((list) => [...list, task]);
+    // SSE taskCreated$ already adds the task to the list; only show the toast.
     this.messageService.add({
       severity: 'success',
       summary: 'Task created',

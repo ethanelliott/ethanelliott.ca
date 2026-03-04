@@ -243,7 +243,7 @@ export class NewTaskDialogComponent implements OnInit {
   form = {
     title: '',
     description: '',
-    state: TaskState.TODO as TaskState,
+    state: TaskState.BACKLOG as TaskState,
     priority: 100,
     project: this.projectService.selectedProject() ?? '',
   };
@@ -323,7 +323,7 @@ export class NewTaskDialogComponent implements OnInit {
     this.form = {
       title: '',
       description: '',
-      state: TaskState.TODO,
+      state: TaskState.BACKLOG,
       priority: 100,
       project: this.projectService.selectedProject() ?? '',
     };
