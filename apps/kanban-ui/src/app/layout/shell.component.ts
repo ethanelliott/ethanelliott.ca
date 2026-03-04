@@ -135,7 +135,8 @@ import { SidebarComponent } from './sidebar.component';
 
     .shell-main {
       flex: 1;
-      overflow: auto;
+      min-width: 0;
+      overflow: hidden;
       background: var(--p-surface-950, var(--p-surface-900));
     }
 

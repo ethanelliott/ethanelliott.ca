@@ -175,9 +175,8 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
     .skeleton-col {
       display: flex;
       flex-direction: column;
-      min-width: 200px;
-      max-width: 280px;
-      flex: 1 1 200px;
+      flex: 1 1 180px;
+      min-width: 180px;
       background: var(--p-surface-900);
       border-radius: 10px;
       border: 1px solid var(--p-surface-700);
