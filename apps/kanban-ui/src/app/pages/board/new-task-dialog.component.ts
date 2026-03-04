@@ -95,6 +95,21 @@ interface StateOption {
           />
         </div>
 
+        <!-- Directory -->
+        <div class="field">
+          <label for="directory"
+            >Directory <span class="opt">(optional)</span></label
+          >
+          <input
+            id="directory"
+            pInputText
+            [(ngModel)]="form.directory"
+            name="directory"
+            placeholder="Relative path, e.g. apps/my-app"
+            autocomplete="off"
+          />
+        </div>
+
         <!-- State + Priority row -->
         <div class="field-row">
           <div class="field">
@@ -246,6 +261,7 @@ export class NewTaskDialogComponent implements OnInit {
     state: TaskState.BACKLOG as TaskState,
     priority: 100,
     project: this.projectService.selectedProject() ?? '',
+    directory: '',
   };
 
   ngOnInit(): void {
@@ -296,6 +312,9 @@ export class NewTaskDialogComponent implements OnInit {
         state: this.form.state,
         priority: this.form.priority,
         project,
+        ...(this.form.directory.trim()
+          ? { directory: this.form.directory.trim() }
+          : {}),
         ...(this.selectedParent ? { parentId: this.selectedParent.id } : {}),
       })
       .subscribe({
@@ -326,6 +345,7 @@ export class NewTaskDialogComponent implements OnInit {
       state: TaskState.BACKLOG,
       priority: 100,
       project: this.projectService.selectedProject() ?? '',
+      directory: '',
     };
     this.selectedParent = null;
     this.parentResults.set([]);

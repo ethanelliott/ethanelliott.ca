@@ -69,7 +69,7 @@ export type HistoryResponse = z.infer<typeof HistoryResponseSchema>;
 
 export const NextTaskBodySchema = z.object({
   assignee: z.string().min(1),
-  project: z.string().min(1),
+  project: z.string().min(1).optional(),
 });
 export type NextTaskBody = z.infer<typeof NextTaskBodySchema>;
 
@@ -92,6 +92,7 @@ export class TasksService {
       assignee: task.assignee ?? null,
       assignedAt: task.assignedAt ?? null,
       parentId: task.parentId ?? null,
+      directory: task.directory ?? null,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
       depCount,
@@ -446,6 +447,8 @@ export class TasksService {
     if (input.priority !== undefined) task.priority = input.priority;
     if (input.parentId !== undefined)
       task.parentId = input.parentId ?? undefined;
+    if (input.directory !== undefined)
+      task.directory = input.directory ?? undefined;
 
     const saved = await this._tasks.save(task);
 
@@ -555,7 +558,7 @@ export class TasksService {
 
   // ---------------------------------------------------------------- next task
 
-  async nextTask(assignee: string, project: string): Promise<TaskOut | null> {
+  async nextTask(assignee: string, project?: string): Promise<TaskOut | null> {
     const db = inject(Database).dataSource;
 
     return db.transaction(async (manager) => {
@@ -565,29 +568,29 @@ export class TasksService {
       const activityRepo = manager.getRepository(ActivityEntry);
 
       // Check agent concurrency
-      const existing = await taskRepo
+      const existingQb = taskRepo
         .createQueryBuilder('t')
         .where('t.assignee = :assignee', { assignee })
-        .andWhere('t.project = :project', { project })
         .andWhere('t.state = :state', { state: TaskState.IN_PROGRESS })
-        .andWhere('t.deletedAt IS NULL')
-        .getOne();
+        .andWhere('t.deletedAt IS NULL');
+      if (project) existingQb.andWhere('t.project = :project', { project });
+      const existing = await existingQb.getOne();
 
       if (existing) {
         throw new HttpErrors.Conflict(
-          `Agent ${assignee} already has IN_PROGRESS task ${existing.id} in project ${project} (ALREADY_ASSIGNED_IN_PROJECT)`
+          `Agent ${assignee} already has IN_PROGRESS task ${existing.id} in project ${existing.project} (ALREADY_ASSIGNED_IN_PROJECT)`
         );
       }
 
       // Fetch TODO candidates ordered by priority, then createdAt
-      const candidates = await taskRepo
+      const candidateQb = taskRepo
         .createQueryBuilder('t')
-        .where('t.project = :project', { project })
         .andWhere('t.state = :state', { state: TaskState.TODO })
         .andWhere('t.deletedAt IS NULL')
         .orderBy('t.priority', 'ASC')
-        .addOrderBy('t.createdAt', 'ASC')
-        .getMany();
+        .addOrderBy('t.createdAt', 'ASC');
+      if (project) candidateQb.andWhere('t.project = :project', { project });
+      const candidates = await candidateQb.getMany();
 
       if (candidates.length === 0) return null;
 

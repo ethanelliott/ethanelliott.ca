@@ -21,6 +21,7 @@ export interface TaskOut {
   parentId: string | null;
   createdAt: string;
   updatedAt: string;
+  directory: string | null;
   /** Number of dependencies this task has (populated by list + getById) */
   depCount?: number;
   /** Number of direct subtasks (populated by list + getById) */
@@ -34,6 +35,7 @@ export interface TaskIn {
   project: string;
   state?: TaskState;
   parentId?: string;
+  directory?: string;
 }
 
 export interface TaskPatch {
@@ -41,6 +43,7 @@ export interface TaskPatch {
   description?: string;
   priority?: number;
   parentId?: string | null;
+  directory?: string | null;
 }
 
 export interface TaskListFilters {

@@ -62,6 +62,9 @@ export class Task {
   @Column('uuid', { nullable: true })
   parentId?: string;
 
+  @Column('text', { nullable: true })
+  directory?: string;
+
   // Self-referential ManyToOne — only loaded when explicitly requested
   @ManyToOne(() => Task, { nullable: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'parentId' })
@@ -88,6 +91,7 @@ export const TaskInSchema = z.object({
   project: z.string().min(1),
   state: TaskStateSchema.optional().default(TaskState.BACKLOG),
   parentId: z.string().uuid().optional(),
+  directory: z.string().optional(),
 });
 export type TaskIn = z.infer<typeof TaskInSchema>;
 
@@ -96,6 +100,7 @@ export const TaskPatchSchema = z.object({
   description: z.string().min(1).optional(),
   priority: z.number().int().optional(),
   parentId: z.string().uuid().nullable().optional(),
+  directory: z.string().nullable().optional(),
 });
 export type TaskPatch = z.infer<typeof TaskPatchSchema>;
 
@@ -113,6 +118,7 @@ export const TaskOutSchema = z.object({
   updatedAt: z.date(),
   depCount: z.number().int().default(0),
   subtaskCount: z.number().int().default(0),
+  directory: z.string().nullable(),
 });
 export type TaskOut = z.infer<typeof TaskOutSchema>;
 
