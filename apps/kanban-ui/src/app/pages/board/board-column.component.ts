@@ -4,6 +4,7 @@ import {
   input,
   output,
   computed,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -60,6 +61,8 @@ export interface TaskDropEvent {
         [cdkDropListData]="tasks()"
         [cdkDropListConnectedTo]="connectedTo()"
         (cdkDropListDropped)="onDrop($event)"
+        (cdkDropListEntered)="isReceiving.set(true)"
+        (cdkDropListExited)="isReceiving.set(false)"
       >
         @for (task of tasks(); track task.id) {
         <app-task-card
@@ -68,12 +71,17 @@ export interface TaskDropEvent {
             taskDropped.emit({ task: $event.task, targetState: $event.state })
           "
         />
-        } @if (tasks().length === 0) {
+        } @if (tasks().length === 0) { @if (isReceiving()) {
+        <div class="col-dropzone">
+          <i class="pi pi-arrow-circle-down"></i>
+          <span>Drop here</span>
+        </div>
+        } @else {
         <div class="col-empty">
           <i class="pi pi-inbox col-empty-icon"></i>
           <span>No tasks</span>
         </div>
-        }
+        } }
       </div>
     </div>
   `,
@@ -147,6 +155,32 @@ export interface TaskDropEvent {
       gap: 6px;
     }
 
+    .col-dropzone {
+      flex: 1;
+      min-height: 64px;
+      border: 2px dashed var(--accent, var(--p-primary-color));
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--accent, var(--p-primary-color));
+      background: color-mix(
+        in srgb,
+        var(--accent, var(--p-primary-color)) 10%,
+        transparent
+      );
+      font-size: 0.75rem;
+      font-weight: 500;
+      animation: dropzone-pulse 0.9s ease-in-out infinite alternate;
+    }
+
+    @keyframes dropzone-pulse {
+      from { opacity: 0.65; }
+      to   { opacity: 1; }
+    }
+
     .col-empty-icon {
       font-size: 1.3rem;
       opacity: 0.35;
@@ -174,7 +208,10 @@ export class BoardColumnComponent {
   readonly label = computed(() => STATE_LABELS[this.state()]);
   readonly accent = computed(() => STATE_ACCENT[this.state()]);
 
+  readonly isReceiving = signal(false);
+
   onDrop(event: CdkDragDrop<TaskOut[]>): void {
+    this.isReceiving.set(false);
     if (event.previousContainer === event.container) return;
     const task = event.item.data as TaskOut;
     const targetState = this.state();
