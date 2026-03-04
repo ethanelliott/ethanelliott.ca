@@ -67,6 +67,8 @@ export interface TaskDropEvent {
         @for (task of tasks(); track task.id) {
         <app-task-card
           [task]="task"
+          (dragStarted)="columnDragStarted.emit($event)"
+          (dragEnded)="columnDragEnded.emit()"
           (quickTransition)="
             taskDropped.emit({ task: $event.task, targetState: $event.state })
           "
@@ -200,6 +202,8 @@ export class BoardColumnComponent {
   readonly connectedTo = input<string[]>([]);
 
   readonly taskDropped = output<TaskDropEvent>();
+  readonly columnDragStarted = output<TaskOut>();
+  readonly columnDragEnded = output<void>();
 
   readonly columnId = computed(() => `col-${this.state()}`);
   readonly label = computed(() => STATE_LABELS[this.state()]);

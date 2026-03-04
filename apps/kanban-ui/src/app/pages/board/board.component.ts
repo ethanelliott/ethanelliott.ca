@@ -89,6 +89,8 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
           [tasks]="columnTasks(state)"
           [connectedTo]="connections(state)"
           (taskDropped)="handleTransition($event)"
+          (columnDragStarted)="draggingTaskState.set($event.state)"
+          (columnDragEnded)="draggingTaskState.set(null)"
         />
         } }
       </div>
@@ -228,6 +230,7 @@ export class BoardComponent implements OnInit {
   readonly tasks = signal<TaskOut[]>([]);
   readonly loading = signal(false);
   readonly showNewTaskDialog = signal(false);
+  readonly draggingTaskState = signal<TaskState | null>(null);
 
   /** Tasks grouped by state, computed from the flat list */
   private readonly tasksByState = computed(() => {
@@ -244,6 +247,12 @@ export class BoardComponent implements OnInit {
   }
 
   connections(state: TaskState): string[] {
+    const dragging = this.draggingTaskState();
+    if (dragging !== null) {
+      // Only the source column keeps its connections during a drag;
+      // all other lists get [] so their own connections can't mis-highlight.
+      return dragging === state ? COLUMN_CONNECTIONS[state] : [];
+    }
     return COLUMN_CONNECTIONS[state];
   }
 

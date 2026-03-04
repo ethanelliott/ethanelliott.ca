@@ -49,7 +49,14 @@ function formatElapsed(ms: number): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'task-card-host' },
   template: `
-    <div class="task-card" cdkDrag [cdkDragData]="task()" (click)="navigate()">
+    <div
+      class="task-card"
+      cdkDrag
+      [cdkDragData]="task()"
+      (click)="navigate()"
+      (cdkDragStarted)="dragStarted.emit(task())"
+      (cdkDragEnded)="dragEnded.emit()"
+    >
       <!-- Drag preview placeholder -->
       <div class="drag-placeholder" *cdkDragPlaceholder></div>
 
@@ -281,6 +288,8 @@ function formatElapsed(ms: number): string {
   `,
 })
 export class TaskCardComponent {
+  readonly dragStarted = output<TaskOut>();
+  readonly dragEnded = output<void>();
   private readonly router = inject(Router);
 
   readonly task = input.required<TaskOut>();
