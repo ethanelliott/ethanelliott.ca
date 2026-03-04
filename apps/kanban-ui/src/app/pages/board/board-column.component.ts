@@ -89,14 +89,16 @@ export interface TaskDropEvent {
     .column {
       display: flex;
       flex-direction: column;
-      min-width: 220px;
-      max-width: 260px;
-      flex: 1 1 220px;
+      min-width: 200px;
+      max-width: 280px;
+      flex: 1 1 200px;
       background: var(--p-surface-900);
       border-radius: 10px;
       border: 1px solid var(--p-surface-700);
       overflow: hidden;
       scroll-snap-align: start;
+      /* height comes from align-items: stretch on parent */
+      min-height: 0;
     }
 
     .col-header {
@@ -141,7 +143,7 @@ export interface TaskDropEvent {
       flex-direction: column;
       gap: 6px;
       overflow-y: auto;
-      min-height: 80px;
+      min-height: 0;
     }
 
     .col-empty {
