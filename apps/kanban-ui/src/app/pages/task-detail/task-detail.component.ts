@@ -86,6 +86,36 @@ interface DepTask {
           <button class="back-btn" type="button" (click)="goBack()">
             <i class="pi pi-arrow-left"></i> Back
           </button>
+          @if (!confirmingDelete()) {
+          <button
+            class="delete-btn"
+            type="button"
+            title="Delete task"
+            (click)="confirmingDelete.set(true)"
+          >
+            <i class="pi pi-trash"></i>
+          </button>
+          } @else {
+          <span class="delete-confirm">
+            Delete this task?
+            <button
+              class="delete-confirm-yes"
+              type="button"
+              [disabled]="deleting()"
+              (click)="deleteTask(t)"
+            >
+              {{ deleting() ? 'Deleting…' : 'Yes, delete' }}
+            </button>
+            <button
+              class="delete-confirm-no"
+              type="button"
+              [disabled]="deleting()"
+              (click)="confirmingDelete.set(false)"
+            >
+              Cancel
+            </button>
+          </span>
+          }
           <span
             class="state-badge"
             [style.color]="stateColor(t.state)"
@@ -425,6 +455,59 @@ interface DepTask {
       &:hover {
         background: var(--p-surface-700);
         color: var(--p-text-color);
+      }
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: 1px solid var(--p-surface-600);
+      border-radius: 6px;
+      color: var(--p-text-muted-color);
+      font-size: 0.78rem;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: all 0.12s;
+      display: flex;
+      align-items: center;
+      margin-left: auto;
+
+      &:hover {
+        background: color-mix(in srgb, #f87171 15%, transparent);
+        border-color: #f87171;
+        color: #f87171;
+      }
+    }
+
+    .delete-confirm {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      font-size: 0.78rem;
+      color: #f87171;
+
+      button {
+        font-size: 0.75rem;
+        padding: 3px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid;
+        transition: all 0.12s;
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
+      }
+
+      .delete-confirm-yes {
+        background: #f87171;
+        border-color: #f87171;
+        color: #fff;
+        &:hover:not(:disabled) { background: #ef4444; border-color: #ef4444; }
+      }
+
+      .delete-confirm-no {
+        background: transparent;
+        border-color: var(--p-surface-600);
+        color: var(--p-text-muted-color);
+        &:hover:not(:disabled) { background: var(--p-surface-700); color: var(--p-text-color); }
       }
     }
 
@@ -805,6 +888,8 @@ export class TaskDetailComponent implements OnInit {
   // Dep / subtask add state
   readonly addingDep = signal(false);
   readonly addingSubtask = signal(false);
+  readonly confirmingDelete = signal(false);
+  readonly deleting = signal(false);
   depIdDraft = '';
   subtaskTitleDraft = '';
 
@@ -1081,5 +1166,22 @@ export class TaskDetailComponent implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  deleteTask(t: TaskOut): void {
+    this.deleting.set(true);
+    this.api.deleteTask(t.id).subscribe({
+      next: () => this.router.navigate(['/board']),
+      error: (err) => {
+        this.deleting.set(false);
+        this.confirmingDelete.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Delete failed',
+          detail: err?.error?.message ?? 'Could not delete task.',
+          life: 4000,
+        });
+      },
+    });
   }
 }
