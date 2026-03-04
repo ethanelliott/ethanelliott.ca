@@ -1,4 +1,5 @@
 @use 'primeicons/primeicons.css';
+@import 'highlight.js/styles/atom-one-dark.min.css';
 
 p-inputnumber,
 p-inputtext,
@@ -22,11 +23,7 @@ body {
 }
 
 body {
-  font-family:
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

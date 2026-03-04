@@ -11,7 +11,10 @@ import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { DrawerModule } from 'primeng/drawer';
 import { KanbanApiService } from '../services/kanban-api.service';
-import { KanbanSseService, ConnectionState } from '../services/kanban-sse.service';
+import {
+  KanbanSseService,
+  ConnectionState,
+} from '../services/kanban-sse.service';
 import { ProjectService } from '../services/project.service';
 import { ProjectSummary } from '../models/project.model';
 import { SidebarComponent } from './sidebar.component';
@@ -19,12 +22,7 @@ import { SidebarComponent } from './sidebar.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    DrawerModule,
-    SidebarComponent,
-  ],
+  imports: [CommonModule, RouterOutlet, DrawerModule, SidebarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Mobile header (visible on small viewports only) -->
@@ -41,10 +39,7 @@ import { SidebarComponent } from './sidebar.component';
         <i class="pi pi-th-large"></i>
         Kanban
       </span>
-      <span
-        class="mobile-conn"
-        [class]="'conn-' + connectionState()"
-      ></span>
+      <span class="mobile-conn" [class]="'conn-' + connectionState()"></span>
     </header>
 
     <!-- Mobile drawer -->

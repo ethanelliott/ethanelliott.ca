@@ -53,16 +53,15 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
       <!-- Header bar -->
       <div class="board-header">
         <h2 class="board-title">
-          Board
-          @if (projectService.selectedProject(); as p) {
-            <span class="project-chip">{{ p }}</span>
+          Board @if (projectService.selectedProject(); as p) {
+          <span class="project-chip">{{ p }}</span>
           }
         </h2>
         <div class="header-actions">
           @if (loading()) {
-            <span class="loading-label">
-              <i class="pi pi-spin pi-spinner"></i> Loading…
-            </span>
+          <span class="loading-label">
+            <i class="pi pi-spin pi-spinner"></i> Loading…
+          </span>
           }
           <p-button
             label="New Task"
@@ -76,12 +75,12 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
       <!-- Board columns -->
       <div class="board-columns">
         @for (state of ALL_STATES; track state) {
-          <app-board-column
-            [state]="state"
-            [tasks]="columnTasks(state)"
-            [connectedTo]="connections(state)"
-            (taskDropped)="handleTransition($event)"
-          />
+        <app-board-column
+          [state]="state"
+          [tasks]="columnTasks(state)"
+          [connectedTo]="connections(state)"
+          (taskDropped)="handleTransition($event)"
+        />
         }
       </div>
     </div>
@@ -219,9 +218,7 @@ export class BoardComponent implements OnInit {
     // SSE: task created
     this.sse.taskCreated$
       .pipe(takeUntilDestroyed())
-      .subscribe((e) =>
-        this.tasks.update((list) => [...list, e.payload])
-      );
+      .subscribe((e) => this.tasks.update((list) => [...list, e.payload]));
 
     // SSE: task updated / task expired (treated the same — replace in list)
     this.sse.taskUpdated$
@@ -232,23 +229,26 @@ export class BoardComponent implements OnInit {
         )
       );
 
-    this.sse.taskExpired$
-      .pipe(takeUntilDestroyed())
-      .subscribe((e) =>
-        this.tasks.update((list) =>
-          list.map((t) =>
-            t.id === e.payload.id ? { ...t, state: TaskState.TODO, assignee: null, assignedAt: null } : t
-          )
+    this.sse.taskExpired$.pipe(takeUntilDestroyed()).subscribe((e) =>
+      this.tasks.update((list) =>
+        list.map((t) =>
+          t.id === e.payload.id
+            ? {
+                ...t,
+                state: TaskState.TODO,
+                assignee: null,
+                assignedAt: null,
+              }
+            : t
         )
-      );
+      )
+    );
 
     // SSE: task deleted
     this.sse.taskDeleted$
       .pipe(takeUntilDestroyed())
       .subscribe((e) =>
-        this.tasks.update((list) =>
-          list.filter((t) => t.id !== e.payload.id)
-        )
+        this.tasks.update((list) => list.filter((t) => t.id !== e.payload.id))
       );
   }
 

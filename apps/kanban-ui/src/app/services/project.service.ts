@@ -21,9 +21,7 @@ export class ProjectService {
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe(() => {
         const params = new URLSearchParams(
-          this.router.url.includes('?')
-            ? this.router.url.split('?')[1]
-            : ''
+          this.router.url.includes('?') ? this.router.url.split('?')[1] : ''
         );
         const project = params.get('project') ?? undefined;
         if (this.selectedProject() !== project) {

@@ -49,7 +49,9 @@ function formatElapsed(ms: number): string {
         </div>
         <div class="agent-info">
           <span class="agent-name">{{ task().assignee }}</span>
-          <span class="task-title" [title]="task().title">{{ task().title }}</span>
+          <span class="task-title" [title]="task().title">{{
+            task().title
+          }}</span>
         </div>
       </div>
 
@@ -74,7 +76,7 @@ function formatElapsed(ms: number): string {
 
       <!-- Stale warning banner -->
       @if (severity() === 'danger') {
-        <div class="stale-banner">🔴 STALE — pending expiry</div>
+      <div class="stale-banner">🔴 STALE — pending expiry</div>
       }
     </div>
   `,
@@ -209,10 +211,9 @@ export class AgentCardComponent {
 
   readonly task = input.required<TaskOut>();
 
-  private readonly _tick = toSignal(
-    interval(1000).pipe(takeUntilDestroyed()),
-    { initialValue: 0 }
-  );
+  private readonly _tick = toSignal(interval(1000).pipe(takeUntilDestroyed()), {
+    initialValue: 0,
+  });
 
   readonly elapsedMs = computed(() => {
     this._tick();

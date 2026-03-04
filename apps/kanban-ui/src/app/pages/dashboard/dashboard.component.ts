@@ -54,30 +54,29 @@ const STATE_ACCENT: Record<TaskState, string> = {
       <!-- Page header -->
       <div class="dash-header">
         <h2 class="dash-title">
-          Dashboard
-          @if (projectService.selectedProject(); as p) {
-            <span class="project-chip">{{ p }}</span>
+          Dashboard @if (projectService.selectedProject(); as p) {
+          <span class="project-chip">{{ p }}</span>
           }
         </h2>
         @if (loading()) {
-          <span class="loading-label">
-            <i class="pi pi-spin pi-spinner"></i> Loading…
-          </span>
+        <span class="loading-label">
+          <i class="pi pi-spin pi-spinner"></i> Loading…
+        </span>
         }
       </div>
 
       <!-- State distribution stat cards -->
       <div class="stat-row">
         @for (state of ALL_STATES; track state) {
-          <div
-            class="stat-card"
-            [style.--accent]="accent(state)"
-            (click)="filterState.set(filterState() === state ? null : state)"
-            [class.active]="filterState() === state"
-          >
-            <span class="stat-label">{{ stateLabel(state) }}</span>
-            <span class="stat-value">{{ countByState(state) }}</span>
-          </div>
+        <div
+          class="stat-card"
+          [style.--accent]="accent(state)"
+          (click)="filterState.set(filterState() === state ? null : state)"
+          [class.active]="filterState() === state"
+        >
+          <span class="stat-label">{{ stateLabel(state) }}</span>
+          <span class="stat-value">{{ countByState(state) }}</span>
+        </div>
         }
       </div>
 
@@ -95,14 +94,15 @@ const STATE_ACCENT: Record<TaskState, string> = {
 
           <div class="panel-body">
             @if (activeAgents().length === 0) {
-              <div class="empty-agents">
-                <i class="pi pi-check-circle" style="font-size:2rem;color:var(--p-surface-600)"></i>
-                <p>No agents working right now.</p>
-              </div>
-            }
-
-            @for (task of activeAgents(); track task.id) {
-              <app-agent-card [task]="task" />
+            <div class="empty-agents">
+              <i
+                class="pi pi-check-circle"
+                style="font-size:2rem;color:var(--p-surface-600)"
+              ></i>
+              <p>No agents working right now.</p>
+            </div>
+            } @for (task of activeAgents(); track task.id) {
+            <app-agent-card [task]="task" />
             }
           </div>
         </section>
@@ -310,9 +310,7 @@ export class DashboardComponent {
   /** IN_PROGRESS tasks with an assignee — one row per agent */
   readonly activeAgents = computed(() =>
     this.tasks()
-      .filter(
-        (t) => t.state === TaskState.IN_PROGRESS && t.assignee
-      )
+      .filter((t) => t.state === TaskState.IN_PROGRESS && t.assignee)
       .sort((a, b) => {
         // Stale tasks (oldest) first
         const aT = a.assignedAt ? new Date(a.assignedAt).getTime() : 0;
@@ -385,17 +383,20 @@ export class DashboardComponent {
         )
       );
 
-    this.sse.taskExpired$
-      .pipe(takeUntilDestroyed())
-      .subscribe((e) =>
-        this.tasks.update((list) =>
-          list.map((t) =>
-            t.id === e.payload.id
-              ? { ...t, state: TaskState.TODO, assignee: null, assignedAt: null }
-              : t
-          )
+    this.sse.taskExpired$.pipe(takeUntilDestroyed()).subscribe((e) =>
+      this.tasks.update((list) =>
+        list.map((t) =>
+          t.id === e.payload.id
+            ? {
+                ...t,
+                state: TaskState.TODO,
+                assignee: null,
+                assignedAt: null,
+              }
+            : t
         )
-      );
+      )
+    );
 
     this.sse.taskDeleted$
       .pipe(takeUntilDestroyed())

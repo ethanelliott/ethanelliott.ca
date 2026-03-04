@@ -10,9 +10,7 @@ export const appRoutes: Route[] = [
       {
         path: 'board',
         loadComponent: () =>
-          import('./pages/board/board.component').then(
-            (m) => m.BoardComponent
-          ),
+          import('./pages/board/board.component').then((m) => m.BoardComponent),
       },
       {
         path: 'dashboard',

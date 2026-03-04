@@ -62,14 +62,14 @@ export interface TaskDropEvent {
         (cdkDropListDropped)="onDrop($event)"
       >
         @for (task of tasks(); track task.id) {
-          <app-task-card
-            [task]="task"
-            (quickTransition)="taskDropped.emit({ task: $event.task, targetState: $event.state })"
-          />
-        }
-
-        @if (tasks().length === 0) {
-          <div class="col-empty">Empty</div>
+        <app-task-card
+          [task]="task"
+          (quickTransition)="
+            taskDropped.emit({ task: $event.task, targetState: $event.state })
+          "
+        />
+        } @if (tasks().length === 0) {
+        <div class="col-empty">Empty</div>
         }
       </div>
     </div>

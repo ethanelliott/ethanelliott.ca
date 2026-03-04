@@ -34,6 +34,7 @@ import { ActivityEntryOut } from '../../models/activity.model';
 import { TaskDependencyOut } from '../../models/task-dependency.model';
 import { HistoryTimelineComponent } from './history-timeline.component';
 import { ActivityFeedComponent } from './activity-feed.component';
+import { MarkdownService } from '../../services/markdown.service';
 
 const STATE_ACCENT: Record<TaskState, string> = {
   [TaskState.BACKLOG]: '#64748b',
@@ -70,310 +71,308 @@ interface DepTask {
   template: `
     <div class="detail-page">
       @if (loading()) {
-        <!-- Loading skeleton -->
-        <div class="detail-header">
-          <p-skeleton width="60px" height="18px" />
-          <p-skeleton width="100%" height="28px" styleClass="mt-2" />
-          <p-skeleton width="200px" height="14px" styleClass="mt-1" />
-        </div>
+      <!-- Loading skeleton -->
+      <div class="detail-header">
+        <p-skeleton width="60px" height="18px" />
+        <p-skeleton width="100%" height="28px" styleClass="mt-2" />
+        <p-skeleton width="200px" height="14px" styleClass="mt-1" />
+      </div>
       } @else if (task(); as t) {
-        <!-- ── Header ─────────────────────────────────────── -->
-        <div class="detail-header">
-          <!-- Back + meta row -->
-          <div class="header-meta">
-            <button class="back-btn" type="button" (click)="goBack()">
-              <i class="pi pi-arrow-left"></i> Back
-            </button>
-            <span
-              class="state-badge"
-              [style.color]="stateColor(t.state)"
-              [style.background]="stateColor(t.state) + '22'"
-            >
-              {{ t.state.replace('_', ' ') }}
-            </span>
-            <span class="project-chip">{{ t.project }}</span>
-            <span class="task-id">{{ t.id.slice(0, 8) }}</span>
-          </div>
-
-          <!-- Title — click to edit -->
-          @if (editingTitle()) {
-            <input
-              pInputText
-              class="title-input"
-              [(ngModel)]="titleDraft"
-              (blur)="saveTitle(t)"
-              (keydown.enter)="saveTitle(t)"
-              (keydown.escape)="editingTitle.set(false)"
-              autofocus
-            />
-          } @else {
-            <h1
-              class="task-title"
-              (click)="startEditTitle(t)"
-              title="Click to edit"
-            >
-              {{ t.title }}
-              <i class="pi pi-pencil edit-hint"></i>
-            </h1>
-          }
-
-          <!-- Description — click to edit -->
-          @if (editingDesc()) {
-            <textarea
-              pTextarea
-              class="desc-input"
-              [(ngModel)]="descDraft"
-              rows="4"
-              (blur)="saveDesc(t)"
-              (keydown.escape)="editingDesc.set(false)"
-              autofocus
-            ></textarea>
-          } @else {
-            <p
-              class="task-desc"
-              (click)="startEditDesc(t)"
-              title="Click to edit"
-            >
-              {{ t.description || '(no description)' }}
-              <i class="pi pi-pencil edit-hint"></i>
-            </p>
-          }
-
-          <!-- Details row -->
-          <div class="details-row">
-            <span class="detail-chip" [class]="'p-' + pSeverity(t)">
-              {{ pLabel(t) }}
-            </span>
-            @if (editingPriority()) {
-              <p-inputNumber
-                [(ngModel)]="priorityDraft"
-                [min]="1"
-                [max]="9999"
-                [showButtons]="true"
-                (onBlur)="savePriority(t)"
-                styleClass="priority-input"
-              />
-            } @else {
-              <span
-                class="detail-chip priority-chip"
-                (click)="startEditPriority(t)"
-                title="Click to edit priority"
-              >
-                Priority: {{ t.priority }} <i class="pi pi-pencil edit-hint"></i>
-              </span>
-            }
-
-            @if (t.assignee) {
-              <span class="detail-chip assignee-chip">👤 {{ t.assignee }}</span>
-            }
-            <span class="detail-chip ts-chip" title="Created at">
-              Created {{ fmtRelative(t.createdAt) }}
-            </span>
-            <span class="detail-chip ts-chip" title="Updated at">
-              Updated {{ fmtRelative(t.updatedAt) }}
-            </span>
-          </div>
-
-          <!-- Transition buttons -->
-          @if (validTransitions(t).length > 0) {
-            <div class="transition-row">
-              @for (target of validTransitions(t); track target) {
-                <button
-                  class="transition-btn"
-                  type="button"
-                  [style.border-color]="stateColor(target)"
-                  [style.color]="stateColor(target)"
-                  [disabled]="transitioning()"
-                  (click)="transition(t, target)"
-                >
-                  → {{ target.replace('_', ' ') }}
-                </button>
-              }
-            </div>
-          }
+      <!-- ── Header ─────────────────────────────────────── -->
+      <div class="detail-header">
+        <!-- Back + meta row -->
+        <div class="header-meta">
+          <button class="back-btn" type="button" (click)="goBack()">
+            <i class="pi pi-arrow-left"></i> Back
+          </button>
+          <span
+            class="state-badge"
+            [style.color]="stateColor(t.state)"
+            [style.background]="stateColor(t.state) + '22'"
+          >
+            {{ t.state.replace('_', ' ') }}
+          </span>
+          <span class="project-chip">{{ t.project }}</span>
+          <span class="task-id">{{ t.id.slice(0, 8) }}</span>
         </div>
 
-        <!-- ── Body ───────────────────────────────────────── -->
-        <div class="detail-body">
-          <!-- Left: Activity -->
-          <section class="body-section activity-section">
-            <div class="section-title">Activity</div>
-            <app-activity-feed
-              [taskId]="t.id"
-              [entries]="activity()"
-              [loading]="activityLoading()"
-              (commented)="onComment($event)"
-            />
+        <!-- Title — click to edit -->
+        @if (editingTitle()) {
+        <input
+          pInputText
+          class="title-input"
+          [(ngModel)]="titleDraft"
+          (blur)="saveTitle(t)"
+          (keydown.enter)="saveTitle(t)"
+          (keydown.escape)="editingTitle.set(false)"
+          autofocus
+        />
+        } @else {
+        <h1
+          class="task-title"
+          (click)="startEditTitle(t)"
+          title="Click to edit"
+        >
+          {{ t.title }}
+          <i class="pi pi-pencil edit-hint"></i>
+        </h1>
+        }
+
+        <!-- Description — click to edit -->
+        @if (editingDesc()) {
+        <textarea
+          pTextarea
+          class="desc-input"
+          [(ngModel)]="descDraft"
+          rows="4"
+          (blur)="saveDesc(t)"
+          (keydown.escape)="editingDesc.set(false)"
+          autofocus
+        ></textarea>
+        } @else {
+        <div
+          class="task-desc md-content"
+          [innerHTML]="md.render(t.description || '*(no description)*')"
+          (click)="startEditDesc(t)"
+          title="Click to edit"
+        ></div>
+        }
+
+        <!-- Details row -->
+        <div class="details-row">
+          <span class="detail-chip" [class]="'p-' + pSeverity(t)">
+            {{ pLabel(t) }}
+          </span>
+          @if (editingPriority()) {
+          <p-inputNumber
+            [(ngModel)]="priorityDraft"
+            [min]="1"
+            [max]="9999"
+            [showButtons]="true"
+            (onBlur)="savePriority(t)"
+            styleClass="priority-input"
+          />
+          } @else {
+          <span
+            class="detail-chip priority-chip"
+            (click)="startEditPriority(t)"
+            title="Click to edit priority"
+          >
+            Priority: {{ t.priority }} <i class="pi pi-pencil edit-hint"></i>
+          </span>
+          } @if (t.assignee) {
+          <span class="detail-chip assignee-chip">👤 {{ t.assignee }}</span>
+          }
+          <span class="detail-chip ts-chip" title="Created at">
+            Created {{ fmtRelative(t.createdAt) }}
+          </span>
+          <span class="detail-chip ts-chip" title="Updated at">
+            Updated {{ fmtRelative(t.updatedAt) }}
+          </span>
+        </div>
+
+        <!-- Transition buttons -->
+        @if (validTransitions(t).length > 0) {
+        <div class="transition-row">
+          @for (target of validTransitions(t); track target) {
+          <button
+            class="transition-btn"
+            type="button"
+            [style.border-color]="stateColor(target)"
+            [style.color]="stateColor(target)"
+            [disabled]="transitioning()"
+            (click)="transition(t, target)"
+          >
+            → {{ target.replace('_', ' ') }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- ── Body ───────────────────────────────────────── -->
+      <div class="detail-body">
+        <!-- Left: Activity -->
+        <section class="body-section activity-section">
+          <div class="section-title">Activity</div>
+          <app-activity-feed
+            [taskId]="t.id"
+            [entries]="activity()"
+            [loading]="activityLoading()"
+            (commented)="onComment($event)"
+          />
+        </section>
+
+        <!-- Right: History + Deps + Subtasks -->
+        <aside class="body-aside">
+          <!-- History timeline -->
+          <section class="body-section">
+            <div class="section-title">State History</div>
+            @if (history(); as h) {
+            <app-history-timeline [history]="h" />
+            } @else {
+            <p-skeleton height="120px" />
+            }
           </section>
 
-          <!-- Right: History + Deps + Subtasks -->
-          <aside class="body-aside">
-            <!-- History timeline -->
-            <section class="body-section">
-              <div class="section-title">State History</div>
-              @if (history(); as h) {
-                <app-history-timeline [history]="h" />
+          <p-divider />
+
+          <!-- Dependencies -->
+          <section class="body-section">
+            <div class="section-title-row">
+              <span class="section-title">Dependencies</span>
+              <span class="section-count">{{ deps().length }}</span>
+            </div>
+
+            @for (item of deps(); track item.dep.id) {
+            <div class="dep-row">
+              <span
+                class="dep-state"
+                [style.color]="
+                  stateColor(item.task?.state ?? TaskState.BACKLOG)
+                "
+                >●</span
+              >
+              @if (item.task) {
+              <a
+                class="dep-title"
+                [routerLink]="['/tasks', item.task.id]"
+                [queryParamsHandling]="'preserve'"
+              >
+                {{ item.task.title }}
+              </a>
+              <span
+                class="dep-state-label"
+                [style.color]="stateColor(item.task.state)"
+              >
+                {{ item.task.state.replace('_', ' ') }}
+              </span>
               } @else {
-                <p-skeleton height="120px" />
+              <span class="dep-title muted">{{
+                item.dep.dependsOnId.slice(0, 8)
+              }}</span>
               }
-            </section>
+              <button
+                class="dep-remove"
+                type="button"
+                [title]="'Remove dependency'"
+                (click)="removeDep(t, item)"
+              >
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+            }
 
-            <p-divider />
-
-            <!-- Dependencies -->
-            <section class="body-section">
-              <div class="section-title-row">
-                <span class="section-title">Dependencies</span>
-                <span class="section-count">{{ deps().length }}</span>
-              </div>
-
-              @for (item of deps(); track item.dep.id) {
-                <div class="dep-row">
-                  <span
-                    class="dep-state"
-                    [style.color]="stateColor(item.task?.state ?? TaskState.BACKLOG)"
-                  >●</span>
-                  @if (item.task) {
-                    <a
-                      class="dep-title"
-                      [routerLink]="['/tasks', item.task.id]"
-                      [queryParamsHandling]="'preserve'"
-                    >
-                      {{ item.task.title }}
-                    </a>
-                    <span
-                      class="dep-state-label"
-                      [style.color]="stateColor(item.task.state)"
-                    >
-                      {{ item.task.state.replace('_', ' ') }}
-                    </span>
-                  } @else {
-                    <span class="dep-title muted">{{ item.dep.dependsOnId.slice(0, 8) }}</span>
-                  }
-                  <button
-                    class="dep-remove"
-                    type="button"
-                    [title]="'Remove dependency'"
-                    (click)="removeDep(t, item)"
-                  >
-                    <i class="pi pi-times"></i>
-                  </button>
-                </div>
+            <!-- Add dependency -->
+            <div class="add-dep-row">
+              @if (addingDep()) {
+              <input
+                pInputText
+                class="add-dep-input"
+                [(ngModel)]="depIdDraft"
+                placeholder="Task ID or search…"
+                (keydown.enter)="addDep(t)"
+                (keydown.escape)="addingDep.set(false)"
+                autofocus
+              />
+              <p-button
+                icon="pi pi-check"
+                size="small"
+                [text]="true"
+                [disabled]="!depIdDraft.trim()"
+                (onClick)="addDep(t)"
+              />
+              <p-button
+                icon="pi pi-times"
+                size="small"
+                [text]="true"
+                severity="secondary"
+                (onClick)="addingDep.set(false)"
+              />
+              } @else {
+              <button
+                class="add-btn"
+                type="button"
+                (click)="addingDep.set(true)"
+              >
+                <i class="pi pi-plus"></i> Add dependency
+              </button>
               }
+            </div>
+          </section>
 
-              <!-- Add dependency -->
-              <div class="add-dep-row">
-                @if (addingDep()) {
-                  <input
-                    pInputText
-                    class="add-dep-input"
-                    [(ngModel)]="depIdDraft"
-                    placeholder="Task ID or search…"
-                    (keydown.enter)="addDep(t)"
-                    (keydown.escape)="addingDep.set(false)"
-                    autofocus
-                  />
-                  <p-button
-                    icon="pi pi-check"
-                    size="small"
-                    [text]="true"
-                    [disabled]="!depIdDraft.trim()"
-                    (onClick)="addDep(t)"
-                  />
-                  <p-button
-                    icon="pi pi-times"
-                    size="small"
-                    [text]="true"
-                    severity="secondary"
-                    (onClick)="addingDep.set(false)"
-                  />
-                } @else {
-                  <button
-                    class="add-btn"
-                    type="button"
-                    (click)="addingDep.set(true)"
-                  >
-                    <i class="pi pi-plus"></i> Add dependency
-                  </button>
-                }
-              </div>
-            </section>
+          <p-divider />
 
-            <p-divider />
+          <!-- Subtasks -->
+          <section class="body-section">
+            <div class="section-title-row">
+              <span class="section-title">Subtasks</span>
+              <span class="section-count">{{ subtaskProgress() }}</span>
+            </div>
 
-            <!-- Subtasks -->
-            <section class="body-section">
-              <div class="section-title-row">
-                <span class="section-title">Subtasks</span>
-                <span class="section-count">{{ subtaskProgress() }}</span>
-              </div>
+            @if (subtasks().length > 0) {
+            <div class="subtask-progress-bar">
+              <div
+                class="subtask-progress-fill"
+                [style.width.%]="subtaskPercent()"
+              ></div>
+            </div>
+            } @for (sub of subtasks(); track sub.id) {
+            <div class="subtask-row" (click)="navigateToSubtask(sub.id)">
+              <span class="dep-state" [style.color]="stateColor(sub.state)"
+                >●</span
+              >
+              <span class="subtask-title">{{ sub.title }}</span>
+              <span
+                class="dep-state-label"
+                [style.color]="stateColor(sub.state)"
+              >
+                {{ sub.state.replace('_', ' ') }}
+              </span>
+            </div>
+            }
 
-              @if (subtasks().length > 0) {
-                <div class="subtask-progress-bar">
-                  <div
-                    class="subtask-progress-fill"
-                    [style.width.%]="subtaskPercent()"
-                  ></div>
-                </div>
+            <!-- Quick-create subtask -->
+            <div class="add-dep-row">
+              @if (addingSubtask()) {
+              <input
+                pInputText
+                class="add-dep-input"
+                [(ngModel)]="subtaskTitleDraft"
+                placeholder="Subtask title…"
+                (keydown.enter)="addSubtask(t)"
+                (keydown.escape)="addingSubtask.set(false)"
+                autofocus
+              />
+              <p-button
+                icon="pi pi-check"
+                size="small"
+                [text]="true"
+                [disabled]="!subtaskTitleDraft.trim()"
+                (onClick)="addSubtask(t)"
+              />
+              <p-button
+                icon="pi pi-times"
+                size="small"
+                [text]="true"
+                severity="secondary"
+                (onClick)="addingSubtask.set(false)"
+              />
+              } @else {
+              <button
+                class="add-btn"
+                type="button"
+                (click)="addingSubtask.set(true)"
+              >
+                <i class="pi pi-plus"></i> Add subtask
+              </button>
               }
-
-              @for (sub of subtasks(); track sub.id) {
-                <div class="subtask-row" (click)="navigateToSubtask(sub.id)">
-                  <span
-                    class="dep-state"
-                    [style.color]="stateColor(sub.state)"
-                  >●</span>
-                  <span class="subtask-title">{{ sub.title }}</span>
-                  <span
-                    class="dep-state-label"
-                    [style.color]="stateColor(sub.state)"
-                  >
-                    {{ sub.state.replace('_', ' ') }}
-                  </span>
-                </div>
-              }
-
-              <!-- Quick-create subtask -->
-              <div class="add-dep-row">
-                @if (addingSubtask()) {
-                  <input
-                    pInputText
-                    class="add-dep-input"
-                    [(ngModel)]="subtaskTitleDraft"
-                    placeholder="Subtask title…"
-                    (keydown.enter)="addSubtask(t)"
-                    (keydown.escape)="addingSubtask.set(false)"
-                    autofocus
-                  />
-                  <p-button
-                    icon="pi pi-check"
-                    size="small"
-                    [text]="true"
-                    [disabled]="!subtaskTitleDraft.trim()"
-                    (onClick)="addSubtask(t)"
-                  />
-                  <p-button
-                    icon="pi pi-times"
-                    size="small"
-                    [text]="true"
-                    severity="secondary"
-                    (onClick)="addingSubtask.set(false)"
-                  />
-                } @else {
-                  <button
-                    class="add-btn"
-                    type="button"
-                    (click)="addingSubtask.set(true)"
-                  >
-                    <i class="pi pi-plus"></i> Add subtask
-                  </button>
-                }
-              </div>
-            </section>
-          </aside>
-        </div>
+            </div>
+          </section>
+        </aside>
+      </div>
       } @else if (!loading()) {
-        <div class="not-found">Task not found.</div>
+      <div class="not-found">Task not found.</div>
       }
     </div>
   `,
@@ -488,13 +487,37 @@ interface DepTask {
       padding: 4px;
       border-radius: 4px;
       transition: background 0.12s;
-      white-space: pre-wrap;
       word-break: break-word;
 
       &:hover {
         background: var(--p-surface-800);
-        .edit-hint { opacity: 1; }
       }
+    }
+
+    .task-desc.md-content :is(p, ul, ol, blockquote, h1, h2, h3, h4) {
+      margin: 0 0 8px;
+    }
+    .task-desc.md-content :is(p, ul, ol):last-child {
+      margin-bottom: 0;
+    }
+    .task-desc.md-content pre {
+      margin: 8px 0;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    .task-desc.md-content code:not(pre code) {
+      background: var(--p-surface-700);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+    .task-desc.md-content a {
+      color: var(--p-primary-color);
+    }
+    .task-desc.md-content blockquote {
+      border-left: 3px solid var(--p-surface-500);
+      padding-left: 12px;
+      color: var(--p-text-muted-color);
     }
 
     .desc-input {
@@ -756,6 +779,7 @@ export class TaskDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly messageService = inject(MessageService);
+  readonly md = inject(MarkdownService);
 
   readonly TaskState = TaskState;
 
@@ -820,13 +844,11 @@ export class TaskDetailComponent implements OnInit {
       });
 
     // SSE: update task in place if it's the one we're viewing
-    this.sse.taskUpdated$
-      .pipe(takeUntilDestroyed())
-      .subscribe((e) => {
-        if (this.task()?.id === e.payload.id) {
-          this.task.set(e.payload);
-        }
-      });
+    this.sse.taskUpdated$.pipe(takeUntilDestroyed()).subscribe((e) => {
+      if (this.task()?.id === e.payload.id) {
+        this.task.set(e.payload);
+      }
+    });
   }
 
   private loadRelated(id: string): void {
@@ -854,11 +876,10 @@ export class TaskDetailComponent implements OnInit {
         }
         forkJoin(
           depList.map((dep) =>
-            this.api.getTask(dep.dependsOnId).pipe(
-              catchError(() => of(null))
-            ).pipe(
-              switchMap((t) => of({ dep, task: t as TaskOut | null }))
-            )
+            this.api
+              .getTask(dep.dependsOnId)
+              .pipe(catchError(() => of(null)))
+              .pipe(switchMap((t) => of({ dep, task: t as TaskOut | null })))
           )
         ).subscribe({ next: (items) => this.deps.set(items) });
       },
@@ -963,8 +984,7 @@ export class TaskDetailComponent implements OnInit {
         this.api.getTask(dep.dependsOnId).subscribe({
           next: (depTask) =>
             this.deps.update((d) => [...d, { dep, task: depTask }]),
-          error: () =>
-            this.deps.update((d) => [...d, { dep, task: null }]),
+          error: () => this.deps.update((d) => [...d, { dep, task: null }]),
         });
       },
       error: (err) =>

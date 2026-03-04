@@ -38,16 +38,18 @@ function formatElapsed(ms: number): string {
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [CommonModule, CdkDrag, CdkDragPlaceholder, TagModule, TooltipModule, ButtonModule],
+  imports: [
+    CommonModule,
+    CdkDrag,
+    CdkDragPlaceholder,
+    TagModule,
+    TooltipModule,
+    ButtonModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'task-card-host' },
   template: `
-    <div
-      class="task-card"
-      cdkDrag
-      [cdkDragData]="task()"
-      (click)="navigate()"
-    >
+    <div class="task-card" cdkDrag [cdkDragData]="task()" (click)="navigate()">
       <!-- Drag preview placeholder -->
       <div class="drag-placeholder" *cdkDragPlaceholder></div>
 
@@ -58,26 +60,28 @@ function formatElapsed(ms: number): string {
           [severity]="pSeverity()"
           styleClass="priority-tag"
         />
-        <span class="card-title" [title]="task().title">{{ task().title }}</span>
+        <span class="card-title" [title]="task().title">{{
+          task().title
+        }}</span>
       </div>
 
       <!-- Meta row -->
       <div class="card-meta">
         @if (task().assignee) {
-          <span class="assignee-chip" [pTooltip]="task().assignee!">
-            {{ shortName(task().assignee!) }}
-          </span>
+        <span class="assignee-chip" [pTooltip]="task().assignee!">
+          {{ shortName(task().assignee!) }}
+        </span>
         }
 
         <!-- Elapsed ticker for IN_PROGRESS tasks -->
         @if (task().state === TaskState.IN_PROGRESS && task().assignedAt) {
-          <span
-            class="elapsed-badge"
-            [class]="'severity-' + staleSeverity()"
-            [pTooltip]="'Assigned at ' + task().assignedAt"
-          >
-            ⏱ {{ elapsedLabel() }}
-          </span>
+        <span
+          class="elapsed-badge"
+          [class]="'severity-' + staleSeverity()"
+          [pTooltip]="'Assigned at ' + task().assignedAt"
+        >
+          ⏱ {{ elapsedLabel() }}
+        </span>
         }
       </div>
 
@@ -94,15 +98,15 @@ function formatElapsed(ms: number): string {
         </button>
 
         @for (target of validTransitions(); track target) {
-          <button
-            class="qa-btn"
-            type="button"
-            [pTooltip]="'→ ' + target"
-            tooltipPosition="top"
-            (click)="quickTransition.emit({ task: task(), state: target })"
-          >
-            {{ stateShort(target) }}
-          </button>
+        <button
+          class="qa-btn"
+          type="button"
+          [pTooltip]="'→ ' + target"
+          tooltipPosition="top"
+          (click)="quickTransition.emit({ task: task(), state: target })"
+        >
+          {{ stateShort(target) }}
+        </button>
         }
       </div>
     </div>
@@ -255,10 +259,9 @@ export class TaskCardComponent {
   readonly TaskState = TaskState;
 
   // Tick every second — only meaningful for IN_PROGRESS cards
-  private readonly _tick = toSignal(
-    interval(1000).pipe(takeUntilDestroyed()),
-    { initialValue: 0 }
-  );
+  private readonly _tick = toSignal(interval(1000).pipe(takeUntilDestroyed()), {
+    initialValue: 0,
+  });
 
   readonly elapsedMs = computed(() => {
     this._tick(); // depend on tick to re-evaluate every second

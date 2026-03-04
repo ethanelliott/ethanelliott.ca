@@ -59,13 +59,13 @@ import { TaskState } from '../models/task.model';
         appendTo="body"
       />
       @if (selectedSummary(); as s) {
-        <div class="project-stats">
-          @for (state of statePairs(s); track state.key) {
-            <span class="stat-chip" [class]="'state-' + state.key.toLowerCase()">
-              {{ state.key.replace('_', ' ') }} {{ state.count }}
-            </span>
-          }
-        </div>
+      <div class="project-stats">
+        @for (state of statePairs(s); track state.key) {
+        <span class="stat-chip" [class]="'state-' + state.key.toLowerCase()">
+          {{ state.key.replace('_', ' ') }} {{ state.count }}
+        </span>
+        }
+      </div>
       }
     </div>
 
@@ -253,9 +253,7 @@ export class SidebarComponent {
     }
   });
 
-  statePairs(
-    summary: ProjectSummary
-  ): { key: string; count: number }[] {
+  statePairs(summary: ProjectSummary): { key: string; count: number }[] {
     return Object.entries(summary.byState)
       .filter(([, v]) => v && v > 0)
       .sort(([a], [b]) => {

@@ -46,7 +46,9 @@ interface TimelineItem {
           class="tl-dot"
           [class.ongoing]="item.isOngoing"
           [style.border-color]="dotColor(item.entry.toState)"
-          [style.background]="item.isOngoing ? dotColor(item.entry.toState) : 'transparent'"
+          [style.background]="
+            item.isOngoing ? dotColor(item.entry.toState) : 'transparent'
+          "
         ></span>
       </ng-template>
 
@@ -61,15 +63,17 @@ interface TimelineItem {
               {{ item.entry.toState.replace('_', ' ') }}
             </span>
             @if (item.entry.fromState === null) {
-              <span class="tl-meta">Created</span>
+            <span class="tl-meta">Created</span>
             }
             <span class="tl-ts">{{ fmt(item.entry.timestamp) }}</span>
           </div>
 
           @if (item.durationMs !== null) {
-            <span class="duration-chip">{{ fmtDur(item.durationMs) }}</span>
+          <span class="duration-chip">{{ fmtDur(item.durationMs) }}</span>
           } @else if (item.isOngoing) {
-            <span class="duration-chip ongoing-chip">ongoing <span class="pulse-dot"></span></span>
+          <span class="duration-chip ongoing-chip"
+            >ongoing <span class="pulse-dot"></span
+          ></span>
           }
         </div>
       </ng-template>

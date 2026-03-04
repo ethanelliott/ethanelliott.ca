@@ -30,44 +30,41 @@ import {
       </div>
 
       @if (eligible().length === 0) {
-        <div class="empty-state">No tasks ready to be picked up.</div>
-      }
-
-      @for (task of eligible(); track task.id; let i = $index) {
-        <div class="queue-row" (click)="navigate(task.id)">
-          <span class="rank">#{{ i + 1 }}</span>
-          <p-tag
-            [value]="pLabel(task)"
-            [severity]="pSeverity(task)"
-            styleClass="small-tag"
-          />
-          <span class="row-title" [title]="task.title">{{ task.title }}</span>
-          <span class="row-age" [pTooltip]="task.createdAt">
-            {{ age(task.createdAt) }}
-          </span>
-        </div>
+      <div class="empty-state">No tasks ready to be picked up.</div>
+      } @for (task of eligible(); track task.id; let i = $index) {
+      <div class="queue-row" (click)="navigate(task.id)">
+        <span class="rank">#{{ i + 1 }}</span>
+        <p-tag
+          [value]="pLabel(task)"
+          [severity]="pSeverity(task)"
+          styleClass="small-tag"
+        />
+        <span class="row-title" [title]="task.title">{{ task.title }}</span>
+        <span class="row-age" [pTooltip]="task.createdAt">
+          {{ age(task.createdAt) }}
+        </span>
+      </div>
       }
 
       <!-- Blocked section -->
       @if (blocked().length > 0) {
-        <div class="section-header blocked-header">
-          <span class="section-title">Blocked / Waiting</span>
-          <span class="section-count">{{ blocked().length }}</span>
-        </div>
+      <div class="section-header blocked-header">
+        <span class="section-title">Blocked / Waiting</span>
+        <span class="section-count">{{ blocked().length }}</span>
+      </div>
 
-        @for (task of blocked(); track task.id) {
-          <div class="queue-row blocked-row" (click)="navigate(task.id)">
-            <span class="block-icon">🔒</span>
-            <p-tag
-              [value]="pLabel(task)"
-              [severity]="pSeverity(task)"
-              styleClass="small-tag"
-            />
-            <span class="row-title" [title]="task.title">{{ task.title }}</span>
-            <span class="blocked-label">waiting on deps</span>
-          </div>
-        }
-      }
+      @for (task of blocked(); track task.id) {
+      <div class="queue-row blocked-row" (click)="navigate(task.id)">
+        <span class="block-icon">🔒</span>
+        <p-tag
+          [value]="pLabel(task)"
+          [severity]="pSeverity(task)"
+          styleClass="small-tag"
+        />
+        <span class="row-title" [title]="task.title">{{ task.title }}</span>
+        <span class="blocked-label">waiting on deps</span>
+      </div>
+      } }
     </div>
   `,
   styles: `
@@ -185,7 +182,9 @@ export class QueuePanelComponent {
       .filter((t) => t.state === TaskState.TODO)
       .sort((a, b) => {
         if (a.priority !== b.priority) return a.priority - b.priority;
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       })
   );
 

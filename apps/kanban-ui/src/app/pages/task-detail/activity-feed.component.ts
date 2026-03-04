@@ -13,6 +13,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { KanbanApiService } from '../../services/kanban-api.service';
+import { MarkdownService } from '../../services/markdown.service';
 import {
   ActivityEntryOut,
   ActivityEntryType,
@@ -33,49 +34,41 @@ import {
     <!-- Activity entries (reverse chronological) -->
     <div class="feed-list">
       @if (entries().length === 0 && !loading()) {
-        <div class="feed-empty">No activity yet.</div>
-      }
-
-      @for (entry of sortedEntries(); track entry.id) {
-        <div class="feed-entry" [class]="'type-' + entry.type.toLowerCase()">
-          <div class="entry-icon">{{ entryIcon(entry.type) }}</div>
-          <div class="entry-body">
-            <div class="entry-header">
-              @if (entry.author) {
-                <span class="entry-author">{{ entry.author }}</span>
-              }
-              <span class="entry-ts">{{ fmt(entry.createdAt) }}</span>
-            </div>
-
-            @switch (entry.type) {
-              @case (ActivityEntryType.COMMENT) {
-                <div class="comment-bubble">
-                  <pre class="comment-text">{{ entry.content }}</pre>
-                </div>
-              }
-              @case (ActivityEntryType.STATE_CHANGE) {
-                <div class="event-pill state-change">
-                  {{ entry.content }}
-                </div>
-              }
-              @case (ActivityEntryType.ASSIGNMENT) {
-                <div class="event-pill assignment">
-                  {{ entry.content }}
-                </div>
-              }
-              @case (ActivityEntryType.DEPENDENCY) {
-                <div class="event-pill dependency">
-                  {{ entry.content }}
-                </div>
-              }
-              @case (ActivityEntryType.SUBTASK) {
-                <div class="event-pill subtask">
-                  {{ entry.content }}
-                </div>
-              }
+      <div class="feed-empty">No activity yet.</div>
+      } @for (entry of sortedEntries(); track entry.id) {
+      <div class="feed-entry" [class]="'type-' + entry.type.toLowerCase()">
+        <div class="entry-icon">{{ entryIcon(entry.type) }}</div>
+        <div class="entry-body">
+          <div class="entry-header">
+            @if (entry.author) {
+            <span class="entry-author">{{ entry.author }}</span>
             }
+            <span class="entry-ts">{{ fmt(entry.createdAt) }}</span>
           </div>
+
+          @switch (entry.type) { @case (ActivityEntryType.COMMENT) {
+          <div class="comment-bubble">
+            <div class="comment-text md-content" [innerHTML]="md.render(entry.content)"></div>
+          </div>
+          } @case (ActivityEntryType.STATE_CHANGE) {
+          <div class="event-pill state-change">
+            {{ entry.content }}
+          </div>
+          } @case (ActivityEntryType.ASSIGNMENT) {
+          <div class="event-pill assignment">
+            {{ entry.content }}
+          </div>
+          } @case (ActivityEntryType.DEPENDENCY) {
+          <div class="event-pill dependency">
+            {{ entry.content }}
+          </div>
+          } @case (ActivityEntryType.SUBTASK) {
+          <div class="event-pill subtask">
+            {{ entry.content }}
+          </div>
+          } }
         </div>
+      </div>
       }
     </div>
 
@@ -111,7 +104,7 @@ import {
         />
       </div>
       @if (postError()) {
-        <p class="post-error">{{ postError() }}</p>
+      <p class="post-error">{{ postError() }}</p>
       }
     </div>
   `,
@@ -187,9 +180,28 @@ import {
       margin: 0;
       font-size: 0.82rem;
       color: var(--p-text-color);
-      white-space: pre-wrap;
       word-break: break-word;
-      font-family: inherit;
+    }
+
+    .comment-text.md-content :is(p, ul, ol, blockquote) {
+      margin: 0 0 6px;
+    }
+    .comment-text.md-content p:last-child {
+      margin-bottom: 0;
+    }
+    .comment-text.md-content pre {
+      margin: 6px 0;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .comment-text.md-content code:not(pre code) {
+      background: var(--p-surface-700);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.78rem;
+    }
+    .comment-text.md-content a {
+      color: var(--p-primary-color);
     }
 
     /* System event pills */
@@ -260,6 +272,7 @@ import {
 })
 export class ActivityFeedComponent {
   private readonly api = inject(KanbanApiService);
+  readonly md = inject(MarkdownService);
 
   readonly taskId = input.required<string>();
   readonly entries = input<ActivityEntryOut[]>([]);
@@ -320,9 +333,7 @@ export class ActivityFeedComponent {
         },
         error: (err) => {
           this.posting.set(false);
-          this.postError.set(
-            err?.error?.message ?? 'Failed to post comment.'
-          );
+          this.postError.set(err?.error?.message ?? 'Failed to post comment.');
         },
       });
   }

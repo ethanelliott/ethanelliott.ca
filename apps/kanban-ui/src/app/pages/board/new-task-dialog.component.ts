@@ -103,7 +103,7 @@ interface StateOption {
         </div>
 
         @if (errorMsg()) {
-          <p class="error-msg">{{ errorMsg() }}</p>
+        <p class="error-msg">{{ errorMsg() }}</p>
         }
       </form>
 
