@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   inject,
   signal,
@@ -773,6 +774,7 @@ interface DepTask {
   `,
 })
 export class TaskDetailComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(KanbanApiService);
   private readonly sse = inject(KanbanSseService);
   private readonly route = inject(ActivatedRoute);
@@ -829,7 +831,7 @@ export class TaskDetailComponent implements OnInit {
           this.loading.set(true);
           return this.api.getTask(id);
         }),
-        takeUntilDestroyed()
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (task) => {
@@ -844,18 +846,22 @@ export class TaskDetailComponent implements OnInit {
       });
 
     // SSE: update task in place if it's the one we're viewing
-    this.sse.taskUpdated$.pipe(takeUntilDestroyed()).subscribe((e) => {
-      if (this.task()?.id === e.payload.id) {
-        this.task.set(e.payload);
-      }
-    });
+    this.sse.taskUpdated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((e) => {
+        if (this.task()?.id === e.payload.id) {
+          this.task.set(e.payload);
+        }
+      });
 
     // SSE: live-append activity entries for the current task
-    this.sse.activityAdded$.pipe(takeUntilDestroyed()).subscribe((e) => {
-      if (this.task()?.id === e.payload.taskId) {
-        this.activity.update((list) => [...list, e.payload]);
-      }
-    });
+    this.sse.activityAdded$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((e) => {
+        if (this.task()?.id === e.payload.taskId) {
+          this.activity.update((list) => [...list, e.payload]);
+        }
+      });
   }
 
   private loadRelated(id: string): void {
