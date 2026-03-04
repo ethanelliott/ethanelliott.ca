@@ -89,11 +89,11 @@ import { TaskState } from '../models/task.model';
         <i class="pi pi-chart-bar"></i>
         <span>Dashboard</span>
       </a>
-      <a
-        class="nav-link"
-        routerLink="/skill"
-        routerLinkActive="active"
-      >
+    </nav>
+
+    <!-- Bottom Links -->
+    <nav class="nav-bottom">
+      <a class="nav-link" routerLink="/skill" routerLinkActive="active">
         <i class="pi pi-book"></i>
         <span>Skill File</span>
       </a>
@@ -197,6 +197,14 @@ import { TaskState } from '../models/task.model';
       flex-direction: column;
       gap: 2px;
       flex: 1;
+    }
+
+    .nav-bottom {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      border-top: 1px solid var(--p-surface-700);
     }
 
     .nav-link {
