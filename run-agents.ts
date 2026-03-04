@@ -13,8 +13,9 @@
  *   --count     Number of parallel agents to run  (default: 2)
  *   --api       Kanban API base URL               (default: http://localhost:3333)
  *   --model     opencode model flag               (default: omitted)
- *   --loop      Keep spawning new waves of agents indefinitely (Ctrl-C to stop)
- *   --delay     Seconds to wait between waves when --loop is set (default: 5)
+ *   --loop      Keep the pool full indefinitely — as soon as one agent finishes
+ *               a replacement is spawned after --delay seconds (Ctrl-C to stop)
+ *   --delay     Seconds to wait before spawning a replacement agent (default: 5)
  */
 
 import { parseArgs } from 'util';
@@ -191,39 +192,52 @@ async function runAgent(index: number): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Main — launch all agents in parallel, optionally looping
+// Main — pool model: always keep COUNT agents running
 // ---------------------------------------------------------------------------
 console.log(
   `Starting ${COUNT} agent(s)${
     PROJECT ? ` for project "${PROJECT}"` : ' across all projects'
-  } against ${API}${LOOP ? ' [loop mode]' : ''}`
+  } against ${API}${LOOP ? ' [pool mode — loop]' : ''}`
 );
 console.log(`Logs: ${LOG_DIR}/\n`);
 
+let agentSeq = 0;
+let totalFailed = 0;
+
 // Graceful shutdown on Ctrl-C
 process.on('SIGINT', () => {
-  console.log('\nInterrupted — agents will finish their current operation.');
+  console.log('\nInterrupted — waiting for active agents to finish.');
   process.exit(0);
 });
 
-let wave = 0;
-do {
-  wave++;
-  if (LOOP) console.log(`\n${'─'.repeat(60)}\nWave ${wave}\n${'─'.repeat(60)}`);
-
-  const agents = Array.from({ length: COUNT }, (_, i) => runAgent(i + 1));
-  const results = await Promise.allSettled(agents);
-
+if (!LOOP) {
+  // Non-loop: run exactly COUNT agents and wait for all to finish.
+  const results = await Promise.allSettled(
+    Array.from({ length: COUNT }, () => runAgent(++agentSeq))
+  );
   const failed = results.filter((r) => r.status === 'rejected').length;
   console.log(
-    `\nWave ${wave} finished. ${COUNT - failed}/${COUNT} completed cleanly.`
+    `\nAll agents finished. ${COUNT - failed}/${COUNT} completed cleanly.`
   );
-
-  if (!LOOP) {
-    if (failed > 0) process.exit(1);
-    break;
+  if (failed > 0) process.exit(1);
+} else {
+  // Pool mode: fill the pool initially, then replace each agent as it finishes.
+  // Each slot is a self-perpetuating async chain.
+  async function slot(): Promise<void> {
+    while (true) {
+      const id = ++agentSeq;
+      try {
+        await runAgent(id);
+      } catch {
+        totalFailed++;
+      }
+      console.log(
+        `Replacing agent-${id} in ${DELAY_MS / 1000}s — Ctrl-C to stop.`
+      );
+      await Bun.sleep(DELAY_MS);
+    }
   }
 
-  console.log(`Next wave in ${DELAY_MS / 1000}s — Ctrl-C to stop.`);
-  await Bun.sleep(DELAY_MS);
-} while (true);
+  // Start COUNT independent slots — they run forever until interrupted.
+  await Promise.all(Array.from({ length: COUNT }, () => slot()));
+}
