@@ -50,3 +50,6 @@ finances.db
 .env
 aritzia_stock.sqlite*
 .env.camera
+apps/kanban/public/
+*.bun-build
+kanban.db

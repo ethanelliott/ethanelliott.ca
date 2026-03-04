@@ -8,11 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/apps/kanban-ui",
+        "outputPath": "apps/kanban/public/ui",
         "index": "apps/kanban-ui/src/index.html",
         "browser": "apps/kanban-ui/src/main.ts",
         "polyfills": [],
@@ -24,10 +22,9 @@
             "input": "apps/kanban-ui/public"
           }
         ],
-        "styles": [
-          "apps/kanban-ui/src/styles.scss"
-        ],
-        "scripts": []
+        "styles": ["apps/kanban-ui/src/styles.scss"],
+        "scripts": [],
+        "outputMode": "static"
       },
       "configurations": {
         "production": {
@@ -57,7 +54,8 @@
               "replace": "apps/kanban-ui/src/environments/environment.ts",
               "with": "apps/kanban-ui/src/environments/environment.prod.ts"
             }
-          ]
+          ],
+          "baseHref": "/ui/"
         },
         "development": {
           "optimization": false,
@@ -78,17 +76,6 @@
         }
       },
       "defaultConfiguration": "development"
-    },
-    "container": {
-      "dependsOn": [
-        "build"
-      ],
-      "executor": "./tools/executors/deploy:container",
-      "options": {
-        "image": "ethanelliottio/kanban-ui",
-        "dockerfile": "apps/kanban-ui/Dockerfile",
-        "deployment": "kanban-ui"
-      }
     }
   }
 }

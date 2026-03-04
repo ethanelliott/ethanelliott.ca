@@ -30,21 +30,23 @@ function isReader(sql: string): boolean {
 class BunSQLiteStatement {
   readonly reader: boolean;
 
-  constructor(
-    private readonly stmt: Statement,
-    sql: string
-  ) {
+  constructor(private readonly stmt: Statement, sql: string) {
     this.reader = isReader(sql);
   }
 
-  run(...args: unknown[]): { changes: number; lastInsertRowid: number | bigint } {
+  run(...args: unknown[]): {
+    changes: number;
+    lastInsertRowid: number | bigint;
+  } {
     const r = this.stmt.run(...(args as Parameters<typeof this.stmt.run>));
     return { changes: r.changes, lastInsertRowid: r.lastInsertRowid };
   }
 
   get(...args: unknown[]): unknown {
     // better-sqlite3 returns undefined (not null) when no row found
-    return this.stmt.get(...(args as Parameters<typeof this.stmt.get>)) ?? undefined;
+    return (
+      this.stmt.get(...(args as Parameters<typeof this.stmt.get>)) ?? undefined
+    );
   }
 
   all(...args: unknown[]): unknown[] {

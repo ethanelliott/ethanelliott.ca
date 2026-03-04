@@ -7,29 +7,22 @@
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/kanban",
-        "format": [
-          "esm"
-        ],
+        "format": ["esm"],
         "bundle": true,
         "main": "apps/kanban/src/main.ts",
         "tsConfig": "apps/kanban/tsconfig.app.json",
-        "assets": [],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
           "outExtension": {
             ".js": ".js"
           },
-          "external": [
-            "bun:sqlite"
-          ]
+          "external": ["bun:sqlite"]
         }
       },
       "configurations": {
@@ -45,9 +38,7 @@
             "outExtension": {
               ".js": ".js"
             },
-            "external": [
-              "bun:sqlite"
-            ]
+            "external": ["bun:sqlite"]
           }
         }
       }
@@ -56,9 +47,7 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "buildTarget": "kanban:build",
         "runBuildTargetDependencies": false
@@ -72,15 +61,21 @@
         }
       }
     },
-    "container": {
+    "compile": {
+      "executor": "nx:run-commands",
       "dependsOn": [
+        {
+          "target": "build",
+          "projects": "kanban-ui"
+        },
         "build"
       ],
-      "executor": "./tools/executors/deploy:container",
       "options": {
-        "image": "ethanelliottio/kanban",
-        "dockerfile": "apps/kanban/Dockerfile",
-        "deployment": "kanban"
+        "commands": [
+          "cp -r apps/kanban/public dist/apps/kanban/public",
+          "bun build --compile dist/apps/kanban/main.js --outfile dist/apps/kanban/kanban-server"
+        ],
+        "parallel": false
       }
     }
   }

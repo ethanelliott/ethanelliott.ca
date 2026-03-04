@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import circuitBreaker from '@fastify/circuit-breaker';
 
-export const CircuitBreakerPlugin = fp(async function (
+export const CircuitBreakerPlugin = fp(async function CircuitBreakerPlugin(
   fastify: FastifyInstance
 ) {
   await fastify.register(circuitBreaker, {

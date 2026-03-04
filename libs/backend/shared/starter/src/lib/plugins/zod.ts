@@ -5,7 +5,7 @@ import {
   validatorCompiler,
 } from 'fastify-type-provider-zod';
 
-export const ZodPlugin = fp(async function (fastify: FastifyInstance) {
+export const ZodPlugin = fp(async function ZodPlugin(fastify: FastifyInstance) {
   fastify.setValidatorCompiler(validatorCompiler);
   fastify.setSerializerCompiler(serializerCompiler);
 });

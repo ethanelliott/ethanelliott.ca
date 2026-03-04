@@ -21,7 +21,7 @@ declare module 'fastify' {
   }
 }
 
-export const JWTPlugin = fp(async function (fastify: FastifyInstance) {
+export const JWTPlugin = fp(async function JWTPlugin(fastify: FastifyInstance) {
   // Register JWT plugin
   await fastify.register(jwt, {
     secret:

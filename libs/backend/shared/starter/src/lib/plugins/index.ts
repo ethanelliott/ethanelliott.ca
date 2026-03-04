@@ -14,7 +14,9 @@ import { ReferencePlugin } from './reference';
 import { K8sPlugin } from './k8s';
 import { GracefulShutdownPlugin } from './graceful-shutdown';
 
-export const MainPlugin = fp(async function (fastify: FastifyInstance) {
+export const MainPlugin = fp(async function MainPlugin(
+  fastify: FastifyInstance
+) {
   await fastify.register(GracefulShutdownPlugin);
   await fastify.register(SensiblePlugin);
   await fastify.register(CircuitBreakerPlugin);
@@ -28,6 +30,8 @@ export const MainPlugin = fp(async function (fastify: FastifyInstance) {
   await fastify.register(K8sPlugin);
 
   // Must register swagger last ...
-  await fastify.register(SwaggerPlugin);
-  await fastify.register(ReferencePlugin);
+  if (process.env['ENABLE_SWAGGER'] === 'true') {
+    await fastify.register(SwaggerPlugin);
+    await fastify.register(ReferencePlugin);
+  }
 });
