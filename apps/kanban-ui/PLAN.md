@@ -37,7 +37,7 @@ Two deliverables on top of the existing `apps/kanban` backend:
 | API prefix on backend          | All API routes remain at `/tasks`, `/projects` (no `/api` prefix). Angular calls same-origin.                                                                                        |
 | UI route on backend            | `@fastify/static` serves Angular dist at `/ui/**`. Redirect `/` to `/ui/`.                                                                                                           |
 | Angular `base-href`            | Set to `/ui/` at build time (`--base-href /ui/`).                                                                                                                                    |
-| Polling vs. WebSocket          | **Polling** — 5s for boards/agent monitor, 30s for dashboard. Simple, no SSE/WS plumbing.                                                                                           |
+| Real-time updates              | **Server-Sent Events (SSE)** — backend emits typed events on every mutation; Angular subscribes via `EventSource` wrapped in an RxJS `Observable`. No polling, no WebSocket handshake overhead. |
 | Tauri sidecar port selection   | Fastify picks a free port and prints `PORT:{port}` to stdout. The Rust main reads this and passes it to `WebviewWindow::url()`.                                                      |
 | Tauri data directory           | DB path from `app.path().app_data_dir()` — e.g. `~/Library/Application Support/ca.ethanelliott.kanban/kanban.db` on macOS.                                                          |
 | Tauri IPC                      | Minimal — port communicated via sidecar stdout. Angular uses `window.location.origin` so no IPC needed for the base URL.                                                             |
@@ -45,7 +45,7 @@ Two deliverables on top of the existing `apps/kanban` backend:
 | Tauri packaging                | `tauri build`: `dmg`/`zip` (macOS), `nsis`/`msi` (Windows), `deb`/`AppImage` (Linux). ~5-15 MB installer (no bundled Chromium).                                                     |
 | Angular conventions            | Match the rest of the repo: standalone, zoneless, OnPush, signals, inline templates, `inject()`.                                                                                     |
 | PrimeNG theme                  | **Aura Dark** (same as `chat-frontend` and `recipes-frontend`).                                                                                                                      |
-| Task auto-refresh              | `rxjs/timer` with `switchMap` and `takeUntilDestroyed` — no manual interval management.                                                                                              |
+| Task auto-refresh              | SSE `Observable` + `takeUntilDestroyed` in each component. On SSE reconnect the component re-fetches the initial HTTP snapshot, then streams deltas.                                  |
 
 ---
 
@@ -127,9 +127,73 @@ Install: `bun add sql.js` — `sql.js` is a TypeORM peer dep; ensure it is expli
 
 The `DB_PATH` env var lets Tauri pass the correct user-data directory path without touching the Docker deploy path (`/app/data/kanban.db`).
 
-### 1.5 CORS
+### 1.5 SSE Event Stream (`GET /events`)
 
-The existing `@ee/starter` `MainPlugin` already registers CORS. Tauri's WebviewWindow hits the same local `http://127.0.0.1:{port}` origin, so no CORS config change needed.
+Add a single SSE endpoint that broadcasts typed events to all connected clients whenever the kanban data changes.
+
+**Event types:**
+
+| Event name         | Payload                                    | Triggered when                                      |
+| ------------------ | ------------------------------------------ | --------------------------------------------------- |
+| `tasks:created`    | `{ task: TaskOut }`                        | `POST /tasks` or `POST /tasks/batch`                |
+| `tasks:updated`    | `{ task: TaskOut }`                        | `PATCH /tasks/:id`, `POST /tasks/:id/transition`    |
+| `tasks:deleted`    | `{ id: string }`                           | `DELETE /tasks/:id`                                 |
+| `tasks:expired`    | `{ ids: string[] }`                        | Expiry cron sweep                                   |
+| `projects:updated` | `{ projects: ProjectOut[] }`               | Any task mutation (downstream project counts change)|
+
+Implementation in `app.ts` uses a simple in-process event emitter (`EventEmitter`) shared across routers via the DI container:
+
+```ts
+import { EventEmitter } from 'events';
+import { createToken, provide, inject } from '@ee/di';
+
+export const EVENT_BUS = createToken<EventEmitter>('EVENT_BUS');
+provide(EVENT_BUS, new EventEmitter({ captureRejections: true }));
+
+// In app.ts, register the SSE route:
+fastify.get('/events', (request, reply) => {
+  reply.raw.setHeader('Content-Type', 'text/event-stream');
+  reply.raw.setHeader('Cache-Control', 'no-cache');
+  reply.raw.setHeader('Connection', 'keep-alive');
+  reply.raw.flushHeaders();
+
+  const bus = inject(EVENT_BUS);
+
+  const send = (event: string, data: unknown) => {
+    reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const handlers: Record<string, (data: unknown) => void> = {
+    'tasks:created':    (d) => send('tasks:created', d),
+    'tasks:updated':    (d) => send('tasks:updated', d),
+    'tasks:deleted':    (d) => send('tasks:deleted', d),
+    'tasks:expired':    (d) => send('tasks:expired', d),
+    'projects:updated': (d) => send('projects:updated', d),
+  };
+
+  for (const [event, handler] of Object.entries(handlers)) {
+    bus.on(event, handler);
+  }
+
+  // Heartbeat to keep the connection alive through proxies
+  const heartbeat = setInterval(() => reply.raw.write(':heartbeat\n\n'), 30_000);
+
+  request.socket.on('close', () => {
+    clearInterval(heartbeat);
+    for (const [event, handler] of Object.entries(handlers)) {
+      bus.off(event, handler);
+    }
+  });
+
+  reply.hijack();
+});
+```
+
+Tasks and projects routers `inject(EVENT_BUS)` and emit on every mutation. The expiry cron does the same.
+
+### 1.6 CORS
+
+The existing `@ee/starter` `MainPlugin` already registers CORS. Tauri's WebviewWindow hits the same local `http://127.0.0.1:{port}` origin, so no CORS config change needed. `EventSource` is same-origin in all deployment scenarios.
 
 ---
 
@@ -164,7 +228,7 @@ apps/kanban-ui/
         ├── agents/
         │   └── agents.component.ts       # Live agent monitor table
         └── services/
-            ├── kanban-api.service.ts     # All HTTP calls + polling helpers
+            ├── kanban-api.service.ts     # All HTTP calls + SSE stream helpers
             └── types.ts                  # Shared TypeScript interfaces
 ```
 
@@ -187,11 +251,11 @@ PrimeNG `p-menubar` or a custom sidebar with `p-panelMenu`:
 - **Sidebar nav**: Dashboard, Agents Monitor
 - **Dynamic project links**: fetched on load from `GET /projects`, rendered as nav items pointing to `/board/:project`
 - **Theme toggle**: Aura Dark/Light switcher
-- **Refresh indicator**: spinner badge when polling is active
+- **Connection indicator**: colored dot (green = SSE connected, yellow = reconnecting, red = offline)
 
 ### 2.4 Dashboard Component
 
-**Polling interval**: 30 seconds (`timer(0, 30_000)`).
+**Data source**: initial `GET /projects` snapshot, then live-updated by `projects:updated` and `tasks:*` SSE events.
 
 Layout:
 - **Project summary grid**: One `p-card` per project.
@@ -205,7 +269,7 @@ Layout:
 
 ### 2.5 Board Component
 
-**Polling interval**: 5 seconds.
+**Data source**: initial `GET /tasks?project=:project` snapshot, then live-patched by `tasks:*` SSE events filtered to the current project.
 
 Layout: horizontal scroll of 6 `p-card` columns, one per state:
 
@@ -269,9 +333,7 @@ Displayed in a `p-sidebar` (right-side panel, 480px) when invoked from the board
 
 ### 2.8 Agents Monitor Component
 
-**Polling interval**: 5 seconds.
-
-Loads `GET /tasks?state=IN_PROGRESS` across all projects.
+**Data source**: initial `GET /tasks?state=IN_PROGRESS` snapshot, then live-updated by `tasks:*` SSE events (filter to keep only IN_PROGRESS rows).
 
 `p-table` with columns:
 - Agent name
@@ -313,11 +375,42 @@ export class KanbanApiService {
   getActivity(taskId: string) { ... }
   postComment(taskId: string, data: CommentIn) { ... }
 
-  pollProjects(intervalMs = 30_000) {
-    return timer(0, intervalMs).pipe(switchMap(() => this.getProjects()));
+  // SSE event stream — single shared connection, multicast to all subscribers
+  private eventSource: EventSource | null = null;
+
+  events(): Observable<KanbanEvent> {
+    return new Observable<KanbanEvent>(observer => {
+      if (!this.eventSource) {
+        this.eventSource = new EventSource(`${this.base}/events`);
+      }
+      const es = this.eventSource;
+
+      const onEvent = (type: KanbanEvent['type']) => (e: MessageEvent) => {
+        observer.next({ type, payload: JSON.parse(e.data) });
+      };
+
+      const types: KanbanEvent['type'][] = [
+        'tasks:created', 'tasks:updated', 'tasks:deleted',
+        'tasks:expired', 'projects:updated',
+      ];
+
+      for (const type of types) {
+        es.addEventListener(type, onEvent(type));
+      }
+      es.onerror = () => observer.error(new Error('SSE connection lost'));
+
+      return () => {
+        for (const type of types) {
+          es.removeEventListener(type, onEvent(type));
+        }
+      };
+    });
   }
-  pollTasks(filters: TaskFilters, intervalMs = 5_000) {
-    return timer(0, intervalMs).pipe(switchMap(() => this.listTasks(filters)));
+
+  // Convenience: snapshot + live delta stream for a set of filters
+  // Components call this, then apply the incoming events to local signal state
+  tasksSnapshot(filters: TaskFilters) {
+    return this.listTasks(filters);
   }
 }
 ```
@@ -329,7 +422,8 @@ Dev proxy (`proxy.conf.json`) forwards `/tasks` and `/projects` to `http://local
 ```json
 {
   "/tasks": { "target": "http://localhost:3333", "secure": false },
-  "/projects": { "target": "http://localhost:3333", "secure": false }
+  "/projects": { "target": "http://localhost:3333", "secure": false },
+  "/events": { "target": "http://localhost:3333", "secure": false, "ws": false }
 }
 ```
 
@@ -611,9 +705,9 @@ apps/kanban/                    <- backend changes only
 1. **Backend: sql.js driver** — `bun add sql.js`, update `data-source.ts` to `type: 'sqljs'` + `autoSave: true` + `DB_PATH` env var, rebuild and smoke-test
 2. **Backend: static serving** — `bun add @fastify/static`, update `app.ts` with static middleware + redirect, update `main.ts` to print `PORT:{n}` sentinel
 3. **Scaffold `kanban-ui`** — `project.json`, `tsconfig`, `app.config.ts` (zoneless), `styles.scss` (PrimeNG Aura Dark), `proxy.conf.json`
-4. **Types and API service** — `types.ts` matching the Zod schemas from kanban backend, `KanbanApiService` with all methods + polling helpers
-5. **Layout component** — sidebar shell, project nav links populated from `/projects`, router-outlet
-6. **Dashboard component** — project cards, active agents mini-table, polling
+4. **Types and API service** — `types.ts` matching the Zod schemas from kanban backend, `KanbanApiService` with all HTTP methods + `events()` SSE stream helper
+5. **Layout component** — sidebar shell, project nav links populated from `/projects`, router-outlet, SSE connection indicator
+6. **Dashboard component** — project cards, active agents mini-table; hydrated from HTTP snapshot then kept live by SSE
 7. **Board component** — 6-column layout, task card subcomponent, filter bar, new-task dialog
 8. **Task detail component** — tabbed panel: Details, Activity, History, Dependencies, Subtasks
 9. **Agents component** — full-page agent monitor table with TTL bars
@@ -644,6 +738,7 @@ apps/kanban/                    <- backend changes only
 - **Single-executable packaging** — the Tauri installer is a single `.dmg` / `.exe` that contains everything: the Rust shell, the Node.js SEA sidecar (Fastify + sql.js WASM + Angular UI), and an OS-provided webview. No bundled Chromium, no native `.node` rebuild step.
 - **Rust toolchain required at build time** — `rustup` and the target platform toolchain must be installed on the build machine. Users do not need Rust; the final installer is self-contained.
 - **Windows WebView2** — Tauri uses Microsoft Edge WebView2. Ships with Windows 11; auto-bootstrapped on Windows 10 by the Tauri installer (NSIS/MSI includes a WebView2 bootstrapper).
-- **Angular dev server proxy** — during development, run both `bun nx serve kanban` (port 3333) and `bun nx serve kanban-ui` (port 4200 with proxy). The proxy forwards `/tasks` and `/projects` to the backend.
-- **Polling vs SSE** — polling is sufficient because agents update tasks at human-readable cadence (seconds to minutes). If sub-second latency is needed later, adding SSE to the backend is straightforward.
+- **Angular dev server proxy** — during development, run both `bun nx serve kanban` (port 3333) and `bun nx serve kanban-ui` (port 4200 with proxy). The proxy forwards `/tasks`, `/projects`, and `/events` to the backend.
+- **SSE reconnection** — the browser's `EventSource` API automatically reconnects on disconnect (with exponential back-off). On reconnect, components re-fetch the HTTP snapshot to fill the gap, then resume streaming deltas.
+- **SSE and Tauri WebviewWindow** — the OS webview's `EventSource` implementation is fully spec-compliant on all target platforms (Safari/WebKit on macOS, WebView2 (Chromium-based) on Windows, WebKitGTK on Linux). No special handling needed.
 - **sql.js WASM in SEA** — esbuild bundles the sql.js WASM blob inline via `--loader:.wasm=binary`. Keeps the SEA binary fully self-contained with no external `.wasm` file reference.
