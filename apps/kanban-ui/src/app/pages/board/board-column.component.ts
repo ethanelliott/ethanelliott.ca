@@ -128,6 +128,7 @@ export interface TaskDropEvent {
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: var(--p-text-color);
+      white-space: nowrap;
     }
 
     .col-count {
