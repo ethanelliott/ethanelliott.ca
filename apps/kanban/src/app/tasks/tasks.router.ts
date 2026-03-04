@@ -20,9 +20,58 @@ import {
   ActivityEntryOutSchema,
   ActivityCommentInSchema,
 } from './activity-entry.entity';
+import { eventBus, SseEnvelope } from '../event-bus';
 
 export async function TasksRouter(fastify: FastifyInstance) {
   const tasksService = inject(TasksService);
+
+  // GET /tasks/events — SSE stream (must come before /:id routes)
+  fastify.get('/events', {}, (req, reply) => {
+    const queryProject = (req.query as Record<string, string | undefined>)[
+      'project'
+    ];
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    reply.raw.flushHeaders();
+
+    const send = (eventType: string, data: unknown) => {
+      reply.raw.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const listener = (envelope: SseEnvelope) => {
+      if (envelope.type === 'heartbeat') {
+        send('heartbeat', envelope);
+        return;
+      }
+      // If no project filter, forward everything
+      if (!queryProject) {
+        send(envelope.type, envelope);
+        return;
+      }
+      // Filter events that carry a project field in their payload
+      const payloadProject = (envelope as { payload?: { project?: string } })
+        .payload?.project;
+      if (payloadProject === undefined || payloadProject === queryProject) {
+        send(envelope.type, envelope);
+      }
+    };
+
+    eventBus.on('sse', listener);
+
+    const heartbeatTimer = setInterval(() => {
+      send('heartbeat', { type: 'heartbeat', ts: new Date().toISOString() });
+    }, 15_000);
+
+    req.raw.on('close', () => {
+      clearInterval(heartbeatTimer);
+      eventBus.off('sse', listener);
+    });
+  });
 
   // POST /tasks/batch — must come before /:id routes to avoid route collision
   fastify.withTypeProvider<ZodTypeProvider>().post(

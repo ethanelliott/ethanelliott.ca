@@ -2,6 +2,7 @@ import { inject } from '@ee/di';
 import HttpErrors from 'http-errors';
 import { IsNull, LessThan } from 'typeorm';
 import { Database } from '../data-source';
+import { emitSse } from '../event-bus';
 import { canTransition, ASSIGNEE_CLEARING_STATES } from '../state-machine';
 import { Task, TaskState, TaskIn, TaskPatch, TaskOut } from './task.entity';
 import { TaskDependency, TaskDependencyOut } from './task-dependency.entity';
@@ -218,6 +219,7 @@ export class TasksService {
       'Task auto-unblocked: all dependencies are now DONE',
       { fromState: TaskState.BLOCKED, toState: TaskState.TODO }
     );
+    emitSse({ type: 'task_updated', payload: this.mapToOut(task) });
   }
 
   // ------------------------------------------------------------------ CRUD
@@ -258,7 +260,9 @@ export class TasksService {
       );
     }
 
-    return this.mapToOut(saved);
+    const out = this.mapToOut(saved);
+    emitSse({ type: 'task_created', payload: out });
+    return out;
   }
 
   async batchCreate(body: BatchCreate): Promise<TaskOut[]> {
@@ -332,7 +336,11 @@ export class TasksService {
         }
       }
 
-      return created.map((t) => this.mapToOut(t));
+      const outs = created.map((t) => this.mapToOut(t));
+      for (const out of outs) {
+        emitSse({ type: 'task_created', payload: out });
+      }
+      return outs;
     });
   }
 
@@ -430,7 +438,9 @@ export class TasksService {
       }
     }
 
-    return this.mapToOut(saved);
+    const out = this.mapToOut(saved);
+    emitSse({ type: 'task_updated', payload: out });
+    return out;
   }
 
   async delete(id: string): Promise<void> {
@@ -452,6 +462,7 @@ export class TasksService {
     }
 
     await this._tasks.softDelete(id);
+    emitSse({ type: 'task_deleted', payload: { id } });
   }
 
   // ---------------------------------------------------------------- transition
@@ -503,7 +514,9 @@ export class TasksService {
       await this._autoUnblockDependents(id);
     }
 
-    return this.mapToOut(saved);
+    const out = this.mapToOut(saved);
+    emitSse({ type: 'task_updated', payload: out });
+    return out;
   }
 
   // ---------------------------------------------------------------- next task
@@ -597,7 +610,9 @@ export class TasksService {
         })
       );
 
-      return this.mapToOut(saved);
+      const out = this.mapToOut(saved);
+      emitSse({ type: 'task_updated', payload: out });
+      return out;
     });
   }
 
@@ -637,6 +652,9 @@ export class TasksService {
       { dependsOnId, action: 'added' }
     );
 
+    // task was already fetched above in Promise.all; reuse it for the SSE emit
+    if (task) emitSse({ type: 'task_updated', payload: this.mapToOut(task) });
+
     return dep;
   }
 
@@ -659,9 +677,12 @@ export class TasksService {
       { dependsOnId, action: 'removed' }
     );
 
+    const updatedTask = await this._tasks.findOne({ where: { id: taskId } });
+    if (updatedTask)
+      emitSse({ type: 'task_updated', payload: this.mapToOut(updatedTask) });
+
     // Auto-unblock if this task is BLOCKED and is now unblocked
-    const blockedTask = await this._tasks.findOne({ where: { id: taskId } });
-    if (blockedTask?.state === TaskState.BLOCKED) {
+    if (updatedTask?.state === TaskState.BLOCKED) {
       await this._checkAndUnblock(taskId);
     }
   }
@@ -750,7 +771,7 @@ export class TasksService {
       })
     );
 
-    return {
+    const actOut = {
       id: entry.id,
       taskId: entry.taskId,
       type: entry.type,
@@ -759,6 +780,8 @@ export class TasksService {
       metadata: null,
       createdAt: entry.createdAt,
     };
+    emitSse({ type: 'activity_added', payload: { ...actOut } });
+    return actOut;
   }
 
   // ------------------------------------------------------------------ expiry (called by cron)
@@ -781,6 +804,13 @@ export class TasksService {
       await this._tasks.save(task);
 
       await this._logHistory(task.id, fromState, TaskState.TODO);
+      const previousAssignee = task.assignee ?? 'unknown';
+      task.state = TaskState.TODO;
+      task.assignee = undefined;
+      task.assignedAt = undefined;
+      await this._tasks.save(task);
+
+      await this._logHistory(task.id, fromState, TaskState.TODO);
       await this._logActivity(
         task.id,
         ActivityEntryType.STATE_CHANGE,
@@ -788,6 +818,12 @@ export class TasksService {
         `Task auto-expired after ${ttlMinutes} minutes in IN_PROGRESS. Reverted to TODO, assignee cleared.`,
         { fromState, toState: TaskState.TODO, ttlMinutes }
       );
+
+      emitSse({
+        type: 'task_expired',
+        payload: { id: task.id, project: task.project, previousAssignee },
+      });
+      emitSse({ type: 'task_updated', payload: this.mapToOut(task) });
     }
 
     if (staleTasks.length > 0) {
