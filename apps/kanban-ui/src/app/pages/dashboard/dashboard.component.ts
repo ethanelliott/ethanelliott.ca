@@ -150,7 +150,8 @@ const STATE_ACCENT: Record<TaskState, string> = {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 20px 10px;
+      height: 52px;
+      padding: 0 20px;
       flex-shrink: 0;
       border-bottom: 1px solid var(--p-surface-700);
     }

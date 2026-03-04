@@ -111,7 +111,8 @@ import { TaskState } from '../models/task.model';
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 16px;
+      height: 52px;
+      padding: 0 16px;
       flex-shrink: 0;
       border-bottom: 1px solid var(--p-surface-700);
     }
