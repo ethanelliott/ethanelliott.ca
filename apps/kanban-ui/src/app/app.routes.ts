@@ -29,9 +29,7 @@ export const appRoutes: Route[] = [
       {
         path: 'skill',
         loadComponent: () =>
-          import('./pages/skill/skill.component').then(
-            (m) => m.SkillComponent
-          ),
+          import('./pages/skill/skill.component').then((m) => m.SkillComponent),
       },
     ],
   },

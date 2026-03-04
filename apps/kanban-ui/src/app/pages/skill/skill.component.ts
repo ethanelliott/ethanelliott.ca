@@ -387,16 +387,11 @@ POST /tasks/batch  { "project": "<p>", "tasks": [ … ] }
         </h2>
         <button class="copy-btn" type="button" (click)="copy()">
           @if (copied()) {
-          <i class="pi pi-check"></i> Copied!
-          } @else {
-          <i class="pi pi-copy"></i> Copy Markdown
-          }
+          <i class="pi pi-check"></i> Copied! } @else {
+          <i class="pi pi-copy"></i> Copy Markdown }
         </button>
       </div>
-      <article
-        class="md-content skill-body"
-        [innerHTML]="rendered"
-      ></article>
+      <article class="md-content skill-body" [innerHTML]="rendered"></article>
     </div>
   `,
   styles: `
