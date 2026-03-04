@@ -26,7 +26,10 @@
           "sourcemap": true,
           "outExtension": {
             ".js": ".js"
-          }
+          },
+          "external": [
+            "bun:sqlite"
+          ]
         }
       },
       "configurations": {
@@ -41,7 +44,10 @@
             "bundle": true,
             "outExtension": {
               ".js": ".js"
-            }
+            },
+            "external": [
+              "bun:sqlite"
+            ]
           }
         }
       }

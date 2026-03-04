@@ -4,7 +4,8 @@
     "outDir": "../../dist/out-tsc",
     "module": "esnext",
     "types": [
-      "node"
+      "node",
+      "bun-types"
     ],
     "target": "esnext"
   },

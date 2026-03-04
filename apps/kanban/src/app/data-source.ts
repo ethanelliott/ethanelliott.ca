@@ -1,6 +1,6 @@
 import { createToken, inject, Class } from '@ee/di';
 import { DataSource, ObjectLiteral } from 'typeorm';
-import 'better-sqlite3';
+import { BunSQLiteDriver } from './bun-sqlite-driver';
 
 export const ENTITIES = createToken<Class<any>>('entities', { multi: true });
 
@@ -16,6 +16,7 @@ export class Database {
     synchronize: true,
     entities: this._entities,
     extra: { foreignKeys: true },
+    driver: BunSQLiteDriver,
   });
 
   constructor() {
