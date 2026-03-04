@@ -16,6 +16,7 @@ import {
   ConnectionState,
 } from '../services/kanban-sse.service';
 import { ProjectService } from '../services/project.service';
+import { DarkModeService } from '../services/dark-mode.service';
 import { ProjectSummary } from '../models/project.model';
 import { SidebarComponent } from './sidebar.component';
 
@@ -170,6 +171,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   private readonly api = inject(KanbanApiService);
   readonly sse = inject(KanbanSseService);
   readonly projectService = inject(ProjectService);
+  // Inject to trigger initialization (dark-mode class applied on first effect run)
+  readonly _darkMode = inject(DarkModeService);
 
   readonly projects = signal<ProjectSummary[]>([]);
   readonly connectionState = signal<ConnectionState>('disconnected');

@@ -69,7 +69,10 @@ export interface TaskDropEvent {
           "
         />
         } @if (tasks().length === 0) {
-        <div class="col-empty">Empty</div>
+        <div class="col-empty">
+          <i class="pi pi-inbox col-empty-icon"></i>
+          <span>No tasks</span>
+        </div>
         }
       </div>
     </div>
@@ -85,6 +88,7 @@ export interface TaskDropEvent {
       border-radius: 10px;
       border: 1px solid var(--p-surface-700);
       overflow: hidden;
+      scroll-snap-align: start;
     }
 
     .col-header {
@@ -136,7 +140,16 @@ export interface TaskDropEvent {
       font-size: 0.75rem;
       color: var(--p-text-muted-color);
       text-align: center;
-      padding: 16px 0;
+      padding: 20px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .col-empty-icon {
+      font-size: 1.3rem;
+      opacity: 0.35;
     }
 
     /* CDK drop zone highlight */

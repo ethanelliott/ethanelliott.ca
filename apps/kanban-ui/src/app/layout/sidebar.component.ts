@@ -13,9 +13,11 @@ import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { TagModule } from 'primeng/tag';
+import { ButtonModule } from 'primeng/button';
 import { ProjectSummary } from '../models/project.model';
 import { ProjectService } from '../services/project.service';
 import { ConnectionState } from '../services/kanban-sse.service';
+import { DarkModeService } from '../services/dark-mode.service';
 import { TaskState } from '../models/task.model';
 
 @Component({
@@ -30,6 +32,7 @@ import { TaskState } from '../models/task.model';
     SelectModule,
     TooltipModule,
     TagModule,
+    ButtonModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -90,6 +93,20 @@ import { TaskState } from '../models/task.model';
         <span>Dashboard</span>
       </a>
     </nav>
+
+    <!-- Sidebar footer: dark mode toggle -->
+    <div class="sidebar-footer">
+      <button
+        class="dark-toggle"
+        type="button"
+        (click)="darkMode.toggle()"
+        [pTooltip]="darkMode.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        tooltipPosition="right"
+      >
+        <i [class]="darkMode.isDark() ? 'pi pi-sun' : 'pi pi-moon'"></i>
+        <span>{{ darkMode.isDark() ? 'Light mode' : 'Dark mode' }}</span>
+      </button>
+    </div>
   `,
   styles: `
     :host {
@@ -216,10 +233,41 @@ import { TaskState } from '../models/task.model';
 
       i { font-size: 0.95rem; flex-shrink: 0; }
     }
+
+    /* ── Footer ─────────────────────────────────────── */
+    .sidebar-footer {
+      padding: 10px 8px;
+      border-top: 1px solid var(--p-surface-700);
+      flex-shrink: 0;
+    }
+
+    .dark-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--p-text-muted-color);
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: var(--p-surface-800);
+        color: var(--p-text-color);
+      }
+
+      i { font-size: 0.9rem; flex-shrink: 0; }
+    }
   `,
 })
 export class SidebarComponent {
   readonly projectService = inject(ProjectService);
+  readonly darkMode = inject(DarkModeService);
 
   /** Projects list passed in from the shell */
   readonly projects = input<ProjectSummary[]>([]);

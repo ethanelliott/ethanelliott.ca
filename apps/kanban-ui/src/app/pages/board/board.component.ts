@@ -72,15 +72,26 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
         </div>
       </div>
 
-      <!-- Board columns -->
+      <!-- Board columns (desktop scroll / mobile snap) -->
       <div class="board-columns">
-        @for (state of ALL_STATES; track state) {
-        <app-board-column
-          [state]="state"
-          [tasks]="columnTasks(state)"
-          [connectedTo]="connections(state)"
-          (taskDropped)="handleTransition($event)"
-        />
+        @if (loading()) {
+          @for (i of [0,1,2,3,4,5]; track i) {
+          <div class="skeleton-col">
+            <div class="skeleton-col-header"></div>
+            @for (j of [0,1,2]; track j) {
+            <div class="skeleton-card"></div>
+            }
+          </div>
+          }
+        } @else {
+          @for (state of ALL_STATES; track state) {
+          <app-board-column
+            [state]="state"
+            [tasks]="columnTasks(state)"
+            [connectedTo]="connections(state)"
+            (taskDropped)="handleTransition($event)"
+          />
+          }
         }
       </div>
     </div>
@@ -156,6 +167,49 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
       overflow-y: hidden;
       flex: 1;
       align-items: flex-start;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Skeleton columns while loading */
+    .skeleton-col {
+      display: flex;
+      flex-direction: column;
+      min-width: 220px;
+      max-width: 260px;
+      flex: 1 1 220px;
+      background: var(--p-surface-900);
+      border-radius: 10px;
+      border: 1px solid var(--p-surface-700);
+      overflow: hidden;
+      gap: 8px;
+      padding: 10px;
+      scroll-snap-align: start;
+    }
+
+    .skeleton-col-header {
+      height: 20px;
+      border-radius: 4px;
+      background: var(--p-surface-700);
+      animation: shimmer 1.4s infinite;
+    }
+
+    .skeleton-card {
+      height: 64px;
+      border-radius: 8px;
+      background: var(--p-surface-800);
+      animation: shimmer 1.4s infinite;
+    }
+    .skeleton-card:nth-child(2) { animation-delay: 0.15s; }
+    .skeleton-card:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+      .board-columns { padding: 10px 10px; gap: 8px; }
     }
 
     /* CDK drag animations */

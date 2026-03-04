@@ -9,6 +9,9 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs/operators';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
+import { SkeletonModule } from 'primeng/skeleton';
 import { KanbanApiService } from '../../services/kanban-api.service';
 import { KanbanSseService } from '../../services/kanban-sse.service';
 import { ProjectService } from '../../services/project.service';
@@ -45,13 +48,15 @@ const STATE_ACCENT: Record<TaskState, string> = {
   imports: [
     CommonModule,
     RouterModule,
+    ToastModule,
+    SkeletonModule,
     AgentCardComponent,
     QueuePanelComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard-page">
-      <!-- Page header -->
+          <!-- Page header -->
       <div class="dash-header">
         <h2 class="dash-title">
           Dashboard @if (projectService.selectedProject(); as p) {
@@ -65,18 +70,27 @@ const STATE_ACCENT: Record<TaskState, string> = {
         }
       </div>
 
-      <!-- State distribution stat cards -->
+      <!-- Stat cards (skeleton while loading) -->
       <div class="stat-row">
-        @for (state of ALL_STATES; track state) {
-        <div
-          class="stat-card"
-          [style.--accent]="accent(state)"
-          (click)="filterState.set(filterState() === state ? null : state)"
-          [class.active]="filterState() === state"
-        >
-          <span class="stat-label">{{ stateLabel(state) }}</span>
-          <span class="stat-value">{{ countByState(state) }}</span>
-        </div>
+        @if (loading()) {
+          @for (i of [0,1,2,3,4,5]; track i) {
+          <div class="stat-card stat-skeleton">
+            <p-skeleton width="60px" height="12px" />
+            <p-skeleton width="40px" height="24px" styleClass="mt-1" />
+          </div>
+          }
+        } @else {
+          @for (state of ALL_STATES; track state) {
+          <div
+            class="stat-card"
+            [style.--accent]="accent(state)"
+            (click)="filterState.set(filterState() === state ? null : state)"
+            [class.active]="filterState() === state"
+          >
+            <span class="stat-label">{{ stateLabel(state) }}</span>
+            <span class="stat-value">{{ countByState(state) }}</span>
+          </div>
+          }
         }
       </div>
 
@@ -118,6 +132,7 @@ const STATE_ACCENT: Record<TaskState, string> = {
         </section>
       </div>
     </div>
+    <p-toast />
   `,
   styles: `
     :host {
@@ -221,6 +236,12 @@ const STATE_ACCENT: Record<TaskState, string> = {
       line-height: 1;
     }
 
+    .stat-skeleton {
+      cursor: default;
+      pointer-events: none;
+      border-top-color: var(--p-surface-600);
+    }
+
     /* Main body */
     .dash-body {
       display: grid;
@@ -298,6 +319,7 @@ const STATE_ACCENT: Record<TaskState, string> = {
 export class DashboardComponent {
   private readonly api = inject(KanbanApiService);
   private readonly sse = inject(KanbanSseService);
+  private readonly messageService = inject(MessageService);
   readonly projectService = inject(ProjectService);
 
   readonly ALL_STATES = ALL_STATES;
@@ -366,7 +388,11 @@ export class DashboardComponent {
         },
         error: (err) => {
           this.loading.set(false);
-          console.error('[DashboardComponent] listTasks error', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Load failed',
+            detail: err?.error?.message ?? 'Could not load tasks. Retrying on next update.',
+          });
         },
       });
 
