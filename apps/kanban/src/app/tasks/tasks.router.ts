@@ -36,6 +36,7 @@ export async function TasksRouter(fastify: FastifyInstance) {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': req.headers.origin ?? '*',
     });
     reply.raw.flushHeaders();
 
