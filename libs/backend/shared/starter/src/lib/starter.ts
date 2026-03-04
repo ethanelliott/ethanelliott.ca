@@ -19,14 +19,11 @@ export async function starter<T extends FastifyPluginAsync>(
 
   const isProduction = process.env.NODE_ENV === 'production';
 
-  const defaultLogger: Record<string, unknown> = isProduction
-    ? { level: 'info' }
-    : {
-        level: 'debug',
-        transport: {
-          target: 'pino-pretty',
-        },
-      };
+  // Avoid pino-pretty's worker-thread transport — it requires `real-require`
+  // which cannot be resolved inside a `bun build --compile` binary.
+  const defaultLogger: Record<string, unknown> = {
+    level: isProduction ? 'info' : 'debug',
+  };
 
   const server = Fastify({
     logger: appConfig.logger !== undefined ? appConfig.logger : defaultLogger,
