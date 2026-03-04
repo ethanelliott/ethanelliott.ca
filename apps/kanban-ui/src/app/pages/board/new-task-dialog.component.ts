@@ -231,12 +231,10 @@ export class NewTaskDialogComponent {
       this.parentResults.set([]);
       return;
     }
-    this.api
-      .listTasks({ project, search: event.query.trim() })
-      .subscribe({
-        next: (tasks) => this.parentResults.set(tasks.slice(0, 10)),
-        error: () => this.parentResults.set([]),
-      });
+    this.api.listTasks({ project, search: event.query.trim() }).subscribe({
+      next: (tasks) => this.parentResults.set(tasks.slice(0, 10)),
+      error: () => this.parentResults.set([]),
+    });
   }
 
   submit(): void {
@@ -257,7 +255,9 @@ export class NewTaskDialogComponent {
         description: this.form.description.trim(),
         state: this.form.state,
         priority: this.form.priority,
-        project,        ...(this.selectedParent ? { parentId: this.selectedParent.id } : {}),      })
+        project,
+        ...(this.selectedParent ? { parentId: this.selectedParent.id } : {}),
+      })
       .subscribe({
         next: (task) => {
           this.saving.set(false);

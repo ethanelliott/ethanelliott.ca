@@ -86,14 +86,20 @@ function formatElapsed(ms: number): string {
 
         <!-- Dependency count -->
         @if ((task().depCount ?? 0) > 0) {
-        <span class="meta-chip dep-chip" [pTooltip]="task().depCount + ' dependencies'">
+        <span
+          class="meta-chip dep-chip"
+          [pTooltip]="task().depCount + ' dependencies'"
+        >
           🔗 {{ task().depCount }}
         </span>
         }
 
         <!-- Subtask count -->
         @if ((task().subtaskCount ?? 0) > 0) {
-        <span class="meta-chip sub-chip" [pTooltip]="task().subtaskCount + ' subtasks'">
+        <span
+          class="meta-chip sub-chip"
+          [pTooltip]="task().subtaskCount + ' subtasks'"
+        >
           📋 {{ task().subtaskCount }}
         </span>
         }

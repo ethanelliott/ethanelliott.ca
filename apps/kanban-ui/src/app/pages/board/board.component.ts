@@ -279,17 +279,19 @@ export class BoardComponent implements OnInit {
 
     // SSE: task updated / task expired (treated the same — replace in list)
     // Preserves depCount/subtaskCount loaded by the REST list endpoint
-    this.sse.taskUpdated$
-      .pipe(takeUntilDestroyed())
-      .subscribe((e) =>
-        this.tasks.update((list) =>
-          list.map((t) =>
-            t.id === e.payload.id
-              ? { ...e.payload, depCount: t.depCount, subtaskCount: t.subtaskCount }
-              : t
-          )
+    this.sse.taskUpdated$.pipe(takeUntilDestroyed()).subscribe((e) =>
+      this.tasks.update((list) =>
+        list.map((t) =>
+          t.id === e.payload.id
+            ? {
+                ...e.payload,
+                depCount: t.depCount,
+                subtaskCount: t.subtaskCount,
+              }
+            : t
         )
-      );
+      )
+    );
 
     this.sse.taskExpired$.pipe(takeUntilDestroyed()).subscribe((e) =>
       this.tasks.update((list) =>
