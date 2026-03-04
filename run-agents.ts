@@ -6,13 +6,15 @@
  * do the work, and transition to IN_REVIEW when done.
  *
  * Usage:
- *   bun run-agents.ts [--project MY_PROJECT] [--count 3] [--api http://localhost:3333]
+ *   bun run-agents.ts [--project MY_PROJECT] [--count 3] [--loop] [--delay 10]
  *
  * Options:
  *   --project   Kanban project to pull tasks from (omit to claim from any project)
  *   --count     Number of parallel agents to run  (default: 2)
  *   --api       Kanban API base URL               (default: http://localhost:3333)
  *   --model     opencode model flag               (default: omitted)
+ *   --loop      Keep spawning new waves of agents indefinitely (Ctrl-C to stop)
+ *   --delay     Seconds to wait between waves when --loop is set (default: 5)
  */
 
 import { parseArgs } from 'util';
@@ -29,6 +31,8 @@ const { values } = parseArgs({
     count: { type: 'string', default: '2' },
     api: { type: 'string', default: 'http://localhost:3333' },
     model: { type: 'string' },
+    loop: { type: 'boolean', default: false },
+    delay: { type: 'string', default: '5' },
   },
   strict: true,
 });
@@ -37,6 +41,8 @@ const PROJECT = values.project ?? null;
 const COUNT = parseInt(values.count!, 10);
 const API = values.api!.replace(/\/$/, '');
 const MODEL_FLAG = values.model ? ['--model', values.model] : [];
+const LOOP = values.loop ?? false;
+const DELAY_MS = parseInt(values.delay!, 10) * 1000;
 
 if (isNaN(COUNT) || COUNT < 1) {
   console.error('ERROR: --count must be a positive integer');
@@ -185,16 +191,14 @@ async function runAgent(index: number): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Main — launch all agents in parallel
+// Main — launch all agents in parallel, optionally looping
 // ---------------------------------------------------------------------------
 console.log(
   `Starting ${COUNT} agent(s)${
     PROJECT ? ` for project "${PROJECT}"` : ' across all projects'
-  } against ${API}`
+  } against ${API}${LOOP ? ' [loop mode]' : ''}`
 );
 console.log(`Logs: ${LOG_DIR}/\n`);
-
-const agents = Array.from({ length: COUNT }, (_, i) => runAgent(i + 1));
 
 // Graceful shutdown on Ctrl-C
 process.on('SIGINT', () => {
@@ -202,10 +206,24 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-const results = await Promise.allSettled(agents);
+let wave = 0;
+do {
+  wave++;
+  if (LOOP) console.log(`\n${'─'.repeat(60)}\nWave ${wave}\n${'─'.repeat(60)}`);
 
-const failed = results.filter((r) => r.status === 'rejected').length;
-console.log(
-  `\nAll agents finished. ${COUNT - failed}/${COUNT} completed cleanly.`
-);
-if (failed > 0) process.exit(1);
+  const agents = Array.from({ length: COUNT }, (_, i) => runAgent(i + 1));
+  const results = await Promise.allSettled(agents);
+
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  console.log(
+    `\nWave ${wave} finished. ${COUNT - failed}/${COUNT} completed cleanly.`
+  );
+
+  if (!LOOP) {
+    if (failed > 0) process.exit(1);
+    break;
+  }
+
+  console.log(`Next wave in ${DELAY_MS / 1000}s — Ctrl-C to stop.`);
+  await Bun.sleep(DELAY_MS);
+} while (true);
