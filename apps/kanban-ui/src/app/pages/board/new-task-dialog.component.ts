@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnInit,
   inject,
   model,
   output,
@@ -78,6 +79,22 @@ interface StateOption {
           ></textarea>
         </div>
 
+        <!-- Project -->
+        <div class="field">
+          <label for="project">Project <span class="req">*</span></label>
+          <p-autocomplete
+            inputId="project"
+            [(ngModel)]="form.project"
+            name="project"
+            [suggestions]="projectSuggestions()"
+            (completeMethod)="searchProject($event)"
+            [forceSelection]="false"
+            placeholder="Project name…"
+            appendTo="body"
+            required
+          />
+        </div>
+
         <!-- State + Priority row -->
         <div class="field-row">
           <div class="field">
@@ -138,7 +155,11 @@ interface StateOption {
           icon="pi pi-plus"
           [loading]="saving()"
           (onClick)="submit()"
-          [disabled]="!form.title.trim() || !form.description.trim()"
+          [disabled]="
+            !form.title.trim() ||
+            !form.description.trim() ||
+            !form.project.trim()
+          "
         />
       </ng-template>
     </p-dialog>
@@ -199,7 +220,7 @@ interface StateOption {
     }
   `,
 })
-export class NewTaskDialogComponent {
+export class NewTaskDialogComponent implements OnInit {
   private readonly api = inject(KanbanApiService);
   private readonly projectService = inject(ProjectService);
 
@@ -215,12 +236,33 @@ export class NewTaskDialogComponent {
   selectedParent: TaskOut | null = null;
   readonly parentResults = signal<TaskOut[]>([]);
 
+  /** For project autocomplete */
+  private readonly allProjects = signal<string[]>([]);
+  readonly projectSuggestions = signal<string[]>([]);
+
   form = {
     title: '',
     description: '',
     state: TaskState.TODO as TaskState,
     priority: 100,
+    project: this.projectService.selectedProject() ?? '',
   };
+
+  ngOnInit(): void {
+    this.api.listProjects().subscribe({
+      next: (projects) =>
+        this.allProjects.set(projects.map((p) => p.project).sort()),
+      error: () => {},
+    });
+  }
+
+  searchProject(event: { query: string }): void {
+    const q = event.query.trim().toLowerCase();
+    const matches = q
+      ? this.allProjects().filter((p) => p.toLowerCase().includes(q))
+      : this.allProjects();
+    this.projectSuggestions.set(matches.slice(0, 10));
+  }
 
   readonly stateOptions: StateOption[] = ALL_STATES.map((s) => ({
     label: s.replace('_', ' '),
@@ -228,7 +270,7 @@ export class NewTaskDialogComponent {
   }));
 
   searchParent(event: { query: string }): void {
-    const project = this.projectService.selectedProject();
+    const project = this.form.project.trim();
     if (!project || !event.query.trim()) {
       this.parentResults.set([]);
       return;
@@ -240,13 +282,9 @@ export class NewTaskDialogComponent {
   }
 
   submit(): void {
-    if (!this.form.title.trim() || !this.form.description.trim()) return;
-
-    const project = this.projectService.selectedProject();
-    if (!project) {
-      this.errorMsg.set('Select a project before creating tasks.');
+    const project = this.form.project.trim();
+    if (!this.form.title.trim() || !this.form.description.trim() || !project)
       return;
-    }
 
     this.saving.set(true);
     this.errorMsg.set(null);
@@ -287,9 +325,11 @@ export class NewTaskDialogComponent {
       description: '',
       state: TaskState.TODO,
       priority: 100,
+      project: this.projectService.selectedProject() ?? '',
     };
     this.selectedParent = null;
     this.parentResults.set([]);
+    this.projectSuggestions.set([]);
     this.errorMsg.set(null);
   }
 }
