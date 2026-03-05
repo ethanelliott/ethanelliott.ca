@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -8,7 +9,22 @@ import { CommonModule } from '@angular/common';
 import { MarkdownService } from '../../services/markdown.service';
 import { MessageService } from 'primeng/api';
 
-const SKILL_MD = `# Kanban Service — LLM Skill Reference
+// ---------------------------------------------------------------------------
+// Skill file definitions
+// ---------------------------------------------------------------------------
+
+interface SkillFile {
+  id: string;
+  label: string;
+  icon: string;
+  markdown: string;
+}
+
+// ---------------------------------------------------------------------------
+// Full Reference (existing skill, updated state machine)
+// ---------------------------------------------------------------------------
+
+const FULL_REFERENCE_MD = `# Kanban Service — LLM Skill Reference
 
 This document describes how to use the Kanban task-management service as an LLM
 agent. Follow the workflow below to claim work, update progress, and mark tasks
@@ -40,10 +56,13 @@ so you can use a relative base.
 ## State Machine
 
 \`\`\`
+                                    CHANGES_REQUESTED
+                                      ▲           │
+                                      │           ▼
 BACKLOG ──► TODO ──► IN_PROGRESS ──► IN_REVIEW ──► DONE
-              ▲           │
-              │           ▼
-              └──── BLOCKED
+              ▲           │                          │
+              │           ▼                          │
+              └──── BLOCKED            ◄─────────────┘
 \`\`\`
 
 | From | Allowed transitions |
@@ -52,10 +71,12 @@ BACKLOG ──► TODO ──► IN_PROGRESS ──► IN_REVIEW ──► DONE
 | TODO | IN_PROGRESS, BACKLOG |
 | IN_PROGRESS | IN_REVIEW, BLOCKED, TODO |
 | BLOCKED | TODO |
-| IN_REVIEW | DONE, IN_PROGRESS |
-| DONE | *(terminal)* |
+| IN_REVIEW | DONE, IN_PROGRESS, CHANGES_REQUESTED |
+| CHANGES_REQUESTED | IN_PROGRESS |
+| DONE | CHANGES_REQUESTED |
 
-> **Note:** Transitioning to TODO or BACKLOG automatically clears the assignee.
+> **Note:** Transitioning to TODO, BACKLOG, or CHANGES_REQUESTED automatically
+> clears the assignee.
 
 ---
 
@@ -73,14 +94,16 @@ Content-Type: application/json
 }
 \`\`\`
 
-This atomically selects the highest-priority \`TODO\` task in the project,
-assigns it to you, and transitions it to \`IN_PROGRESS\` — all in one request.
+This atomically selects the highest-priority \`TODO\` (or \`CHANGES_REQUESTED\`)
+task in the project, assigns it to you, and transitions it to \`IN_PROGRESS\` —
+all in one request.
 
 **Response (200):** The full task object, now \`IN_PROGRESS\` with your assignee set.
 **Response (404):** \`{ "message": "No eligible tasks available" }\` — nothing ready.
 
-> Before calling \`/tasks/next\`, tasks must be in \`TODO\` state. Tasks start in
-> \`BACKLOG\` and must be promoted to \`TODO\` before they can be claimed.
+> Before calling \`/tasks/next\`, tasks must be in \`TODO\` or \`CHANGES_REQUESTED\`
+> state. Tasks start in \`BACKLOG\` and must be promoted to \`TODO\` before they
+> can be claimed.
 
 ---
 
@@ -121,7 +144,7 @@ Content-Type: application/json
 
 {
   "author": "my-agent",
-  "body": "Investigated the issue — root cause is in the auth module."
+  "content": "Investigated the issue — root cause is in the auth module."
 }
 \`\`\`
 
@@ -187,6 +210,15 @@ POST /tasks/{id}/transition
 Content-Type: application/json
 
 { "state": "IN_PROGRESS" }
+\`\`\`
+
+If work was marked DONE but changes are needed, move it back:
+
+\`\`\`http
+POST /tasks/{id}/transition
+Content-Type: application/json
+
+{ "state": "CHANGES_REQUESTED" }
 \`\`\`
 
 ---
@@ -342,7 +374,7 @@ GET  /tasks/<id>/subtasks
 GET  /tasks/<id>/dependencies
 
 # Leave a note
-POST /tasks/<id>/activity  { "author": "<me>", "body": "<note>" }
+POST /tasks/<id>/activity  { "author": "<me>", "content": "<note>" }
 
 # Advance state
 POST /tasks/<id>/transition  { "state": "IN_REVIEW" }
@@ -373,6 +405,490 @@ POST /tasks/batch  { "project": "<p>", "tasks": [ … ] }
   claim alive.
 `;
 
+// ---------------------------------------------------------------------------
+// Task Creator Agent
+// ---------------------------------------------------------------------------
+
+const TASK_CREATOR_MD = `# Task Creator Agent — Skill Reference
+
+You are a task-planning agent. Your job is to break down work into well-defined
+tasks, create them in the kanban service, and set up their relationships
+(dependencies, subtasks, priority ordering).
+
+---
+
+## Base URL
+
+Default: \`http://localhost:3333\`. All endpoints below are relative to this.
+
+---
+
+## Core Concepts
+
+| Term | Meaning |
+|------|---------|
+| **Task** | Unit of work with title, description, state, priority, project. |
+| **Project** | Logical namespace (string). All tasks in a batch must share a project. |
+| **Priority** | Integer — **lower = more urgent**. Use to control work order. |
+| **Dependency** | Task A depends on Task B = B must be DONE before A can start. |
+| **Subtask** | A child task linked via \`parentId\`. Parent cannot be marked DONE until all subtasks are DONE. |
+| **State** | New tasks default to \`BACKLOG\`. Set to \`TODO\` to make them immediately claimable. |
+
+---
+
+## Creating a Single Task
+
+\`\`\`http
+POST /tasks
+Content-Type: application/json
+
+{
+  "title": "Implement user authentication",
+  "description": "Add JWT-based auth with refresh tokens. Must support OAuth2 providers.",
+  "project": "my-project",
+  "priority": 10,
+  "state": "TODO"
+}
+\`\`\`
+
+### Fields
+
+| Field | Required | Default | Notes |
+|-------|----------|---------|-------|
+| \`title\` | yes | — | Short, actionable summary |
+| \`description\` | no | \`""\` | Detailed spec, acceptance criteria, context |
+| \`project\` | yes | — | Must match the target project name |
+| \`priority\` | no | \`100\` | Lower = higher priority. Use 1-10 for critical, 10-50 for normal, 50+ for low |
+| \`state\` | no | \`BACKLOG\` | Set to \`TODO\` if the task is ready to be claimed immediately |
+| \`parentId\` | no | \`null\` | UUID of parent task (creates a subtask relationship) |
+
+---
+
+## Batch-Creating Tasks (Recommended)
+
+Use batch create when you have multiple related tasks. This is the preferred
+approach because it lets you define **dependencies between tasks in the same
+batch** using array indices.
+
+\`\`\`http
+POST /tasks/batch
+Content-Type: application/json
+
+{
+  "project": "my-project",
+  "tasks": [
+    {
+      "title": "Design database schema",
+      "description": "Create ERD for users, sessions, and tokens tables.",
+      "priority": 1,
+      "state": "TODO"
+    },
+    {
+      "title": "Write migration scripts",
+      "description": "Implement the schema from task 0 as SQL migrations.",
+      "priority": 2,
+      "state": "TODO",
+      "dependsOn": [0]
+    },
+    {
+      "title": "Implement auth endpoints",
+      "description": "POST /login, POST /register, POST /refresh, POST /logout",
+      "priority": 3,
+      "state": "TODO",
+      "dependsOn": [1]
+    },
+    {
+      "title": "Write integration tests",
+      "description": "Test all auth endpoints with valid and invalid inputs.",
+      "priority": 4,
+      "state": "TODO",
+      "dependsOn": [2]
+    }
+  ]
+}
+\`\`\`
+
+### Batch Fields
+
+| Field | Notes |
+|-------|-------|
+| \`project\` | Applied to all tasks in the batch |
+| \`tasks\` | Array of task objects (same fields as single create) |
+| \`tasks[].dependsOn\` | Array of **zero-based indices** into the same \`tasks\` array. The service creates dependency links automatically. |
+
+### How Dependencies Work
+
+- \`"dependsOn": [0]\` means "this task depends on the task at index 0 in this batch"
+- A task with unresolved dependencies will be auto-blocked — \`/tasks/next\` skips it
+- When all dependencies reach \`DONE\`, the blocked task is automatically unblocked
+
+---
+
+## Creating Subtasks
+
+Subtasks are tasks linked to a parent via \`parentId\`. The parent task cannot
+be moved to \`DONE\` until all subtasks are \`DONE\`.
+
+\`\`\`http
+POST /tasks
+Content-Type: application/json
+
+{
+  "title": "Implement login endpoint",
+  "description": "POST /login with email + password",
+  "project": "my-project",
+  "priority": 1,
+  "parentId": "uuid-of-parent-task",
+  "state": "TODO"
+}
+\`\`\`
+
+> **Note:** Subtasks must belong to the same project as their parent.
+
+---
+
+## Managing Dependencies After Creation
+
+### Add a dependency
+
+\`\`\`http
+POST /tasks/{taskId}/dependencies
+Content-Type: application/json
+
+{ "dependsOnId": "uuid-of-dependency" }
+\`\`\`
+
+### Remove a dependency
+
+\`\`\`http
+DELETE /tasks/{taskId}/dependencies/{dependsOnId}
+\`\`\`
+
+### List dependencies
+
+\`\`\`http
+GET /tasks/{taskId}/dependencies
+\`\`\`
+
+---
+
+## Promoting Tasks to TODO
+
+Tasks created in \`BACKLOG\` must be moved to \`TODO\` before workers can claim them:
+
+\`\`\`http
+POST /tasks/{id}/transition
+Content-Type: application/json
+
+{ "state": "TODO" }
+\`\`\`
+
+---
+
+## Patching Existing Tasks
+
+Update any field without changing state:
+
+\`\`\`http
+PATCH /tasks/{id}
+Content-Type: application/json
+
+{
+  "title": "Updated title",
+  "description": "Revised acceptance criteria",
+  "priority": 5
+}
+\`\`\`
+
+---
+
+## Listing Existing Tasks
+
+Check what already exists before creating duplicates:
+
+\`\`\`http
+GET /tasks?project=my-project
+GET /tasks?project=my-project&state=TODO
+GET /tasks?project=my-project&search=authentication
+\`\`\`
+
+Query parameters: \`project\`, \`state\`, \`assignee\`, \`priorityMin\`, \`priorityMax\`,
+\`createdAfter\`, \`createdBefore\`, \`search\`.
+
+---
+
+## Best Practices
+
+- **Write clear descriptions.** The worker agent's only context is the task
+  title and description. Include acceptance criteria, links, and constraints.
+- **Use priority to control order.** Workers claim the lowest-priority-number
+  task first. Number sequential tasks 1, 2, 3… so they are worked in order.
+- **Prefer batch create** for related work. It's one API call and handles
+  dependency wiring automatically.
+- **Use dependencies, not just priority,** to enforce ordering. Priority is a
+  hint; dependencies are a hard constraint (\`/tasks/next\` won't serve a task
+  with unmet dependencies).
+- **Set state to TODO** for tasks that are ready. Leave as \`BACKLOG\` for tasks
+  that need further refinement or are intentionally held back.
+- **Leave activity comments** when creating complex task structures to explain
+  the rationale for the breakdown.
+
+---
+
+## Quick-Reference Cheat Sheet
+
+\`\`\`
+# Create one task
+POST /tasks  { "title": "…", "description": "…", "project": "<p>", "priority": 10, "state": "TODO" }
+
+# Create many tasks with dependencies
+POST /tasks/batch  { "project": "<p>", "tasks": [ { ..., "dependsOn": [0] }, ... ] }
+
+# Create a subtask
+POST /tasks  { ..., "parentId": "<parent-uuid>" }
+
+# Add a dependency after creation
+POST /tasks/<id>/dependencies  { "dependsOnId": "<dep-uuid>" }
+
+# Promote to TODO
+POST /tasks/<id>/transition  { "state": "TODO" }
+
+# Check existing work
+GET  /tasks?project=<p>&search=<keyword>
+
+# Leave a note
+POST /tasks/<id>/activity  { "author": "creator-agent", "content": "<note>" }
+\`\`\`
+`;
+
+// ---------------------------------------------------------------------------
+// Worker Agent
+// ---------------------------------------------------------------------------
+
+const WORKER_AGENT_MD = `# Worker Agent — Skill Reference
+
+You are a worker agent. Your job is to claim tasks from the kanban board,
+do the work described in the task, and move it through to completion.
+
+---
+
+## Base URL
+
+Default: \`http://localhost:3333\`. All endpoints below are relative to this.
+
+---
+
+## State Machine
+
+Tasks flow through these states:
+
+\`\`\`
+                                CHANGES_REQUESTED
+                                  ▲           │
+                                  │           ▼
+TODO ──► IN_PROGRESS ──► IN_REVIEW ──► DONE
+  ▲           │                          │
+  │           ▼                          │
+  └──── BLOCKED            ◄─────────────┘
+\`\`\`
+
+Your typical workflow: **TODO -> IN_PROGRESS -> IN_REVIEW -> DONE**.
+
+If changes are requested after review or completion, the task moves to
+\`CHANGES_REQUESTED\`. When you call \`/tasks/next\`, these are **prioritized
+over TODO tasks** — you will pick them up automatically.
+
+---
+
+## Workflow
+
+### 1. Claim the next task
+
+\`\`\`http
+POST /tasks/next
+Content-Type: application/json
+
+{
+  "assignee": "your-agent-id",
+  "project": "my-project"
+}
+\`\`\`
+
+This atomically finds the highest-priority claimable task, assigns it to you,
+and moves it to \`IN_PROGRESS\`. You will receive the full task object.
+
+**200** — Task claimed. Start working.
+**404** — No tasks available. Wait and retry later.
+**409** — You already have an \`IN_PROGRESS\` task in this project. Finish it first.
+
+---
+
+### 2. Read the task
+
+\`\`\`http
+GET /tasks/{id}
+\`\`\`
+
+Read the \`description\` carefully — it contains the full spec. Also check:
+
+- **\`depCount\`** — If > 0, fetch dependencies and verify they are all DONE
+- **\`subtaskCount\`** — If > 0, complete subtasks first
+
+\`\`\`http
+GET /tasks/{id}/dependencies
+GET /tasks/{id}/subtasks
+\`\`\`
+
+---
+
+### 3. Do the work
+
+Post activity comments as you make progress:
+
+\`\`\`http
+POST /tasks/{id}/activity
+Content-Type: application/json
+
+{
+  "author": "your-agent-id",
+  "content": "Starting implementation. Found the relevant module at src/auth/..."
+}
+\`\`\`
+
+---
+
+### 4. If blocked, say so
+
+\`\`\`http
+POST /tasks/{id}/transition
+Content-Type: application/json
+
+{ "state": "BLOCKED" }
+\`\`\`
+
+Always post an activity comment explaining the blocker **before** transitioning.
+
+---
+
+### 5. Submit for review
+
+When the work is complete:
+
+\`\`\`http
+POST /tasks/{id}/activity
+Content-Type: application/json
+
+{
+  "author": "your-agent-id",
+  "content": "Implementation complete. Added JWT auth with refresh tokens. Tests passing."
+}
+\`\`\`
+
+\`\`\`http
+POST /tasks/{id}/transition
+Content-Type: application/json
+
+{ "state": "IN_REVIEW" }
+\`\`\`
+
+---
+
+### 6. Mark done (if authorized) or wait for review
+
+\`\`\`http
+POST /tasks/{id}/transition
+Content-Type: application/json
+
+{ "state": "DONE" }
+\`\`\`
+
+---
+
+## Handling CHANGES_REQUESTED
+
+A reviewer can move a task to \`CHANGES_REQUESTED\` from either \`IN_REVIEW\` or
+\`DONE\`. When this happens:
+
+1. The assignee is cleared — the task is back in the pool
+2. \`/tasks/next\` prioritizes \`CHANGES_REQUESTED\` tasks over \`TODO\` tasks
+3. You will automatically pick it up on your next \`/tasks/next\` call
+
+When you receive a \`CHANGES_REQUESTED\` task, **read the activity feed first**
+to understand what changes are needed:
+
+\`\`\`http
+GET /tasks/{id}/activity
+\`\`\`
+
+Then proceed with the normal workflow: do the work, post progress notes,
+and submit for review again.
+
+---
+
+## Important Rules
+
+- **One task at a time** per project. \`/tasks/next\` returns 409 if you already
+  have an IN_PROGRESS task. Finish or release your current task first.
+- **Expiry timeout:** IN_PROGRESS tasks are auto-expired back to TODO after
+  30 minutes of inactivity. Post activity comments or patch the task to keep
+  your claim alive.
+- **Always leave an activity trail.** Post a comment before starting, when
+  hitting milestones, and when submitting for review. Humans read these.
+
+---
+
+## Quick-Reference Cheat Sheet
+
+\`\`\`
+# Claim work
+POST /tasks/next  { "assignee": "<me>", "project": "<p>" }
+
+# Read the task
+GET  /tasks/<id>
+GET  /tasks/<id>/dependencies
+GET  /tasks/<id>/subtasks
+
+# Post progress
+POST /tasks/<id>/activity  { "author": "<me>", "content": "<note>" }
+
+# Move forward
+POST /tasks/<id>/transition  { "state": "IN_REVIEW" }
+POST /tasks/<id>/transition  { "state": "DONE" }
+
+# If stuck
+POST /tasks/<id>/transition  { "state": "BLOCKED" }
+\`\`\`
+`;
+
+// ---------------------------------------------------------------------------
+// Skill file registry
+// ---------------------------------------------------------------------------
+
+const SKILL_FILES: SkillFile[] = [
+  {
+    id: 'full-reference',
+    label: 'Full Reference',
+    icon: 'pi-book',
+    markdown: FULL_REFERENCE_MD,
+  },
+  {
+    id: 'task-creator',
+    label: 'Task Creator',
+    icon: 'pi-plus-circle',
+    markdown: TASK_CREATOR_MD,
+  },
+  {
+    id: 'worker-agent',
+    label: 'Worker Agent',
+    icon: 'pi-cog',
+    markdown: WORKER_AGENT_MD,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 @Component({
   selector: 'app-skill',
   standalone: true,
@@ -383,7 +899,7 @@ POST /tasks/batch  { "project": "<p>", "tasks": [ … ] }
       <div class="skill-toolbar">
         <h2 class="skill-heading">
           <i class="pi pi-book"></i>
-          LLM Skill Reference
+          Skill Files
         </h2>
         <button class="copy-btn" type="button" (click)="copy()">
           @if (copied()) {
@@ -391,7 +907,22 @@ POST /tasks/batch  { "project": "<p>", "tasks": [ … ] }
           <i class="pi pi-copy"></i> Copy Markdown }
         </button>
       </div>
-      <article class="md-content skill-body" [innerHTML]="rendered"></article>
+
+      <div class="tab-bar">
+        @for (sf of skillFiles; track sf.id) {
+        <button
+          class="tab-btn"
+          type="button"
+          [class.active]="activeId() === sf.id"
+          (click)="activeId.set(sf.id)"
+        >
+          <i class="pi {{ sf.icon }}"></i>
+          {{ sf.label }}
+        </button>
+        }
+      </div>
+
+      <article class="md-content skill-body" [innerHTML]="rendered()"></article>
     </div>
   `,
   styles: `
@@ -411,7 +942,7 @@ POST /tasks/batch  { "project": "<p>", "tasks": [ … ] }
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
       gap: 12px;
       flex-wrap: wrap;
     }
@@ -446,6 +977,42 @@ POST /tasks/batch  { "project": "<p>", "tasks": [ … ] }
         border-color: var(--p-primary-color);
         color: var(--p-primary-color);
         background: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+      }
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--p-surface-700);
+      padding-bottom: 0;
+    }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: none;
+      color: var(--p-text-muted-color);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: -1px;
+
+      i { font-size: 0.85rem; }
+
+      &:hover {
+        color: var(--p-text-color);
+        background: color-mix(in srgb, var(--p-surface-600) 30%, transparent);
+      }
+
+      &.active {
+        color: var(--p-primary-color);
+        border-bottom-color: var(--p-primary-color);
       }
     }
 
@@ -544,16 +1111,26 @@ export class SkillComponent {
   private readonly md = inject(MarkdownService);
   private readonly messageService = inject(MessageService);
 
-  readonly rendered = this.md.render(SKILL_MD);
+  readonly skillFiles = SKILL_FILES;
+  readonly activeId = signal(SKILL_FILES[0].id);
   readonly copied = signal(false);
 
+  private readonly activeSkill = computed(
+    () => SKILL_FILES.find((sf) => sf.id === this.activeId()) ?? SKILL_FILES[0]
+  );
+
+  readonly rendered = computed(() =>
+    this.md.render(this.activeSkill().markdown)
+  );
+
   copy(): void {
-    navigator.clipboard.writeText(SKILL_MD).then(() => {
+    const markdown = this.activeSkill().markdown;
+    navigator.clipboard.writeText(markdown).then(() => {
       this.copied.set(true);
       this.messageService.add({
         severity: 'success',
         summary: 'Copied',
-        detail: 'Markdown copied to clipboard',
+        detail: `${this.activeSkill().label} markdown copied to clipboard`,
         life: 2000,
       });
       setTimeout(() => this.copied.set(false), 2000);
