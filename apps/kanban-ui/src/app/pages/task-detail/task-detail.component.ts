@@ -77,16 +77,23 @@ interface DepTask {
       <div class="detail-header">
         <p-skeleton width="60px" height="18px" />
         <p-skeleton width="100%" height="28px" styleClass="mt-2" />
-        <p-skeleton width="200px" height="14px" styleClass="mt-1" />
       </div>
       } @else if (task(); as t) {
-      <!-- ── Header ─────────────────────────────────────── -->
+      <!-- ── Slim Header ──────────────────────────────────────── -->
       <div class="detail-header">
-        <!-- Back + meta row -->
         <div class="header-meta">
           <button class="back-btn" type="button" (click)="goBack()">
             <i class="pi pi-arrow-left"></i> Back
           </button>
+          <span
+            class="state-badge"
+            [style.color]="stateColor(t.state)"
+            [style.background]="stateColor(t.state) + '22'"
+          >
+            {{ t.state.replace('_', ' ') }}
+          </span>
+          <span class="project-chip">{{ t.project }}</span>
+          <span class="task-id">{{ t.id.slice(0, 8) }}</span>
           @if (!confirmingDelete()) {
           <button
             class="delete-btn"
@@ -117,15 +124,6 @@ interface DepTask {
             </button>
           </span>
           }
-          <span
-            class="state-badge"
-            [style.color]="stateColor(t.state)"
-            [style.background]="stateColor(t.state) + '22'"
-          >
-            {{ t.state.replace('_', ' ') }}
-          </span>
-          <span class="project-chip">{{ t.project }}</span>
-          <span class="task-id">{{ t.id.slice(0, 8) }}</span>
         </div>
 
         <!-- Title — click to edit -->
@@ -149,108 +147,145 @@ interface DepTask {
           <i class="pi pi-pencil edit-hint"></i>
         </h1>
         }
-
-        <!-- Description — click to edit -->
-        @if (editingDesc()) {
-        <textarea
-          pTextarea
-          class="desc-input"
-          [(ngModel)]="descDraft"
-          rows="4"
-          (blur)="saveDesc(t)"
-          (keydown.escape)="editingDesc.set(false)"
-          autofocus
-        ></textarea>
-        } @else {
-        <div
-          class="task-desc md-content"
-          [innerHTML]="md.render(t.description || '*(no description)*')"
-          (click)="startEditDesc(t)"
-          title="Click to edit"
-        ></div>
-        }
-
-        <!-- Details row -->
-        <div class="details-row">
-          <span class="detail-chip" [class]="'p-' + pSeverity(t)">
-            {{ pLabel(t) }}
-          </span>
-          @if (editingPriority()) {
-          <p-inputNumber
-            [(ngModel)]="priorityDraft"
-            [min]="1"
-            [max]="9999"
-            [showButtons]="true"
-            (onBlur)="savePriority(t)"
-            styleClass="priority-input"
-          />
-          } @else {
-          <span
-            class="detail-chip priority-chip"
-            (click)="startEditPriority(t)"
-            title="Click to edit priority"
-          >
-            Priority: {{ t.priority }} <i class="pi pi-pencil edit-hint"></i>
-          </span>
-          } @if (t.assignee) {
-          <span class="detail-chip assignee-chip">👤 {{ t.assignee }}</span>
-          }
-          <span class="detail-chip ts-chip" title="Created at">
-            Created {{ fmtRelative(t.createdAt) }}
-          </span>
-          <span class="detail-chip ts-chip" title="Updated at">
-            Updated {{ fmtRelative(t.updatedAt) }}
-          </span>
-        </div>
-
-        <!-- Transition buttons -->
-        @if (validTransitions(t).length > 0) {
-        <div class="transition-row">
-          @for (target of validTransitions(t); track target) {
-          <button
-            class="transition-btn"
-            type="button"
-            [style.border-color]="stateColor(target)"
-            [style.color]="stateColor(target)"
-            [disabled]="transitioning()"
-            (click)="transition(t, target)"
-          >
-            → {{ target.replace('_', ' ') }}
-          </button>
-          }
-        </div>
-        }
       </div>
 
       <!-- ── Body ───────────────────────────────────────── -->
       <div class="detail-body">
-        <!-- Left: Activity -->
-        <section class="body-section activity-section">
-          <div class="section-title">Activity</div>
-          <app-activity-feed
-            [taskId]="t.id"
-            [entries]="activity()"
-            [loading]="activityLoading()"
-            (commented)="onComment($event)"
-          />
-        </section>
-
-        <!-- Right: History + Deps + Subtasks -->
-        <aside class="body-aside">
-          <!-- History timeline -->
-          <section class="body-section">
-            <div class="section-title">State History</div>
-            @if (history(); as h) {
-            <app-history-timeline [history]="h" />
+        <!-- LEFT: description + tabbed activity -->
+        <div class="detail-left">
+          <!-- Description card -->
+          <div class="desc-card">
+            @if (editingDesc()) {
+            <textarea
+              pTextarea
+              class="desc-input"
+              [(ngModel)]="descDraft"
+              rows="6"
+              (blur)="saveDesc(t)"
+              (keydown.escape)="editingDesc.set(false)"
+              autofocus
+            ></textarea>
             } @else {
-            <p-skeleton height="120px" />
+            <div
+              class="task-desc md-content"
+              [innerHTML]="md.render(t.description || '*(no description)*')"
+              (click)="startEditDesc(t)"
+              title="Click to edit"
+            ></div>
             }
+          </div>
+
+          <!-- Activity card with tabs -->
+          <div class="activity-card">
+            <div class="tab-bar">
+              <button
+                class="tab-btn"
+                [class.active]="activeTab() === 'all'"
+                (click)="activeTab.set('all')"
+              >
+                All Activity
+              </button>
+              <button
+                class="tab-btn"
+                [class.active]="activeTab() === 'comments'"
+                (click)="activeTab.set('comments')"
+              >
+                Comments
+              </button>
+              <button
+                class="tab-btn"
+                [class.active]="activeTab() === 'history'"
+                (click)="activeTab.set('history')"
+              >
+                State History
+              </button>
+            </div>
+            <div class="tab-content">
+              @if (activeTab() === 'history') { @if (history(); as h) {
+              <div class="history-scroll">
+                <app-history-timeline [history]="h" />
+              </div>
+              } @else {
+              <p-skeleton height="120px" />
+              } } @else {
+              <app-activity-feed
+                [taskId]="t.id"
+                [entries]="activity()"
+                [loading]="activityLoading()"
+                [entryFilter]="activeTab() === 'comments' ? 'comments' : 'all'"
+                [showComposer]="true"
+                (commented)="onComment($event)"
+              />
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: meta sidebar -->
+        <aside class="detail-aside">
+          <!-- Transition buttons -->
+          @if (validTransitions(t).length > 0) {
+          <section class="aside-section">
+            <div class="section-title">Move to</div>
+            <div class="transition-row">
+              @for (target of validTransitions(t); track target) {
+              <button
+                class="transition-btn"
+                type="button"
+                [style.border-color]="stateColor(target)"
+                [style.color]="stateColor(target)"
+                [disabled]="transitioning()"
+                (click)="transition(t, target)"
+              >
+                → {{ target.replace('_', ' ') }}
+              </button>
+              }
+            </div>
+          </section>
+          <p-divider />
+          }
+
+          <!-- Meta details -->
+          <section class="aside-section">
+            <div class="section-title">Details</div>
+            <div class="meta-grid">
+              <span class="detail-chip" [class]="'p-' + pSeverity(t)">
+                {{ pLabel(t) }}
+              </span>
+              @if (editingPriority()) {
+              <p-inputNumber
+                [(ngModel)]="priorityDraft"
+                [min]="1"
+                [max]="9999"
+                [showButtons]="true"
+                (onBlur)="savePriority(t)"
+                styleClass="priority-input"
+              />
+              } @else {
+              <span
+                class="detail-chip priority-chip"
+                (click)="startEditPriority(t)"
+                title="Click to edit priority"
+              >
+                Priority: {{ t.priority }}
+                <i class="pi pi-pencil edit-hint"></i>
+              </span>
+              } @if (t.assignee) {
+              <span class="detail-chip assignee-chip">👤 {{ t.assignee }}</span>
+              }
+              <span class="detail-chip ts-chip" title="Created at">
+                Created {{ fmtRelative(t.createdAt) }}
+              </span>
+              <span class="detail-chip ts-chip" title="Updated at">
+                Updated {{ fmtRelative(t.updatedAt) }}
+              </span>
+            </div>
           </section>
 
           <p-divider />
 
           <!-- Dependencies -->
-          <section class="body-section">
+          <section class="aside-section">
             <div class="section-title-row">
               <span class="section-title">Dependencies</span>
               <span class="section-count">{{ deps().length }}</span>
@@ -295,7 +330,6 @@ interface DepTask {
             </div>
             }
 
-            <!-- Add dependency -->
             <div class="add-dep-row">
               @if (addingDep()) {
               <input
@@ -336,7 +370,7 @@ interface DepTask {
           <p-divider />
 
           <!-- Subtasks -->
-          <section class="body-section">
+          <section class="aside-section">
             <div class="section-title-row">
               <span class="section-title">Subtasks</span>
               <span class="section-count">{{ subtaskProgress() }}</span>
@@ -364,7 +398,6 @@ interface DepTask {
             </div>
             }
 
-            <!-- Quick-create subtask -->
             <div class="add-dep-row">
               @if (addingSubtask()) {
               <input
@@ -416,21 +449,23 @@ interface DepTask {
     }
 
     .detail-page {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    /* ── Header ─────────────────────────────────────────── */
+    /* ── Slim Header ──────────────────────────────────────── */
     .detail-header {
       background: var(--p-surface-900);
       border: 1px solid var(--p-surface-700);
       border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 16px;
+      padding: 14px 18px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
     .header-meta {
@@ -539,7 +574,6 @@ interface DepTask {
       border-radius: 4px;
     }
 
-    /* Edit-in-place title */
     .task-title {
       margin: 0;
       font-size: 1.35rem;
@@ -564,27 +598,54 @@ interface DepTask {
       width: 100%;
     }
 
+    .edit-hint {
+      font-size: 0.65rem;
+      opacity: 0;
+      color: var(--p-text-muted-color);
+      transition: opacity 0.12s;
+    }
+
+    /* ── Body ─────────────────────────────────────────────── */
+    .detail-body {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    /* LEFT column */
+    .detail-left {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Description card */
+    .desc-card {
+      background: var(--p-surface-900);
+      border: 1px solid var(--p-surface-700);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
     .task-desc {
       margin: 0;
-      font-size: 0.875rem;
-      color: var(--p-text-muted-color);
+      font-size: 0.9rem;
+      color: var(--p-text-color);
       cursor: pointer;
       padding: 4px;
       border-radius: 4px;
       transition: background 0.12s;
       word-break: break-word;
+      min-height: 48px;
 
-      &:hover {
-        background: var(--p-surface-800);
-      }
+      &:hover { background: var(--p-surface-800); }
     }
 
     .task-desc.md-content :is(p, ul, ol, blockquote, h1, h2, h3, h4) {
       margin: 0 0 8px;
     }
-    .task-desc.md-content :is(p, ul, ol):last-child {
-      margin-bottom: 0;
-    }
+    .task-desc.md-content :is(p, ul, ol):last-child { margin-bottom: 0; }
     .task-desc.md-content pre {
       margin: 8px 0;
       border-radius: 6px;
@@ -596,9 +657,7 @@ interface DepTask {
       border-radius: 3px;
       font-size: 0.8rem;
     }
-    .task-desc.md-content a {
-      color: var(--p-primary-color);
-    }
+    .task-desc.md-content a { color: var(--p-primary-color); }
     .task-desc.md-content blockquote {
       border-left: 3px solid var(--p-surface-500);
       padding-left: 12px;
@@ -607,103 +666,83 @@ interface DepTask {
 
     .desc-input {
       width: 100%;
-      font-size: 0.875rem;
+      font-size: 0.9rem;
     }
 
-    .edit-hint {
-      font-size: 0.65rem;
-      opacity: 0;
-      color: var(--p-text-muted-color);
-      transition: opacity 0.12s;
-    }
-
-    /* Details row */
-    .details-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .detail-chip {
-      font-size: 0.7rem;
-      padding: 2px 8px;
-      border-radius: 10px;
-      background: var(--p-surface-700);
-      color: var(--p-text-muted-color);
-
-      &.p-danger    { background: #ef444422; color: #f87171; font-weight: 700; }
-      &.p-warn      { background: #f59e0b22; color: #fbbf24; font-weight: 700; }
-      &.p-info      { background: #3b82f622; color: #60a5fa; font-weight: 700; }
-      &.p-secondary { font-weight: 700; }
-
-      &.priority-chip { cursor: pointer; &:hover { background: var(--p-surface-600); } }
-      &.assignee-chip { color: var(--p-primary-color); background: color-mix(in srgb, var(--p-primary-color) 18%, transparent); }
-    }
-
-    :host ::ng-deep .priority-input {
-      width: 110px;
-
-      input { font-size: 0.8rem; height: 28px; padding: 2px 6px; }
-    }
-
-    .ts-chip {
-      font-size: 0.68rem;
-    }
-
-    /* Transition buttons */
-    .transition-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .transition-btn {
-      background: transparent;
-      border: 1px solid;
-      border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      padding: 5px 14px;
-      cursor: pointer;
-      transition: all 0.12s;
-
-      &:hover:not(:disabled) {
-        opacity: 0.8;
-        transform: translateY(-1px);
-      }
-      &:disabled { opacity: 0.4; cursor: not-allowed; }
-    }
-
-    /* ── Body ───────────────────────────────────────────── */
-    .detail-body {
-      display: grid;
-      grid-template-columns: 1fr 320px;
-      gap: 16px;
-      align-items: flex-start;
-    }
-
-    .body-section {
+    /* Activity card (tabs + feed) */
+    .activity-card {
+      background: var(--p-surface-900);
+      border: 1px solid var(--p-surface-700);
+      border-radius: 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      min-height: 480px;
+      overflow: hidden;
     }
 
-    .activity-section {
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--p-surface-700);
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--p-text-muted-color);
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.12s;
+      margin-bottom: -1px;
+
+      &:hover { color: var(--p-text-color); }
+
+      &.active {
+        color: var(--p-primary-color);
+        border-bottom-color: var(--p-primary-color);
+      }
+    }
+
+    .tab-content {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .history-scroll {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    /* RIGHT sidebar */
+    .detail-aside {
       background: var(--p-surface-900);
       border: 1px solid var(--p-surface-700);
       border-radius: 12px;
       padding: 16px;
-    }
-
-    .body-aside {
       display: flex;
       flex-direction: column;
       gap: 0;
-      background: var(--p-surface-900);
-      border: 1px solid var(--p-surface-700);
-      border-radius: 12px;
-      padding: 16px;
+    }
+
+    .aside-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .meta-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .section-title {
@@ -726,6 +765,52 @@ interface DepTask {
       color: var(--p-text-muted-color);
       padding: 1px 6px;
       border-radius: 8px;
+    }
+
+    /* Details chips */
+    .detail-chip {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--p-surface-700);
+      color: var(--p-text-muted-color);
+
+      &.p-danger    { background: #ef444422; color: #f87171; font-weight: 700; }
+      &.p-warn      { background: #f59e0b22; color: #fbbf24; font-weight: 700; }
+      &.p-info      { background: #3b82f622; color: #60a5fa; font-weight: 700; }
+      &.p-secondary { font-weight: 700; }
+
+      &.priority-chip { cursor: pointer; &:hover { background: var(--p-surface-600); } }
+      &.assignee-chip { color: var(--p-primary-color); background: color-mix(in srgb, var(--p-primary-color) 18%, transparent); }
+    }
+
+    :host ::ng-deep .priority-input {
+      width: 110px;
+      input { font-size: 0.8rem; height: 28px; padding: 2px 6px; }
+    }
+
+    .ts-chip { font-size: 0.68rem; }
+
+    /* Transition buttons */
+    .transition-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .transition-btn {
+      background: transparent;
+      border: 1px solid;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      cursor: pointer;
+      transition: all 0.12s;
+      white-space: nowrap;
+
+      &:hover:not(:disabled) { opacity: 0.8; transform: translateY(-1px); }
+      &:disabled { opacity: 0.4; cursor: not-allowed; }
     }
 
     /* Deps / subtasks rows */
@@ -850,7 +935,7 @@ interface DepTask {
     }
 
     /* Responsive */
-    @media (max-width: 860px) {
+    @media (max-width: 960px) {
       .detail-body {
         grid-template-columns: 1fr;
       }
@@ -868,6 +953,8 @@ export class TaskDetailComponent implements OnInit {
   readonly md = inject(MarkdownService);
 
   readonly TaskState = TaskState;
+
+  readonly activeTab = signal<'all' | 'comments' | 'history'>('all');
 
   readonly task = signal<TaskOut | null>(null);
   readonly loading = signal(true);

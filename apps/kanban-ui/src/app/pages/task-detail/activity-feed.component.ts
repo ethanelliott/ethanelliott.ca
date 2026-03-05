@@ -76,6 +76,7 @@ import {
     </div>
 
     <!-- Comment composer -->
+    @if (showComposer()) {
     <div class="composer">
       <div class="composer-header">Add a comment</div>
       <textarea
@@ -110,19 +111,23 @@ import {
       <p class="post-error">{{ postError() }}</p>
       }
     </div>
+    }
   `,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
-      gap: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
     .feed-list {
       display: flex;
       flex-direction: column;
       gap: 2px;
-      margin-bottom: 16px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
     }
 
     .feed-empty {
@@ -222,10 +227,12 @@ import {
     .event-pill.dependency     { background: #fbbf2422; color: #fbbf24; }
     .event-pill.subtask        { background: #34d39922; color: #34d399; }
 
-    /* Composer */
+    /* Composer — pinned at bottom, never scrolls away */
     .composer {
+      flex-shrink: 0;
       border-top: 1px solid var(--p-surface-700);
-      padding-top: 16px;
+      padding-top: 12px;
+      margin-top: 8px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -280,6 +287,8 @@ export class ActivityFeedComponent {
   readonly taskId = input.required<string>();
   readonly entries = input<ActivityEntryOut[]>([]);
   readonly loading = input(false);
+  readonly entryFilter = input<'all' | 'comments'>('all');
+  readonly showComposer = input(true);
 
   readonly commented = output<ActivityEntryOut>();
 
@@ -290,12 +299,16 @@ export class ActivityFeedComponent {
   readonly posting = signal(false);
   readonly postError = signal<string | null>(null);
 
-  readonly sortedEntries = computed(() =>
-    [...this.entries()].sort(
+  readonly sortedEntries = computed(() => {
+    const sorted = [...this.entries()].sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-  );
+    );
+    if (this.entryFilter() === 'comments') {
+      return sorted.filter((e) => e.type === ActivityEntryType.COMMENT);
+    }
+    return sorted;
+  });
 
   entryIcon(type: ActivityEntryType): string {
     const map: Record<ActivityEntryType, string> = {
