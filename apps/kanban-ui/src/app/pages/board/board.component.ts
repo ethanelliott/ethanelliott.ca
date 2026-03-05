@@ -11,10 +11,12 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { KanbanApiService } from '../../services/kanban-api.service';
 import { KanbanSseService } from '../../services/kanban-sse.service';
 import { ProjectService } from '../../services/project.service';
@@ -51,6 +53,7 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
     ButtonModule,
     SkeletonModule,
     ToastModule,
+    ConfirmDialogModule,
     BoardColumnComponent,
     NewTaskDialogComponent,
   ],
@@ -69,6 +72,15 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
           <span class="loading-label">
             <i class="pi pi-spin pi-spinner"></i> Loading…
           </span>
+          } @if (backlogCount() > 0) {
+          <p-button
+            label="Start Sprint"
+            icon="pi pi-play"
+            size="small"
+            severity="secondary"
+            [disabled]="sprinting()"
+            (onClick)="confirmStartSprint()"
+          />
           }
           <p-button
             label="New Task"
@@ -107,6 +119,7 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
       (taskCreated)="onTaskCreated($event)"
     />
     <p-toast />
+    <p-confirmDialog />
   `,
   styles: `
     :host {
@@ -228,14 +241,20 @@ export class BoardComponent implements OnInit {
   private readonly api = inject(KanbanApiService);
   private readonly sse = inject(KanbanSseService);
   private readonly messageService = inject(MessageService);
+  private readonly confirmationService = inject(ConfirmationService);
   readonly projectService = inject(ProjectService);
 
   readonly ALL_STATES = ALL_STATES;
 
   readonly tasks = signal<TaskOut[]>([]);
   readonly loading = signal(false);
+  readonly sprinting = signal(false);
   readonly showNewTaskDialog = signal(false);
   readonly draggingTaskState = signal<TaskState | null>(null);
+
+  readonly backlogCount = computed(
+    () => this.tasks().filter((t) => t.state === TaskState.BACKLOG).length
+  );
 
   /** Tasks grouped by state, computed from the flat list */
   private readonly tasksByState = computed(() => {
@@ -377,6 +396,69 @@ export class BoardComponent implements OnInit {
       summary: 'Task created',
       detail: task.title,
       life: 3000,
+    });
+  }
+
+  confirmStartSprint(): void {
+    const count = this.backlogCount();
+    this.confirmationService.confirm({
+      header: 'Start Sprint',
+      message: `Move all ${count} backlog task${
+        count === 1 ? '' : 's'
+      } to Todo so agents can start work?`,
+      icon: 'pi pi-play',
+      acceptLabel: 'Start Sprint',
+      rejectLabel: 'Cancel',
+      accept: () => this.startSprint(),
+    });
+  }
+
+  startSprint(): void {
+    const backlogTasks = this.tasks().filter(
+      (t) => t.state === TaskState.BACKLOG
+    );
+    if (backlogTasks.length === 0) return;
+
+    this.sprinting.set(true);
+
+    // Optimistic update
+    this.tasks.update((list) =>
+      list.map((t) =>
+        t.state === TaskState.BACKLOG ? { ...t, state: TaskState.TODO } : t
+      )
+    );
+
+    forkJoin(
+      backlogTasks.map((t) => this.api.transitionTask(t.id, TaskState.TODO))
+    ).subscribe({
+      next: () => {
+        this.sprinting.set(false);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Sprint started',
+          detail: `${backlogTasks.length} task${
+            backlogTasks.length === 1 ? '' : 's'
+          } moved to Todo.`,
+          life: 3000,
+        });
+      },
+      error: (err) => {
+        // Revert optimistic update on any failure
+        this.tasks.update((list) =>
+          list.map((t) =>
+            backlogTasks.find((b) => b.id === t.id)
+              ? { ...t, state: TaskState.BACKLOG }
+              : t
+          )
+        );
+        this.sprinting.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Sprint failed',
+          detail: err?.error?.message ?? 'Could not move all tasks.',
+          life: 4000,
+        });
+      },
     });
   }
 }
