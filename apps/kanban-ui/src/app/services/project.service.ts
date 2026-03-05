@@ -44,7 +44,7 @@ export class ProjectService {
       const newRelative = url.pathname + (url.search || '');
       if (newRelative !== this.router.url) {
         this.router.navigate([], {
-          queryParams: project ? { project } : {},
+          queryParams: project ? { project } : { project: null },
           queryParamsHandling: 'merge',
           replaceUrl: true,
         });
