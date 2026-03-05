@@ -1139,8 +1139,9 @@ export class TaskDetailComponent implements OnInit {
     this.router.navigate(['/tasks', id], { queryParamsHandling: 'preserve' });
   }
 
-  onComment(entry: ActivityEntryOut): void {
-    this.activity.update((a) => [...a, entry]);
+  onComment(_entry: ActivityEntryOut): void {
+    // Do not add locally — SSE activityAdded$ is the single source of truth
+    // and will append the entry once the server broadcasts it.
   }
 
   stateColor(state: TaskState): string {
