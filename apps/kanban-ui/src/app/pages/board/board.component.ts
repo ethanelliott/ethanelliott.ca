@@ -40,7 +40,7 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
     'col-CHANGES_REQUESTED',
   ],
   [TaskState.CHANGES_REQUESTED]: ['col-IN_PROGRESS'],
-  [TaskState.DONE]: [],
+  [TaskState.DONE]: ['col-CHANGES_REQUESTED'],
 };
 
 @Component({

@@ -15,7 +15,7 @@ export const STATE_TRANSITIONS: Record<TaskState, TaskState[]> = {
     TaskState.CHANGES_REQUESTED,
   ],
   [TaskState.CHANGES_REQUESTED]: [TaskState.IN_PROGRESS],
-  [TaskState.DONE]: [],
+  [TaskState.DONE]: [TaskState.CHANGES_REQUESTED],
 };
 
 export function canTransition(from: TaskState, to: TaskState): boolean {
