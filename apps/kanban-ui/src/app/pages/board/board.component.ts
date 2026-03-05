@@ -10,7 +10,6 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
-import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -52,7 +51,6 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
     DragDropModule,
     ButtonModule,
     SkeletonModule,
-    ToastModule,
     ConfirmDialogModule,
     BoardColumnComponent,
     NewTaskDialogComponent,
@@ -118,7 +116,6 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
       [(visible)]="showNewTaskDialog"
       (taskCreated)="onTaskCreated($event)"
     />
-    <p-toast />
     <p-confirmDialog />
   `,
   styles: `

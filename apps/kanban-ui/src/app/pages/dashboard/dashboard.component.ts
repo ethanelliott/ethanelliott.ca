@@ -10,7 +10,6 @@ import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs/operators';
 import { MessageService } from 'primeng/api';
-import { ToastModule } from 'primeng/toast';
 import { SkeletonModule } from 'primeng/skeleton';
 import { KanbanApiService } from '../../services/kanban-api.service';
 import { KanbanSseService } from '../../services/kanban-sse.service';
@@ -50,7 +49,6 @@ const STATE_ACCENT: Record<TaskState, string> = {
   imports: [
     CommonModule,
     RouterModule,
-    ToastModule,
     SkeletonModule,
     AgentCardComponent,
     QueuePanelComponent,
@@ -130,7 +128,6 @@ const STATE_ACCENT: Record<TaskState, string> = {
         </section>
       </div>
     </div>
-    <p-toast />
   `,
   styles: `
     :host {
