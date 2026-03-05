@@ -2,7 +2,7 @@
 FROM docker.io/node:lts-alpine
 
 ENV HOST=0.0.0.0
-ENV PORT=3000
+ENV PORT=3333
 ENV CI=true
 
 WORKDIR /app
@@ -26,6 +26,6 @@ RUN npm install --omit=dev
 # Switch to non-root user
 USER server
 
-EXPOSE 3000
+EXPOSE 3333
 
 CMD ["node", "main.js"]

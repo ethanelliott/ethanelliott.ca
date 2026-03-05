@@ -123,8 +123,8 @@ export class TasksService {
     content: string,
     metadata?: Record<string, unknown>,
     activityRepo = this._activity
-  ): Promise<void> {
-    await activityRepo.save(
+  ): Promise<ActivityEntry> {
+    const entry = await activityRepo.save(
       activityRepo.create({
         taskId,
         type,
@@ -133,6 +133,21 @@ export class TasksService {
         metadata: metadata ? JSON.stringify(metadata) : undefined,
       })
     );
+
+    emitSse({
+      type: 'activity_added',
+      payload: {
+        id: entry.id,
+        taskId: entry.taskId,
+        type: entry.type,
+        author: entry.author ?? null,
+        content: entry.content,
+        metadata: entry.metadata ? JSON.parse(entry.metadata) : null,
+        createdAt: entry.createdAt,
+      },
+    });
+
+    return entry;
   }
 
   private async _checkDependencyCycle(
@@ -649,7 +664,7 @@ export class TasksService {
         })
       );
 
-      await activityRepo.save(
+      const actEntry = await activityRepo.save(
         activityRepo.create({
           taskId: saved.id,
           type: ActivityEntryType.ASSIGNMENT,
@@ -662,6 +677,19 @@ export class TasksService {
           }),
         })
       );
+
+      emitSse({
+        type: 'activity_added',
+        payload: {
+          id: actEntry.id,
+          taskId: actEntry.taskId,
+          type: actEntry.type,
+          author: actEntry.author ?? null,
+          content: actEntry.content,
+          metadata: actEntry.metadata ? JSON.parse(actEntry.metadata) : null,
+          createdAt: actEntry.createdAt,
+        },
+      });
 
       const out = this.mapToOut(saved);
       emitSse({ type: 'task_updated', payload: out });
@@ -842,22 +870,19 @@ export class TasksService {
   async expireStaleInProgressTasks(ttlMinutes: number): Promise<number> {
     const cutoff = new Date(Date.now() - ttlMinutes * 60 * 1000);
 
+    // TypeORM + SQLite stores datetime columns as epoch milliseconds,
+    // so compare with the numeric value, not an ISO string.
     const staleTasks = await this._tasks
       .createQueryBuilder('t')
       .where('t.state = :state', { state: TaskState.IN_PROGRESS })
-      .andWhere('t.assignedAt <= :cutoff', { cutoff: cutoff.toISOString() })
+      .andWhere('t.assignedAt <= :cutoff', { cutoff: cutoff.getTime() })
       .andWhere('t.deletedAt IS NULL')
       .getMany();
 
     for (const task of staleTasks) {
       const fromState = task.state;
-      task.state = TaskState.TODO;
-      task.assignee = undefined;
-      task.assignedAt = undefined;
-      await this._tasks.save(task);
-
-      await this._logHistory(task.id, fromState, TaskState.TODO);
       const previousAssignee = task.assignee ?? 'unknown';
+
       task.state = TaskState.TODO;
       task.assignee = undefined;
       task.assignedAt = undefined;
