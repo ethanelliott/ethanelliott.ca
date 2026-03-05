@@ -25,7 +25,101 @@ import { Command } from 'commander';
 import { input, confirm } from '@inquirer/prompts';
 import { resolve } from 'path';
 import { mkdirSync, createWriteStream } from 'fs';
-import { PassThrough } from 'stream';
+import { PassThrough, Writable } from 'stream';
+
+// ═══════════════════════════════════════════════════════════════
+// Alternate screen buffer + stdout proxy (flicker-free rendering)
+// ═══════════════════════════════════════════════════════════════
+
+const ESC_CURSOR_HOME = '\x1b[H'; // Move cursor to row 1, col 1
+const ESC_CLEAR_TO_EOL = '\x1b[K'; // Clear from cursor to end of line
+const ESC_CLEAR_TO_EOS = '\x1b[J'; // Clear from cursor to end of screen
+const ESC_ALT_SCREEN_ON = '\x1b[?1049h'; // Enter alternate screen buffer
+const ESC_ALT_SCREEN_OFF = '\x1b[?1049l'; // Leave alternate screen buffer
+const ESC_HIDE_CURSOR = '\x1b[?25l'; // Hide cursor
+const ESC_SHOW_CURSOR = '\x1b[?25h'; // Show cursor
+
+// Regex to detect destructive clear sequences that ink emits in fullscreen mode
+const RIS_RE = /\x1bc/g; // Reset to Initial State (terminal flash)
+const CLEAR_SCREEN_RE = /\x1b\[2J/g; // Clear entire screen
+const CLEAR_SCROLLBACK_RE = /\x1b\[3J/g; // Clear scrollback buffer
+
+/**
+ * Creates a Writable proxy around process.stdout that intercepts ink's
+ * destructive fullscreen clear (\x1bc = RIS) and replaces it with
+ * cursor-home + per-line clear-to-end-of-line writes.
+ *
+ * This eliminates the full-terminal flash that occurs when ink detects
+ * its output fills the terminal height (its "fullscreen" code path
+ * bypasses incrementalRendering and emits clearTerminal = \x1bc).
+ */
+function createStdoutProxy(): Writable & {
+  rows: number;
+  columns: number;
+  isTTY: boolean;
+} {
+  const real = process.stdout;
+
+  const proxy = new Writable({
+    write(
+      chunk: Buffer | string,
+      encoding: BufferEncoding,
+      callback: (error?: Error | null) => void
+    ) {
+      let str = typeof chunk === 'string' ? chunk : chunk.toString();
+
+      // Strip the destructive sequences
+      const hadRIS = RIS_RE.test(str);
+      str = str.replace(RIS_RE, '');
+      str = str.replace(CLEAR_SCREEN_RE, '');
+      str = str.replace(CLEAR_SCROLLBACK_RE, '');
+
+      if (hadRIS) {
+        // Ink intended a full redraw — move cursor home and rewrite with per-line clears
+        const lines = str.split('\n');
+        let output = ESC_CURSOR_HOME;
+        for (let i = 0; i < lines.length; i++) {
+          output += lines[i] + ESC_CLEAR_TO_EOL;
+          if (i < lines.length - 1) {
+            output += '\n';
+          }
+        }
+        // Clear any leftover lines below the new content
+        output += ESC_CLEAR_TO_EOS;
+        real.write(output, encoding, callback);
+      } else {
+        // No destructive sequences — pass through unchanged
+        real.write(str, encoding, callback);
+      }
+    },
+  }) as any;
+
+  // Proxy the properties ink checks
+  Object.defineProperty(proxy, 'rows', { get: () => real.rows });
+  Object.defineProperty(proxy, 'columns', { get: () => real.columns });
+  Object.defineProperty(proxy, 'isTTY', { get: () => real.isTTY });
+
+  // Forward resize events so ink recalculates layout
+  real.on('resize', () => proxy.emit('resize'));
+
+  return proxy;
+}
+
+let altScreenActive = false;
+
+function enterAltScreen() {
+  if (!altScreenActive) {
+    process.stdout.write(ESC_ALT_SCREEN_ON + ESC_HIDE_CURSOR + ESC_CURSOR_HOME);
+    altScreenActive = true;
+  }
+}
+
+function leaveAltScreen() {
+  if (altScreenActive) {
+    process.stdout.write(ESC_SHOW_CURSOR + ESC_ALT_SCREEN_OFF);
+    altScreenActive = false;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Constants
@@ -116,17 +210,22 @@ interface AgentData {
   dirty: boolean; // true when mutated since last flush
 }
 
-/** Snapshot passed to React for rendering — immutable between flushes */
+/** Snapshot passed to React for rendering — immutable between flushes.
+ *  Pre-computed strings (spinnerFrame, duration) are baked in so that
+ *  React components are pure and unchanged lines stay identical for
+ *  ink's incremental renderer. */
 interface AgentSnapshot {
   name: string;
   color: string;
   status: AgentStatus;
   lines: string[];
-  startTime: number | null;
-  endTime: number | null;
   exitCode: number | null;
   logPath: string | null;
   iteration: number;
+  /** Pre-computed spinner character (only set when running/starting) */
+  spinnerFrame: string;
+  /** Pre-computed duration string */
+  duration: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -530,14 +629,9 @@ const AgentPanel: FC<{
   agent: AgentSnapshot;
   panelHeight: number;
   maxLines: number;
-  spinnerFrame: string;
-}> = ({ agent, panelHeight, maxLines, spinnerFrame }) => {
+}> = ({ agent, panelHeight, maxLines }) => {
   const color = STATUS_COLOR[agent.status];
-  const now = Date.now();
-  const duration =
-    agent.startTime != null
-      ? elapsed((agent.endTime ?? now) - agent.startTime)
-      : '';
+  const { duration } = agent;
 
   const totalLines = agent.lines.length;
 
@@ -576,7 +670,7 @@ const AgentPanel: FC<{
       <Box justifyContent="space-between">
         <Text>
           {agent.status === 'running' || agent.status === 'starting' ? (
-            <Text color={agent.color}>{spinnerFrame} </Text>
+            <Text color={agent.color}>{agent.spinnerFrame} </Text>
           ) : (
             <Text color={color}>{STATUS_ICON[agent.status]}</Text>
           )}
@@ -638,10 +732,10 @@ const AgentPanel: FC<{
 
 const Footer: FC<{
   stats: { completed: number; failed: number };
-  startTime: number;
+  uptime: string;
   shuttingDown: boolean;
   loop: boolean;
-}> = ({ stats, startTime, shuttingDown, loop }) => (
+}> = ({ stats, uptime, shuttingDown, loop }) => (
   <Box paddingX={1} justifyContent="space-between">
     <Text>
       <Text color="green" bold>
@@ -655,7 +749,7 @@ const Footer: FC<{
       <Text color="red"> failed</Text>
       <Text dimColor>{' | '}</Text>
       <Text dimColor>uptime </Text>
-      <Text>{elapsed(Date.now() - startTime)}</Text>
+      <Text>{uptime}</Text>
     </Text>
     <Text dimColor>
       {shuttingDown ? (
@@ -711,10 +805,16 @@ const App: FC<{ config: Config }> = ({ config }) => {
 
   // ── Display state — updated only by the flush interval ─────
   const [agents, setAgents] = useState<AgentSnapshot[]>(() =>
-    dataRef.current.map(({ dirty: _, ...rest }) => ({ ...rest }))
+    dataRef.current.map(
+      ({ dirty: _, startTime: _s, endTime: _e, ...rest }) => ({
+        ...rest,
+        spinnerFrame: '',
+        duration: '',
+      })
+    )
   );
   const [stats, setStats] = useState({ completed: 0, failed: 0 });
-  const [spinnerFrame, setSpinnerFrame] = useState(SPINNER_FRAMES[0]);
+  const [uptime, setUptime] = useState('0s');
   const [shuttingDown, setShuttingDown] = useState(false);
 
   // ── Terminal size tracking ─────────────────────────────────
@@ -802,11 +902,12 @@ const App: FC<{ config: Config }> = ({ config }) => {
 
   // ── Single flush interval — the ONLY source of React re-renders ──
   useEffect(() => {
+    let prevUptime = '';
     const id = setInterval(() => {
-      // Advance spinner
+      // Advance spinner (module-level index, no React state)
       spinnerIndexRef.current =
         (spinnerIndexRef.current + 1) % SPINNER_FRAMES.length;
-      setSpinnerFrame(SPINNER_FRAMES[spinnerIndexRef.current]);
+      const frame = SPINNER_FRAMES[spinnerIndexRef.current];
 
       // Process pending add/remove commands
       let sizeChanged = false;
@@ -845,7 +946,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
         }
       }
 
-      // Flush agent data if any slot is dirty or size changed
+      // Check if any agent data is dirty
       let anyDirty = sizeChanged;
       for (const d of dataRef.current) {
         if (d.dirty) {
@@ -853,15 +954,51 @@ const App: FC<{ config: Config }> = ({ config }) => {
           break;
         }
       }
-      if (anyDirty) {
-        setAgents(
-          dataRef.current.map((d) => {
-            d.dirty = false;
-            const { dirty: _, ...snapshot } = d;
-            return { ...snapshot, lines: [...d.lines] };
-          })
-        );
+
+      // Check if any agent is actively running (spinner/duration ticking)
+      const hasActive = dataRef.current.some(
+        (d) => d.status === 'running' || d.status === 'starting'
+      );
+
+      // Compute uptime string — only triggers re-render when it changes
+      const newUptime = elapsed(Date.now() - appStartTime.current);
+      const uptimeChanged = newUptime !== prevUptime;
+      prevUptime = newUptime;
+
+      // If nothing changed, skip the re-render entirely
+      if (
+        !anyDirty &&
+        !hasActive &&
+        !uptimeChanged &&
+        !statsRef.current.dirty
+      ) {
+        return;
       }
+
+      // Build snapshots with pre-computed spinner + duration
+      const now = Date.now();
+      setAgents(
+        dataRef.current.map((d) => {
+          d.dirty = false;
+          const duration =
+            d.startTime != null
+              ? elapsed((d.endTime ?? now) - d.startTime)
+              : '';
+          const sf =
+            d.status === 'running' || d.status === 'starting' ? frame : '';
+          return {
+            name: d.name,
+            color: d.color,
+            status: d.status,
+            lines: [...d.lines],
+            exitCode: d.exitCode,
+            logPath: d.logPath,
+            iteration: d.iteration,
+            spinnerFrame: sf,
+            duration,
+          };
+        })
+      );
 
       // Flush stats if dirty
       if (statsRef.current.dirty) {
@@ -870,6 +1007,10 @@ const App: FC<{ config: Config }> = ({ config }) => {
           completed: statsRef.current.completed,
           failed: statsRef.current.failed,
         });
+      }
+
+      if (uptimeChanged) {
+        setUptime(newUptime);
       }
 
       // Sync shutdown state from module-level flag
@@ -921,13 +1062,12 @@ const App: FC<{ config: Config }> = ({ config }) => {
             agent={agent}
             panelHeight={panelHeight}
             maxLines={maxLines}
-            spinnerFrame={spinnerFrame}
           />
         ))}
       </Box>
       <Footer
         stats={stats}
-        startTime={appStartTime.current}
+        uptime={uptime}
         shuttingDown={shuttingDown}
         loop={config.loop}
       />
@@ -1034,11 +1174,17 @@ async function main() {
     };
   }
 
+  // ── Enter alternate screen buffer for clean full-screen rendering ──
+  enterAltScreen();
+
   // ── Give ink a dummy stdin so it doesn't consume our keystrokes ──
   const dummyStdin = new PassThrough() as any;
+  const stdoutProxy = createStdoutProxy();
   const inkInstance = render(<App config={config} />, {
     exitOnCtrlC: false,
     stdin: dummyStdin,
+    stdout: stdoutProxy as any,
+    incrementalRendering: true,
   });
 
   // ── Process-level shutdown — completely outside React ──────
@@ -1051,6 +1197,7 @@ async function main() {
       // Second attempt — force kill everything and exit NOW
       killAllProcs('SIGKILL');
       inkInstance.unmount();
+      leaveAltScreen();
       process.exit(1);
     }
 
@@ -1064,6 +1211,7 @@ async function main() {
     setTimeout(() => {
       killAllProcs('SIGKILL');
       inkInstance.unmount();
+      leaveAltScreen();
       process.exit(0);
     }, 3000);
   }
@@ -1093,6 +1241,14 @@ async function main() {
   // (e.g. piped stdin, kill command, etc.)
   process.on('SIGINT', () => triggerShutdown());
   process.on('SIGTERM', () => triggerShutdown());
+
+  // ── Clean up alternate screen on natural exit (auto-exit) ───
+  inkInstance.waitUntilExit().then(() => {
+    leaveAltScreen();
+  });
+
+  // ── Safety net: always restore terminal on process exit ───
+  process.on('exit', () => leaveAltScreen());
 }
 
 main();
