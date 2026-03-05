@@ -5,6 +5,9 @@ dist
 tmp
 /out-tsc
 
+# compiled binaries
+/run-agents
+
 # dependencies
 node_modules
 
