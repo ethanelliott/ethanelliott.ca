@@ -54,6 +54,16 @@ export class KanbanApiService {
     return this.http.delete<void>(`${this.base}/tasks/${id}`);
   }
 
+  archiveDone(project?: string): Observable<{ archived: string[] }> {
+    let params = new HttpParams();
+    if (project) {
+      params = params.set('project', project);
+    }
+    return this.http.delete<{ archived: string[] }>(`${this.base}/tasks/done`, {
+      params,
+    });
+  }
+
   // ------------------------------------------------------------------ state
 
   transitionTask(id: string, state: TaskState): Observable<TaskOut> {

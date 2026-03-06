@@ -16,6 +16,7 @@ import {
   priorityLabel,
   prioritySeverity,
 } from '../../models/task.model';
+import { ActivityEntryOut } from '../../models/activity.model';
 
 /** Assumed TTL: 30 minutes, matching the backend default */
 const TTL_MS = 30 * 60 * 1000;
@@ -42,28 +43,46 @@ function formatElapsed(ms: number): string {
       [pTooltip]="'View task detail'"
       tooltipPosition="right"
     >
-      <!-- Left: icon + agent info -->
-      <div class="agent-left">
-        <div class="agent-icon" [class]="'severity-' + severity()">
-          {{ severity() === 'danger' ? '⚠️' : '🤖' }}
-        </div>
-        <div class="agent-info">
+      <!-- Top row: spinner + agent name + elapsed + priority -->
+      <div class="agent-top">
+        <div class="agent-identity">
+          @if (severity() === 'danger') {
+          <span class="status-icon stale">⚠️</span>
+          } @else {
+          <span class="status-icon working">
+            <span class="spinner-ring"></span>
+          </span>
+          }
           <span class="agent-name">{{ task().assignee }}</span>
-          <span class="task-title" [title]="task().title">{{
-            task().title
-          }}</span>
+        </div>
+        <div class="agent-meta">
+          <span class="priority-badge" [class]="'p-' + pSeverity()">
+            {{ pLabel() }}
+          </span>
+          <span class="elapsed" [class]="'severity-' + severity()">
+            {{ elapsedLabel() }}
+          </span>
         </div>
       </div>
 
-      <!-- Right: priority + elapsed -->
-      <div class="agent-right">
-        <span class="priority-badge" [class]="'p-' + pSeverity()">
-          {{ pLabel() }}
-        </span>
-        <span class="elapsed" [class]="'severity-' + severity()">
-          {{ elapsedLabel() }}
-        </span>
+      <!-- Task title -->
+      <div class="task-title" [title]="task().title">
+        {{ task().title }}
       </div>
+
+      <!-- Status update (latest comment) -->
+      @if (latestComment()) {
+      <div class="status-update">
+        <span class="status-dot"></span>
+        <span class="status-text">{{ commentPreview() }}</span>
+        <span class="status-age">{{ commentAge() }}</span>
+      </div>
+      } @else {
+      <div class="status-update placeholder">
+        <span class="status-dot"></span>
+        <span class="status-text">Working…</span>
+      </div>
+      }
 
       <!-- TTL progress bar -->
       <div class="ttl-bar-wrap">
@@ -90,7 +109,7 @@ function formatElapsed(ms: number): string {
       transition: border-color 0.15s, box-shadow 0.15s;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
 
       &:hover {
         border-color: var(--p-primary-color);
@@ -107,30 +126,52 @@ function formatElapsed(ms: number): string {
       }
     }
 
-    .agent-left {
+    /* Top row */
+    .agent-top {
       display: flex;
       align-items: center;
-      gap: 10px;
-      flex: 1;
-      min-width: 0;
+      justify-content: space-between;
+      gap: 8px;
     }
 
-    .agent-icon {
-      font-size: 1.3rem;
-      flex-shrink: 0;
-      line-height: 1;
-    }
-
-    .agent-info {
+    .agent-identity {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
+      align-items: center;
+      gap: 8px;
       min-width: 0;
-      flex: 1;
+    }
+
+    .status-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &.stale {
+        font-size: 1rem;
+        line-height: 1;
+      }
+    }
+
+    /* Animated spinner ring */
+    .spinner-ring {
+      display: block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--p-surface-600);
+      border-top-color: var(--p-primary-color);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     .agent-name {
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       font-weight: 700;
       color: var(--p-primary-color);
       white-space: nowrap;
@@ -138,19 +179,11 @@ function formatElapsed(ms: number): string {
       text-overflow: ellipsis;
     }
 
-    .task-title {
-      font-size: 0.78rem;
-      color: var(--p-text-muted-color);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .agent-right {
+    .agent-meta {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 8px;
+      flex-shrink: 0;
     }
 
     .priority-badge {
@@ -166,7 +199,7 @@ function formatElapsed(ms: number): string {
     }
 
     .elapsed {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-variant-numeric: tabular-nums;
       font-weight: 600;
 
@@ -180,12 +213,66 @@ function formatElapsed(ms: number): string {
       50% { opacity: 0.4; }
     }
 
+    /* Task title */
+    .task-title {
+      font-size: 0.8rem;
+      color: var(--p-text-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-left: 28px; /* align with agent name (icon width + gap) */
+    }
+
+    /* Status update row */
+    .status-update {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      padding-left: 28px;
+      min-height: 18px;
+
+      &.placeholder .status-text {
+        color: var(--p-surface-500);
+        font-style: italic;
+      }
+    }
+
+    .status-dot {
+      flex-shrink: 0;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--p-primary-color);
+      opacity: 0.6;
+      margin-top: 4px;
+      align-self: flex-start;
+    }
+
+    .status-text {
+      flex: 1;
+      font-size: 0.72rem;
+      color: var(--p-text-muted-color);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .status-age {
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      color: var(--p-surface-500);
+      white-space: nowrap;
+    }
+
     /* TTL bar */
     .ttl-bar-wrap {
       height: 3px;
       background: var(--p-surface-700);
       border-radius: 2px;
       overflow: hidden;
+      margin-top: 2px;
     }
 
     .ttl-bar {
@@ -210,6 +297,7 @@ export class AgentCardComponent {
   private readonly router = inject(Router);
 
   readonly task = input.required<TaskOut>();
+  readonly latestComment = input<ActivityEntryOut | null>(null);
 
   private readonly _tick = toSignal(interval(1000).pipe(takeUntilDestroyed()), {
     initialValue: 0,
@@ -236,6 +324,28 @@ export class AgentCardComponent {
 
   readonly pLabel = computed(() => priorityLabel(this.task().priority));
   readonly pSeverity = computed(() => prioritySeverity(this.task().priority));
+
+  /** Truncated preview of the latest comment content */
+  readonly commentPreview = computed(() => {
+    const c = this.latestComment();
+    if (!c) return '';
+    // Strip leading "Status:" or similar prefix agents sometimes add
+    return c.content.length > 200 ? c.content.slice(0, 200) + '…' : c.content;
+  });
+
+  /** Relative age of the latest comment */
+  readonly commentAge = computed(() => {
+    this._tick();
+    const c = this.latestComment();
+    if (!c) return '';
+    const ms = Date.now() - new Date(c.createdAt).getTime();
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    return `${h}h ago`;
+  });
 
   navigate(): void {
     this.router.navigate(['/tasks', this.task().id], {

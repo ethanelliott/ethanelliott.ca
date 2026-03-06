@@ -79,6 +79,15 @@ const COLUMN_CONNECTIONS: Record<TaskState, string[]> = {
             [disabled]="sprinting()"
             (onClick)="confirmStartSprint()"
           />
+          } @if (doneCount() > 0) {
+          <p-button
+            label="Clear Done"
+            icon="pi pi-trash"
+            size="small"
+            severity="secondary"
+            [disabled]="archiving()"
+            (onClick)="confirmArchiveDone()"
+          />
           }
           <p-button
             label="New Task"
@@ -246,11 +255,16 @@ export class BoardComponent implements OnInit {
   readonly tasks = signal<TaskOut[]>([]);
   readonly loading = signal(false);
   readonly sprinting = signal(false);
+  readonly archiving = signal(false);
   readonly showNewTaskDialog = signal(false);
   readonly draggingTaskState = signal<TaskState | null>(null);
 
   readonly backlogCount = computed(
     () => this.tasks().filter((t) => t.state === TaskState.BACKLOG).length
+  );
+
+  readonly doneCount = computed(
+    () => this.tasks().filter((t) => t.state === TaskState.DONE).length
   );
 
   /** Tasks grouped by state, computed from the flat list */
@@ -453,6 +467,69 @@ export class BoardComponent implements OnInit {
           severity: 'error',
           summary: 'Sprint failed',
           detail: err?.error?.message ?? 'Could not move all tasks.',
+          life: 4000,
+        });
+      },
+    });
+  }
+
+  confirmArchiveDone(): void {
+    const count = this.doneCount();
+    this.confirmationService.confirm({
+      header: 'Clear Done Tasks',
+      message: `Archive ${count} completed task${
+        count === 1 ? '' : 's'
+      }? They will be removed from the board.`,
+      icon: 'pi pi-trash',
+      acceptLabel: 'Clear Done',
+      rejectLabel: 'Cancel',
+      accept: () => this.archiveDone(),
+    });
+  }
+
+  archiveDone(): void {
+    const doneTasks = this.tasks().filter((t) => t.state === TaskState.DONE);
+    if (doneTasks.length === 0) return;
+
+    this.archiving.set(true);
+
+    // Optimistic update — remove DONE tasks from the list
+    const doneIds = new Set(doneTasks.map((t) => t.id));
+    this.tasks.update((list) => list.filter((t) => !doneIds.has(t.id)));
+
+    const project = this.projectService.selectedProject() ?? undefined;
+    this.api.archiveDone(project).subscribe({
+      next: (result) => {
+        this.archiving.set(false);
+        const archivedCount = result.archived.length;
+        const skipped = doneTasks.length - archivedCount;
+        let detail = `${archivedCount} task${
+          archivedCount === 1 ? '' : 's'
+        } archived.`;
+        if (skipped > 0) {
+          detail += ` ${skipped} skipped (have active dependencies or subtasks).`;
+        }
+        // Restore any tasks that weren't actually archived (skipped by backend)
+        if (skipped > 0) {
+          const archivedSet = new Set(result.archived);
+          const restored = doneTasks.filter((t) => !archivedSet.has(t.id));
+          this.tasks.update((list) => [...list, ...restored]);
+        }
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Done tasks cleared',
+          detail,
+          life: 4000,
+        });
+      },
+      error: (err) => {
+        // Revert optimistic update
+        this.tasks.update((list) => [...list, ...doneTasks]);
+        this.archiving.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Archive failed',
+          detail: err?.error?.message ?? 'Could not archive done tasks.',
           life: 4000,
         });
       },

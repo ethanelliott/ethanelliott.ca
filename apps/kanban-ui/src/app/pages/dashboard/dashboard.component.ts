@@ -9,6 +9,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { SkeletonModule } from 'primeng/skeleton';
 import { KanbanApiService } from '../../services/kanban-api.service';
@@ -20,6 +21,7 @@ import {
   ALL_STATES,
   priorityLabel,
 } from '../../models/task.model';
+import { ActivityEntryOut, ActivityEntryType } from '../../models/activity.model';
 import { AgentCardComponent } from './agent-card.component';
 import { QueuePanelComponent } from './queue-panel.component';
 
@@ -112,7 +114,7 @@ const STATE_ACCENT: Record<TaskState, string> = {
               <p>No agents working right now.</p>
             </div>
             } @for (task of activeAgents(); track task.id) {
-            <app-agent-card [task]="task" />
+            <app-agent-card [task]="task" [latestComment]="latestComments().get(task.id) ?? null" />
             }
           </div>
         </section>
@@ -325,6 +327,9 @@ export class DashboardComponent {
   /** Null = no filter active */
   readonly filterState = signal<TaskState | null>(null);
 
+  /** Latest COMMENT activity per task id — fed by SSE activity_added events */
+  readonly latestComments = signal<Map<string, ActivityEntryOut>>(new Map());
+
   /** IN_PROGRESS tasks with an assignee — one row per agent */
   readonly activeAgents = computed(() =>
     this.tasks()
@@ -381,6 +386,8 @@ export class DashboardComponent {
         next: (tasks) => {
           this.tasks.set(tasks);
           this.loading.set(false);
+          // Seed latest comments for active agents
+          this._loadLatestComments(tasks);
         },
         error: (err) => {
           this.loading.set(false);
@@ -427,5 +434,45 @@ export class DashboardComponent {
       .subscribe((e) =>
         this.tasks.update((list) => list.filter((t) => t.id !== e.payload.id))
       );
+
+    // Track latest COMMENT per task for agent status display
+    this.sse.activityAdded$.pipe(takeUntilDestroyed()).subscribe((e) => {
+      if (e.payload.type === ActivityEntryType.COMMENT) {
+        this.latestComments.update((m) => {
+          const next = new Map(m);
+          next.set(e.payload.taskId, e.payload);
+          return next;
+        });
+      }
+    });
+  }
+
+  /** Fetch the latest COMMENT for each IN_PROGRESS agent task to seed the map */
+  private _loadLatestComments(tasks: TaskOut[]): void {
+    const active = tasks.filter(
+      (t) => t.state === TaskState.IN_PROGRESS && t.assignee
+    );
+    if (active.length === 0) return;
+
+    const fetches = active.map((t) =>
+      this.api.getTaskActivity(t.id)
+    );
+
+    forkJoin(fetches).subscribe({
+      next: (results) => {
+        const m = new Map(this.latestComments());
+        for (let i = 0; i < active.length; i++) {
+          const entries = results[i];
+          // Find the latest COMMENT entry (entries are typically chronological)
+          const latest = [...entries]
+            .reverse()
+            .find((e) => e.type === ActivityEntryType.COMMENT);
+          if (latest) {
+            m.set(active[i].id, latest);
+          }
+        }
+        this.latestComments.set(m);
+      },
+    });
   }
 }
