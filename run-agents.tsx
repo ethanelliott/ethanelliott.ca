@@ -273,6 +273,154 @@ type PoolCommand = 'add' | 'remove';
 const pendingCommands: PoolCommand[] = [];
 
 // ═══════════════════════════════════════════════════════════════
+// SSE client + work dispatcher (event-driven agent activation)
+// ═══════════════════════════════════════════════════════════════
+
+const SSE_DEBOUNCE_MS = 5_000;  // Wait 5s after last relevant event before dispatching
+const SSE_RECONNECT_MS = 3_000; // Reconnect after 3s if SSE drops
+
+/** Fetch the count of unassigned actionable tasks */
+async function fetchAvailableCounts(
+  api: string,
+  project: string | null
+): Promise<{ todo: number; changesRequested: number }> {
+  const url = new URL(`${api}/tasks/counts`);
+  if (project) url.searchParams.set('project', project);
+  const resp = await fetch(url.toString());
+  if (!resp.ok) return { todo: 0, changesRequested: 0 };
+  return resp.json();
+}
+
+type SseStatus = 'connecting' | 'connected' | 'disconnected';
+
+/**
+ * Creates an SSE connection to the kanban backend using raw fetch (Bun has no
+ * EventSource global) and calls `onWorkAvailable` (debounced) whenever tasks
+ * move to actionable states.
+ * Also does an immediate count check on connect (in case tasks are already waiting).
+ *
+ * Accepts refs so the caller can swap callbacks without tearing down the
+ * connection (avoids useEffect dependency churn).
+ */
+function createWorkWatcher(opts: {
+  api: string;
+  project: string | null;
+  onWorkAvailableRef: { current: () => void };
+  onStatusChange: (status: SseStatus) => void;
+}): () => void {
+  const { api, project, onWorkAvailableRef, onStatusChange } = opts;
+  let abortController: AbortController | null = null;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let closed = false;
+
+  function scheduleDispatch() {
+    if (closed) return;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      if (!closed) onWorkAvailableRef.current();
+    }, SSE_DEBOUNCE_MS);
+  }
+
+  /** Parse a single SSE event and trigger dispatch if relevant */
+  function handleEvent(eventType: string, data: string) {
+    if (eventType === 'task_created' || eventType === 'task_updated') {
+      try {
+        const parsed = JSON.parse(data);
+        const state = parsed?.payload?.state;
+        if (state === 'TODO' || state === 'CHANGES_REQUESTED') {
+          scheduleDispatch();
+        }
+      } catch {}
+    } else if (eventType === 'task_expired') {
+      // Expired tasks go back to TODO
+      scheduleDispatch();
+    }
+    // heartbeat and other events are silently ignored
+  }
+
+  async function connect() {
+    if (closed) return;
+
+    onStatusChange('connecting');
+
+    const url = new URL(`${api}/tasks/events`);
+    if (project) url.searchParams.set('project', project);
+
+    abortController = new AbortController();
+
+    try {
+      const resp = await fetch(url.toString(), {
+        signal: abortController.signal,
+        headers: { Accept: 'text/event-stream' },
+      });
+
+      if (!resp.ok || !resp.body) {
+        throw new Error(`SSE connect failed: ${resp.status}`);
+      }
+
+      onStatusChange('connected');
+
+      // Connected — do an immediate check for waiting work
+      onWorkAvailableRef.current();
+
+      // Read the SSE stream
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentEvent = '';
+      let currentData = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        // Keep the last (possibly incomplete) line in the buffer
+        buffer = lines.pop()!;
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            currentData = line.slice(6);
+          } else if (line === '') {
+            // Blank line = end of SSE message
+            if (currentEvent && currentData) {
+              handleEvent(currentEvent, currentData);
+            }
+            currentEvent = '';
+            currentData = '';
+          }
+        }
+      }
+    } catch (err: unknown) {
+      // AbortError is expected during cleanup
+      if (err instanceof Error && err.name === 'AbortError') return;
+    }
+
+    // Stream ended or errored — reconnect unless closed
+    abortController = null;
+    if (!closed) {
+      onStatusChange('disconnected');
+      reconnectTimer = setTimeout(connect, SSE_RECONNECT_MS);
+    }
+  }
+
+  connect();
+
+  return () => {
+    closed = true;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    abortController?.abort();
+    abortController = null;
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Agent prompt builder
 // ═══════════════════════════════════════════════════════════════
 
@@ -567,11 +715,24 @@ function spawnAgentProcess(
 
 // ── Header ───────────────────────────────────────────────────
 
+const SSE_STATUS_ICON: Record<SseStatus, string> = {
+  connecting: '◌',
+  connected: '●',
+  disconnected: '○',
+};
+
+const SSE_STATUS_COLOR: Record<SseStatus, string> = {
+  connecting: 'yellow',
+  connected: 'green',
+  disconnected: 'red',
+};
+
 const Header: FC<{
   config: Config;
   agentCount: number;
   agentNames: string[];
-}> = ({ config, agentCount, agentNames }) => (
+  sseStatus: SseStatus;
+}> = ({ config, agentCount, agentNames, sseStatus }) => (
   <Box flexDirection="column">
     <Box
       borderStyle="double"
@@ -593,8 +754,14 @@ const Header: FC<{
         <Text dimColor>mode: </Text>
         <Text bold>{config.loop ? 'loop' : 'single-run'}</Text>
         <Text dimColor> | </Text>
-        <Text dimColor>api: </Text>
-        <Text bold>{config.api}</Text>
+        <Text color={SSE_STATUS_COLOR[sseStatus]}>
+          {SSE_STATUS_ICON[sseStatus]}
+        </Text>
+        <Text dimColor> </Text>
+        <Text dimColor>sse: </Text>
+        <Text color={SSE_STATUS_COLOR[sseStatus]} bold>
+          {sseStatus}
+        </Text>
       </Text>
     </Box>
     <Box paddingX={1} gap={1}>
@@ -610,7 +777,7 @@ const Header: FC<{
 // ── Agent Panel ──────────────────────────────────────────────
 
 const STATUS_ICON: Record<AgentStatus, string> = {
-  idle: ' ',
+  idle: '◯ ',
   starting: ' ',
   running: '',
   done: ' ',
@@ -700,7 +867,7 @@ const AgentPanel: FC<{
               {line ||
                 (i === 0 && totalLines === 0
                   ? agent.status === 'idle'
-                    ? 'Waiting...'
+                    ? 'Waiting for work...'
                     : agent.status === 'starting'
                     ? 'Spawning opencode...'
                     : agent.status === 'done'
@@ -816,6 +983,8 @@ const App: FC<{ config: Config }> = ({ config }) => {
   const [stats, setStats] = useState({ completed: 0, failed: 0 });
   const [uptime, setUptime] = useState('0s');
   const [shuttingDown, setShuttingDown] = useState(false);
+  const sseStatusRef = useRef<SseStatus>('disconnected');
+  const [sseStatus, setSseStatus] = useState<SseStatus>('disconnected');
 
   // ── Terminal size tracking ─────────────────────────────────
   const [termRows, setTermRows] = useState(stdout?.rows ?? 40);
@@ -829,6 +998,9 @@ const App: FC<{ config: Config }> = ({ config }) => {
       stdout?.off('resize', onResize);
     };
   }, [stdout]);
+
+  // ── Dispatcher ref — breaks circular dependency between spawnForSlot and dispatchWork ──
+  const dispatchWorkRef = useRef<() => void>(() => {});
 
   // Spawn an agent for a given slot index
   const spawnForSlot = useCallback(
@@ -853,7 +1025,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
         name,
         config,
         (line) => {
-          // Mutate ref directly — no setState
+          // Mutate ref directly — no setState per line.
           // Guard: slot may have been removed while output was buffered
           if (!dataRef.current.includes(d)) return;
           d.status = 'running';
@@ -883,12 +1055,10 @@ const App: FC<{ config: Config }> = ({ config }) => {
 
           activeProcs.delete(name);
 
-          // Loop mode: respawn after delay
-          if (config.loop && !shutdownRequested) {
-            const idx = dataRef.current.indexOf(d);
-            if (idx !== -1) {
-              setTimeout(() => spawnForSlot(idx), config.delay * 1000);
-            }
+          // After finishing, check if more work is available and dispatch
+          if (!shutdownRequested) {
+            // Small delay to let the task transition settle on the backend
+            setTimeout(() => dispatchWorkRef.current(), config.delay * 1000);
           }
         }
       );
@@ -899,6 +1069,44 @@ const App: FC<{ config: Config }> = ({ config }) => {
     },
     [config]
   );
+
+  // ── Dispatcher: fetch counts + activate idle agents ────────
+  const dispatchingRef = useRef(false);
+
+  const dispatchWork = useCallback(async () => {
+    if (shutdownRequested || dispatchingRef.current) return;
+    dispatchingRef.current = true;
+
+    try {
+      const counts = await fetchAvailableCounts(config.api, config.project);
+      const available = counts.todo + counts.changesRequested;
+      if (available <= 0) return;
+
+      // Find idle slots
+      const idleIndices: number[] = [];
+      for (let i = 0; i < dataRef.current.length; i++) {
+        const d = dataRef.current[i];
+        if (d.status === 'idle' || d.status === 'done' || d.status === 'error') {
+          idleIndices.push(i);
+        }
+      }
+
+      // Activate min(idle, available) agents
+      const toSpawn = Math.min(idleIndices.length, available);
+      for (let i = 0; i < toSpawn; i++) {
+        spawnForSlot(idleIndices[i]);
+      }
+    } catch {
+      // Network error — SSE reconnect will trigger another check
+    } finally {
+      dispatchingRef.current = false;
+    }
+  }, [config, spawnForSlot]);
+
+  // Keep the dispatch ref current
+  useEffect(() => {
+    dispatchWorkRef.current = dispatchWork;
+  }, [dispatchWork]);
 
   // ── Single flush interval — the ONLY source of React re-renders ──
   useEffect(() => {
@@ -929,8 +1137,8 @@ const App: FC<{ config: Config }> = ({ config }) => {
           };
           dataRef.current.push(newSlot);
           sizeChanged = true;
-          // Spawn immediately
-          spawnForSlot(dataRef.current.length - 1);
+          // Trigger a dispatch check — new idle slot may pick up waiting work
+          dispatchWorkRef.current();
         } else if (cmd === 'remove' && dataRef.current.length > 1) {
           const removed = dataRef.current.pop()!;
           removed.dirty = true;
@@ -1017,28 +1225,79 @@ const App: FC<{ config: Config }> = ({ config }) => {
       if (shutdownRequested) {
         setShuttingDown(true);
       }
+
+      // Sync SSE connection status from ref
+      setSseStatus((prev) =>
+        prev !== sseStatusRef.current ? sseStatusRef.current : prev
+      );
     }, FLUSH_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [spawnForSlot]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — uses refs only
 
-  // Spawn initial agents on mount
+  // ── SSE watcher — listens for work and dispatches agents ────
   useEffect(() => {
-    for (let i = 0; i < config.count; i++) {
-      spawnForSlot(i);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Connect to SSE and dispatch work when tasks become available.
+    // Uses dispatchWorkRef so the callback stays current without
+    // tearing down the SSE connection on every render cycle.
+    const cleanup = createWorkWatcher({
+      api: config.api,
+      project: config.project,
+      onWorkAvailableRef: dispatchWorkRef,
+      onStatusChange: (status) => {
+        sseStatusRef.current = status;
+        // Don't call setSseStatus here — the flush interval syncs it
+        // to avoid excessive re-renders.
+      },
+    });
+    return cleanup;
+  }, [config.api, config.project]); // eslint-disable-line react-hooks/exhaustive-deps — uses refs only
 
-  // Auto-exit when all done (single-run mode)
+  // ── Eager startup check — dispatch immediately if tasks are already waiting ──
+  // Independent of SSE: covers the case where work exists before the stream connects.
+  const startupCheckedRef = useRef(false);
   useEffect(() => {
-    if (
-      !config.loop &&
-      agents.length > 0 &&
-      agents.every((a) => a.status === 'done' || a.status === 'error')
-    ) {
-      const timer = setTimeout(() => exit(), 2000);
-      return () => clearTimeout(timer);
+    if (startupCheckedRef.current) return;
+    startupCheckedRef.current = true;
+    // Small delay to let the dispatchWorkRef sync effect run first
+    setTimeout(() => dispatchWorkRef.current(), 100);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — one-shot on mount
+
+  // ── No auto-exit in event-driven mode ──────────────────────
+  // In loop mode (default for event-driven), agents wait for work indefinitely.
+  // In single-run mode, auto-exit only after at least one agent has run AND
+  // all agents are idle/done/error AND no more work is available.
+  const autoExitCheckedRef = useRef(false);
+  useEffect(() => {
+    if (config.loop) return; // never auto-exit in loop mode
+
+    // Must have completed at least one task
+    const hasRun = agents.some(
+      (a) => a.status === 'done' || a.status === 'error'
+    );
+    const allQuiet = agents.every(
+      (a) => a.status === 'idle' || a.status === 'done' || a.status === 'error'
+    );
+
+    if (!hasRun || !allQuiet) {
+      autoExitCheckedRef.current = false;
+      return;
     }
-  }, [agents, config.loop, exit]);
+
+    // Double-check with the server that no work is left
+    if (autoExitCheckedRef.current) return;
+    autoExitCheckedRef.current = true;
+
+    fetchAvailableCounts(config.api, config.project).then((counts) => {
+      if (counts.todo + counts.changesRequested === 0) {
+        setTimeout(() => exit(), 2000);
+      } else {
+        autoExitCheckedRef.current = false;
+        dispatchWork(); // there IS work — dispatch it
+      }
+    }).catch(() => {
+      autoExitCheckedRef.current = false;
+    });
+  }, [agents, config.loop, config.api, config.project, exit, dispatchWork]);
 
   // ── Derived values ─────────────────────────────────────────
   const agentNames = agents.map((a) => a.name);
@@ -1054,7 +1313,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
 
   return (
     <Box flexDirection="column" height={termRows}>
-      <Header config={config} agentCount={agentCount} agentNames={agentNames} />
+      <Header config={config} agentCount={agentCount} agentNames={agentNames} sseStatus={sseStatus} />
       <Box flexDirection="column" flexGrow={1}>
         {agents.map((agent) => (
           <AgentPanel
