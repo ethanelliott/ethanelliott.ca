@@ -517,6 +517,110 @@ export class TasksService {
     emitSse({ type: 'task_deleted', payload: { id } });
   }
 
+  // --------------------------------------------------------- archive done
+
+  /**
+   * Soft-delete all DONE tasks for a given project (or all projects if none specified).
+   * Also soft-deletes DONE subtasks of DONE parents to avoid orphan conflicts.
+   * Skips tasks that have non-DONE subtasks or incoming dependencies from non-DONE tasks.
+   * Returns the list of archived task IDs.
+   */
+  async archiveDone(project?: string): Promise<{ archived: string[] }> {
+    const qb = this._tasks
+      .createQueryBuilder('task')
+      .where('task.deletedAt IS NULL')
+      .andWhere('task.state = :state', { state: TaskState.DONE });
+
+    if (project) {
+      qb.andWhere('task.project = :project', { project });
+    }
+
+    const doneTasks = await qb.getMany();
+    if (doneTasks.length === 0) return { archived: [] };
+
+    const doneIds = new Set(doneTasks.map((t) => t.id));
+
+    // Filter out tasks that have:
+    // 1. Non-DONE subtasks (would fail the subtask check)
+    // 2. Incoming dependencies from non-DONE tasks (would break active workflows)
+    const archivable: string[] = [];
+
+    for (const task of doneTasks) {
+      // Check subtasks — only skip if there are non-DONE subtasks
+      const nonDoneSubtasks = await this._tasks.count({
+        where: { parentId: task.id, deletedAt: IsNull() },
+      });
+      const doneSubtasksInBatch = doneTasks.filter(
+        (t) => t.parentId === task.id
+      ).length;
+      // If there are subtasks that aren't DONE (and thus not in our batch), skip this task
+      const totalSubtasks = nonDoneSubtasks; // TypeORM auto-filters deletedAt
+      if (totalSubtasks > doneSubtasksInBatch) {
+        // There are non-DONE subtasks — skip
+        continue;
+      }
+
+      // Check incoming dependencies — only skip if a non-DONE task depends on this one
+      const incomingDeps = await this._deps.find({
+        where: { dependsOnId: task.id },
+      });
+      const hasActiveDependant = incomingDeps.some(
+        (d) => !doneIds.has(d.taskId)
+      );
+      if (hasActiveDependant) continue;
+
+      archivable.push(task.id);
+    }
+
+    if (archivable.length === 0) return { archived: [] };
+
+    // Soft-delete in bulk
+    await this._tasks.softDelete(archivable);
+
+    // Emit SSE for each archived task so connected frontends update in real-time
+    for (const id of archivable) {
+      emitSse({ type: 'task_deleted', payload: { id } });
+    }
+
+    return { archived: archivable };
+  }
+
+  // -------------------------------------------------------- available counts
+
+  /**
+   * Returns the count of tasks in actionable states (TODO and CHANGES_REQUESTED)
+   * that are eligible for agent work.
+   *
+   * Mirrors the logic in `nextTask()`:
+   * - TODO tasks must be unassigned (assignee IS NULL)
+   * - CHANGES_REQUESTED tasks are counted regardless of assignee (nextTask
+   *   picks them up even if a previous assignee is still set)
+   */
+  async availableCounts(
+    project?: string
+  ): Promise<{ todo: number; changesRequested: number }> {
+    const baseQb = this._tasks
+      .createQueryBuilder('task')
+      .where('task.deletedAt IS NULL');
+
+    if (project) {
+      baseQb.andWhere('task.project = :project', { project });
+    }
+
+    const todoCount = await baseQb
+      .clone()
+      .andWhere('task.state = :state', { state: TaskState.TODO })
+      .andWhere('task.assignee IS NULL')
+      .getCount();
+
+    const crCount = await baseQb
+      .clone()
+      .andWhere('task.state = :state', { state: TaskState.CHANGES_REQUESTED })
+      .getCount();
+
+    return { todo: todoCount, changesRequested: crCount };
+  }
+
   // ---------------------------------------------------------------- transition
 
   async transition(id: string, toState: TaskState): Promise<TaskOut> {

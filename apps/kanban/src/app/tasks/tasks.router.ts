@@ -115,6 +115,41 @@ export async function TasksRouter(fastify: FastifyInstance) {
     }
   );
 
+  // DELETE /tasks/done — archive all DONE tasks; must come before /:id routes
+  fastify.withTypeProvider<ZodTypeProvider>().delete(
+    '/done',
+    {
+      schema: {
+        querystring: z.object({ project: z.string().optional() }),
+        response: {
+          200: z.object({ archived: z.array(z.string().uuid()) }),
+        },
+      },
+    },
+    async (req) => {
+      return tasksService.archiveDone(req.query.project);
+    }
+  );
+
+  // GET /tasks/counts — lightweight count of actionable tasks; must come before /:id routes
+  fastify.withTypeProvider<ZodTypeProvider>().get(
+    '/counts',
+    {
+      schema: {
+        querystring: z.object({ project: z.string().optional() }),
+        response: {
+          200: z.object({
+            todo: z.number().int(),
+            changesRequested: z.number().int(),
+          }),
+        },
+      },
+    },
+    async (req) => {
+      return tasksService.availableCounts(req.query.project);
+    }
+  );
+
   // POST /tasks
   fastify.withTypeProvider<ZodTypeProvider>().post(
     '/',
