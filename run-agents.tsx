@@ -38,6 +38,8 @@ const ESC_ALT_SCREEN_ON = '\x1b[?1049h'; // Enter alternate screen buffer
 const ESC_ALT_SCREEN_OFF = '\x1b[?1049l'; // Leave alternate screen buffer
 const ESC_HIDE_CURSOR = '\x1b[?25l'; // Hide cursor
 const ESC_SHOW_CURSOR = '\x1b[?25h'; // Show cursor
+const ESC_MOUSE_ON = '\x1b[?1000h\x1b[?1006h'; // Enable mouse tracking (SGR mode)
+const ESC_MOUSE_OFF = '\x1b[?1000l\x1b[?1006l'; // Disable mouse tracking
 
 // Regex to detect destructive clear sequences that ink emits in fullscreen mode
 const RIS_RE = /\x1bc/g; // Reset to Initial State (terminal flash)
@@ -109,14 +111,14 @@ let altScreenActive = false;
 
 function enterAltScreen() {
   if (!altScreenActive) {
-    process.stdout.write(ESC_ALT_SCREEN_ON + ESC_HIDE_CURSOR + ESC_CURSOR_HOME);
+    process.stdout.write(ESC_ALT_SCREEN_ON + ESC_HIDE_CURSOR + ESC_CURSOR_HOME + ESC_MOUSE_ON);
     altScreenActive = true;
   }
 }
 
 function leaveAltScreen() {
   if (altScreenActive) {
-    process.stdout.write(ESC_SHOW_CURSOR + ESC_ALT_SCREEN_OFF);
+    process.stdout.write(ESC_MOUSE_OFF + ESC_SHOW_CURSOR + ESC_ALT_SCREEN_OFF);
     altScreenActive = false;
   }
 }
@@ -171,7 +173,7 @@ const SLOT_COLORS = [
   '#d8b4fe',
 ];
 
-const MAX_BUFFER_LINES = 200;
+const MAX_BUFFER_LINES = 1000;
 const FLUSH_INTERVAL_MS = 100;
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -202,6 +204,7 @@ interface AgentData {
   color: string;
   status: AgentStatus;
   lines: string[];
+  scrollOffset: number; // 0 = pinned to bottom, >0 = lines scrolled up from bottom
   startTime: number | null;
   endTime: number | null;
   exitCode: number | null;
@@ -219,6 +222,8 @@ interface AgentSnapshot {
   color: string;
   status: AgentStatus;
   lines: string[];
+  scrollOffset: number;
+  focused: boolean;
   exitCode: number | null;
   logPath: string | null;
   iteration: number;
@@ -269,8 +274,115 @@ const activeProcs = new Map<string, ReturnType<typeof Bun.spawn>>();
 let shutdownRequested = false;
 
 // Commands from stdin -> React (processed by flush interval)
-type PoolCommand = 'add' | 'remove';
+type PoolCommand =
+  | { type: 'add' }
+  | { type: 'remove' }
+  | { type: 'kill'; index: number }
+  | { type: 'restart'; index: number };
 const pendingCommands: PoolCommand[] = [];
+
+// Focus & scroll state — mutated from stdin handler, read by flush interval.
+// Lives at module level so both the stdin handler (in main()) and the React
+// component (via flush interval) can access it without threading through refs.
+let focusedIndex = -1; // -1 = no panel focused
+let focusDirty = false;
+let moduleAgentData: AgentData[] = []; // Set once by App init, same array ref
+let currentLayout = { panelHeight: 10, maxLines: 7, agentCount: 2 };
+
+// ═══════════════════════════════════════════════════════════════
+// Input event parser — raw stdin escape sequence decoder
+// ═══════════════════════════════════════════════════════════════
+
+type InputEvent =
+  | { type: 'char'; char: string }
+  | { type: 'ctrl-c' }
+  | { type: 'tab' }
+  | { type: 'shift-tab' }
+  | { type: 'escape' }
+  | { type: 'up' }
+  | { type: 'down' }
+  | { type: 'page-up' }
+  | { type: 'page-down' }
+  | { type: 'home' }
+  | { type: 'end' }
+  | { type: 'wheel-up'; row: number; col: number }
+  | { type: 'wheel-down'; row: number; col: number };
+
+/** Parse raw stdin buffer into structured input events */
+function parseInputEvents(data: Buffer): InputEvent[] {
+  const events: InputEvent[] = [];
+  const str = data.toString();
+  let i = 0;
+
+  while (i < str.length) {
+    if (str[i] === '\x1b') {
+      // CSI sequence: \x1b[...
+      if (i + 1 < str.length && str[i + 1] === '[') {
+        // SGR mouse: \x1b[<button;col;rowM
+        if (i + 2 < str.length && str[i + 2] === '<') {
+          const rest = str.slice(i);
+          const match = rest.match(/^\x1b\[<(\d+);(\d+);(\d+)([Mm])/);
+          if (match) {
+            const button = parseInt(match[1]);
+            const col = parseInt(match[2]);
+            const row = parseInt(match[3]);
+            if (button === 64) events.push({ type: 'wheel-up', row, col });
+            else if (button === 65) events.push({ type: 'wheel-down', row, col });
+            // Ignore other mouse buttons (press/release) — we only want wheel
+            i += match[0].length;
+            continue;
+          }
+        }
+        // Arrow keys
+        if (i + 2 < str.length) {
+          if (str[i + 2] === 'A') { events.push({ type: 'up' }); i += 3; continue; }
+          if (str[i + 2] === 'B') { events.push({ type: 'down' }); i += 3; continue; }
+          // Shift+Tab
+          if (str[i + 2] === 'Z') { events.push({ type: 'shift-tab' }); i += 3; continue; }
+          // Page Up/Down: \x1b[5~ / \x1b[6~
+          if (i + 3 < str.length && str[i + 3] === '~') {
+            if (str[i + 2] === '5') { events.push({ type: 'page-up' }); i += 4; continue; }
+            if (str[i + 2] === '6') { events.push({ type: 'page-down' }); i += 4; continue; }
+          }
+          // Home/End: \x1b[H / \x1b[F
+          if (str[i + 2] === 'H') { events.push({ type: 'home' }); i += 3; continue; }
+          if (str[i + 2] === 'F') { events.push({ type: 'end' }); i += 3; continue; }
+        }
+        // Unknown CSI — skip the \x1b[ and continue
+        i += 2;
+        continue;
+      }
+      // SS3 sequence: \x1bO...
+      if (i + 1 < str.length && str[i + 1] === 'O') {
+        if (i + 2 < str.length) {
+          if (str[i + 2] === 'H') { events.push({ type: 'home' }); i += 3; continue; }
+          if (str[i + 2] === 'F') { events.push({ type: 'end' }); i += 3; continue; }
+        }
+        i += 2;
+        continue;
+      }
+      // Bare escape (no following character in this buffer)
+      if (i + 1 >= str.length) {
+        events.push({ type: 'escape' });
+        i++;
+        continue;
+      }
+      // Unknown escape — skip
+      i++;
+      continue;
+    }
+
+    // Tab
+    if (str[i] === '\x09') { events.push({ type: 'tab' }); i++; continue; }
+    // Ctrl+C
+    if (str[i] === '\x03') { events.push({ type: 'ctrl-c' }); i++; continue; }
+    // Regular character
+    events.push({ type: 'char', char: str[i] });
+    i++;
+  }
+
+  return events;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // SSE client + work dispatcher (event-driven agent activation)
@@ -798,37 +910,55 @@ const AgentPanel: FC<{
   maxLines: number;
 }> = ({ agent, panelHeight, maxLines }) => {
   const color = STATUS_COLOR[agent.status];
-  const { duration } = agent;
+  const { duration, focused, scrollOffset } = agent;
 
   const totalLines = agent.lines.length;
 
-  // Take the last maxLines, then pad to exactly maxLines so height is stable
-  const visibleLines = agent.lines.slice(-maxLines);
+  // ── Visible lines with scroll offset ───────────────────────
+  // scrollOffset=0 means pinned to bottom (latest lines).
+  // scrollOffset>0 means N lines scrolled up from the bottom.
+  const clampedOffset = Math.min(scrollOffset, Math.max(0, totalLines - maxLines));
+  const endIdx = totalLines - clampedOffset;
+  const startIdx = Math.max(0, endIdx - maxLines);
+  const visibleLines = agent.lines.slice(startIdx, endIdx);
   while (visibleLines.length < maxLines) {
     visibleLines.push('');
   }
 
+  const canScroll = totalLines > maxLines;
+  const linesAbove = startIdx;
+  const linesBelow = clampedOffset;
+
   // ── Scrollbar geometry ──────────────────────────────────────
   const trackHeight = maxLines;
-  const canScroll = totalLines > maxLines;
-  // Thumb size proportional to viewport/total, minimum 1 row
   const thumbSize = canScroll
     ? Math.max(1, Math.round(trackHeight * (maxLines / totalLines)))
     : trackHeight;
-  // Viewport is always at the bottom
-  const thumbTop = canScroll ? trackHeight - thumbSize : 0;
+  // Position thumb proportionally to the scroll position
+  const maxOffset = Math.max(0, totalLines - maxLines);
+  const scrollFraction = maxOffset > 0 ? (maxOffset - clampedOffset) / maxOffset : 1;
+  const thumbTop = canScroll
+    ? Math.round(scrollFraction * (trackHeight - thumbSize))
+    : 0;
 
-  // Build scrollbar column: thumb chars vs track chars
   const scrollbar = Array.from({ length: trackHeight }, (_, i) => {
     const isThumb = i >= thumbTop && i < thumbTop + thumbSize;
     return isThumb;
   });
 
+  // ── Border styling: focused panels get bold borders ─────────
+  const borderStyle = focused ? 'bold' : 'round';
+  const borderColor = focused
+    ? agent.color
+    : agent.status === 'running'
+    ? agent.color
+    : color;
+
   return (
     <Box
       flexDirection="column"
-      borderStyle="round"
-      borderColor={agent.status === 'running' ? agent.color : color}
+      borderStyle={borderStyle as any}
+      borderColor={borderColor}
       paddingX={1}
       height={panelHeight}
       overflow="hidden"
@@ -836,6 +966,7 @@ const AgentPanel: FC<{
       {/* Panel header */}
       <Box justifyContent="space-between">
         <Text>
+          {focused && <Text color={agent.color}>{'▸ '}</Text>}
           {agent.status === 'running' || agent.status === 'starting' ? (
             <Text color={agent.color}>{agent.spinnerFrame} </Text>
           ) : (
@@ -850,7 +981,8 @@ const AgentPanel: FC<{
             {duration ? ` (${duration})` : ''}
             {agent.iteration > 1 ? ` #${agent.iteration}` : ''}
           </Text>
-          {canScroll && <Text dimColor> [{totalLines - maxLines}+]</Text>}
+          {canScroll && linesAbove > 0 && <Text dimColor> [{linesAbove}↑]</Text>}
+          {linesBelow > 0 && <Text color="yellow"> [{linesBelow}↓]</Text>}
         </Text>
         {agent.logPath && (
           <Text dimColor italic>
@@ -902,7 +1034,8 @@ const Footer: FC<{
   uptime: string;
   shuttingDown: boolean;
   loop: boolean;
-}> = ({ stats, uptime, shuttingDown, loop }) => (
+  hasFocus: boolean;
+}> = ({ stats, uptime, shuttingDown, hasFocus }) => (
   <Box paddingX={1} justifyContent="space-between">
     <Text>
       <Text color="green" bold>
@@ -923,15 +1056,23 @@ const Footer: FC<{
         <Text color="yellow" bold>
           shutting down...
         </Text>
+      ) : hasFocus ? (
+        <Text>
+          <Text bold>↑↓</Text> scroll
+          {'  '}
+          <Text bold>PgUp/Dn</Text> page
+          {'  '}
+          <Text bold>Esc</Text> unfocus
+          {'  '}
+          <Text bold>r</Text> restart
+          {'  '}
+          <Text bold>x</Text> kill
+        </Text>
       ) : (
         <Text>
           <Text bold>q</Text> quit
-          {loop && (
-            <Text>
-              {'  '}
-              <Text bold>r</Text> restart slot
-            </Text>
-          )}
+          {'  '}
+          <Text bold>Tab</Text> focus
           {'  '}
           <Text bold>k</Text> add agent
           {'  '}
@@ -957,6 +1098,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
       color: slotColor(i + 1),
       status: 'idle' as AgentStatus,
       lines: [],
+      scrollOffset: 0,
       startTime: null,
       endTime: null,
       exitCode: null,
@@ -965,6 +1107,8 @@ const App: FC<{ config: Config }> = ({ config }) => {
       dirty: true,
     }))
   );
+  // Expose to module-level so stdin handler can access agent data
+  moduleAgentData = dataRef.current;
   const statsRef = useRef({ completed: 0, failed: 0, dirty: true });
   const spinnerIndexRef = useRef(0);
   // Tracks the next slot number for unique naming (monotonically increasing)
@@ -975,6 +1119,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
     dataRef.current.map(
       ({ dirty: _, startTime: _s, endTime: _e, ...rest }) => ({
         ...rest,
+        focused: false,
         spinnerFrame: '',
         duration: '',
       })
@@ -1014,6 +1159,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
       // Reset slot data
       d.status = 'starting';
       d.lines = [];
+      d.scrollOffset = 0;
       d.startTime = Date.now();
       d.endTime = null;
       d.exitCode = null;
@@ -1030,8 +1176,13 @@ const App: FC<{ config: Config }> = ({ config }) => {
           if (!dataRef.current.includes(d)) return;
           d.status = 'running';
           if (d.lines.length >= MAX_BUFFER_LINES) {
+            const trimCount = d.lines.length - (MAX_BUFFER_LINES - 1);
             d.lines = d.lines.slice(-(MAX_BUFFER_LINES - 1));
+            // Adjust scroll offset when old lines are trimmed
+            d.scrollOffset = Math.max(0, d.scrollOffset - trimCount);
           }
+          // If user has scrolled up, keep their viewport stable
+          if (d.scrollOffset > 0) d.scrollOffset++;
           d.lines.push(line);
           d.dirty = true;
         },
@@ -1117,17 +1268,18 @@ const App: FC<{ config: Config }> = ({ config }) => {
         (spinnerIndexRef.current + 1) % SPINNER_FRAMES.length;
       const frame = SPINNER_FRAMES[spinnerIndexRef.current];
 
-      // Process pending add/remove commands
+      // Process pending commands
       let sizeChanged = false;
       while (pendingCommands.length > 0) {
         const cmd = pendingCommands.shift()!;
-        if (cmd === 'add') {
+        if (cmd.type === 'add') {
           const num = nextSlotNumRef.current++;
           const newSlot: AgentData = {
             name: slotName(num),
             color: slotColor(num),
             status: 'idle',
             lines: [],
+            scrollOffset: 0,
             startTime: null,
             endTime: null,
             exitCode: null,
@@ -1139,7 +1291,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
           sizeChanged = true;
           // Trigger a dispatch check — new idle slot may pick up waiting work
           dispatchWorkRef.current();
-        } else if (cmd === 'remove' && dataRef.current.length > 1) {
+        } else if (cmd.type === 'remove' && dataRef.current.length > 1) {
           const removed = dataRef.current.pop()!;
           removed.dirty = true;
           sizeChanged = true;
@@ -1151,11 +1303,46 @@ const App: FC<{ config: Config }> = ({ config }) => {
             } catch {}
             activeProcs.delete(removed.name);
           }
+          // Adjust focus if it pointed at or past the removed slot
+          if (focusedIndex >= dataRef.current.length) {
+            focusedIndex = dataRef.current.length - 1;
+            focusDirty = true;
+          }
+        } else if (cmd.type === 'kill') {
+          const d = dataRef.current[cmd.index];
+          if (d && (d.status === 'running' || d.status === 'starting')) {
+            const proc = activeProcs.get(d.name);
+            if (proc) {
+              try { proc.kill('SIGTERM'); } catch {}
+            }
+          }
+        } else if (cmd.type === 'restart') {
+          const d = dataRef.current[cmd.index];
+          if (d) {
+            // Kill existing process if running
+            const proc = activeProcs.get(d.name);
+            if (proc) {
+              try { proc.kill('SIGTERM'); } catch {}
+              activeProcs.delete(d.name);
+            }
+            // Reset to idle so dispatcher picks it up
+            d.status = 'idle';
+            d.lines = [];
+            d.scrollOffset = 0;
+            d.startTime = null;
+            d.endTime = null;
+            d.exitCode = null;
+            d.logPath = null;
+            d.dirty = true;
+            // Dispatch immediately
+            dispatchWorkRef.current();
+          }
         }
       }
 
       // Check if any agent data is dirty
-      let anyDirty = sizeChanged;
+      let anyDirty = sizeChanged || focusDirty;
+      focusDirty = false;
       for (const d of dataRef.current) {
         if (d.dirty) {
           anyDirty = true;
@@ -1186,7 +1373,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
       // Build snapshots with pre-computed spinner + duration
       const now = Date.now();
       setAgents(
-        dataRef.current.map((d) => {
+        dataRef.current.map((d, i) => {
           d.dirty = false;
           const duration =
             d.startTime != null
@@ -1199,6 +1386,8 @@ const App: FC<{ config: Config }> = ({ config }) => {
             color: d.color,
             status: d.status,
             lines: [...d.lines],
+            scrollOffset: d.scrollOffset,
+            focused: i === focusedIndex,
             exitCode: d.exitCode,
             logPath: d.logPath,
             iteration: d.iteration,
@@ -1230,6 +1419,13 @@ const App: FC<{ config: Config }> = ({ config }) => {
       setSseStatus((prev) =>
         prev !== sseStatusRef.current ? sseStatusRef.current : prev
       );
+
+      // Sync layout geometry for the stdin handler (mouse wheel mapping)
+      const agentCount = dataRef.current.length;
+      const avail = (stdout?.rows ?? 40) - HEADER_ROWS - FOOTER_ROWS;
+      const ph = Math.max(PANEL_CHROME + 1, Math.floor(avail / agentCount));
+      const ml = Math.max(1, ph - PANEL_CHROME);
+      currentLayout = { panelHeight: ph, maxLines: ml, agentCount };
     }, FLUSH_INTERVAL_MS);
     return () => clearInterval(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps — uses refs only
@@ -1329,6 +1525,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
         uptime={uptime}
         shuttingDown={shuttingDown}
         loop={config.loop}
+        hasFocus={agents.some(a => a.focused)}
       />
     </Box>
   );
@@ -1481,17 +1678,122 @@ async function main() {
   }
   process.stdin.resume();
   process.stdin.on('data', (data: Buffer) => {
-    const str = data.toString();
-    for (const ch of str) {
-      if (ch === 'q' || ch === '\x03') {
+    const events = parseInputEvents(data);
+    for (const ev of events) {
+      // ── Quit ──
+      if (ev.type === 'ctrl-c' || (ev.type === 'char' && ev.char === 'q')) {
         triggerShutdown();
         return;
       }
-      if (ch === 'k' && !shutdownRequested) {
-        pendingCommands.push('add');
+
+      if (shutdownRequested) continue;
+
+      // ── Focus navigation ──
+      if (ev.type === 'tab') {
+        const n = moduleAgentData.length;
+        focusedIndex = n > 0 ? (focusedIndex + 1) % n : -1;
+        focusDirty = true;
+        continue;
       }
-      if (ch === 'j' && !shutdownRequested) {
-        pendingCommands.push('remove');
+      if (ev.type === 'shift-tab') {
+        const n = moduleAgentData.length;
+        focusedIndex = n > 0 ? (focusedIndex - 1 + n) % n : -1;
+        focusDirty = true;
+        continue;
+      }
+      if (ev.type === 'escape') {
+        focusedIndex = -1;
+        // Reset all scroll offsets to 0 (pin to bottom)
+        for (const d of moduleAgentData) {
+          if (d.scrollOffset > 0) {
+            d.scrollOffset = 0;
+            d.dirty = true;
+          }
+        }
+        focusDirty = true;
+        continue;
+      }
+
+      // ── Keyboard scroll (when focused) ──
+      if (focusedIndex >= 0 && focusedIndex < moduleAgentData.length) {
+        const d = moduleAgentData[focusedIndex];
+        const maxOffset = Math.max(0, d.lines.length - currentLayout.maxLines);
+
+        if (ev.type === 'up') {
+          d.scrollOffset = Math.min(maxOffset, d.scrollOffset + 1);
+          d.dirty = true;
+          continue;
+        }
+        if (ev.type === 'down') {
+          d.scrollOffset = Math.max(0, d.scrollOffset - 1);
+          d.dirty = true;
+          continue;
+        }
+        if (ev.type === 'page-up') {
+          d.scrollOffset = Math.min(maxOffset, d.scrollOffset + currentLayout.maxLines);
+          d.dirty = true;
+          continue;
+        }
+        if (ev.type === 'page-down') {
+          d.scrollOffset = Math.max(0, d.scrollOffset - currentLayout.maxLines);
+          d.dirty = true;
+          continue;
+        }
+        if (ev.type === 'home') {
+          d.scrollOffset = maxOffset;
+          d.dirty = true;
+          continue;
+        }
+        if (ev.type === 'end') {
+          d.scrollOffset = 0;
+          d.dirty = true;
+          continue;
+        }
+      }
+
+      // ── Mouse wheel scroll ──
+      if (ev.type === 'wheel-up' || ev.type === 'wheel-down') {
+        // Map terminal row to panel index
+        const panelIdx = Math.floor((ev.row - 1 - HEADER_ROWS) / currentLayout.panelHeight);
+        if (panelIdx >= 0 && panelIdx < moduleAgentData.length) {
+          // Auto-focus the panel being scrolled
+          if (focusedIndex !== panelIdx) {
+            focusedIndex = panelIdx;
+            focusDirty = true;
+          }
+          const d = moduleAgentData[panelIdx];
+          const maxOffset = Math.max(0, d.lines.length - currentLayout.maxLines);
+          const scrollAmount = 3; // lines per wheel tick
+          if (ev.type === 'wheel-up') {
+            d.scrollOffset = Math.min(maxOffset, d.scrollOffset + scrollAmount);
+          } else {
+            d.scrollOffset = Math.max(0, d.scrollOffset - scrollAmount);
+          }
+          d.dirty = true;
+        }
+        continue;
+      }
+
+      // ── Agent actions (when focused) ──
+      if (ev.type === 'char' && focusedIndex >= 0 && focusedIndex < moduleAgentData.length) {
+        if (ev.char === 'r') {
+          pendingCommands.push({ type: 'restart', index: focusedIndex });
+          continue;
+        }
+        if (ev.char === 'x') {
+          pendingCommands.push({ type: 'kill', index: focusedIndex });
+          continue;
+        }
+      }
+
+      // ── Pool management (always available) ──
+      if (ev.type === 'char') {
+        if (ev.char === 'k') {
+          pendingCommands.push({ type: 'add' });
+        }
+        if (ev.char === 'j') {
+          pendingCommands.push({ type: 'remove' });
+        }
       }
     }
   });
