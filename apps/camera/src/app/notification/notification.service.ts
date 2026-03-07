@@ -245,7 +245,7 @@ export class NotificationService {
       event.label
     } with ${confidencePct}% confidence at ${new Date().toLocaleString()}`;
     const tags = this._labelToTags(event.label);
-    const priority = this._labelToPriority(event.label);
+    const priority = 2; // Normal priority
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -355,18 +355,5 @@ export class NotificationService {
       bear: ['bear', 'rotating_light'],
     };
     return tagMap[label] ?? ['camera', 'eyes'];
-  }
-
-  /**
-   * Map a detection label to ntfy priority level (1-5).
-   */
-  private _labelToPriority(label: string): number {
-    const priorityMap: Record<string, number> = {
-      person: 4, // high
-      bear: 5, // urgent
-      car: 3, // default
-      truck: 3,
-    };
-    return priorityMap[label] ?? 3;
   }
 }
