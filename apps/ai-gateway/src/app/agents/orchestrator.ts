@@ -499,7 +499,7 @@ Use your best judgment. When in doubt about whether an agent would add value, go
 // Default orchestrator configuration
 export const defaultOrchestratorConfig: OrchestratorConfig = {
   name: 'main-orchestrator',
-  model: 'qwen3:4b', // Best for complex reasoning and correct tool calling
+  model: 'qwen3.5:9b', // Best for complex reasoning and correct tool calling
   subAgents: [
     {
       name: 'utility-assistant',
@@ -533,13 +533,374 @@ Examples:
 - "Calculate 5+5" → use calculate with expression="5+5"
 - "4 apples at $2 with 10% discount" → use calculate with expression="(4 * 2) * 0.9"
 - User says "plan a trip" but you need to know where → use ask_user with questions array containing destination, budget, and duration questions`,
-        model: 'qwen3:4b', // Best for reasoning-heavy tool use
+        model: 'qwen3:4b',
         tools: [
           'get_current_time',
           'calculate',
           'http_request',
           'ask_user',
           'sensitive_action',
+        ],
+      },
+    },
+    {
+      name: 'temporal-agent',
+      description:
+        'Handles date/time operations, timezone conversions, calendar events, and scheduling',
+      capabilities: [
+        'Get detailed date and time information',
+        'Convert between timezones',
+        'Calculate time until/since events',
+        'Add or count business days',
+        'List and create calendar events (CalDAV)',
+        'Find free time slots in a calendar',
+      ],
+      agent: {
+        name: 'temporal-agent',
+        description: 'Date, time, and calendar specialist',
+        systemPrompt: `You are a temporal assistant specialising in dates, times, calendars, and scheduling.
+Use tools for all time and calendar operations. Never guess dates — always use get_date_info or get_current_time.
+When creating calendar events, always confirm the details with the user first via the approval mechanism.`,
+        model: 'qwen3.5:4b',
+        tools: [
+          'get_current_time',
+          'get_date_info',
+          'convert_timezone',
+          'time_until',
+          'time_since',
+          'format_duration',
+          'business_days',
+          'list_calendar_events',
+          'get_daily_agenda',
+          'create_calendar_event',
+          'find_free_time',
+        ],
+      },
+    },
+    {
+      name: 'meteorologist-agent',
+      description:
+        'Provides weather forecasts, air quality, UV index, and astronomical data for any location',
+      capabilities: [
+        'Current weather for any location',
+        'Hourly and 7-day forecasts',
+        'Air quality and UV index',
+        'Sunrise/sunset and moon phase',
+        'Compare weather across locations',
+      ],
+      agent: {
+        name: 'meteorologist-agent',
+        description: 'Weather and environmental conditions specialist',
+        systemPrompt: `You are a meteorologist assistant. Use tools to fetch real weather data — never make up forecasts.
+Always geocode the location first if coordinates are not provided. Present weather in a clear, friendly format.`,
+        model: 'qwen3.5:4b',
+        tools: [
+          'get_current_weather',
+          'get_hourly_forecast',
+          'get_daily_forecast',
+          'get_air_quality',
+          'get_uv_index',
+          'get_astronomical_data',
+          'compare_locations_weather',
+        ],
+      },
+    },
+    {
+      name: 'research-agent',
+      description:
+        'Performs web searches, fetches URLs, looks up Wikipedia, fetches news/RSS feeds, translates text, and searches academic papers',
+      capabilities: [
+        'Web search via DuckDuckGo',
+        'Fetch and summarise web pages',
+        'Wikipedia lookups',
+        'Latest news',
+        'RSS feed fetching',
+        'Dictionary definitions',
+        'Text translation',
+        'Academic paper search',
+      ],
+      agent: {
+        name: 'research-agent',
+        description:
+          'Research, information retrieval, and translation specialist',
+        systemPrompt: `You are a research assistant. Always use tools to find information — do not rely on training data for current facts.
+Synthesise information from multiple sources when possible. Cite sources in your responses.`,
+        model: 'qwen3.5:9b',
+        tools: [
+          'web_search',
+          'fetch_url',
+          'wikipedia_lookup',
+          'get_news',
+          'fetch_rss_feed',
+          'define_word',
+          'translate_text',
+          'academic_search',
+        ],
+      },
+    },
+    {
+      name: 'productivity-agent',
+      description: 'Manages tasks, notes, focus sessions, and habit tracking',
+      capabilities: [
+        'Create and manage tasks in the kanban board',
+        'Take and retrieve notes',
+        'Start/end focus (Pomodoro) sessions',
+        'Track habits and streaks',
+        'Daily task overview',
+      ],
+      agent: {
+        name: 'productivity-agent',
+        description: 'Task, note, focus, and habit specialist',
+        systemPrompt: `You are a productivity assistant. Help users stay organised and focused.
+When creating tasks, ask for a title and priority if not provided. Keep notes concise.
+Encourage healthy habits and celebrate streaks.`,
+        model: 'qwen3:8b',
+        tools: [
+          'create_task',
+          'list_tasks',
+          'update_task',
+          'get_todays_tasks',
+          'create_note',
+          'list_notes',
+          'start_focus_block',
+          'end_focus_block',
+          'get_habit_streak',
+          'check_habit',
+        ],
+      },
+    },
+    {
+      name: 'finance-agent',
+      description:
+        'Provides currency exchange rates, crypto prices, expense tracking, and financial calculations',
+      capabilities: [
+        'Currency exchange rates and conversion',
+        'Cryptocurrency prices',
+        'Expense tracking',
+        'Spending summaries',
+        'Tip, loan, and compound interest calculations',
+      ],
+      agent: {
+        name: 'finance-agent',
+        description: 'Finance, currency, and expense specialist',
+        systemPrompt: `You are a finance assistant. Use tools to fetch live rates and perform financial calculations.
+Never give investment advice. Present numbers clearly with currency symbols and appropriate decimal places.`,
+        model: 'qwen3:8b',
+        tools: [
+          'get_exchange_rate',
+          'convert_currency',
+          'get_crypto_price',
+          'track_expense',
+          'get_spending_summary',
+          'calculate_tip',
+          'calculate_loan',
+          'calculate_compound_interest',
+        ],
+      },
+    },
+    {
+      name: 'health-agent',
+      description:
+        'Tracks nutrition, hydration, sleep, exercise, and integrates with WHOOP wearable data',
+      capabilities: [
+        'Nutrition lookup (calories, macros)',
+        'Water intake tracking',
+        'Sleep logging and summaries',
+        'Exercise logging and BMI',
+        'WHOOP recovery, strain, and workout data',
+        'Wellness nudge notifications',
+      ],
+      agent: {
+        name: 'health-agent',
+        description: 'Health, fitness, and wellness specialist',
+        systemPrompt: `You are a health and wellness assistant. Use tools to log activities and retrieve data.
+Always remind users that you are not a medical professional. Provide evidence-based, supportive guidance.`,
+        model: 'qwen3:8b',
+        tools: [
+          'lookup_nutrition',
+          'log_water',
+          'get_water_status',
+          'log_sleep',
+          'get_sleep_summary',
+          'log_exercise',
+          'calculate_bmi',
+          'send_wellness_nudge',
+          'whoop_get_recovery',
+          'whoop_get_sleep',
+          'whoop_get_day_strain',
+          'whoop_get_workouts',
+          'whoop_get_readiness_brief',
+        ],
+      },
+    },
+    {
+      name: 'communication-agent',
+      description:
+        'Sends push notifications, drafts messages and emails, and creates meeting invites',
+      capabilities: [
+        'Send push notifications via ntfy',
+        'Notification history',
+        'Draft emails and messages',
+        'Summarise email threads',
+        'Create meeting invite text',
+      ],
+      agent: {
+        name: 'communication-agent',
+        description: 'Notifications, messaging, and communication specialist',
+        systemPrompt: `You are a communication assistant. Help users draft clear messages and stay informed.
+When drafting emails or messages, ask for the recipient and purpose if not provided. Keep tone professional unless asked otherwise.`,
+        model: 'qwen3:8b',
+        tools: [
+          'send_notification',
+          'get_notifications_history',
+          'draft_email',
+          'draft_message',
+          'summarize_email_thread',
+          'create_meeting_invite_text',
+        ],
+      },
+    },
+    {
+      name: 'food-agent',
+      description:
+        'Searches recipes, suggests meals from ingredients, scales recipes, and provides cooking guidance',
+      capabilities: [
+        'Search and retrieve recipes',
+        'Suggest recipes from available ingredients',
+        'Scale recipe servings',
+        'Ingredient substitution lookup',
+        'Cooking technique explanations',
+        'Wine pairing recommendations',
+      ],
+      agent: {
+        name: 'food-agent',
+        description: 'Recipe, cooking, and food specialist',
+        systemPrompt: `You are a culinary assistant. Use tools to find and adapt recipes.
+Be enthusiastic about food! Offer alternatives for dietary restrictions when relevant.`,
+        model: 'qwen3:8b',
+        tools: [
+          'search_recipes',
+          'get_recipe',
+          'suggest_recipe_from_ingredients',
+          'scale_recipe',
+          'lookup_ingredient_substitution',
+          'get_cooking_technique',
+          'get_wine_pairing',
+        ],
+      },
+    },
+    {
+      name: 'math-agent',
+      description:
+        'Performs unit conversions, percentage calculations, equation solving, and statistical analysis',
+      capabilities: [
+        'Unit conversions (length, weight, volume, temperature, speed, data, area, energy)',
+        'Percentage calculations',
+        'Solve linear and quadratic equations',
+        'Descriptive statistics (mean, median, mode, std dev)',
+        'General arithmetic via calculate',
+      ],
+      agent: {
+        name: 'math-agent',
+        description: 'Mathematics and unit conversion specialist',
+        systemPrompt: `You are a mathematics assistant. Use tools for all calculations — no mental arithmetic.
+Show your work by explaining what tool you used and why. Present results with appropriate precision.`,
+        model: 'qwen3:4b',
+        tools: [
+          'calculate',
+          'convert_units',
+          'calculate_percentage',
+          'solve_equation',
+          'statistics_summary',
+        ],
+      },
+    },
+    {
+      name: 'formatter-agent',
+      description:
+        'Formats and transforms text: JSON formatting, diffs, encoding, color conversion, tables, and case conversion',
+      capabilities: [
+        'Format and validate JSON',
+        'Compute text diffs (line or word level)',
+        'Encode/decode (base64, URL, HTML, hex, binary)',
+        'Color info and conversion (hex, RGB, HSL)',
+        'Format data as Markdown tables or CSV',
+        'Estimate LLM token counts',
+        'Convert text between naming conventions',
+      ],
+      agent: {
+        name: 'formatter-agent',
+        description: 'Text formatting and transformation specialist',
+        systemPrompt: `You are a text formatting assistant. All operations are done via tools — never process text manually.
+For JSON operations, always validate before formatting. Present results in code blocks where appropriate.`,
+        model: 'qwen3:4b',
+        tools: [
+          'format_json',
+          'validate_json',
+          'diff_text',
+          'encode_decode',
+          'get_color_info',
+          'format_table',
+          'count_tokens',
+          'case_convert',
+        ],
+      },
+    },
+    {
+      name: 'network-agent',
+      description:
+        'Performs network diagnostics: IP lookups, DNS queries, HTTP pinging, URL parsing, QR codes, URL shortening, and SSL cert inspection',
+      capabilities: [
+        'IP geolocation lookup',
+        'DNS record queries (A, MX, TXT, NS, etc.)',
+        'HTTP ping and latency check',
+        'URL parsing and decomposition',
+        'QR code generation',
+        'URL shortening',
+        'SSL certificate inspection',
+      ],
+      agent: {
+        name: 'network-agent',
+        description: 'Network diagnostics and URL tooling specialist',
+        systemPrompt: `You are a network assistant. Use tools for all network operations.
+Present technical results in a readable format, explaining what each field means for non-technical users.`,
+        model: 'qwen3.5:4b',
+        tools: [
+          'http_request',
+          'get_ip_info',
+          'dns_lookup',
+          'ping_url',
+          'parse_url',
+          'qr_code_url',
+          'shorten_url',
+          'check_ssl_cert',
+        ],
+      },
+    },
+    {
+      name: 'security-agent',
+      description:
+        'Generates secure passwords, UUIDs, hashes, assesses password strength, and produces TOTP URIs',
+      capabilities: [
+        'Generate cryptographically secure passwords',
+        'Generate UUID v4 and v7',
+        'Hash text (MD5, SHA-1, SHA-256, SHA-512, HMAC)',
+        'Assess password strength with crack-time estimates',
+        'Generate TOTP secrets and otpauth:// URIs for 2FA setup',
+      ],
+      agent: {
+        name: 'security-agent',
+        description: 'Security tooling and cryptography specialist',
+        systemPrompt: `You are a security assistant. Use tools for all cryptographic operations.
+Educate users on best practices: long passwords, unique per-site, MFA everywhere.
+Never store or log sensitive values beyond what the tool returns.`,
+        model: 'qwen3:4b',
+        tools: [
+          'generate_password',
+          'generate_uuid',
+          'hash_text',
+          'check_password_strength',
+          'generate_totp_uri',
         ],
       },
     },
