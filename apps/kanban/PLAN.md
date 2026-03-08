@@ -57,7 +57,7 @@ BACKLOG → TODO → IN_PROGRESS → IN_REVIEW → DONE
 | `IN_PROGRESS` | `IN_REVIEW`, `BLOCKED`, `TODO`    |
 | `BLOCKED`     | `TODO`                            |
 | `IN_REVIEW`   | `DONE`, `IN_PROGRESS`             |
-| `DONE`        | *(terminal — no transitions out)* |
+| `DONE`        | _(terminal — no transitions out)_ |
 
 The state machine is enforced server-side. Invalid transitions return `400 Bad Request`.
 
@@ -262,9 +262,21 @@ Subtasks are created via `POST /tasks` or `POST /tasks/batch` with `parentId` se
 ```json
 {
   "transitions": [
-    { "fromState": null, "toState": "BACKLOG", "timestamp": "2026-03-03T10:00:00Z" },
-    { "fromState": "BACKLOG", "toState": "TODO", "timestamp": "2026-03-03T10:05:00Z" },
-    { "fromState": "TODO", "toState": "IN_PROGRESS", "timestamp": "2026-03-03T10:10:00Z" }
+    {
+      "fromState": null,
+      "toState": "BACKLOG",
+      "timestamp": "2026-03-03T10:00:00Z"
+    },
+    {
+      "fromState": "BACKLOG",
+      "toState": "TODO",
+      "timestamp": "2026-03-03T10:05:00Z"
+    },
+    {
+      "fromState": "TODO",
+      "toState": "IN_PROGRESS",
+      "timestamp": "2026-03-03T10:10:00Z"
+    }
   ],
   "durations": {
     "BACKLOG": 300000,
@@ -340,12 +352,12 @@ A simple map-based state machine:
 
 ```ts
 const STATE_TRANSITIONS: Record<TaskState, TaskState[]> = {
-  BACKLOG:     [TaskState.TODO],
-  TODO:        [TaskState.IN_PROGRESS, TaskState.BACKLOG],
+  BACKLOG: [TaskState.TODO],
+  TODO: [TaskState.IN_PROGRESS, TaskState.BACKLOG],
   IN_PROGRESS: [TaskState.IN_REVIEW, TaskState.BLOCKED, TaskState.TODO],
-  BLOCKED:     [TaskState.TODO],
-  IN_REVIEW:   [TaskState.DONE, TaskState.IN_PROGRESS],
-  DONE:        [],
+  BLOCKED: [TaskState.TODO],
+  IN_REVIEW: [TaskState.DONE, TaskState.IN_PROGRESS],
+  DONE: [],
 };
 
 function canTransition(from: TaskState, to: TaskState): boolean {

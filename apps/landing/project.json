@@ -8,9 +8,7 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/landing",
         "browser": "apps/landing/src/main.ts",
@@ -22,9 +20,7 @@
             "input": "apps/landing/public"
           }
         ],
-        "styles": [
-          "apps/landing/src/styles.scss"
-        ]
+        "styles": ["apps/landing/src/styles.scss"]
       },
       "configurations": {
         "production": {
@@ -82,9 +78,7 @@
       }
     },
     "container": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "./tools/executors/deploy:container",
       "options": {
         "image": "ethanelliottio/landing",

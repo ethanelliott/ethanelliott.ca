@@ -103,8 +103,16 @@ These are the exact files to copy/adapt when scaffolding. All examples come from
       "configurations": {
         "production": {
           "budgets": [
-            { "type": "initial", "maximumWarning": "800kb", "maximumError": "1.5mb" },
-            { "type": "anyComponentStyle", "maximumWarning": "500kb", "maximumError": "1mb" }
+            {
+              "type": "initial",
+              "maximumWarning": "800kb",
+              "maximumError": "1.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            }
           ],
           "optimization": {
             "scripts": true,
@@ -164,9 +172,7 @@ These are the exact files to copy/adapt when scaffolding. All examples come from
   },
   "files": [],
   "include": [],
-  "references": [
-    { "path": "./tsconfig.app.json" }
-  ],
+  "references": [{ "path": "./tsconfig.app.json" }],
   "extends": "../../tsconfig.base.json",
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
@@ -303,7 +309,7 @@ export class AppComponent {}
 ```typescript
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3100',  // AI Gateway dev port
+  apiUrl: 'http://localhost:3100', // AI Gateway dev port
 };
 ```
 
@@ -419,14 +425,22 @@ The `LayoutComponent` is the shell — sidebar + content area + mobile drawer:
   template: `
     <!-- Mobile Header -->
     <div class="mobile-header">
-      <p-button icon="pi pi-bars" [text]="true" severity="secondary"
-        (click)="drawerVisible.set(true)" />
+      <p-button
+        icon="pi pi-bars"
+        [text]="true"
+        severity="secondary"
+        (click)="drawerVisible.set(true)"
+      />
       <span class="mobile-title">...</span>
     </div>
 
     <!-- Mobile Drawer (PrimeNG) -->
-    <p-drawer [(visible)]="drawerVisible" [modal]="true" [showCloseIcon]="false"
-      styleClass="sidebar-drawer">
+    <p-drawer
+      [(visible)]="drawerVisible"
+      [modal]="true"
+      [showCloseIcon]="false"
+      styleClass="sidebar-drawer"
+    >
       <ng-template #header>...</ng-template>
       <nav><!-- nav links with routerLink --></nav>
     </p-drawer>
@@ -700,6 +714,7 @@ spec:
 ```
 
 **Helm templates** — copy verbatim from `deployments/recipes-frontend/templates/` and replace `recipes-frontend` with `chat-frontend` in:
+
 - `_helpers.tpl` (template names)
 - `deployment.yaml`, `service.yaml`, `ingress.yaml`, `configmap.yaml` (all use helpers)
 
@@ -757,6 +772,7 @@ All routes are children of a `LayoutComponent` shell (sidebar + main content are
 ### Layout
 
 #### `LayoutComponent`
+
 - Left sidebar: conversation list, new chat button, settings link
 - Collapsible on mobile via PrimeNG `Drawer`
 - Top bar: current model indicator, dark mode toggle
@@ -764,15 +780,18 @@ All routes are children of a `LayoutComponent` shell (sidebar + main content are
 ### Chat Page
 
 #### `ChatPageComponent`
+
 - Manages the active conversation signal
 - Wires up the streaming service and routes events to child components
 
 #### `MessageListComponent`
+
 - Scrollable container of `MessageBubbleComponent` instances
 - Auto-scroll to bottom on new tokens (with "scroll to bottom" FAB if user has scrolled up)
 - Empty state with welcome message and suggestion chips
 
 #### `MessageBubbleComponent`
+
 - Renders a single message (user or assistant)
 - **User bubble:** right-aligned, primary color background, plain text or attached image thumbnail
 - **Assistant bubble:** left-aligned, surface background, rendered markdown (via `marked`)
@@ -781,17 +800,20 @@ All routes are children of a `LayoutComponent` shell (sidebar + main content are
   - Thinking/reasoning collapsible section
 
 #### `ToolCallChipComponent`
+
 - Inline pill showing tool name + status (pending spinner / success check / error X)
 - Expandable to show tool input/output JSON
 - For `approval_required` events: shows approve/reject buttons + optional parameter form
 
 #### `ApprovalDialogComponent`
+
 - PrimeNG `Dialog` modal for tool approval requests
 - Shows tool name, description, input parameters
 - Optional user parameter form (dynamic, from `userParametersSchema`)
 - Approve / Reject buttons with optional rejection reason textarea
 
 #### `ChatInputComponent`
+
 - Fixed bottom bar with:
   - PrimeNG `Textarea` (auto-grow, shift+enter for newline, enter to send)
   - Attach file button (image upload for vision models)
@@ -801,10 +823,12 @@ All routes are children of a `LayoutComponent` shell (sidebar + main content are
 - Supported file types: images (JPEG, PNG, GIF, WebP) and text files (.txt, .md, .json, .csv, common code extensions)
 
 #### `SuggestionChipsComponent`
+
 - Row of clickable prompt suggestions shown in empty state
 - Configurable list (hardcoded defaults + user-saved templates from settings)
 
 #### `ModelSelectorComponent`
+
 - PrimeNG `Select` dropdown populated from `GET /agents/models`
 - Shows current model name in the top bar
 - Passed into stream requests via `config.model`
@@ -812,6 +836,7 @@ All routes are children of a `LayoutComponent` shell (sidebar + main content are
 ### Settings Page
 
 #### `SettingsPageComponent`
+
 - **Model Preferences:** default model, temperature slider (`0–2`, PrimeNG `Slider`)
 - **Prompt Templates:** CRUD list of saved system prompts / starter messages
   - Name, description, system prompt text
@@ -828,6 +853,7 @@ All routes are children of a `LayoutComponent` shell (sidebar + main content are
 ## Services
 
 ### `ChatApiService`
+
 Core service for AI Gateway communication.
 
 ```
@@ -859,6 +885,7 @@ Methods:
 **Streaming implementation:** Use the NDJSON streaming pattern documented in the Reference Files section above. The key adaptation for the AI Gateway is that lines are raw JSON (no `data: ` prefix like SSE). See `chatAboutRecipeStream` in `recipes-api.service.ts` for the base pattern.
 
 ### `ConversationService`
+
 Client-side conversation state management.
 
 ```
@@ -883,6 +910,7 @@ Methods:
 **Persistence:** All conversations stored in `localStorage` (serialized JSON). On init, hydrate from storage. On every mutation, persist back. ~5MB practical limit — add a conversation count/size warning in settings. No authentication required (cluster is network-protected).
 
 ### `SettingsService`
+
 User preferences persisted to `localStorage`.
 
 ```
@@ -898,6 +926,7 @@ State (signals):
 ```
 
 ### `MarkdownService`
+
 Wrapper around `marked` for safe HTML rendering of assistant messages.
 
 ```
@@ -933,12 +962,12 @@ The `ChatPageComponent` subscribes to `ChatApiService.streamChat()` and processe
 
 ```typescript
 interface Conversation {
-  id: string;                    // crypto.randomUUID()
+  id: string; // crypto.randomUUID()
   title: string;
   createdAt: number;
   updatedAt: number;
-  messages: ChatMessage[];       // the full history sent to the API
-  displayMessages: DisplayMessage[];  // UI-specific (includes tool chips, thinking, etc.)
+  messages: ChatMessage[]; // the full history sent to the API
+  displayMessages: DisplayMessage[]; // UI-specific (includes tool chips, thinking, etc.)
   config?: ChatConfig;
 }
 
@@ -948,14 +977,14 @@ interface ChatMessage {
   tool_calls?: ToolCall[];
   name?: string;
   tool_call_id?: string;
-  images?: string[];             // base64 for vision
+  images?: string[]; // base64 for vision
 }
 
 interface DisplayMessage {
   id: string;
   role: 'user' | 'assistant';
-  content: string;               // raw markdown (assistant) or plain text (user)
-  renderedHtml?: string;         // cached markdown render
+  content: string; // raw markdown (assistant) or plain text (user)
+  renderedHtml?: string; // cached markdown render
   toolCalls?: DisplayToolCall[];
   thinking?: string;
   attachments?: FileAttachment[];
@@ -996,7 +1025,7 @@ interface FileAttachment {
   name: string;
   type: string;
   base64: string;
-  previewUrl?: string;       // object URL for image thumbnail
+  previewUrl?: string; // object URL for image thumbnail
 }
 ```
 
@@ -1061,6 +1090,7 @@ deployments/chat-frontend/
 ## Implementation Phases
 
 ### Phase 1 — Scaffold & Basic Chat (MVP)
+
 1. Generate Nx app (`chat-frontend`), configure `project.json`, environments, PrimeNG Aura theme
 2. Build `LayoutComponent` with sidebar shell (conversation list, new chat button)
 3. Build `ChatInputComponent` with auto-grow textarea and send button
@@ -1072,6 +1102,7 @@ deployments/chat-frontend/
 9. **Milestone:** Can have a basic multi-turn conversation with streaming
 
 ### Phase 2 — Rich Features
+
 1. Add `ModelSelectorComponent` (fetch models from `/agents/models`)
 2. Add `ToolCallChipComponent` with expandable input/output
 3. Add `ApprovalDialogComponent` for tool approval workflow
@@ -1082,6 +1113,7 @@ deployments/chat-frontend/
 8. **Milestone:** Full tool-call visibility and approval workflow working
 
 ### Phase 3 — File Upload & Vision
+
 1. Add file attachment button to `ChatInputComponent`
 2. Add drag-and-drop zone on chat area
 3. Convert uploaded images to base64, add to message `images` array
@@ -1091,6 +1123,7 @@ deployments/chat-frontend/
 7. **Milestone:** Can send images/files and get appropriate model responses
 
 ### Phase 4 — Settings & Polish
+
 1. Build `SettingsPageComponent` with all preference controls
 2. Add prompt template CRUD (save/load/delete templates)
 3. Add tool enable/disable toggles by category
@@ -1104,6 +1137,7 @@ deployments/chat-frontend/
 11. **Milestone:** Fully polished, configurable chat experience
 
 ### Phase 5 — Deployment
+
 1. Create all files from the **Deployment Reference** section above (Dockerfile, nginx.conf, Helm chart, ArgoCD application)
 2. Add `container` target to `project.json` (already documented in Reference Files)
 3. Add AI Chat entry to landing page's `appLinks` array (see Deployment Reference)

@@ -18,10 +18,7 @@
       "default": "."
     },
     "tag": {
-      "type": [
-        "string",
-        "number"
-      ],
+      "type": ["string", "number"],
       "description": "Image tag to apply (e.g. sha-abc1234, latest)",
       "default": "latest"
     },
@@ -40,8 +37,5 @@
       "default": true
     }
   },
-  "required": [
-    "image",
-    "dockerfile"
-  ]
+  "required": ["image", "dockerfile"]
 }

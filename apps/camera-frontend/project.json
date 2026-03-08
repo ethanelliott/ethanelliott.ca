@@ -8,9 +8,7 @@
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/camera-frontend",
         "index": "apps/camera-frontend/src/index.html",
@@ -24,13 +22,9 @@
             "input": "apps/camera-frontend/public"
           }
         ],
-        "styles": [
-          "apps/camera-frontend/src/styles.scss"
-        ],
+        "styles": ["apps/camera-frontend/src/styles.scss"],
         "stylePreprocessorOptions": {
-          "includePaths": [
-            "apps/camera-frontend/src"
-          ]
+          "includePaths": ["apps/camera-frontend/src"]
         },
         "scripts": []
       },
@@ -91,9 +85,7 @@
       "executor": "@nx/eslint:lint"
     },
     "container": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "./tools/executors/deploy:container",
       "options": {
         "image": "ethanelliottio/camera-frontend",

@@ -7,22 +7,16 @@
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/ai-gateway",
-        "format": [
-          "esm"
-        ],
+        "format": ["esm"],
         "bundle": true,
         "main": "apps/ai-gateway/src/main.ts",
         "tsConfig": "apps/ai-gateway/tsconfig.app.json",
-        "assets": [
-          "apps/ai-gateway/src/assets"
-        ],
+        "assets": ["apps/ai-gateway/src/assets"],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
@@ -52,9 +46,7 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "buildTarget": "ai-gateway:build",
         "runBuildTargetDependencies": false
@@ -70,9 +62,7 @@
       }
     },
     "container": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "./tools/executors/deploy:container",
       "options": {
         "image": "ethanelliottio/ai-gateway",

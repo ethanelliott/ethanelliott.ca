@@ -9,3 +9,13 @@ bun.lockb
 
 # Helm chart templates contain Go template syntax that Prettier breaks
 deployments/**/templates/**
+
+# Committed build artifacts (minified)
+apps/kanban/public/ui/browser/**
+
+# Contains prose/markdown that is not valid TS/TSX
+run-agents.ts
+run-agents.tsx
+
+# Generated temp files
+/tmp

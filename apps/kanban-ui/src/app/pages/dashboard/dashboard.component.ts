@@ -21,7 +21,10 @@ import {
   ALL_STATES,
   priorityLabel,
 } from '../../models/task.model';
-import { ActivityEntryOut, ActivityEntryType } from '../../models/activity.model';
+import {
+  ActivityEntryOut,
+  ActivityEntryType,
+} from '../../models/activity.model';
 import { AgentCardComponent } from './agent-card.component';
 import { QueuePanelComponent } from './queue-panel.component';
 
@@ -114,7 +117,10 @@ const STATE_ACCENT: Record<TaskState, string> = {
               <p>No agents working right now.</p>
             </div>
             } @for (task of activeAgents(); track task.id) {
-            <app-agent-card [task]="task" [latestComment]="latestComments().get(task.id) ?? null" />
+            <app-agent-card
+              [task]="task"
+              [latestComment]="latestComments().get(task.id) ?? null"
+            />
             }
           </div>
         </section>
@@ -454,9 +460,7 @@ export class DashboardComponent {
     );
     if (active.length === 0) return;
 
-    const fetches = active.map((t) =>
-      this.api.getTaskActivity(t.id)
-    );
+    const fetches = active.map((t) => this.api.getTaskActivity(t.id));
 
     forkJoin(fetches).subscribe({
       next: (results) => {

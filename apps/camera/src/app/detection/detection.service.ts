@@ -631,9 +631,7 @@ export class DetectionService {
               confidence: saved.confidence,
               snapshotFilename: saved.snapshotFilename,
             })
-            .catch((err) =>
-              console.error('Notification dispatch error:', err)
-            );
+            .catch((err) => console.error('Notification dispatch error:', err));
 
           // Fire-and-forget scene analysis via Ollama vision model
           this._analysisService

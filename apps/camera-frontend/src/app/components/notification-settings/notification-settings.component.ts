@@ -171,9 +171,7 @@ import {
         <div class="labels-header">
           <span>Notify Labels</span>
           <span class="spacer"></span>
-          <span class="enabled-count">
-            {{ notifyLabelCount() }} selected
-          </span>
+          <span class="enabled-count"> {{ notifyLabelCount() }} selected </span>
         </div>
         <span class="setting-hint label-hint">
           Only send notifications for these labels (empty = all enabled

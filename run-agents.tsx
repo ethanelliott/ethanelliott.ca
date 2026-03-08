@@ -111,7 +111,9 @@ let altScreenActive = false;
 
 function enterAltScreen() {
   if (!altScreenActive) {
-    process.stdout.write(ESC_ALT_SCREEN_ON + ESC_HIDE_CURSOR + ESC_CURSOR_HOME + ESC_MOUSE_ON);
+    process.stdout.write(
+      ESC_ALT_SCREEN_ON + ESC_HIDE_CURSOR + ESC_CURSOR_HOME + ESC_MOUSE_ON
+    );
     altScreenActive = true;
   }
 }
@@ -327,7 +329,8 @@ function parseInputEvents(data: Buffer): InputEvent[] {
             const col = parseInt(match[2]);
             const row = parseInt(match[3]);
             if (button === 64) events.push({ type: 'wheel-up', row, col });
-            else if (button === 65) events.push({ type: 'wheel-down', row, col });
+            else if (button === 65)
+              events.push({ type: 'wheel-down', row, col });
             // Ignore other mouse buttons (press/release) — we only want wheel
             i += match[0].length;
             continue;
@@ -335,18 +338,46 @@ function parseInputEvents(data: Buffer): InputEvent[] {
         }
         // Arrow keys
         if (i + 2 < str.length) {
-          if (str[i + 2] === 'A') { events.push({ type: 'up' }); i += 3; continue; }
-          if (str[i + 2] === 'B') { events.push({ type: 'down' }); i += 3; continue; }
+          if (str[i + 2] === 'A') {
+            events.push({ type: 'up' });
+            i += 3;
+            continue;
+          }
+          if (str[i + 2] === 'B') {
+            events.push({ type: 'down' });
+            i += 3;
+            continue;
+          }
           // Shift+Tab
-          if (str[i + 2] === 'Z') { events.push({ type: 'shift-tab' }); i += 3; continue; }
+          if (str[i + 2] === 'Z') {
+            events.push({ type: 'shift-tab' });
+            i += 3;
+            continue;
+          }
           // Page Up/Down: \x1b[5~ / \x1b[6~
           if (i + 3 < str.length && str[i + 3] === '~') {
-            if (str[i + 2] === '5') { events.push({ type: 'page-up' }); i += 4; continue; }
-            if (str[i + 2] === '6') { events.push({ type: 'page-down' }); i += 4; continue; }
+            if (str[i + 2] === '5') {
+              events.push({ type: 'page-up' });
+              i += 4;
+              continue;
+            }
+            if (str[i + 2] === '6') {
+              events.push({ type: 'page-down' });
+              i += 4;
+              continue;
+            }
           }
           // Home/End: \x1b[H / \x1b[F
-          if (str[i + 2] === 'H') { events.push({ type: 'home' }); i += 3; continue; }
-          if (str[i + 2] === 'F') { events.push({ type: 'end' }); i += 3; continue; }
+          if (str[i + 2] === 'H') {
+            events.push({ type: 'home' });
+            i += 3;
+            continue;
+          }
+          if (str[i + 2] === 'F') {
+            events.push({ type: 'end' });
+            i += 3;
+            continue;
+          }
         }
         // Unknown CSI — skip the \x1b[ and continue
         i += 2;
@@ -355,8 +386,16 @@ function parseInputEvents(data: Buffer): InputEvent[] {
       // SS3 sequence: \x1bO...
       if (i + 1 < str.length && str[i + 1] === 'O') {
         if (i + 2 < str.length) {
-          if (str[i + 2] === 'H') { events.push({ type: 'home' }); i += 3; continue; }
-          if (str[i + 2] === 'F') { events.push({ type: 'end' }); i += 3; continue; }
+          if (str[i + 2] === 'H') {
+            events.push({ type: 'home' });
+            i += 3;
+            continue;
+          }
+          if (str[i + 2] === 'F') {
+            events.push({ type: 'end' });
+            i += 3;
+            continue;
+          }
         }
         i += 2;
         continue;
@@ -373,9 +412,17 @@ function parseInputEvents(data: Buffer): InputEvent[] {
     }
 
     // Tab
-    if (str[i] === '\x09') { events.push({ type: 'tab' }); i++; continue; }
+    if (str[i] === '\x09') {
+      events.push({ type: 'tab' });
+      i++;
+      continue;
+    }
     // Ctrl+C
-    if (str[i] === '\x03') { events.push({ type: 'ctrl-c' }); i++; continue; }
+    if (str[i] === '\x03') {
+      events.push({ type: 'ctrl-c' });
+      i++;
+      continue;
+    }
     // Regular character
     events.push({ type: 'char', char: str[i] });
     i++;
@@ -388,7 +435,7 @@ function parseInputEvents(data: Buffer): InputEvent[] {
 // SSE client + work dispatcher (event-driven agent activation)
 // ═══════════════════════════════════════════════════════════════
 
-const SSE_DEBOUNCE_MS = 5_000;  // Wait 5s after last relevant event before dispatching
+const SSE_DEBOUNCE_MS = 5_000; // Wait 5s after last relevant event before dispatching
 const SSE_RECONNECT_MS = 3_000; // Reconnect after 3s if SSE drops
 
 /** Fetch the count of unassigned actionable tasks */
@@ -917,7 +964,10 @@ const AgentPanel: FC<{
   // ── Visible lines with scroll offset ───────────────────────
   // scrollOffset=0 means pinned to bottom (latest lines).
   // scrollOffset>0 means N lines scrolled up from the bottom.
-  const clampedOffset = Math.min(scrollOffset, Math.max(0, totalLines - maxLines));
+  const clampedOffset = Math.min(
+    scrollOffset,
+    Math.max(0, totalLines - maxLines)
+  );
   const endIdx = totalLines - clampedOffset;
   const startIdx = Math.max(0, endIdx - maxLines);
   const visibleLines = agent.lines.slice(startIdx, endIdx);
@@ -936,7 +986,8 @@ const AgentPanel: FC<{
     : trackHeight;
   // Position thumb proportionally to the scroll position
   const maxOffset = Math.max(0, totalLines - maxLines);
-  const scrollFraction = maxOffset > 0 ? (maxOffset - clampedOffset) / maxOffset : 1;
+  const scrollFraction =
+    maxOffset > 0 ? (maxOffset - clampedOffset) / maxOffset : 1;
   const thumbTop = canScroll
     ? Math.round(scrollFraction * (trackHeight - thumbSize))
     : 0;
@@ -981,7 +1032,9 @@ const AgentPanel: FC<{
             {duration ? ` (${duration})` : ''}
             {agent.iteration > 1 ? ` #${agent.iteration}` : ''}
           </Text>
-          {canScroll && linesAbove > 0 && <Text dimColor> [{linesAbove}↑]</Text>}
+          {canScroll && linesAbove > 0 && (
+            <Text dimColor> [{linesAbove}↑]</Text>
+          )}
           {linesBelow > 0 && <Text color="yellow"> [{linesBelow}↓]</Text>}
         </Text>
         {agent.logPath && (
@@ -1237,7 +1290,11 @@ const App: FC<{ config: Config }> = ({ config }) => {
       const idleIndices: number[] = [];
       for (let i = 0; i < dataRef.current.length; i++) {
         const d = dataRef.current[i];
-        if (d.status === 'idle' || d.status === 'done' || d.status === 'error') {
+        if (
+          d.status === 'idle' ||
+          d.status === 'done' ||
+          d.status === 'error'
+        ) {
           idleIndices.push(i);
         }
       }
@@ -1313,7 +1370,9 @@ const App: FC<{ config: Config }> = ({ config }) => {
           if (d && (d.status === 'running' || d.status === 'starting')) {
             const proc = activeProcs.get(d.name);
             if (proc) {
-              try { proc.kill('SIGTERM'); } catch {}
+              try {
+                proc.kill('SIGTERM');
+              } catch {}
             }
           }
         } else if (cmd.type === 'restart') {
@@ -1322,7 +1381,9 @@ const App: FC<{ config: Config }> = ({ config }) => {
             // Kill existing process if running
             const proc = activeProcs.get(d.name);
             if (proc) {
-              try { proc.kill('SIGTERM'); } catch {}
+              try {
+                proc.kill('SIGTERM');
+              } catch {}
               activeProcs.delete(d.name);
             }
             // Reset to idle so dispatcher picks it up
@@ -1483,16 +1544,18 @@ const App: FC<{ config: Config }> = ({ config }) => {
     if (autoExitCheckedRef.current) return;
     autoExitCheckedRef.current = true;
 
-    fetchAvailableCounts(config.api, config.project).then((counts) => {
-      if (counts.todo + counts.changesRequested === 0) {
-        setTimeout(() => exit(), 2000);
-      } else {
+    fetchAvailableCounts(config.api, config.project)
+      .then((counts) => {
+        if (counts.todo + counts.changesRequested === 0) {
+          setTimeout(() => exit(), 2000);
+        } else {
+          autoExitCheckedRef.current = false;
+          dispatchWork(); // there IS work — dispatch it
+        }
+      })
+      .catch(() => {
         autoExitCheckedRef.current = false;
-        dispatchWork(); // there IS work — dispatch it
-      }
-    }).catch(() => {
-      autoExitCheckedRef.current = false;
-    });
+      });
   }, [agents, config.loop, config.api, config.project, exit, dispatchWork]);
 
   // ── Derived values ─────────────────────────────────────────
@@ -1509,7 +1572,12 @@ const App: FC<{ config: Config }> = ({ config }) => {
 
   return (
     <Box flexDirection="column" height={termRows}>
-      <Header config={config} agentCount={agentCount} agentNames={agentNames} sseStatus={sseStatus} />
+      <Header
+        config={config}
+        agentCount={agentCount}
+        agentNames={agentNames}
+        sseStatus={sseStatus}
+      />
       <Box flexDirection="column" flexGrow={1}>
         {agents.map((agent) => (
           <AgentPanel
@@ -1525,7 +1593,7 @@ const App: FC<{ config: Config }> = ({ config }) => {
         uptime={uptime}
         shuttingDown={shuttingDown}
         loop={config.loop}
-        hasFocus={agents.some(a => a.focused)}
+        hasFocus={agents.some((a) => a.focused)}
       />
     </Box>
   );
@@ -1730,7 +1798,10 @@ async function main() {
           continue;
         }
         if (ev.type === 'page-up') {
-          d.scrollOffset = Math.min(maxOffset, d.scrollOffset + currentLayout.maxLines);
+          d.scrollOffset = Math.min(
+            maxOffset,
+            d.scrollOffset + currentLayout.maxLines
+          );
           d.dirty = true;
           continue;
         }
@@ -1754,7 +1825,9 @@ async function main() {
       // ── Mouse wheel scroll ──
       if (ev.type === 'wheel-up' || ev.type === 'wheel-down') {
         // Map terminal row to panel index
-        const panelIdx = Math.floor((ev.row - 1 - HEADER_ROWS) / currentLayout.panelHeight);
+        const panelIdx = Math.floor(
+          (ev.row - 1 - HEADER_ROWS) / currentLayout.panelHeight
+        );
         if (panelIdx >= 0 && panelIdx < moduleAgentData.length) {
           // Auto-focus the panel being scrolled
           if (focusedIndex !== panelIdx) {
@@ -1762,7 +1835,10 @@ async function main() {
             focusDirty = true;
           }
           const d = moduleAgentData[panelIdx];
-          const maxOffset = Math.max(0, d.lines.length - currentLayout.maxLines);
+          const maxOffset = Math.max(
+            0,
+            d.lines.length - currentLayout.maxLines
+          );
           const scrollAmount = 3; // lines per wheel tick
           if (ev.type === 'wheel-up') {
             d.scrollOffset = Math.min(maxOffset, d.scrollOffset + scrollAmount);
@@ -1775,7 +1851,11 @@ async function main() {
       }
 
       // ── Agent actions (when focused) ──
-      if (ev.type === 'char' && focusedIndex >= 0 && focusedIndex < moduleAgentData.length) {
+      if (
+        ev.type === 'char' &&
+        focusedIndex >= 0 &&
+        focusedIndex < moduleAgentData.length
+      ) {
         if (ev.char === 'r') {
           pendingCommands.push({ type: 'restart', index: focusedIndex });
           continue;

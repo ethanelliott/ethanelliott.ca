@@ -3,12 +3,8 @@
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
     "module": "esnext",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "target": "esnext"
   },
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }

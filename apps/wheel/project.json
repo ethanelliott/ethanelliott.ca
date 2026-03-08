@@ -8,9 +8,7 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/wheel",
         "browser": "apps/wheel/src/main.ts",
@@ -22,9 +20,7 @@
             "input": "apps/wheel/public"
           }
         ],
-        "styles": [
-          "apps/wheel/src/styles.scss"
-        ]
+        "styles": ["apps/wheel/src/styles.scss"]
       },
       "configurations": {
         "production": {
@@ -82,9 +78,7 @@
       }
     },
     "container": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "./tools/executors/deploy:container",
       "options": {
         "image": "ethanelliottio/wheel",

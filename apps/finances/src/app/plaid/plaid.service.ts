@@ -15,8 +15,6 @@ import {
   RemovedTransaction,
   PlaidError,
 } from 'plaid';
-import { AxiosError } from 'axios';
-
 // Plaid error codes that require user re-authentication
 const REAUTH_ERROR_CODES = [
   'ITEM_LOGIN_REQUIRED',
@@ -40,6 +38,23 @@ interface PlaidApiError {
   error_code: string;
   error_message: string;
   display_message: string | null;
+}
+
+/**
+ * Check if an error looks like an Axios-style error with a response payload.
+ * This avoids importing axios directly (it's a transitive dep of plaid).
+ */
+function isAxiosLikeError(
+  error: unknown
+): error is { response: { data: unknown; status: number } } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as any).response === 'object' &&
+    (error as any).response !== null &&
+    'data' in (error as any).response
+  );
 }
 import { Database } from '../data-source';
 import { PlaidItem, PlaidItemStatus } from './plaid-item.entity';
@@ -77,7 +92,7 @@ export interface SyncResult {
  * Parse a Plaid API error from an Axios error response
  */
 function parsePlaidError(error: unknown): PlaidApiError | null {
-  if (error instanceof AxiosError && error.response?.data) {
+  if (isAxiosLikeError(error)) {
     const data = error.response.data as PlaidApiError;
     if (data.error_code && data.error_type) {
       return data;

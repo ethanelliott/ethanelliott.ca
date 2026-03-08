@@ -20,10 +20,12 @@ This workflow is manually triggered to prepare a new release.
 **Trigger**: Manual via GitHub Actions UI
 
 **Inputs**:
+
 - `release_type`: patch | minor | major | prerelease
 - `preid`: Pre-release identifier (e.g., rc, alpha, beta) - only used with prerelease type
 
 **What it does**:
+
 1. Runs `tools/scripts/prepare-release.ts` to calculate versions based on conventional commits
 2. Updates `package.json` files with new versions
 3. Generates/updates `CHANGELOG.md` files
@@ -32,6 +34,7 @@ This workflow is manually triggered to prepare a new release.
 6. PR commit message: `chore(release): publish {version} [skip ci]`
 
 **Usage**:
+
 ```bash
 # Via GitHub UI:
 1. Go to Actions tab
@@ -52,6 +55,7 @@ This workflow automatically runs when a release PR is merged to `main`.
 **Trigger**: Push to `main` branch with commit message matching `chore(release): publish {version} [skip ci]`
 
 **What it does**:
+
 1. Detects release commit by checking commit message format
 2. Extracts version number from commit message
 3. Runs `tools/scripts/publish-release.ts` to create git tags
@@ -62,6 +66,7 @@ This workflow automatically runs when a release PR is merged to `main`.
 6. Creates a GitHub Release with release notes
 
 **Docker Images Published**:
+
 - `ethanelliottio/finances:{version}` and `ethanelliottio/finances:latest`
 - `ethanelliottio/finances-frontend:{version}` and `ethanelliottio/finances-frontend:latest`
 - `ethanelliottio/test-server:{version}` and `ethanelliottio/test-server:latest`
@@ -77,11 +82,13 @@ This workflow automatically runs when a release PR is merged to `main`.
 
 This workflow runs on all pushes to `main` and PRs, except for release commits.
 
-**Trigger**: 
+**Trigger**:
+
 - Push to `main` (skips if release commit)
 - Pull requests
 
 **What it does**:
+
 1. Checks if commit is a release commit (if so, skips)
 2. Runs lint and build on affected projects
 3. On `main` push: Builds and pushes Docker images with `latest` tag
@@ -126,6 +133,7 @@ graph TD
 Prepares a release by calculating versions and generating changelogs.
 
 **Usage**:
+
 ```bash
 # Interactive (prompts for type)
 npm run release:prepare
@@ -143,6 +151,7 @@ RELEASE_TYPE=prerelease PREID=alpha npm run release:prepare
 ```
 
 **What it does**:
+
 1. Calculates new versions based on conventional commits
 2. Updates `package.json` files
 3. Generates changelog entries
@@ -153,6 +162,7 @@ RELEASE_TYPE=prerelease PREID=alpha npm run release:prepare
 Publishes a release by creating and pushing git tags.
 
 **Usage**:
+
 ```bash
 # Publish release
 npm run release:publish
@@ -162,6 +172,7 @@ npm run release:publish:dry-run
 ```
 
 **What it does**:
+
 1. Creates git tags for all released projects
 2. Pushes tags to remote
 3. Used by Execute Release workflow
@@ -178,6 +189,7 @@ This repository uses conventional commits to automatically determine version bum
 - Other types (`chore:`, `docs:`, `style:`, etc.) → No version bump
 
 **Examples**:
+
 ```bash
 # Patch release
 git commit -m "fix: resolve login issue"
@@ -208,6 +220,7 @@ Each app in the monorepo is versioned independently:
 ### Docker Tag Strategy
 
 1. **Development (Dev CI)**:
+
    - Tag: `latest`
    - Pushed on every main commit (non-release)
    - Used for dev/staging environments
@@ -257,12 +270,14 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 ### Creating a Patch Release
 
 1. **Ensure commits follow conventional commits**
+
    ```bash
    git commit -m "fix: resolve authentication bug"
    git push origin main
    ```
 
 2. **Trigger Prepare Release**
+
    - Go to GitHub Actions tab
    - Select "Prepare Release"
    - Click "Run workflow"
@@ -270,11 +285,13 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
    - Click "Run workflow"
 
 3. **Review the PR**
+
    - Workflow creates a PR with version bumps and changelogs
    - Review changes in `package.json` and `CHANGELOG.md`
    - Approve if everything looks good
 
 4. **Merge the PR**
+
    - Use **"Squash and merge"**
    - Execute Release workflow triggers automatically
 
@@ -286,6 +303,7 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 ### Creating a Pre-release (RC)
 
 1. **Trigger Prepare Release**
+
    - Go to GitHub Actions
    - Select "Prepare Release"
    - Click "Run workflow"
@@ -294,6 +312,7 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
    - Click "Run workflow"
 
 2. **Review and Merge PR**
+
    - PR will show version like `1.2.3-rc.1`
    - Use **"Squash and merge"**
 
@@ -304,6 +323,7 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 ### Promoting RC to Stable
 
 1. **Trigger Prepare Release**
+
    - Select `patch`, `minor`, or `major` (usually `patch` if RC → Stable)
    - This will bump `1.2.3-rc.1` → `1.2.3`
 
@@ -318,7 +338,8 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 
 **Cause**: No conventional commits since last release, or all projects already at target version.
 
-**Solution**: 
+**Solution**:
+
 - Check commit history: `git log --oneline`
 - Ensure commits follow conventional commit format
 - Verify you haven't already released these changes
@@ -328,6 +349,7 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 **Cause**: Missing Dockerfile or build configuration issues.
 
 **Solution**:
+
 - Verify Dockerfile exists in `apps/{project}/Dockerfile`
 - Test Docker build locally: `docker build -f apps/{project}/Dockerfile .`
 - Check project.json has `container` target
@@ -337,6 +359,7 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 **Cause**: Prepare Release workflow failed.
 
 **Solution**:
+
 - Check workflow logs in GitHub Actions
 - Verify `prepare-release.ts` script runs locally
 - Ensure GitHub token has correct permissions
@@ -346,6 +369,7 @@ Configure these in GitHub Repository Settings → Secrets and variables → Acti
 **Cause**: Commit message format doesn't match expected pattern.
 
 **Solution**:
+
 - Ensure PR merged with "Squash and merge"
 - Verify PR title is exactly: `chore(release): publish {version}`
 - The PR title becomes the squashed commit message
@@ -375,7 +399,7 @@ The current setup releases all affected projects. To release specific projects, 
 ```json
 {
   "release": {
-    "projects": ["apps/finances", "apps/server"],
+    "projects": ["apps/finances", "apps/server"]
     // ...
   }
 }
@@ -399,6 +423,7 @@ Modify `tools/scripts/prepare-release.ts` to implement custom version calculatio
 ## 🤝 Contributing
 
 When contributing:
+
 1. Follow conventional commit format
 2. Ensure CI passes before merging
 3. Update documentation if changing release process

@@ -30,6 +30,7 @@ This document outlines the plan for building a chat interface that connects to t
 ### 1. Stateless Chat Pattern
 
 Use the `/chat/stream` endpoint which:
+
 - Accepts full message history in each request
 - No server-side conversation state to manage
 - Supports tool enable/disable per request
@@ -42,18 +43,18 @@ interface Message {
   content: string;
   activity?: {
     delegations?: Array<{
-      agent: string;         // Which sub-agent handled it
-      task: string;          // What was delegated
-      tools?: string[];      // Tools the agent used
-      response?: string;     // Agent's response
+      agent: string; // Which sub-agent handled it
+      task: string; // What was delegated
+      tools?: string[]; // Tools the agent used
+      response?: string; // Agent's response
     }>;
     toolCalls?: Array<{
-      tool: string;          // Tool name
-      input: object;         // Tool input
-      output: unknown;       // Tool result
-      success: boolean;      // Whether it succeeded
+      tool: string; // Tool name
+      input: object; // Tool input
+      output: unknown; // Tool result
+      success: boolean; // Whether it succeeded
     }>;
-    durationMs?: number;     // How long this turn took
+    durationMs?: number; // How long this turn took
   };
 }
 
@@ -61,11 +62,11 @@ interface Message {
 interface ChatRequest {
   messages: Message[];
   config?: {
-    enabledTools?: string[];      // Whitelist: only these tools
-    disabledTools?: string[];     // Blacklist: disable these tools
-    model?: string;               // Override model
-    temperature?: number;         // 0-2
-    includeActivityContext?: boolean;  // Include activity in LLM context (default: true)
+    enabledTools?: string[]; // Whitelist: only these tools
+    disabledTools?: string[]; // Blacklist: disable these tools
+    model?: string; // Override model
+    temperature?: number; // 0-2
+    includeActivityContext?: boolean; // Include activity in LLM context (default: true)
   };
 }
 ```
@@ -81,6 +82,7 @@ interface ChatRequest {
 7. **Backend uses activity context** → When `includeActivityContext: true`, activity is injected into LLM history so it remembers what tools were used
 
 This solves the "that" problem:
+
 ```
 User: "What's 1500 * 1.15?"
 Assistant: "The answer is 1725" (activity: { toolCalls: [{ tool: "calculate", ... }] })
@@ -96,13 +98,14 @@ The API returns newline-delimited JSON (NDJSON). Each line is a complete JSON ob
 
 ```typescript
 interface StreamEvent {
-  event: string;      // Event type
-  timestamp: number;  // ms since request start
-  data: object;       // Event-specific data
+  event: string; // Event type
+  timestamp: number; // ms since request start
+  data: object; // Event-specific data
 }
 ```
 
 **Event Types:**
+
 - `status` - General status messages
 - `thinking` - Orchestrator/agent processing
 - `token` - Real-time LLM output tokens
@@ -151,16 +154,19 @@ async function* streamChat(
 ## UI Components
 
 ### 1. Chat Container
+
 - Message list with user/assistant bubbles
 - Auto-scroll to bottom
 - Loading states during streaming
 
 ### 2. Message Input
+
 - Text input with send button
 - Keyboard shortcuts (Enter to send)
 - Disabled during streaming
 
 ### 3. Tool Panel (Sidebar)
+
 ```
 ┌─────────────────────────┐
 │ Available Tools         │
@@ -171,12 +177,15 @@ async function* streamChat(
 │ ☐ sensitive_action      │
 └─────────────────────────┘
 ```
+
 - Toggle checkboxes to enable/disable tools
 - Group by category
 - Show tool descriptions on hover
 
 ### 4. Activity Panel
+
 Real-time visibility into agent operations:
+
 ```
 ┌─────────────────────────────────────────┐
 │ Activity                                │
@@ -192,7 +201,9 @@ Real-time visibility into agent operations:
 ```
 
 ### 5. Approval Dialog (Modal)
+
 When `approval_required` event is received:
+
 ```
 ┌─────────────────────────────────────────┐
 │ ⚠️ Approval Required                    │
@@ -210,25 +221,27 @@ When `approval_required` event is received:
 ## State Management
 
 ### React State Structure
+
 ```typescript
 interface ChatState {
   // Conversation
   messages: Message[];
   isStreaming: boolean;
-  
+
   // Tools
   availableTools: Tool[];
   enabledTools: Set<string>;
-  
+
   // Activity
   activities: Activity[];
-  
+
   // Approvals
   pendingApproval: ApprovalRequest | null;
 }
 ```
 
 ### Message Flow
+
 1. User types message → Add to `messages` array
 2. Call `/chat/stream` with full `messages` + config
 3. Process stream events:
@@ -238,6 +251,7 @@ interface ChatState {
    - `done` → Replace pending message with final, update `messages`
 
 ### Approval Flow
+
 1. Receive `approval_required` event
 2. Show modal with tool details
 3. User clicks Approve/Reject
@@ -284,6 +298,7 @@ apps/ai-chat/
 ## Implementation Phases
 
 ### Phase 1: Core Chat (MVP)
+
 - [ ] Project setup (Vite + React + TypeScript)
 - [ ] Basic message list and input
 - [ ] NDJSON streaming implementation
@@ -291,24 +306,28 @@ apps/ai-chat/
 - [ ] Basic styling
 
 ### Phase 2: Tool Management
+
 - [ ] Fetch and display available tools
 - [ ] Tool enable/disable toggles
 - [ ] Pass tool config to API
 - [ ] Show tool categories
 
 ### Phase 3: Activity Visibility
+
 - [ ] Activity panel component
 - [ ] Process streaming events
 - [ ] Show delegation/tool call activity
 - [ ] Token streaming display
 
 ### Phase 4: Approval Workflow
+
 - [ ] Approval modal component
 - [ ] Handle `approval_required` events
 - [ ] Submit approvals via API
 - [ ] Resume stream after approval
 
 ### Phase 5: Polish
+
 - [ ] Error handling and retry
 - [ ] Loading states and animations
 - [ ] Responsive design
@@ -346,7 +365,7 @@ export const api = {
       }),
   },
   tools: {
-    list: () => fetch(`${API_BASE}/tools`).then(r => r.json()),
+    list: () => fetch(`${API_BASE}/tools`).then((r) => r.json()),
   },
 };
 ```

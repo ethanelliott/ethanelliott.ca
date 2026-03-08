@@ -99,8 +99,7 @@ import { firstValueFrom } from 'rxjs';
             <mat-spinner diameter="18"></mat-spinner>
             } @else {
             <mat-icon>add</mat-icon>
-            Add
-            }
+            Add }
           </button>
         </form>
       </div>
@@ -143,10 +142,7 @@ import { firstValueFrom } from 'rxjs';
       } @else {
       <div class="tags-grid">
         @for (tag of filteredTags(); track tag.id) {
-        <div
-          class="tag-card"
-          [class.expanded]="expandedTagId() === tag.id"
-        >
+        <div class="tag-card" [class.expanded]="expandedTagId() === tag.id">
           <!-- Tag Header (always visible) -->
           <div class="tag-header" (click)="toggleExpand(tag)">
             <div
@@ -160,11 +156,7 @@ import { firstValueFrom } from 'rxjs';
               }
             </div>
             <mat-icon class="expand-icon">
-              {{
-                expandedTagId() === tag.id
-                  ? 'expand_less'
-                  : 'expand_more'
-              }}
+              {{ expandedTagId() === tag.id ? 'expand_less' : 'expand_more' }}
             </mat-icon>
           </div>
 
@@ -181,9 +173,7 @@ import { firstValueFrom } from 'rxjs';
                     (change)="updateColor(tag, $event)"
                     class="edit-color-input"
                   />
-                  <span class="color-hex">{{
-                    tag.color || '#6366f1'
-                  }}</span>
+                  <span class="color-hex">{{ tag.color || '#6366f1' }}</span>
                 </div>
               </div>
 
@@ -248,8 +238,7 @@ import { firstValueFrom } from 'rxjs';
                 <mat-spinner diameter="18"></mat-spinner>
                 } @else {
                 <mat-icon>delete</mat-icon>
-                Delete
-                }
+                Delete }
               </button>
             </div>
           </div>
@@ -257,8 +246,7 @@ import { firstValueFrom } from 'rxjs';
         </div>
         }
       </div>
-      }
-      }
+      } }
     </div>
   `,
 })

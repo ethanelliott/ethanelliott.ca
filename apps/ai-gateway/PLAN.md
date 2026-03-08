@@ -149,7 +149,7 @@ Bridges into the monorepo's kanban backend (`apps/kanban`).
 | `create_note`       | Store a timestamped note in a lightweight local notes store                  |
 | `list_notes`        | Retrieve notes by date range or keyword                                      |
 | `search_notes`      | Semantic search across notes                                                 |
-| `start_focus_block` | Record focus session start; send ntfy "Focus mode on 🎯"                      |
+| `start_focus_block` | Record focus session start; send ntfy "Focus mode on 🎯"                     |
 | `end_focus_block`   | Record end, compute duration, log to metrics                                 |
 | `get_habit_streak`  | Simple streak tracker (configurable daily habits)                            |
 | `check_habit`       | Mark a habit complete for today                                              |
@@ -545,6 +545,7 @@ user's configured topic. The AI can push to any device without extra setup.
 ## Implementation Roadmap
 
 ### Sprint 1 (Week 1–2): Temporal + Calendar + Weather + UserContext
+
 - [ ] `src/app/mcp/tools/temporal-tools.ts` — 12 tools (8 temporal + 4 calendar)
 - [ ] `src/app/mcp/tools/weather-tools.ts` — 11 tools (Open-Meteo)
 - [ ] `src/app/context/user-context.ts` + `config/user-context.router.ts` (includes `calDavUrl/Username/Password`)
@@ -553,6 +554,7 @@ user's configured topic. The AI can push to any device without extra setup.
 - [ ] Register TemporalAgent + MeteorologistAgent in `orchestrator.ts`
 
 ### Sprint 2 (Week 3–4): Research + Utility Split + Parallel Fanout
+
 - [ ] `src/app/mcp/tools/research-tools.ts` — 10 tools
 - [ ] `src/app/mcp/tools/math-tools.ts` — 5 tools
 - [ ] `src/app/mcp/tools/formatter-tools.ts` — 8 tools
@@ -564,12 +566,14 @@ user's configured topic. The AI can push to any device without extra setup.
 - [ ] Register ResearchAgent, MathAgent, FormatterAgent, NetworkAgent, SecurityAgent
 
 ### Sprint 3 (Week 5–6): Productivity + Finance
+
 - [ ] `src/app/mcp/tools/productivity-tools.ts` — 12 tools
 - [ ] `src/app/mcp/tools/finance-tools.ts` — 10 tools
 - [ ] `src/app/clients/kanban-client.ts`
 - [ ] Register ProductivityAgent, FinanceAgent
 
 ### Sprint 4 (Week 7–8): Health + Communication + Food
+
 - [ ] `src/app/mcp/tools/health-tools.ts` — 21 tools (11 general + 10 Whoop)
 - [ ] `src/app/mcp/tools/communication-tools.ts` — 7 tools
 - [ ] `src/app/mcp/tools/food-tools.ts` — 10 tools
@@ -580,11 +584,13 @@ user's configured topic. The AI can push to any device without extra setup.
 - [ ] Register HealthAgent, CommunicationAgent, FoodAgent
 
 ### Sprint 5 (Week 9–10): Proactive Nudges + Memory
+
 - [ ] `src/app/nudges/nudge-scheduler.ts` + `nudge-rules.ts`
 - [ ] `src/app/memory/memory-store.ts` — per-agent rolling memory
 - [ ] Wire nudge scheduler to ntfy client
 
 ### Sprint 6 (Week 11–12): Model Tiers + Analytics
+
 - [ ] Assign model tiers in all agent configs
 - [ ] `GET /app-metrics/tool-ranking` endpoint
 - [ ] Full API documentation update

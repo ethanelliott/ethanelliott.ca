@@ -5,6 +5,7 @@
 ### 1. Trigger Release Preparation
 
 **Via GitHub UI:**
+
 1. Go to [Actions](../../actions)
 2. Select "Prepare Release" workflow
 3. Click "Run workflow"
@@ -24,6 +25,7 @@
 ### 3. Release is Published Automatically
 
 After merging, the "Execute Release" workflow will:
+
 - ✅ Create git tags
 - ✅ Build and push Docker images
 - ✅ Create GitHub Release
@@ -33,6 +35,7 @@ After merging, the "Execute Release" workflow will:
 ## 📋 Quick Commands
 
 ### Test Release Locally (Dry Run)
+
 ```bash
 # Preview patch release
 npm run release:prepare:dry-run -- --type=patch
@@ -45,6 +48,7 @@ npm run release:prepare:dry-run -- --type=prerelease --preid=rc
 ```
 
 ### Build Docker Image with Custom Tag
+
 ```bash
 # Single project
 npx nx run finances:container --tag=1.2.3

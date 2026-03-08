@@ -8,9 +8,7 @@
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/chat-frontend",
         "index": "apps/chat-frontend/src/index.html",
@@ -24,9 +22,7 @@
             "input": "apps/chat-frontend/public"
           }
         ],
-        "styles": [
-          "apps/chat-frontend/src/styles.scss"
-        ],
+        "styles": ["apps/chat-frontend/src/styles.scss"],
         "scripts": []
       },
       "configurations": {
@@ -80,9 +76,7 @@
       "defaultConfiguration": "development"
     },
     "container": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "./tools/executors/deploy:container",
       "options": {
         "image": "ethanelliottio/chat-frontend",

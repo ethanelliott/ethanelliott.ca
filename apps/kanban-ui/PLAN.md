@@ -142,6 +142,7 @@ The primary operational view.
 ```
 
 **Features:**
+
 - Columns map 1:1 to task states.
 - Each column shows a task count badge.
 - Cards display: title, priority badge (`P1`–`P∞`), assignee chip (if set), dependency count warning icon, subtask progress (`2/5`).
@@ -154,6 +155,7 @@ The primary operational view.
 - **Live via SSE**: `task_created`, `task_updated`, `task_deleted`, `task_expired` events patch the board state in-place without a full refetch.
 
 **Task Card Component fields:**
+
 ```
 ┌─────────────────────────────────────────┐
 │ P2  Fix login token refresh             │
@@ -268,6 +270,7 @@ Visual timeline using PrimeNG Timeline component, sourced from `GET /tasks/:id/h
 Reverse-chronological feed sourced from `GET /tasks/:id/activity`, live-updated via `activity_added` SSE events.
 
 Entry types rendered distinctly:
+
 - `STATE_CHANGE` — state badge transition pill
 - `ASSIGNMENT` — agent chip assigned/unassigned
 - `DEPENDENCY` — dependency added/removed with linked task title
@@ -275,6 +278,7 @@ Entry types rendered distinctly:
 - `COMMENT` — markdown-rendered comment bubble, author name, timestamp
 
 **Comment composer** at the bottom:
+
 ```
 ┌──────────────────────────────────────────────┐
 │ Add a comment…                               │
@@ -290,11 +294,13 @@ Calls `POST /tasks/:id/activity`.
 Two collapsible panels:
 
 **Dependencies:**
+
 - List of tasks this task depends on, each showing state badge (green = DONE, red = blocking).
 - `[+ Add dependency]` → searchable task picker dialog → `POST /tasks/:id/dependencies`.
 - Remove button → `DELETE /tasks/:id/dependencies/:dependsOnId`.
 
 **Subtasks:**
+
 - Tree of child tasks with progress bar (`completed / total`).
 - Clicking a subtask navigates to its detail page.
 - `[+ Add subtask]` → inline quick-create (title only, inherits project + parentId).
@@ -345,17 +351,19 @@ Wraps the browser `EventSource` API as typed RxJS streams.
 export class KanbanSseService {
   // Connects to GET /events?project=<project>
   // Manages one EventSource at a time; reconnects on error.
-  connect(project?: string): void
-  disconnect(): void
+  connect(project?: string): void;
+  disconnect(): void;
 
   // Typed event streams
-  readonly taskUpdated$: Observable<SseTaskUpdated>
-  readonly taskCreated$: Observable<SseTaskCreated>
-  readonly taskDeleted$: Observable<SseTaskDeleted>
-  readonly taskExpired$: Observable<SseTaskExpired>
-  readonly activityAdded$: Observable<SseActivityAdded>
-  readonly heartbeat$: Observable<SseHeartbeat>
-  readonly connectionState$: Observable<'connected' | 'connecting' | 'disconnected'>
+  readonly taskUpdated$: Observable<SseTaskUpdated>;
+  readonly taskCreated$: Observable<SseTaskCreated>;
+  readonly taskDeleted$: Observable<SseTaskDeleted>;
+  readonly taskExpired$: Observable<SseTaskExpired>;
+  readonly activityAdded$: Observable<SseActivityAdded>;
+  readonly heartbeat$: Observable<SseHeartbeat>;
+  readonly connectionState$: Observable<
+    'connected' | 'connecting' | 'disconnected'
+  >;
 }
 ```
 
@@ -395,12 +403,12 @@ The valid transitions are replicated in a frontend constant to drive button rend
 
 ```ts
 export const STATE_TRANSITIONS: Record<TaskState, TaskState[]> = {
-  BACKLOG:     [TaskState.TODO],
-  TODO:        [TaskState.IN_PROGRESS, TaskState.BACKLOG],
+  BACKLOG: [TaskState.TODO],
+  TODO: [TaskState.IN_PROGRESS, TaskState.BACKLOG],
   IN_PROGRESS: [TaskState.IN_REVIEW, TaskState.BLOCKED, TaskState.TODO],
-  BLOCKED:     [TaskState.TODO],
-  IN_REVIEW:   [TaskState.DONE, TaskState.IN_PROGRESS],
-  DONE:        [],
+  BLOCKED: [TaskState.TODO],
+  IN_REVIEW: [TaskState.DONE, TaskState.IN_PROGRESS],
+  DONE: [],
 };
 ```
 
@@ -430,6 +438,7 @@ Dropdown in the left sidebar. Sources options from `GET /projects`. Shows per-pr
 ### Connection Status Indicator
 
 Small badge in the header showing SSE connection state:
+
 - 🟢 Live — connected and receiving events
 - 🟡 Reconnecting… — `EventSource` retry in progress
 - 🔴 Offline — manual refresh required
@@ -437,6 +446,7 @@ Small badge in the header showing SSE connection state:
 ### Priority Display
 
 Integer priority displayed as:
+
 - `P1` (priority ≤ 10) — red badge
 - `P2` (priority ≤ 25) — orange badge
 - `P3` (priority ≤ 50) — yellow badge
@@ -445,6 +455,7 @@ Integer priority displayed as:
 ### Elapsed Time Tickers
 
 For `IN_PROGRESS` tasks showing agent and elapsed time:
+
 - Green: < 50% of TTL
 - Amber: 50–90% of TTL
 - Red: > 90% of TTL (or already stale)
@@ -462,6 +473,7 @@ Uses Angular CDK `DragDropModule`. Each column is a `cdkDropList`. Constrained t
 Triggered from `[+ New Task]` on the board.
 
 Fields:
+
 - **Title** (required)
 - **Description** (required, markdown textarea)
 - **State** (default: `TODO`, select)
@@ -520,7 +532,7 @@ fastify.get('/events', (req, reply) => {
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
+    Connection: 'keep-alive',
   });
 
   const { project } = req.query as { project?: string };
@@ -530,7 +542,11 @@ fastify.get('/events', (req, reply) => {
   };
 
   const listener = (payload: SseEnvelope) => {
-    if (!project || payload.payload?.project === project || payload.type === 'heartbeat') {
+    if (
+      !project ||
+      payload.payload?.project === project ||
+      payload.type === 'heartbeat'
+    ) {
       send(payload.type, payload);
     }
   };

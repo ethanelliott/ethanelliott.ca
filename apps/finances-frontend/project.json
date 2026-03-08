@@ -8,9 +8,7 @@
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/finances-frontend",
         "index": "apps/finances-frontend/src/index.html",
@@ -29,9 +27,7 @@
           "apps/finances-frontend/src/styles.scss"
         ],
         "stylePreprocessorOptions": {
-          "includePaths": [
-            "apps/finances-frontend/src"
-          ]
+          "includePaths": ["apps/finances-frontend/src"]
         },
         "scripts": []
       },
@@ -110,9 +106,7 @@
       }
     },
     "container": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "./tools/executors/deploy:container",
       "options": {
         "image": "ethanelliottio/finances-frontend",
