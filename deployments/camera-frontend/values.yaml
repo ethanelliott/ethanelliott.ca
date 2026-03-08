@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/camera-frontend
-  tag: s-ab52265
+  tag: s-4e8d230
   pullPolicy: Always
 
 service:
