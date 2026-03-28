@@ -1,5 +1,5 @@
 const OLLAMA_URL = process.env.OLLAMA_URL || 'https://ollama.elliott.haus';
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'qwen3:8b';
+const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'qwen3.5:9b';
 const DEFAULT_TIMEOUT_MS = 180000; // 3 minutes
 
 export interface Message {
