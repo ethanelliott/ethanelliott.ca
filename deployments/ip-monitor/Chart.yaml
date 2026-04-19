@@ -1,0 +1,9 @@
+apiVersion: v2
+name: ip-monitor
+description: IP address monitor with change notifications via ntfy
+type: application
+
+version: 0.0.1
+appVersion: '0.0.1'
+
+dependencies: []

@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/ip-monitor
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  hostname: 'ip-monitor.elliott.haus'
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+storage:
+  size: 1Gi
+
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+  IP_CHECK_URL: 'https://link-ip.nextdns.io/f77259/6c421d78ad6b9e97'
+  NTFY_URL: 'https://ntfy.elliott.haus'
+  NTFY_TOPIC: 'ip-monitor'
+  CHECK_INTERVAL_MINUTES: '60'
