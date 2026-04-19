@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/ip-monitor
-  tag: latest
+  tag: s-4bb69c9
   pullPolicy: Always
 
 service:
