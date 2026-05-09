@@ -13,3 +13,9 @@ spec:
   {{- if .Values.storage.storageClass }}
   storageClassName: {{ .Values.storage.storageClass }}
   {{- end }}
+  {{- if .Values.storage.volumeMode }}
+  volumeMode: {{ .Values.storage.volumeMode }}
+  {{- end }}
+  {{- if .Values.storage.volumeName }}
+  volumeName: {{ .Values.storage.volumeName }}
+  {{- end }}

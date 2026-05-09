@@ -59,6 +59,9 @@ secretData:
 
 storage:
   size: 100Gi
+  storageClass: local-path
+  volumeMode: Filesystem
+  volumeName: pvc-9f72e113-a402-45b3-b816-443a937863f5
 
 # Enable host network if the K8s cluster can't reach the camera subnet
 hostNetwork: false
