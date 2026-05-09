@@ -41,6 +41,10 @@ env:
   NTFY_TOPIC: 'camera-detections'
   OLLAMA_URL: 'http://ollama.elliott-haus.svc.cluster.local:11434'
   OLLAMA_MODEL: 'qwen3-vl:4b'
+  RETENTION_DAYS: '7'
+  CLEANUP_INTERVAL_MINUTES: '30'
+  MAX_SNAPSHOTS: '5000'
+  DISK_THRESHOLD_PCT: '85'
 
 # Camera credentials from Kubernetes Secret
 secretEnv:

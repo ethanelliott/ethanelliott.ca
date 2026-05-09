@@ -110,6 +110,18 @@ export interface AnalysisSettings {
   minConfidence: number;
 }
 
+export interface CleanupStatus {
+  retentionDays: number;
+  maxSnapshots: number;
+  diskThresholdPct: number;
+  diskUsagePct: number | null;
+  snapshotCount: number;
+  snapshotSizeMB: number;
+  dbSizeMB: number;
+  detectionEventCount: number;
+  analysisCount: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CameraApiService {
   private readonly baseUrl = environment.apiUrl;
@@ -281,6 +293,19 @@ export class CameraApiService {
     return this.http.put<AnalysisSettings>(
       `${this.baseUrl}/analysis/settings`,
       update
+    );
+  }
+
+  // ── Cleanup / Storage ──
+
+  getCleanupStatus(): Observable<CleanupStatus> {
+    return this.http.get<CleanupStatus>(`${this.baseUrl}/cleanup/status`);
+  }
+
+  triggerCleanup(): Observable<{ success: boolean }> {
+    return this.http.post<{ success: boolean }>(
+      `${this.baseUrl}/cleanup/trigger`,
+      {}
     );
   }
 }

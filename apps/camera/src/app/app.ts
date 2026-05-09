@@ -9,11 +9,13 @@ import { DetectionRouter } from './detection/detection.router';
 import { SnapshotRouter } from './snapshot/snapshot.router';
 import { NotificationRouter } from './notification/notification.router';
 import { AnalysisRouter } from './analysis/analysis.router';
+import { CleanupRouter } from './cleanup/cleanup.router';
 import { WebSocketService } from './websocket/websocket.service';
 import { StreamService } from './stream/stream.service';
 import { DetectionService } from './detection/detection.service';
 import { NotificationService } from './notification/notification.service';
 import { AnalysisService } from './analysis/analysis.service';
+import { CleanupService } from './cleanup/cleanup.service';
 
 // Import entities to register them
 import './detection';
@@ -66,6 +68,10 @@ export async function Application(fastify: FastifyInstance) {
     .withTypeProvider<ZodTypeProvider>()
     .register(AnalysisRouter, { prefix: '/analysis' });
 
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(CleanupRouter, { prefix: '/cleanup' });
+
   // Start the stream and detection pipeline after server is ready
   fastify.addHook('onReady', async () => {
     const streamService = inject(StreamService);
@@ -100,6 +106,9 @@ export async function Application(fastify: FastifyInstance) {
     } catch (err) {
       console.error('❌ Failed to initialize analysis service:', err);
     }
+
+    const cleanupService = inject(CleanupService);
+    cleanupService.start();
   });
 
   // Graceful shutdown
@@ -107,6 +116,8 @@ export async function Application(fastify: FastifyInstance) {
     const streamService = inject(StreamService);
     const detectionService = inject(DetectionService);
 
+    const cleanupService = inject(CleanupService);
+    cleanupService.stop();
     detectionService.stop();
     streamService.stop();
     io.close();

@@ -1,12 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { inject } from '@ee/di';
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  unlinkSync,
-  writeFileSync,
-} from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { Database } from '../data-source';
 import {
@@ -145,11 +139,6 @@ export class DetectionService {
   /** Retention period. Events older than this are purged. */
   private _retentionDays = parseInt(process.env.RETENTION_DAYS || '7', 10);
 
-  private _purgeTimer: ReturnType<typeof setInterval> | null = null;
-
-  /** How often to run the purge (1 hour) */
-  private readonly _purgeIntervalMs = 60 * 60 * 1000;
-
   private readonly _threshold = parseFloat(
     process.env.DETECTION_THRESHOLD || '0.6'
   );
@@ -223,20 +212,6 @@ export class DetectionService {
     this._detectAbort = new AbortController();
     this._runDetectLoop();
 
-    // Start retention purge timer
-    this._purgeTimer = setInterval(async () => {
-      try {
-        await this._purgeExpiredEvents();
-      } catch (err) {
-        console.error('Purge error:', err);
-      }
-    }, this._purgeIntervalMs);
-
-    // Run an initial purge on startup
-    this._purgeExpiredEvents().catch((err) =>
-      console.error('Initial purge error:', err)
-    );
-
     console.log(
       `🧠 Detection running at up to ${this._targetFps} FPS (threshold: ${this._threshold}, retention: ${this._retentionDays}d)`
     );
@@ -249,10 +224,6 @@ export class DetectionService {
     this._isRunning = false;
     this._detectAbort?.abort();
     this._detectAbort = null;
-    if (this._purgeTimer) {
-      clearInterval(this._purgeTimer);
-      this._purgeTimer = null;
-    }
   }
 
   /**
@@ -731,97 +702,6 @@ export class DetectionService {
     for (const [id, tracked] of this._trackedObjects) {
       if (now.getTime() - tracked.lastSeen.getTime() > this._staleTimeoutMs) {
         this._trackedObjects.delete(id);
-      }
-    }
-  }
-
-  /**
-   * Purge detection events and snapshots older than the retention period.
-   * Runs on startup and then every hour.
-   */
-  private async _purgeExpiredEvents(): Promise<void> {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - this._retentionDays);
-
-    // Find expired events that have snapshots so we can delete the files
-    const expiredWithSnapshots = await this._repository
-      .createQueryBuilder('event')
-      .select('event.snapshotFilename')
-      .where('event.timestamp < :cutoff', { cutoff })
-      .andWhere('event.snapshotFilename IS NOT NULL')
-      .andWhere('event.pinned = :pinned', { pinned: false })
-      .getRawMany();
-
-    // Delete snapshot files
-    let filesDeleted = 0;
-    for (const row of expiredWithSnapshots) {
-      const filename = row.event_snapshotFilename;
-      if (!filename) continue;
-      const filePath = join(this._snapshotDir, filename);
-      try {
-        if (existsSync(filePath)) {
-          unlinkSync(filePath);
-          filesDeleted++;
-        }
-      } catch {
-        // Ignore individual file delete failures
-      }
-    }
-
-    // Also clean up orphaned snapshot files not in the DB
-    // (e.g. from crashes before the DB row was written)
-    try {
-      const allFiles = readdirSync(this._snapshotDir).filter(
-        (f) => f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.png')
-      );
-      for (const filename of allFiles) {
-        // Parse date from filename: label_YYYY-MM-DDTHH-MM-SS-sssZ_confidence.jpg
-        const dateMatch = filename.match(
-          /(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)/
-        );
-        if (dateMatch) {
-          const fileDate = new Date(
-            dateMatch[1].replace(/-/g, (m, offset: number) =>
-              offset > 9 ? (offset === 13 || offset === 16 ? ':' : '.') : '-'
-            )
-          );
-          if (!isNaN(fileDate.getTime()) && fileDate < cutoff) {
-            try {
-              unlinkSync(join(this._snapshotDir, filename));
-              filesDeleted++;
-            } catch {
-              // ignore
-            }
-          }
-        }
-      }
-    } catch {
-      // Snapshot dir may not exist yet
-    }
-
-    // Bulk delete expired rows from the database (skip pinned)
-    const result = await this._repository
-      .createQueryBuilder()
-      .delete()
-      .where('timestamp < :cutoff', { cutoff })
-      .andWhere('pinned = :pinned', { pinned: false })
-      .execute();
-
-    const rowsDeleted = result.affected || 0;
-
-    if (rowsDeleted > 0 || filesDeleted > 0) {
-      console.log(
-        `🧹 Retention purge: deleted ${rowsDeleted} events and ${filesDeleted} snapshots older than ${this._retentionDays}d`
-      );
-
-      // Reclaim SQLite space after large deletions
-      if (rowsDeleted > 100) {
-        try {
-          await this._db.dataSource.query('VACUUM');
-          console.log('🗜️ SQLite VACUUM completed');
-        } catch (err) {
-          console.error('VACUUM failed:', err);
-        }
       }
     }
   }
