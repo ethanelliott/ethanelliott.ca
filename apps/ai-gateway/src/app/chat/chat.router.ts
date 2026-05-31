@@ -557,13 +557,13 @@ export const ChatRouter: FastifyPluginAsync = async (
       const startTime = Date.now();
       const response = await ollama.complete(
         message,
-        model || 'qwen3:4b',
+        model || 'gemma4:e2b',
         systemPrompt
       );
 
       return {
         response,
-        model: model || 'qwen3:4b',
+        model: model || 'gemma4:e2b',
         durationMs: Date.now() - startTime,
       };
     }
@@ -594,7 +594,7 @@ export const ChatRouter: FastifyPluginAsync = async (
       const ollama = getOllamaClient();
 
       const response = await ollama.chat({
-        model: 'qwen3:4b',
+        model: 'gemma4:e2b',
         messages: [
           {
             role: 'user',

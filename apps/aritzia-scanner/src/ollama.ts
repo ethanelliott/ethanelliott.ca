@@ -1,6 +1,6 @@
 const OLLAMA_URL = process.env.OLLAMA_URL || 'https://ollama.elliott.haus';
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'qwen3.5:9b';
-const DEFAULT_TIMEOUT_MS = 180000; // 3 minutes
+const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'gemma4:e2b';
+const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
 
 export interface Message {
   role: 'system' | 'user' | 'assistant';

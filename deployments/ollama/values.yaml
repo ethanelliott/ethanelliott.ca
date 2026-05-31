@@ -32,6 +32,8 @@ ollama:
   # Models to pull on startup (optional)
   models:
     - qwen3-vl:4b
+    - gemma4:e2b
+    - qwen3.5:9b
 
 ingress:
   enabled: true

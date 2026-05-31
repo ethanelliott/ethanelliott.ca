@@ -499,7 +499,7 @@ Use your best judgment. When in doubt about whether an agent would add value, go
 // Default orchestrator configuration
 export const defaultOrchestratorConfig: OrchestratorConfig = {
   name: 'main-orchestrator',
-  model: 'qwen3.5:9b', // Best for complex reasoning and correct tool calling
+  model: 'gemma4:e2b', // Best for complex reasoning and correct tool calling
   subAgents: [
     {
       name: 'utility-assistant',
@@ -533,7 +533,7 @@ Examples:
 - "Calculate 5+5" → use calculate with expression="5+5"
 - "4 apples at $2 with 10% discount" → use calculate with expression="(4 * 2) * 0.9"
 - User says "plan a trip" but you need to know where → use ask_user with questions array containing destination, budget, and duration questions`,
-        model: 'qwen3:4b',
+        model: 'gemma4:e2b',
         tools: [
           'get_current_time',
           'calculate',
@@ -561,7 +561,7 @@ Examples:
         systemPrompt: `You are a temporal assistant specialising in dates, times, calendars, and scheduling.
 Use tools for all time and calendar operations. Never guess dates — always use get_date_info or get_current_time.
 When creating calendar events, always confirm the details with the user first via the approval mechanism.`,
-        model: 'qwen3.5:4b',
+        model: 'gemma4:e2b',
         tools: [
           'get_current_time',
           'get_date_info',
@@ -593,7 +593,7 @@ When creating calendar events, always confirm the details with the user first vi
         description: 'Weather and environmental conditions specialist',
         systemPrompt: `You are a meteorologist assistant. Use tools to fetch real weather data — never make up forecasts.
 Always geocode the location first if coordinates are not provided. Present weather in a clear, friendly format.`,
-        model: 'qwen3.5:4b',
+        model: 'gemma4:e2b',
         tools: [
           'get_current_weather',
           'get_hourly_forecast',
@@ -625,7 +625,7 @@ Always geocode the location first if coordinates are not provided. Present weath
           'Research, information retrieval, and translation specialist',
         systemPrompt: `You are a research assistant. Always use tools to find information — do not rely on training data for current facts.
 Synthesise information from multiple sources when possible. Cite sources in your responses.`,
-        model: 'qwen3.5:9b',
+        model: 'gemma4:e2b',
         tools: [
           'web_search',
           'fetch_url',
@@ -654,7 +654,7 @@ Synthesise information from multiple sources when possible. Cite sources in your
         systemPrompt: `You are a productivity assistant. Help users stay organised and focused.
 When creating tasks, ask for a title and priority if not provided. Keep notes concise.
 Encourage healthy habits and celebrate streaks.`,
-        model: 'qwen3:8b',
+        model: 'gemma4:e2b',
         tools: [
           'create_task',
           'list_tasks',
@@ -685,7 +685,7 @@ Encourage healthy habits and celebrate streaks.`,
         description: 'Finance, currency, and expense specialist',
         systemPrompt: `You are a finance assistant. Use tools to fetch live rates and perform financial calculations.
 Never give investment advice. Present numbers clearly with currency symbols and appropriate decimal places.`,
-        model: 'qwen3:8b',
+        model: 'gemma4:e2b',
         tools: [
           'get_exchange_rate',
           'convert_currency',
@@ -715,7 +715,7 @@ Never give investment advice. Present numbers clearly with currency symbols and 
         description: 'Health, fitness, and wellness specialist',
         systemPrompt: `You are a health and wellness assistant. Use tools to log activities and retrieve data.
 Always remind users that you are not a medical professional. Provide evidence-based, supportive guidance.`,
-        model: 'qwen3:8b',
+        model: 'gemma4:e2b',
         tools: [
           'lookup_nutrition',
           'log_water',
@@ -749,7 +749,7 @@ Always remind users that you are not a medical professional. Provide evidence-ba
         description: 'Notifications, messaging, and communication specialist',
         systemPrompt: `You are a communication assistant. Help users draft clear messages and stay informed.
 When drafting emails or messages, ask for the recipient and purpose if not provided. Keep tone professional unless asked otherwise.`,
-        model: 'qwen3:8b',
+        model: 'gemma4:e2b',
         tools: [
           'send_notification',
           'get_notifications_history',
@@ -777,7 +777,7 @@ When drafting emails or messages, ask for the recipient and purpose if not provi
         description: 'Recipe, cooking, and food specialist',
         systemPrompt: `You are a culinary assistant. Use tools to find and adapt recipes.
 Be enthusiastic about food! Offer alternatives for dietary restrictions when relevant.`,
-        model: 'qwen3:8b',
+        model: 'gemma4:e2b',
         tools: [
           'search_recipes',
           'get_recipe',
@@ -805,7 +805,7 @@ Be enthusiastic about food! Offer alternatives for dietary restrictions when rel
         description: 'Mathematics and unit conversion specialist',
         systemPrompt: `You are a mathematics assistant. Use tools for all calculations — no mental arithmetic.
 Show your work by explaining what tool you used and why. Present results with appropriate precision.`,
-        model: 'qwen3:4b',
+        model: 'gemma4:e2b',
         tools: [
           'calculate',
           'convert_units',
@@ -833,7 +833,7 @@ Show your work by explaining what tool you used and why. Present results with ap
         description: 'Text formatting and transformation specialist',
         systemPrompt: `You are a text formatting assistant. All operations are done via tools — never process text manually.
 For JSON operations, always validate before formatting. Present results in code blocks where appropriate.`,
-        model: 'qwen3:4b',
+        model: 'gemma4:e2b',
         tools: [
           'format_json',
           'validate_json',
@@ -864,7 +864,7 @@ For JSON operations, always validate before formatting. Present results in code 
         description: 'Network diagnostics and URL tooling specialist',
         systemPrompt: `You are a network assistant. Use tools for all network operations.
 Present technical results in a readable format, explaining what each field means for non-technical users.`,
-        model: 'qwen3.5:4b',
+        model: 'gemma4:e2b',
         tools: [
           'http_request',
           'get_ip_info',
@@ -894,7 +894,7 @@ Present technical results in a readable format, explaining what each field means
         systemPrompt: `You are a security assistant. Use tools for all cryptographic operations.
 Educate users on best practices: long passwords, unique per-site, MFA everywhere.
 Never store or log sensitive values beyond what the tool returns.`,
-        model: 'qwen3:4b',
+        model: 'gemma4:e2b',
         tools: [
           'generate_password',
           'generate_uuid',

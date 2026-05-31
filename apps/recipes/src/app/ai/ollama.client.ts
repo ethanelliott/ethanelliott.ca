@@ -1,8 +1,8 @@
 import { logger } from '../logger';
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'https://ollama.elliott.haus';
-const DEFAULT_MODEL = 'qwen3.5:9b';
-const DEFAULT_TIMEOUT_MS = 120000; // 2 minutes
+const DEFAULT_MODEL = 'gemma4:e2b';
+const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
 
 export interface Message {
   role: 'system' | 'user' | 'assistant';

@@ -190,7 +190,7 @@ export class OllamaClient {
    */
   async complete(
     prompt: string,
-    model: string = 'qwen3:4b',
+    model: string = 'gemma4:e2b',
     systemPrompt?: string
   ): Promise<string> {
     const messages: OllamaMessage[] = [];
