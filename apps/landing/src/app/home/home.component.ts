@@ -412,6 +412,20 @@ export class HomeComponent {
       icon: 'mdi:chat-processing',
       color: '#3b82f6',
     },
+    {
+      name: 'CloudBeaver',
+      url: 'https://cloudbeaver.elliott.haus',
+      description: 'Web-based database administration UI.',
+      icon: 'mdi:database-cog',
+      color: '#2563eb',
+    },
+    {
+      name: 'pgHero',
+      url: 'https://pghero.elliott.haus',
+      description: 'PostgreSQL performance dashboard.',
+      icon: 'simple-icons:postgresql',
+      color: '#336791',
+    },
   ]);
 
   readonly services = computed(() => this.appLinks());
