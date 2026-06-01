@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/recipes
-  tag: s-3b784fe
+  tag: s-e5942e5
   pullPolicy: Always
 
 service:
