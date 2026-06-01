@@ -1,0 +1,9 @@
+apiVersion: v2
+name: cloudbeaver
+description: CloudBeaver web-based database administration UI
+type: application
+
+version: 0.0.1
+appVersion: '24.3.0'
+
+dependencies: []

@@ -1,0 +1,46 @@
+replicaCount: 1
+
+image:
+  repository: ankane/pghero
+  tag: 'v3.6.1'
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  hostname: 'pghero.elliott.haus'
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# pgHero connects to PostgreSQL via a single DATABASE_URL.
+# The URL is read from a secret so the password is not stored in git.
+#
+# Expected secret (key: database-url), e.g.:
+#   postgres://postgres:<password>@postgres.elliott-haus.svc.cluster.local:5432/app
+#
+# Create it manually with:
+#   kubectl create secret generic pghero-secrets -n elliott-haus \
+#     --from-literal=database-url='postgres://postgres:<password>@postgres.elliott-haus.svc.cluster.local:5432/app'
+secretEnv:
+  - name: DATABASE_URL
+    secretName: pghero-secrets
+    secretKey: database-url
+
+# Set to true to have Helm create pghero-secrets from the connection values below.
+# Note: this writes the password into the rendered manifest / git history.
+createSecret: false
+database:
+  host: postgres.elliott-haus.svc.cluster.local
+  port: 5432
+  name: app
+  user: postgres
+  password: ''

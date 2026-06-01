@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: dbeaver/cloudbeaver
+  tag: '24.3.0'
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8978
+
+ingress:
+  enabled: true
+  hostname: 'cloudbeaver.elliott.haus'
+
+resources:
+  limits:
+    cpu: '1'
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# CloudBeaver persists its workspace (connections, users, settings) on disk.
+storage:
+  size: 2Gi
+  storageClass: local-path
