@@ -17,6 +17,22 @@ postgres:
   # Subdirectory of the mount used for the data directory.
   # Keeping data in a subdirectory avoids issues with lost+found on some volumes.
   pgData: /var/lib/postgresql/data/pgdata
+  # Extra `-c key=value` server flags passed to postgres on startup.
+  # pg_stat_statements is preloaded here so pgHero can show query stats.
+  extraArgs:
+    - 'shared_preload_libraries=pg_stat_statements'
+    - 'pg_stat_statements.track=all'
+
+# SQL run once when the data directory is first initialized
+# (via /docker-entrypoint-initdb.d). Used to enable extensions.
+# Note: this only runs on a fresh volume. For an already-initialized
+# database, create the extension manually:
+#   CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+initdb:
+  enabled: true
+  scripts:
+    01-pg-stat-statements.sql: |
+      CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 resources:
   limits:
