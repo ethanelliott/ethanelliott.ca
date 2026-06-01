@@ -1,0 +1,16 @@
+{{- if .Values.tcpIngress.enabled -}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: {{ include "postgres.fullname" . }}
+  labels:
+    {{- include "postgres.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - {{ .Values.tcpIngress.entryPoint }}
+  routes:
+    - match: HostSNI(`*`)
+      services:
+        - name: {{ include "postgres.fullname" . }}
+          port: {{ .Values.service.port }}
+{{- end }}

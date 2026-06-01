@@ -1,0 +1,9 @@
+apiVersion: v2
+name: postgres
+description: Self-managed PostgreSQL database chart
+type: application
+
+version: 0.0.1
+appVersion: '17.5'
+
+dependencies: []

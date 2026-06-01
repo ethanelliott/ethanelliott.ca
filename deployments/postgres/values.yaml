@@ -1,0 +1,43 @@
+image:
+  repository: postgres
+  tag: '17.5-alpine'
+  pullPolicy: IfNotPresent
+
+service:
+  # Headless service is always created for the StatefulSet.
+  # This is the in-cluster connection port.
+  port: 5432
+
+# PostgreSQL configuration
+postgres:
+  # Name of the default database created on first boot
+  database: app
+  # Username for the default superuser
+  username: postgres
+  # Subdirectory of the mount used for the data directory.
+  # Keeping data in a subdirectory avoids issues with lost+found on some volumes.
+  pgData: /var/lib/postgresql/data/pgdata
+
+resources:
+  limits:
+    cpu: '1'
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+storage:
+  size: 100Gi
+  storageClass: local-path
+
+# Secret holding the PostgreSQL password.
+# Set createSecret: true and provide secrets.password to manage it via Helm,
+# otherwise create a secret named `postgres-secrets` with key `postgres-password` manually.
+createSecret: false
+
+# Optional external TCP exposure through Traefik.
+# Requires a Traefik entryPoint that listens on the postgres TCP port (e.g. `postgres`).
+# Leave disabled to keep PostgreSQL internal to the cluster only.
+tcpIngress:
+  enabled: false
+  entryPoint: postgres
