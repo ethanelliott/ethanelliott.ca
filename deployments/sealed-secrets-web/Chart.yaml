@@ -1,0 +1,9 @@
+apiVersion: v2
+name: sealed-secrets-web
+description: Web UI for creating Sealed Secrets
+type: application
+
+version: 0.0.1
+appVersion: '0.6.3'
+
+dependencies: []

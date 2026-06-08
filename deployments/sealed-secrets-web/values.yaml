@@ -1,0 +1,29 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/bakito/sealed-secrets-web
+  tag: v0.6.3
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  hostname: 'sealed-secrets.elliott.haus'
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 64Mi
+  requests:
+    cpu: 25m
+    memory: 32Mi
+
+# Connection to the sealed-secrets controller.
+# The controller is deployed to kube-system as release 'sealed-secrets',
+# so its service is accessible at sealed-secrets.kube-system.
+sealedSecrets:
+  controllerName: sealed-secrets
+  controllerNamespace: kube-system
