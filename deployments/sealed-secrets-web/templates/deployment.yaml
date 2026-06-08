@@ -19,8 +19,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
-            - --controller-name={{ .Values.sealedSecrets.controllerName }}
-            - --controller-namespace={{ .Values.sealedSecrets.controllerNamespace }}
+            - -sealed-secrets-service-name={{ .Values.sealedSecrets.controllerName }}
+            - -sealed-secrets-service-namespace={{ .Values.sealedSecrets.controllerNamespace }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
