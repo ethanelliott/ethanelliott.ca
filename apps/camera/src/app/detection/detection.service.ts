@@ -434,7 +434,7 @@ export class DetectionService {
 
     const cocoSsd = await import('@tensorflow-models/coco-ssd');
     this._model = await cocoSsd.load({
-      base: 'lite_mobilenet_v2', // Lighter model for faster inference
+      base: 'mobilenet_v2',
     });
 
     console.log('✅ COCO-SSD model loaded successfully');
