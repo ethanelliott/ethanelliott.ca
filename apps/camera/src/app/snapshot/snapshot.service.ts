@@ -40,8 +40,11 @@ export class SnapshotService {
         .filter(
           (f) => f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.png')
         )
-        .sort()
-        .reverse(); // newest first
+        .sort((a, b) => {
+          const mtimeA = statSync(join(this._snapshotDir, a)).mtime.getTime();
+          const mtimeB = statSync(join(this._snapshotDir, b)).mtime.getTime();
+          return mtimeB - mtimeA; // newest first
+        });
     } catch {
       return { snapshots: [], total: 0 };
     }
