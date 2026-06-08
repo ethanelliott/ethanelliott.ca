@@ -85,6 +85,18 @@ export interface NotificationTestResult {
   message: string;
 }
 
+export type SceneEntityType = 'person' | 'vehicle' | 'animal' | 'object';
+export type AnomalyRating = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface SceneEntity {
+  type: SceneEntityType;
+  description: string;
+  location: string;
+  activity: string;
+  anomaly_score: number;
+  anomaly_reason: string | null;
+}
+
 export interface SceneAnalysis {
   id: string;
   timestamp: string;
@@ -92,6 +104,9 @@ export interface SceneAnalysis {
   label: string;
   model: string;
   description: string;
+  overallScore: number | null;
+  overallRating: AnomalyRating | null;
+  entities: SceneEntity[] | null;
   durationMs: number;
   snapshotFilename: string | null;
 }

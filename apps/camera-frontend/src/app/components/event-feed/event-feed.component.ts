@@ -12,6 +12,7 @@ import {
   CameraApiService,
   DetectionEvent,
   SceneAnalysis,
+  SceneEntity,
 } from '../../services/camera-api.service';
 import { EventService } from '../../services/event.service';
 
@@ -47,8 +48,25 @@ import { EventService } from '../../services/event.service';
             </div>
             @if (getAnalysis(event.id); as analysis) {
             <div class="event-analysis">
-              <i class="pi pi-sparkles analysis-icon"></i>
-              <span class="analysis-text">{{ analysis.description }}</span>
+              <div class="analysis-top">
+                <i class="pi pi-sparkles analysis-icon"></i>
+                @if (analysis.overallRating) {
+                <span class="rating-chip" [class]="'rating-' + analysis.overallRating.toLowerCase()">
+                  {{ analysis.overallRating }}
+                </span>
+                }
+                <span class="analysis-summary">{{ analysis.description }}</span>
+              </div>
+              @if (analysis.entities?.length) {
+              <div class="entity-chips">
+                @for (entity of analysis.entities!; track $index) {
+                <span class="entity-chip" [class]="'score-' + getScoreTier(entity.anomaly_score)">
+                  <i class="pi" [class]="getEntityIcon(entity.type)"></i>
+                  {{ entity.description }}
+                </span>
+                }
+              </div>
+              }
             </div>
             }
           </div>
@@ -185,14 +203,55 @@ import { EventService } from '../../services/event.service';
       flex-shrink: 0;
     }
 
-    .analysis-text {
+    .analysis-top {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .rating-chip {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      letter-spacing: 0.04em;
+      &.rating-low    { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+      &.rating-medium { background: rgba(234, 179, 8, 0.15); color: var(--accent-yellow); }
+      &.rating-high   { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+    }
+
+    .analysis-summary {
       font-size: 11px;
       color: var(--text-secondary);
       line-height: 1.4;
       display: -webkit-box;
-      -webkit-line-clamp: 3;
+      -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+    }
+
+    .entity-chips {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 5px;
+    }
+
+    .entity-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border-left: 2px solid var(--border-color);
+      &.score-medium { border-left-color: rgba(234, 179, 8, 0.5); }
+      &.score-high   { border-left-color: rgba(239, 68, 68, 0.5); }
+      i { font-size: 10px; color: #a855f7; flex-shrink: 0; }
     }
 
     .snapshot-indicator {
@@ -259,6 +318,22 @@ export class EventFeedComponent {
         );
       },
     });
+  }
+
+  getScoreTier(score: number): 'low' | 'medium' | 'high' {
+    if (score <= 3) return 'low';
+    if (score <= 6) return 'medium';
+    return 'high';
+  }
+
+  getEntityIcon(type: SceneEntity['type']): string {
+    const map: Record<string, string> = {
+      person: 'pi-user',
+      vehicle: 'pi-car',
+      animal: 'pi-heart',
+      object: 'pi-box',
+    };
+    return map[type] ?? 'pi-eye';
   }
 
   getIcon(label: string): string {

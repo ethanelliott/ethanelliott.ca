@@ -14,6 +14,8 @@ import {
   CameraApiService,
   DetectionEvent,
   SceneAnalysis,
+  SceneEntity,
+  AnomalyRating,
 } from '../../services/camera-api.service';
 
 @Component({
@@ -138,16 +140,43 @@ import {
             <div class="analysis-header">
               <i class="pi pi-sparkles"></i>
               <span>Scene Analysis</span>
-              <span class="analysis-model">{{
-                analysisCache.get(event.id)!.model
-              }}</span>
-              <span class="analysis-duration"
-                >{{ analysisCache.get(event.id)!.durationMs }}ms</span
-              >
+              @if (analysisCache.get(event.id)!.overallRating; as rating) {
+              <span class="rating-badge" [class]="'rating-' + rating.toLowerCase()">
+                {{ rating }}
+              </span>
+              <span class="overall-score">
+                {{ analysisCache.get(event.id)!.overallScore }}/10
+              </span>
+              }
+              <span class="spacer"></span>
+              <span class="analysis-model">{{ analysisCache.get(event.id)!.model }}</span>
+              <span class="analysis-duration">{{ analysisCache.get(event.id)!.durationMs }}ms</span>
             </div>
-            <p class="analysis-description">
-              {{ analysisCache.get(event.id)!.description }}
-            </p>
+
+            <p class="analysis-description">{{ analysisCache.get(event.id)!.description }}</p>
+
+            @if (analysisCache.get(event.id)!.entities?.length) {
+            <div class="entities-grid">
+              @for (entity of analysisCache.get(event.id)!.entities!; track $index) {
+              <div class="entity-card" [class]="'score-' + getScoreTier(entity.anomaly_score)">
+                <div class="entity-header">
+                  <i class="pi" [class]="getEntityIcon(entity.type)"></i>
+                  <span class="entity-type">{{ entity.type }}</span>
+                  <span class="entity-score" [class]="'score-badge-' + getScoreTier(entity.anomaly_score)">
+                    {{ entity.anomaly_score }}/10
+                  </span>
+                </div>
+                <div class="entity-location">
+                  <i class="pi pi-map-marker"></i> {{ entity.location }}
+                </div>
+                <div class="entity-activity">{{ entity.activity }}</div>
+                @if (entity.anomaly_reason) {
+                <div class="entity-reason">{{ entity.anomaly_reason }}</div>
+                }
+              </div>
+              }
+            </div>
+            }
           </div>
         </div>
         } } @empty {
@@ -310,7 +339,87 @@ import {
       font-size: 13px;
       color: var(--text-secondary);
       line-height: 1.6;
-      white-space: pre-wrap;
+      margin-bottom: 12px;
+    }
+
+    .spacer { flex: 1; }
+
+    .rating-badge {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      &.rating-low  { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+      &.rating-medium { background: rgba(234, 179, 8, 0.15); color: var(--accent-yellow); }
+      &.rating-high { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+    }
+
+    .overall-score {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .entities-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+    }
+
+    .entity-card {
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      &.score-medium { border-color: rgba(234, 179, 8, 0.3); }
+      &.score-high   { border-color: rgba(239, 68, 68, 0.35); }
+    }
+
+    .entity-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      i { color: #a855f7; font-size: 13px; }
+    }
+
+    .entity-type {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: capitalize;
+      flex: 1;
+    }
+
+    .entity-score {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 8px;
+      &.score-badge-low    { background: rgba(34, 197, 94, 0.12); color: var(--accent-green); }
+      &.score-badge-medium { background: rgba(234, 179, 8, 0.12); color: var(--accent-yellow); }
+      &.score-badge-high   { background: rgba(239, 68, 68, 0.12); color: var(--accent-red); }
+    }
+
+    .entity-location {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+      i { font-size: 10px; }
+    }
+
+    .entity-activity {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+    }
+
+    .entity-reason {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+      border-top: 1px solid var(--border-color);
+      margin-top: 4px;
+      padding-top: 4px;
     }
 
     .event-label-badge {
@@ -473,5 +582,21 @@ export class EventsComponent implements OnInit {
     if (confidence >= 0.8) return 'var(--accent-green)';
     if (confidence >= 0.6) return 'var(--accent-yellow)';
     return 'var(--accent-red)';
+  }
+
+  getScoreTier(score: number): 'low' | 'medium' | 'high' {
+    if (score <= 3) return 'low';
+    if (score <= 6) return 'medium';
+    return 'high';
+  }
+
+  getEntityIcon(type: SceneEntity['type']): string {
+    const map: Record<string, string> = {
+      person: 'pi-user',
+      vehicle: 'pi-car',
+      animal: 'pi-heart',
+      object: 'pi-box',
+    };
+    return map[type] ?? 'pi-eye';
   }
 }
