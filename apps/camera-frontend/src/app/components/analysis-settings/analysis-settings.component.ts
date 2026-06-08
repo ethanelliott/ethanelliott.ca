@@ -16,6 +16,7 @@ import {
   CameraApiService,
   AnalysisSettings,
 } from '../../services/camera-api.service';
+import { COCO_LABELS } from '../../constants/labels';
 
 @Component({
   selector: 'app-analysis-settings',
@@ -345,18 +346,7 @@ export class AnalysisSettingsComponent implements OnInit {
   cooldownSeconds = 30;
   minConfidence = 0.7;
 
-  readonly commonLabels = [
-    'person',
-    'car',
-    'truck',
-    'bus',
-    'motorcycle',
-    'bicycle',
-    'dog',
-    'cat',
-    'bird',
-    'bear',
-  ];
+  readonly commonLabels = [...COCO_LABELS];
 
   readonly cooldownOptions = [
     { label: 'None', value: 0 },

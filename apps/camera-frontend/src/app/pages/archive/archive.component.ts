@@ -11,6 +11,7 @@ import { Select } from 'primeng/select';
 import { Paginator, PaginatorState } from 'primeng/paginator';
 import { ButtonDirective } from 'primeng/button';
 import { SnapshotGalleryComponent } from '../../components/snapshot-gallery/snapshot-gallery.component';
+import { LABEL_OPTIONS } from '../../constants/labels';
 import {
   CameraApiService,
   SnapshotInfo,
@@ -133,12 +134,7 @@ export class ArchiveComponent implements OnInit {
   pageSize = 48;
   pageIndex = 0;
 
-  readonly labelOptions = [
-    { label: 'Person', value: 'person' },
-    { label: 'Car', value: 'car' },
-    { label: 'Cat', value: 'cat' },
-    { label: 'Dog', value: 'dog' },
-  ];
+  readonly labelOptions = LABEL_OPTIONS;
 
   ngOnInit(): void {
     this.loadSnapshots();

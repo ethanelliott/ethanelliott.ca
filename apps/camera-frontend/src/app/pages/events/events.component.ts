@@ -17,6 +17,7 @@ import {
   SceneEntity,
   AnomalyRating,
 } from '../../services/camera-api.service';
+import { LABEL_OPTIONS } from '../../constants/labels';
 
 @Component({
   selector: 'app-events',
@@ -496,14 +497,7 @@ export class EventsComponent implements OnInit {
   pageSize = 50;
   pageIndex = 0;
 
-  readonly labelOptions = [
-    { label: 'Person', value: 'person' },
-    { label: 'Car', value: 'car' },
-    { label: 'Truck', value: 'truck' },
-    { label: 'Bicycle', value: 'bicycle' },
-    { label: 'Cat', value: 'cat' },
-    { label: 'Dog', value: 'dog' },
-  ];
+  readonly labelOptions = LABEL_OPTIONS;
 
   readonly confidenceOptions = [
     { label: 'Any', value: 0 },

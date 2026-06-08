@@ -13,6 +13,7 @@ import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
 import { SliderModule } from 'primeng/slider';
 import { MessageModule } from 'primeng/message';
+import { COCO_LABELS } from '../../constants/labels';
 import {
   CameraApiService,
   NotificationSettings,
@@ -391,18 +392,7 @@ export class NotificationSettingsComponent implements OnInit {
   minConfidence = 0.7;
   attachSnapshot = true;
 
-  readonly commonLabels = [
-    'person',
-    'car',
-    'truck',
-    'bus',
-    'motorcycle',
-    'bicycle',
-    'dog',
-    'cat',
-    'bird',
-    'bear',
-  ];
+  readonly commonLabels = [...COCO_LABELS];
 
   readonly cooldownOptions = [
     { label: 'None', value: 0 },
