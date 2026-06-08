@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/finances
-  tag: s-e5942e5
+  tag: s-a54919d
   pullPolicy: Always
 
 service:
