@@ -9,6 +9,18 @@ import {
 import { z } from 'zod';
 import { ENTITIES } from '../data-source';
 
+export type SceneEntityType = 'person' | 'vehicle' | 'animal' | 'object';
+export type AnomalyRating = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface SceneEntity {
+  type: SceneEntityType;
+  description: string;
+  location: string;
+  activity: string;
+  anomaly_score: number;
+  anomaly_reason: string | null;
+}
+
 /**
  * Stores scene analysis results from the Ollama vision model.
  * Each row is linked to a detection event via its detectionEventId.
@@ -35,9 +47,21 @@ export class SceneAnalysis {
   @Column('text')
   model!: string;
 
-  /** The scene description returned by the vision model */
+  /** One-sentence summary of the scene (maps to summary field in structured output) */
   @Column('text')
   description!: string;
+
+  /** 0–10 overall anomaly score from the vision model */
+  @Column('integer', { nullable: true })
+  overallScore!: number | null;
+
+  /** LOW / MEDIUM / HIGH rating from the vision model */
+  @Column('text', { nullable: true })
+  overallRating!: AnomalyRating | null;
+
+  /** Structured list of notable entities detected in the frame */
+  @Column('simple-json', { nullable: true })
+  entities!: SceneEntity[] | null;
 
   /** How long the analysis took in milliseconds */
   @Column('integer', { default: 0 })
@@ -64,10 +88,10 @@ export class AnalysisSettingsEntity {
   @Column('text', { default: 'qwen3-vl:4b' })
   model!: string;
 
-  /** The prompt sent to the vision model */
+  /** Baseline context injected into the anomaly detection prompt */
   @Column('text', {
     default:
-      'Analyze this security camera frame. Describe what is happening in the scene, including any notable activities, objects, or potential concerns. Be concise but thorough.',
+      'Parked cars, SUVs, trucks in the lot. Residential apartment buildings, trees, grass, sidewalks. Normal ambient lighting.',
   })
   prompt!: string;
 
@@ -86,6 +110,15 @@ export class AnalysisSettingsEntity {
 
 // ── Zod Schemas ──
 
+const SceneEntitySchema = z.object({
+  type: z.enum(['person', 'vehicle', 'animal', 'object']),
+  description: z.string(),
+  location: z.string(),
+  activity: z.string(),
+  anomaly_score: z.number().int().min(0).max(10),
+  anomaly_reason: z.string().nullable(),
+});
+
 export const SceneAnalysisOutSchema = z.object({
   id: z.string().uuid(),
   timestamp: z.date(),
@@ -93,6 +126,9 @@ export const SceneAnalysisOutSchema = z.object({
   label: z.string(),
   model: z.string(),
   description: z.string(),
+  overallScore: z.number().int().min(0).max(10).nullable(),
+  overallRating: z.enum(['LOW', 'MEDIUM', 'HIGH']).nullable(),
+  entities: z.array(SceneEntitySchema).nullable(),
   durationMs: z.number(),
   snapshotFilename: z.string().nullable(),
 });

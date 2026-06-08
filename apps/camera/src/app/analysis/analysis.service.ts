@@ -5,10 +5,38 @@ import { Database } from '../data-source';
 import { WebSocketService } from '../websocket/websocket.service';
 import {
   SceneAnalysis,
+  SceneEntity,
+  AnomalyRating,
   AnalysisSettingsEntity,
   AnalysisSettings,
   UpdateAnalysisSettings,
 } from './analysis.entity';
+
+const OLLAMA_SCHEMA = {
+  type: 'object',
+  properties: {
+    timestamp: { type: ['string', 'null'] },
+    entities: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['person', 'vehicle', 'animal', 'object'] },
+          description: { type: 'string' },
+          location: { type: 'string' },
+          activity: { type: 'string' },
+          anomaly_score: { type: 'integer', minimum: 0, maximum: 10 },
+          anomaly_reason: { type: ['string', 'null'] },
+        },
+        required: ['type', 'description', 'location', 'activity', 'anomaly_score', 'anomaly_reason'],
+      },
+    },
+    overall_score: { type: 'integer', minimum: 0, maximum: 10 },
+    overall_rating: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+    summary: { type: 'string' },
+  },
+  required: ['timestamp', 'entities', 'overall_score', 'overall_rating', 'summary'],
+} as const;
 
 /**
  * AnalysisService sends detection snapshots to an Ollama vision model
@@ -58,7 +86,7 @@ export class AnalysisService {
           enabled: true,
           model: process.env.OLLAMA_MODEL || 'qwen3-vl:4b',
           prompt:
-            'Analyze this security camera frame. Describe what is happening in the scene, including any notable activities, objects, or potential concerns. Be concise but thorough.',
+            'Parked cars, SUVs, trucks in the lot. Residential apartment buildings, trees, grass, sidewalks. Normal ambient lighting.',
           cooldownSeconds: 30,
           analyzeLabels: ['person', 'car', 'dog', 'cat'],
           minConfidence: 0.7,
@@ -217,7 +245,7 @@ export class AnalysisService {
     return {
       enabled: s?.enabled ?? true,
       model: s?.model ?? 'qwen3-vl:4b',
-      prompt: s?.prompt ?? '',
+      prompt: s?.prompt ?? 'Parked cars, SUVs, trucks in the lot. Residential apartment buildings, trees, grass, sidewalks. Normal ambient lighting.',
       cooldownSeconds: s?.cooldownSeconds ?? 30,
       analyzeLabels: s?.analyzeLabels ?? ['person', 'car', 'dog', 'cat'],
       minConfidence: s?.minConfidence ?? 0.7,
@@ -275,9 +303,18 @@ export class AnalysisService {
 
     const base64Image = imageBuffer.toString('base64');
     const model = this._settings?.model ?? 'qwen3-vl:4b';
-    const prompt =
+    const baseline =
       this._settings?.prompt ??
-      'Analyze this security camera frame. Describe what is happening in the scene.';
+      'Parked cars, SUVs, trucks in the lot. Residential apartment buildings, trees, grass, sidewalks. Normal ambient lighting.';
+
+    const prompt = `You are a security camera analysis system.
+
+KNOWN BASELINE — do not flag these as anomalies:
+${baseline}
+
+Analyze this frame. Report only notable entities (people, animals, active vehicles). Omit static parked cars unless anomalous.
+Anomaly score: 0=normal, 1-3=present but expected, 4-6=mildly suspicious, 7-9=concerning, 10=critical.
+Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /no_think`;
 
     console.log(
       `🔬 Analyzing ${params.label} detection (${params.snapshotFilename}) with ${model}...`
@@ -286,25 +323,18 @@ export class AnalysisService {
     const startTime = Date.now();
 
     try {
-      const response = await fetch(`${this._ollamaUrl}/api/chat`, {
+      const response = await fetch(`${this._ollamaUrl}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-              images: [base64Image],
-            },
-          ],
+          prompt,
+          images: [base64Image],
           stream: false,
-          options: {
-            temperature: 0.3,
-            num_predict: 512,
-          },
+          format: OLLAMA_SCHEMA,
+          options: { temperature: 0 },
         }),
-        signal: AbortSignal.timeout(120_000), // 2 minute timeout for inference
+        signal: AbortSignal.timeout(120_000),
       });
 
       if (!response.ok) {
@@ -315,31 +345,53 @@ export class AnalysisService {
         return;
       }
 
+      // qwen3-vl places structured output in 'thinking' when format schema is set
       const result = (await response.json()) as {
-        message?: { content?: string };
+        response?: string;
+        thinking?: string;
       };
-      const description = result.message?.content?.trim();
+      const raw = (result.response || result.thinking || '').trim();
 
-      if (!description) {
+      if (!raw) {
         console.warn('Ollama returned empty analysis');
         return;
       }
 
+      let parsed: {
+        summary: string;
+        overall_score: number;
+        overall_rating: AnomalyRating;
+        entities: SceneEntity[];
+      };
+
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        console.warn('Ollama response was not valid JSON, storing as plain text');
+        parsed = {
+          summary: raw,
+          overall_score: 0,
+          overall_rating: 'LOW',
+          entities: [],
+        };
+      }
+
       const durationMs = Date.now() - startTime;
 
-      // Store the analysis result
       const analysis = this._repository.create({
         detectionEventId: params.detectionEventId,
         label: params.label,
         model,
-        description,
+        description: parsed.summary,
+        overallScore: parsed.overall_score ?? null,
+        overallRating: parsed.overall_rating ?? null,
+        entities: parsed.entities ?? null,
         durationMs,
         snapshotFilename: params.snapshotFilename,
       });
 
       const saved = await this._repository.save(analysis);
 
-      // Emit via WebSocket for real-time UI updates
       this._wsService.emitSceneAnalysis({
         id: saved.id,
         timestamp: saved.timestamp,
@@ -347,14 +399,15 @@ export class AnalysisService {
         label: saved.label,
         model: saved.model,
         description: saved.description,
+        overallScore: saved.overallScore,
+        overallRating: saved.overallRating,
+        entities: saved.entities,
         durationMs: saved.durationMs,
         snapshotFilename: saved.snapshotFilename,
       });
 
       console.log(
-        `🔬 Analysis complete for ${
-          params.label
-        } in ${durationMs}ms: "${description.slice(0, 80)}..."`
+        `🔬 Analysis complete for ${params.label} in ${durationMs}ms [${saved.overallRating ?? 'UNKNOWN'} / ${saved.overallScore ?? '?'}/10]: "${parsed.summary.slice(0, 80)}"`
       );
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
