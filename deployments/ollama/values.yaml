@@ -26,7 +26,7 @@ ollama:
 
   persistence:
     enabled: true
-    size: 50Gi
+    size: 150Gi
     storageClass: ''
 
   # Models to pull on startup (optional)
