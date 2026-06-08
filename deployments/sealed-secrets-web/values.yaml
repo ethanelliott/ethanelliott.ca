@@ -26,4 +26,4 @@ resources:
 # so its service is accessible at sealed-secrets.kube-system.
 sealedSecrets:
   controllerName: sealed-secrets
-  controllerNamespace: kube-system
+  controllerNamespace: elliott-haus

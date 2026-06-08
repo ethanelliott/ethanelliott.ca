@@ -22,7 +22,7 @@ spec:
             memory: 64Mi
   destination:
     server: https://kubernetes.default.svc
-    namespace: kube-system
+    namespace: elliott-haus
   syncPolicy:
     automated:
       prune: true
