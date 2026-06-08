@@ -4,6 +4,6 @@ description: Web UI for creating Sealed Secrets
 type: application
 
 version: 0.0.1
-appVersion: '0.6.3'
+appVersion: '3.3.1'
 
 dependencies: []
