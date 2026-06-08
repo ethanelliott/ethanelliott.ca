@@ -1,6 +1,6 @@
 import { createToken, inject, Class } from '@ee/di';
 import { DataSource, ObjectLiteral } from 'typeorm';
-import 'better-sqlite3';
+import 'pg';
 
 export const ENTITIES = createToken<Class<any>>('entities', {
   multi: true,
@@ -10,16 +10,14 @@ export class Database {
   private readonly _entities = inject(ENTITIES);
 
   dataSource = new DataSource({
-    type: 'better-sqlite3',
-    database:
-      process.env.NODE_ENV === 'production'
-        ? '/app/data/ip-monitor.db'
-        : 'ip-monitor.db',
+    type: 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    username: process.env.DB_USER || 'ip_monitor',
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'ip_monitor',
     synchronize: true,
     entities: this._entities,
-    extra: {
-      foreignKeys: true,
-    },
   });
 
   constructor() {

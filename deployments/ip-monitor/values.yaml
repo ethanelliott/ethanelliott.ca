@@ -21,8 +21,21 @@ resources:
     cpu: 50m
     memory: 64Mi
 
-storage:
-  size: 1Gi
+postgres:
+  host: postgres
+  port: 5432
+  database: ip_monitor
+  username: ip_monitor
+  # Name of the secret containing the ip-monitor DB password.
+  # Must have a key 'db-password'.
+  # Set createSecret: true and provide password to manage it via Helm,
+  # otherwise create the secret manually:
+  #   kubectl create secret generic ip-monitor-db-secrets --from-literal=db-password=<password>
+  createSecret: false
+  # Admin credentials used by the init Job to create the role/database.
+  adminUser: postgres
+  adminSecretName: postgres-secrets
+  adminSecretKey: postgres-password
 
 env:
   NODE_ENV: 'production'

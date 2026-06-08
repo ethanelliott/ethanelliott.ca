@@ -6,11 +6,7 @@ ENV CI=true
 
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++ libc6-compat
-
 RUN addgroup --system server && adduser --system -G server server
-
-RUN mkdir -p /app/data && chown server:server /app/data
 
 COPY --chown=server:server dist/apps/ip-monitor ./
 

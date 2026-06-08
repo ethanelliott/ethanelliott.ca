@@ -98,6 +98,7 @@
     "node-cron": "^4.2.1",
     "node-html-parser": "^7.0.2",
     "onvif": "^0.8.1",
+    "pg": "^8.16.3",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.1",
     "plaid": "^41.0.0",

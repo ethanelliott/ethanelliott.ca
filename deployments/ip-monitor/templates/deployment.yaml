@@ -45,10 +45,16 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-          volumeMounts:
-            - name: data-volume
-              mountPath: /app/data
-      volumes:
-        - name: data-volume
-          persistentVolumeClaim:
-            claimName: {{ include "ip-monitor.fullname" . }}-data
+            - name: DB_HOST
+              value: {{ .Values.postgres.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.postgres.port | quote }}
+            - name: DB_NAME
+              value: {{ .Values.postgres.database | quote }}
+            - name: DB_USER
+              value: {{ .Values.postgres.username | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ip-monitor.fullname" . }}-db-secrets
+                  key: db-password
