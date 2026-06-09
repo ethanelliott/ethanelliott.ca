@@ -52,6 +52,293 @@ All state lives in a single SQLite database (via `better-sqlite3`). FTS5 full-te
 
 ---
 
+## Brain Concepts → LLM Concepts
+
+brainctl's data model is a deliberate mapping of cognitive neuroscience onto the constraints of a stateless LLM. Understanding the analogy makes the API much easier to reason about.
+
+### Memory systems
+
+Human memory is not a single store. Cognitive science distinguishes several systems with different properties — and each one maps directly to a brainctl concept.
+
+| Cognitive concept | brainctl implementation | What it means in practice |
+|---|---|---|
+| **Episodic memory** | `memory_type: episodic` | First-person experience records: *"I deployed the service at 14:00 and it failed"*. Tied to a specific moment. Subject to stronger decay. |
+| **Semantic memory** | `memory_type: semantic` | Generalised facts distilled from experience: *"This service requires a warm-up call before traffic"*. Longer-lived. Promoted from episodic during consolidation. |
+| **Procedural memory** | `memory_type: procedural` + `procedures` table | How-to knowledge encoded as reusable steps. Not forgotten easily; updated by feedback scores. |
+| **Working memory** | `workspace` items + the agent's context window | The short-lived scratchpad for in-progress reasoning. Explicitly ephemeral. |
+| **Prospective memory** | `triggers` table | *"Remember to do X when Y happens."* Conditions checked against incoming inputs before reasoning begins. |
+| **Semantic network** | `knowledge_edges` + `entities` | The web of associations between concepts, people, and facts. Traversed via spreading activation. |
+
+### Forgetting and reinforcement
+
+The brain does not keep everything. brainctl models this with two mechanisms:
+
+**Temporal decay.** Every memory carries a `temporal_class` that sets a decay half-life:
+
+| Class | Half-life | Typical use |
+|---|---|---|
+| `ephemeral` | 3.5 days | Transient observations, one-off facts |
+| `short` | 10 days | Session context, project-specific details |
+| `medium` | 23 days | General patterns, recurring decisions |
+| `long` | 69 days | Deep conventions, architectural truths |
+
+The consolidation engine applies `confidence(t) = confidence(0) × e^(−λt)` where `λ = ln2 / half_life`. This directly mirrors the [Ebbinghaus forgetting curve](https://en.wikipedia.org/wiki/Forgetting_curve). Memories recalled frequently are protected from decay (`recalled_count` increments on every `GET /memories/:id`), just as spaced repetition delays forgetting.
+
+**Hebbian reinforcement.** Edges between co-active memories grow stronger over consolidation cycles: *"neurons that fire together, wire together"*. Edges connecting high-confidence nodes (≥ 0.6) are boosted; edges between decayed nodes are pruned. This means the knowledge graph self-organises around what the agent actually uses.
+
+### Consolidation as sleep
+
+Biological sleep does not merely rest the brain — it actively reorganises memory. Slow-wave sleep replays experiences; REM sleep integrates them into semantic structures. brainctl's consolidation engine mirrors this with six sequential passes:
+
+1. **Decay** → the forgetting pass. Low-confidence memories are soft-retired.
+2. **Promote** → the integration pass. Episodic memories replayed often enough become semantic.
+3. **Compress** → the deduplication pass. Near-duplicate memories (vec distance ≤ 0.18 or Jaccard ≥ 0.4) are merged into a single summary — analogous to gist extraction during REM.
+4. **Hebbian** → the reinforcement pass. Active edge paths are strengthened; dormant ones decay.
+5. **Gap scan** → the integrity pass. Orphaned records and broken edges are flagged.
+6. **Entity tiers** → the salience pass. Highly connected entities are promoted to tier 3, making them more likely to surface in PageRank and spreading-activation queries.
+
+This is designed to run overnight (e.g. `BRAIN_CONSOLIDATION_CRON=0 3 * * *`) so the agent starts each day with a leaner, better-organised store.
+
+### Attention and salience
+
+The brain prioritises what to surface through attention. brainctl approximates this with three mechanisms:
+
+- **`importance` score** (0–1): set at write time; influences search ranking.
+- **PageRank** over `knowledge_edges`: records connected to many other important records score higher. Computed on-demand via `GET /graph/pagerank`.
+- **RRF search**: the combined FTS5 + vector search score ensures both keyword relevance (attention to the query) and semantic similarity (conceptual closeness) are weighted.
+
+### Affect
+
+The affect system tracks Valence (pleasant/unpleasant), Arousal (activated/calm), and Dominance (in control/controlled) — the standard [VAD model](https://en.wikipedia.org/wiki/Valence%E2%80%93arousal%E2%80%93dominance_model) used in affective computing. For an LLM agent, affect state acts as a metadata channel: it lets an orchestrator detect when an agent is in a "distressed" or "overloaded" state (low valence + high arousal) and adjust its behaviour — slow down, request human review, or switch to a safer default policy.
+
+### Theory of Mind
+
+ToM is the ability to model what *another* agent believes, desires, or intends. brainctl implements this by: (1) searching the subject agent's memory store, (2) passing that context to an LLM that extracts an estimated belief/intention model, and (3) storing the snapshot so the observer can consult it later. This is useful in multi-agent pipelines where one orchestrator needs to predict the behaviour of a sub-agent before delegating a task.
+
+---
+
+## Integrating with an AI Harness
+
+brainctl is protocol-agnostic. It speaks plain HTTP/JSON, so it can be wired into any agent framework — Claude Code via MCP, LangChain, AutoGen, a bare `fetch` loop, or a custom orchestrator. The core integration model is always the same: **brainctl wraps the agent's context window by enriching inputs before the LLM call and capturing outputs after it.**
+
+### The session lifecycle
+
+A well-integrated agent follows a three-phase loop every session:
+
+```
+┌──────────────────────────────────────────────────────┐
+│  1. ORIENT  (session start)                          │
+│     GET /session/orient?agent_id=my-agent            │
+│     → injects: recent events, last handoff,          │
+│       active triggers, active procedures             │
+│     → append this block to the system prompt         │
+├──────────────────────────────────────────────────────┤
+│  2. ACT  (during session — for each significant      │
+│     observation, decision, or outcome)               │
+│     POST /memories  ← store durable knowledge        │
+│     POST /events    ← log what happened              │
+│     GET  /triggers/check?q=<user input>              │
+│     GET  /memories/search?q=<topic>  ← before        │
+│          calling the LLM on a new topic              │
+│     POST /decisions  ← record major choices          │
+│     POST /reflexion  ← reflect on failures           │
+├──────────────────────────────────────────────────────┤
+│  3. WRAP UP  (session end)                           │
+│     POST /session/wrap-up                            │
+│     → creates handoff + event log entry              │
+│     → next session's orient will surface this        │
+└──────────────────────────────────────────────────────┘
+```
+
+### Pattern 1: System prompt injection
+
+The simplest integration. Before every LLM call, fetch relevant memory and prepend it to the system prompt. No tool use required — works with any model.
+
+```typescript
+async function buildSystemPrompt(agentId: string, userMessage: string): Promise<string> {
+  const base = process.env.BRAINCTL_URL;
+
+  // Fetch memories relevant to the current user message
+  const [memories, triggers, handoff] = await Promise.all([
+    fetch(`${base}/memories/search?q=${encodeURIComponent(userMessage)}&limit=5&agent_id=${agentId}`)
+      .then(r => r.json()),
+    fetch(`${base}/triggers/check?q=${encodeURIComponent(userMessage)}&agent_id=${agentId}`)
+      .then(r => r.json()),
+    fetch(`${base}/session/handoff/latest?agent_id=${agentId}`)
+      .then(r => r.ok ? r.json() : null),
+  ]);
+
+  const sections: string[] = ['You are a helpful assistant with persistent memory.'];
+
+  if (handoff) {
+    sections.push(`## Continuing from last session\n${handoff.current_state}\nOpen: ${handoff.open_loops}\nNext: ${handoff.next_step}`);
+  }
+  if (memories.length) {
+    sections.push(`## Relevant memories\n${memories.map((m: any) => `- ${m.content}`).join('\n')}`);
+  }
+  if (triggers.length) {
+    sections.push(`## Active triggers\n${triggers.map((t: any) => `- ${t.action}`).join('\n')}`);
+  }
+
+  return sections.join('\n\n');
+}
+```
+
+### Pattern 2: Tool use (function calling)
+
+Expose brainctl endpoints as LLM tools. The model decides when to store or retrieve memories as part of its reasoning chain. This gives the agent more control and produces richer retrieval because the model writes its own memory queries.
+
+```typescript
+const brainctlTools = [
+  {
+    name: 'remember',
+    description: 'Store a memory for future sessions. Use for durable facts, decisions, and lessons.',
+    parameters: {
+      type: 'object',
+      properties: {
+        content: { type: 'string' },
+        memory_type: { enum: ['episodic', 'semantic', 'procedural'] },
+        confidence: { type: 'number', minimum: 0, maximum: 1 },
+        temporal_class: { enum: ['ephemeral', 'short', 'medium', 'long'] },
+      },
+      required: ['content'],
+    },
+  },
+  {
+    name: 'recall',
+    description: 'Search memories by semantic similarity and keyword.',
+    parameters: {
+      type: 'object',
+      properties: { query: { type: 'string' }, limit: { type: 'number' } },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'think',
+    description: 'Follow associations from a concept through the knowledge graph.',
+    parameters: {
+      type: 'object',
+      properties: { seed: { type: 'string' }, depth: { type: 'number' } },
+      required: ['seed'],
+    },
+  },
+];
+
+// Tool call handler
+async function handleToolCall(name: string, args: Record<string, unknown>, agentId: string) {
+  const base = process.env.BRAINCTL_URL;
+  if (name === 'remember') {
+    return fetch(`${base}/memories`, {
+      method: 'POST',
+      body: JSON.stringify({ ...args, agent_id: agentId }),
+    }).then(r => r.json());
+  }
+  if (name === 'recall') {
+    return fetch(`${base}/memories/search?q=${encodeURIComponent(args.query as string)}&limit=${args.limit ?? 5}&agent_id=${agentId}`)
+      .then(r => r.json());
+  }
+  if (name === 'think') {
+    return fetch(`${base}/think?q=${encodeURIComponent(args.seed as string)}&depth=${args.depth ?? 2}&agent_id=${agentId}`)
+      .then(r => r.json());
+  }
+}
+```
+
+### Pattern 3: MCP wrapper
+
+brainctl is itself a REST service, not an MCP server. But because it is just HTTP, it is straightforward to wrap it in an MCP server layer using the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk). Each brainctl endpoint becomes an MCP tool. The original Python brainctl used this pattern natively; the REST rewrite makes it framework-agnostic while preserving the option to re-wrap with MCP if needed.
+
+```typescript
+// Minimal MCP wrapper sketch
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+
+const server = new Server({ name: 'brainctl', version: '1.0.0' }, { capabilities: { tools: {} } });
+const BASE = process.env.BRAINCTL_URL ?? 'http://localhost:3100';
+
+server.setRequestHandler('tools/call', async ({ params }) => {
+  const { name, arguments: args } = params;
+  // Route tool name → brainctl HTTP call
+  if (name === 'add_memory') {
+    const res = await fetch(`${BASE}/memories`, { method: 'POST', body: JSON.stringify(args) });
+    return { content: [{ type: 'text', text: JSON.stringify(await res.json()) }] };
+  }
+  // ... etc for each tool
+});
+```
+
+### Pattern 4: Middleware / event hooks
+
+In agent frameworks that support middleware (e.g. hooks around LLM calls), brainctl fits cleanly as a pre/post interceptor:
+
+```
+before_llm_call:
+  → GET /session/orient         (first call of session only)
+  → GET /triggers/check?q=<input>
+  → GET /memories/search?q=<input>
+  → GET /affect/state           (detect emotional distress signals)
+  → inject all above into system prompt
+
+after_llm_call:
+  → POST /events                (log what happened)
+  → POST /memories              (if the model output contains durable knowledge)
+  → POST /decisions             (if a decision was made)
+  → POST /affect                (classify the input/output tone)
+
+on_session_end:
+  → POST /session/wrap-up
+```
+
+### Multi-agent wiring
+
+When multiple agents share a brainctl instance, each uses its own `agent_id`. Shared knowledge flows through two mechanisms:
+
+- **`POST /agents/:id/share`** — explicitly copies a subset of memories from agent A to agent B (filtered by query or category).
+- **Theory of Mind** — agent A can call `POST /tom/model` to build a model of what agent B currently believes, without reading B's memories directly.
+
+This separation-with-sharing mirrors how human teams work: private working memory, selective communication, and collaborative reasoning.
+
+### Trigger-driven reactivity
+
+Triggers can make the agent reactive without polling:
+
+```typescript
+// Register once at startup
+await fetch(`${BRAINCTL_URL}/triggers`, {
+  method: 'POST',
+  body: JSON.stringify({
+    condition: 'user mentions production outage',
+    keywords: 'outage,down,incident,p0,pager',
+    action: 'Switch to incident response mode. Load the on-call runbook procedure.',
+    priority: 'critical',
+    agent_id: 'my-agent',
+  }),
+});
+
+// Check on every user input (cheap: pure in-process keyword scan)
+const fired = await fetch(
+  `${BRAINCTL_URL}/triggers/check?q=${encodeURIComponent(userInput)}&agent_id=my-agent`,
+).then(r => r.json());
+
+if (fired.length) {
+  systemPrompt += `\n\n## TRIGGERED\n${fired.map(t => t.action).join('\n')}`;
+}
+```
+
+### Grounded reasoning vs. raw generation
+
+The `/reason`, `/infer`, and `/dream` endpoints implement **retrieval-augmented generation (RAG)** internally. Rather than retrieving context externally and injecting it yourself, you POST a question and receive an answer with citations. Use these when you want brainctl to own the retrieval-augmentation loop; use pattern 1/2 above when you want the orchestrator to control it.
+
+```
+POST /reason
+{ "query": "What do we know about the auth service failures?", "agent_id": "my-agent" }
+
+→ 1. Searches memories + entities + events for relevant context
+→ 2. Assembles a prompt with cited evidence
+→ 3. Calls LiteLLM → returns answer + source_ids
+```
+
+---
+
 ## Quick Start
 
 ### Prerequisites
