@@ -888,3 +888,93 @@ Every LLM call has a fallback path:
 | Budget | 4 |
 | Push & webhooks | 5 |
 | **Total** | **170** |
+
+---
+
+## Roadmap & Future Improvements
+
+brainctl is feature-complete against the original MCP surface, but there is a large design space ahead. This section is a working backlog — a mix of small polish items, substantial features, and a few research-flavoured ideas. Roughly ordered within each theme from "high-leverage / low-risk" to "ambitious".
+
+### Security & Multi-Tenancy
+
+Authentication was intentionally deferred — this is the largest gap before any non-trusted deployment.
+
+- **API key authentication.** A Fastify `preHandler` hook validating a bearer token, with keys stored in a new `api_keys` table (hashed). Scope keys to one or more `agent_id`s.
+- **Per-agent authorization.** Today any caller can pass any `agent_id`. Bind keys to agents so a token for `agent-a` cannot read or wipe `agent-b`'s data.
+- **Rate limiting.** `@fastify/rate-limit` keyed by API key or IP, with stricter limits on expensive LLM-backed endpoints (`/reason`, `/dream`, `/tom/model`).
+- **Audit log.** An append-only `audit_log` table recording who called destructive endpoints (`/admin/agent`, `/admin/memories/retired`, `DELETE` routes) and when.
+- **Field-level encryption.** Optional at-rest encryption for memory `content` using a key from the environment, for deployments handling sensitive data.
+- **Tenant isolation at the DB level.** Investigate one SQLite file per tenant (or per agent) instead of a shared file, trading a little operational complexity for hard isolation guarantees.
+
+### Search & Retrieval Quality
+
+The RRF hybrid search is solid but untuned. There is meaningful retrieval-quality headroom here.
+
+- **Cross-encoder reranking.** After RRF produces candidates, pass the top ~30 through a reranker model (via LiteLLM) for a final ordering. Cross-encoders consistently beat bi-encoder similarity for the final sort.
+- **Tunable RRF weights.** Expose the FTS-vs-vector balance as a per-request or per-agent parameter instead of the fixed equal weighting, and let `K` be configurable.
+- **Query expansion.** Optionally expand a query with synonyms or LLM-generated paraphrases before searching, improving recall on terse queries.
+- **Maximal Marginal Relevance (MMR).** Diversify results so the top-k aren't near-duplicates of each other — useful for `/reason` context assembly.
+- **Time-decay-aware ranking.** Fold each memory's current decayed `confidence` and recency into the search score, so fresher / stronger memories rank higher without a separate consolidation pass.
+- **Embedding model migration tooling.** When `LITELLM_EMBEDDING_MODEL` changes, vectors are stale. Add a `POST /admin/reembed` that re-embeds everything and a stored `embedding_model` column per vector so mismatches are detectable.
+
+### Memory Model & Cognition
+
+Deeper modelling of the brain analogy.
+
+- **Per-memory adaptive half-life.** Instead of four fixed temporal classes, learn a half-life per memory from its access pattern (frequently recalled → longer half-life), a closer model of spaced-repetition strength.
+- **Novelty / curiosity signal.** Score incoming memories by their distance from existing ones; surface "surprising" memories and use novelty to drive what the agent chooses to explore or ask about.
+- **Emotional tagging of memories.** Link the affect (VAD) state at write time to each memory, so emotionally salient memories resist decay — mirroring how affect strengthens human encoding.
+- **Metacognition endpoint.** A "what do I know about my own knowledge?" summary: confidence distribution, coverage gaps, stale regions, over-represented topics.
+- **Contradiction detection at write time.** Run a lightweight similarity + polarity check when storing a memory, flagging likely contradictions with existing memories before they pile up (rather than only in the conflict-resolution endpoint).
+- **Source provenance & trust propagation.** Tie memory confidence to the `trust` score of its source, and propagate trust changes to dependent memories.
+
+### Consolidation Engine
+
+- **LLM-graded compression quality.** When merging a cluster, have the LLM verify the summary preserves the key facts of its constituents, and fall back to keeping originals if information loss is detected.
+- **Incremental / streaming consolidation.** Today a run processes the whole store. For large DBs, process only memories touched since the last run.
+- **Configurable pass pipeline.** Let an agent define which passes run, in what order, with what thresholds — stored per-agent rather than hardcoded.
+- **Consolidation dry-run mode.** A `preview=true` flag that reports what *would* change (memories to retire, clusters to merge) without mutating anything.
+- **Sleep-cycle simulation.** Alternate "slow-wave" passes (decay, compress) and "REM" passes (promote, dream-style synthesis) across multiple short cycles rather than one linear pass, closer to real sleep architecture.
+
+### Performance & Scale
+
+SQLite + in-process search is the right call for single-node simplicity, but there are known ceilings.
+
+- **Vector index for `sqlite-vec`.** As vector counts grow, brute-force KNN slows down. Evaluate `sqlite-vec`'s ANN options or partition vectors by `agent_id`.
+- **Prepared-statement caching audit.** Ensure hot-path statements are prepared once and reused, not re-prepared per request.
+- **Read replicas / connection strategy.** WAL mode allows concurrent readers; document and test the limits, and consider a read-only connection pool for search-heavy workloads.
+- **Pagination everywhere.** Some list endpoints cap results but don't expose cursors. Add consistent `limit`/`offset` (or keyset) pagination across all list routes.
+- **Batch embedding.** Embed multiple texts per LiteLLM request during bulk import and backfill instead of one call per record.
+- **Optional Postgres backend.** A pluggable storage layer (Postgres + `pgvector`) for deployments that outgrow a single SQLite file, sharing the service/route layer unchanged.
+
+### Observability & Operations
+
+- **Structured metrics.** Prometheus-style `/metrics` endpoint: request counts/latencies per route, LLM call counts and token usage, consolidation timings, DB size.
+- **OpenTelemetry tracing.** Trace a request through service calls, DB queries, and LLM round-trips — invaluable for debugging slow `/reason` calls.
+- **LLM cost accounting.** Extend the budget subsystem to record *actual* token usage returned by LiteLLM per call, attributing cost to agents and endpoints.
+- **Backup automation & restore.** Pair the existing `/admin/backup` with a scheduled backup job and a tested `POST /admin/restore` path.
+- **Health-check depth.** Add readiness vs. liveness distinction and an optional deep check that pings LiteLLM.
+
+### Developer Experience
+
+- **Typed client SDK.** Generate a TypeScript (and Python) client from the Zod/OpenAPI schemas so consumers get autocomplete and type safety for free.
+- **First-party MCP server package.** Ship the MCP wrapper sketched in the integration guide as a maintained package, so brainctl can be dropped into Claude Code / MCP hosts with zero glue code.
+- **Framework adapters.** Thin LangChain `Memory` and `Retriever` adapters, and an AutoGen memory provider, so brainctl is a one-liner in popular harnesses.
+- **Seed & fixture data.** A `brainctl seed` command that loads a realistic demo brain for testing and onboarding.
+- **Test coverage.** Integration tests per route (especially the lazy-table and migration paths), plus a retrieval-quality regression suite using `/analytics/retrieval-effectiveness`.
+- **Complete OpenAPI response schemas.** A few routes omit `response:` schema blocks (to dodge a type conflict on 404 unions). Resolve these so `/docs` is fully accurate and the generated SDK is complete.
+
+### Real-Time & Eventing
+
+- **Server-Sent Events / WebSocket subscriptions.** Let a harness subscribe to "new memory stored", "trigger fired", or "affect threshold breached" instead of polling.
+- **Webhook delivery hardening.** Add retries with backoff, a dead-letter log, and HMAC signing to the push subsystem so deliveries are reliable and verifiable.
+- **Reactive triggers.** Today triggers are checked on demand via `/triggers/check`. Allow a trigger to fire a webhook automatically when a matching memory or event is written.
+
+### New Capabilities
+
+- **Temporal queries.** "What did I believe about X *as of* last Tuesday?" — query memory state at a point in time using the epoch/timestamp data already stored.
+- **Memory diffing.** Show how an entity's `compiled_truth` or an agent's belief set changed between two epochs.
+- **Federated brains.** A protocol for two brainctl instances to selectively sync subgraphs, enabling distributed multi-agent teams without a shared database.
+- **Multi-modal memories.** Store and embed images / audio alongside text, using a multi-modal embedding model through LiteLLM.
+- **Knowledge graph visualization.** A read-only endpoint emitting the graph in a standard format (e.g. GraphML / JSON for D3) for inspection in external tools.
+- **Explainable retrieval.** Return *why* each result matched (FTS rank, vector distance, graph proximity, recency boost) so callers can debug and trust retrieval.
