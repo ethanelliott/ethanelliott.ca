@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS memories (
   scope TEXT NOT NULL DEFAULT 'global',
   replay_priority REAL NOT NULL DEFAULT 0.0,
   ripple_tags INTEGER NOT NULL DEFAULT 0,
+  recalled_count INTEGER NOT NULL DEFAULT 0,
+  temporal_class TEXT NOT NULL DEFAULT 'medium',
+  last_accessed_at TEXT,
+  compressed_into INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   retired_at TEXT
 );
@@ -255,3 +259,16 @@ CREATE TABLE IF NOT EXISTS affect_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_affect_agent ON affect_log(agent_id);
+
+-- Consolidation run audit log
+CREATE TABLE IF NOT EXISTS consolidation_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent_id TEXT NOT NULL DEFAULT 'default',
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_at TEXT,
+  status TEXT NOT NULL DEFAULT 'running',
+  report TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_consolidation_agent ON consolidation_log(agent_id);
+CREATE INDEX IF NOT EXISTS idx_consolidation_status ON consolidation_log(status);

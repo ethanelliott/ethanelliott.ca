@@ -9,6 +9,7 @@ import { ProcedureRoutes } from './routes/procedures.js';
 import { SearchRoutes } from './routes/search.js';
 import { AffectRoutes } from './routes/affect.js';
 import { DiagnosticsRoutes } from './routes/diagnostics.js';
+import { ConsolidationRoutes } from './routes/consolidation.js';
 
 export async function Application(fastify: FastifyInstance) {
   fastify.register(MemoryRoutes);
@@ -21,4 +22,5 @@ export async function Application(fastify: FastifyInstance) {
   fastify.register(SearchRoutes);
   fastify.register(AffectRoutes);
   fastify.register(DiagnosticsRoutes);
+  fastify.register(ConsolidationRoutes);
 }

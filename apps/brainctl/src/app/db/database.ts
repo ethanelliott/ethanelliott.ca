@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { EMBEDDING_DIMENSIONS, isEmbeddingAvailable } from '../services/embeddings.service.js';
+import { EMBEDDING_DIMENSIONS } from '../services/embeddings.service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -23,16 +23,33 @@ export function getDb(): Database.Database {
   const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
   _db.exec(schema);
 
+  runMigrations(_db);
+
   _vecLoaded = tryLoadVec(_db);
-  if (_vecLoaded) {
-    initVecTables(_db);
-  }
+  if (_vecLoaded) initVecTables(_db);
 
   return _db;
 }
 
 export function isVecLoaded(): boolean {
   return _vecLoaded;
+}
+
+// Safe ALTER TABLE for columns added after initial schema deployment.
+// SQLite has no "ADD COLUMN IF NOT EXISTS" — we catch the duplicate-column error.
+function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string): void {
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch {
+    // Column already exists — ignore
+  }
+}
+
+function runMigrations(db: Database.Database): void {
+  addColumnIfMissing(db, 'memories', 'recalled_count', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing(db, 'memories', 'temporal_class', "TEXT NOT NULL DEFAULT 'medium'");
+  addColumnIfMissing(db, 'memories', 'last_accessed_at', 'TEXT');
+  addColumnIfMissing(db, 'memories', 'compressed_into', 'INTEGER');
 }
 
 function tryLoadVec(db: Database.Database): boolean {
@@ -52,10 +69,8 @@ function initVecTables(db: Database.Database): void {
   db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_memories
       USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
-
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_entities
       USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
-
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_events
       USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
   `);
