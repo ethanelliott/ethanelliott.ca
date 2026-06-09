@@ -73,6 +73,8 @@ function initVecTables(db: Database.Database): void {
       USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_events
       USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_context
+      USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
   `);
 }
 
