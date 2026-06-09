@@ -3,6 +3,7 @@ import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { getDb } from '../db/database.js';
 import { addMemory } from '../services/memory.service.js';
+import { join } from 'path';
 
 export async function AdminRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
@@ -118,6 +119,22 @@ export async function AdminRoutes(fastify: FastifyInstance) {
     })();
 
     return reply.send({ wiped: agentId });
+  });
+
+  // Streaming SQLite backup
+  f.get('/admin/backup', async (_req, reply) => {
+    const srcPath = process.env['BRAIN_DB'] ?? join(process.env['HOME'] ?? '/tmp', 'brainctl', 'brain.db');
+    const tmpPath = `${srcPath}.backup-${Date.now()}.db`;
+    const src = getDb();
+
+    await src.backup(tmpPath);
+
+    const buf = await import('fs/promises').then((fs) => fs.readFile(tmpPath));
+    await import('fs/promises').then((fs) => fs.unlink(tmpPath)).catch(() => {});
+
+    reply.header('Content-Type', 'application/octet-stream');
+    reply.header('Content-Disposition', `attachment; filename="brain-backup-${Date.now()}.db"`);
+    return reply.send(buf);
   });
 
   // Rebuild FTS indexes (useful after bulk imports or corruption)
