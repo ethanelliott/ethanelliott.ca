@@ -18,6 +18,7 @@ import { AgentRoutes } from './routes/agents.js';
 import { SubsystemRoutes } from './routes/subsystems.js';
 import { ContextRoutes } from './routes/context.js';
 import { MemoryLifecycleRoutes } from './routes/memory.lifecycle.js';
+import { AnalyticsRoutes } from './routes/analytics.js';
 
 export async function Application(fastify: FastifyInstance) {
   fastify.register(MemoryRoutes);
@@ -39,4 +40,5 @@ export async function Application(fastify: FastifyInstance) {
   fastify.register(SubsystemRoutes);
   fastify.register(ContextRoutes);
   fastify.register(MemoryLifecycleRoutes);
+  fastify.register(AnalyticsRoutes);
 }
