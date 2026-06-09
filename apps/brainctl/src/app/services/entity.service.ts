@@ -150,6 +150,55 @@ export async function searchEntitiesVec(input: SearchEntitiesInput): Promise<Ent
   }
 }
 
+export async function updateEntity(name: string, input: {
+  entity_type?: string; properties?: Record<string, unknown>;
+  observations?: string[]; compiled_truth?: string; agent_id?: string;
+}): Promise<boolean> {
+  const db = getDb();
+  const agentId = input.agent_id ?? 'default';
+  const existing = db.prepare(
+    'SELECT id, observations FROM entities WHERE name = @name AND agent_id = @agent_id',
+  ).get({ name, agent_id: agentId }) as { id: number; observations: string | null } | undefined;
+  if (!existing) return false;
+
+  const fields: string[] = [];
+  const params: Record<string, unknown> = { name, agent_id: agentId };
+
+  if (input.entity_type !== undefined) { fields.push('entity_type = @entity_type'); params['entity_type'] = input.entity_type; }
+  if (input.properties !== undefined) { fields.push('properties = @properties'); params['properties'] = JSON.stringify(input.properties); }
+  if (input.compiled_truth !== undefined) { fields.push('compiled_truth = @compiled_truth'); params['compiled_truth'] = input.compiled_truth; }
+  if (input.observations?.length) {
+    const obs: string[] = existing.observations ? JSON.parse(existing.observations) : [];
+    obs.push(...input.observations);
+    fields.push('observations = @observations');
+    params['observations'] = JSON.stringify(obs);
+  }
+
+  if (!fields.length) return true;
+  fields.push("updated_at = datetime('now')");
+
+  const changed = db.prepare(
+    `UPDATE entities SET ${fields.join(', ')} WHERE name = @name AND agent_id = @agent_id`,
+  ).run(params).changes > 0;
+
+  // Re-embed if text changed
+  if (changed && isVecLoaded() && (input.entity_type || input.observations?.length || input.compiled_truth)) {
+    const updated = db.prepare('SELECT * FROM entities WHERE id = ?').get(existing.id) as Entity;
+    const text = [updated.name, updated.entity_type, ...(updated.observations ? JSON.parse(updated.observations) as string[] : [])].join(' ');
+    const vec = await embed(text);
+    if (vec) db.prepare('INSERT OR REPLACE INTO vec_entities(rowid, embedding) VALUES (?, ?)').run(existing.id, serializeVec(vec));
+  }
+  return changed;
+}
+
+export function deleteEntity(name: string, agentId = 'default'): boolean {
+  const db = getDb();
+  const row = db.prepare('SELECT id FROM entities WHERE name = ? AND agent_id = ?').get(name, agentId) as { id: number } | undefined;
+  if (!row) return false;
+  if (isVecLoaded()) db.prepare('DELETE FROM vec_entities WHERE rowid = ?').run(row.id);
+  return db.prepare('DELETE FROM entities WHERE id = ?').run(row.id).changes > 0;
+}
+
 export function getEntitiesWithoutEmbeddings(agentId: string, limit: number): Entity[] {
   const db = getDb();
   return db.prepare(`

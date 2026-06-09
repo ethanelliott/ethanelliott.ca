@@ -209,6 +209,57 @@ export function forgetMemory(id: number, agentId = 'default'): boolean {
   return result.changes > 0;
 }
 
+export function updateMemory(id: number, input: {
+  content?: string; category?: string; tags?: string | string[];
+  confidence?: number; memory_type?: string; temporal_class?: string; scope?: string;
+  agent_id?: string;
+}): boolean {
+  const db = getDb();
+  const agentId = input.agent_id ?? 'default';
+  const fields: string[] = [];
+  const params: Record<string, unknown> = { id, agent_id: agentId };
+
+  if (input.content !== undefined) { fields.push('content = @content'); params['content'] = input.content; }
+  if (input.category !== undefined) { fields.push('category = @category'); params['category'] = input.category; }
+  if (input.confidence !== undefined) { fields.push('confidence = @confidence'); params['confidence'] = input.confidence; }
+  if (input.memory_type !== undefined) { fields.push('memory_type = @memory_type'); params['memory_type'] = input.memory_type; }
+  if (input.temporal_class !== undefined) { fields.push('temporal_class = @temporal_class'); params['temporal_class'] = input.temporal_class; }
+  if (input.scope !== undefined) { fields.push('scope = @scope'); params['scope'] = input.scope; }
+  if (input.tags !== undefined) {
+    const tags = Array.isArray(input.tags) ? input.tags.join(',') : input.tags;
+    fields.push('tags = @tags');
+    params['tags'] = tags;
+  }
+
+  if (!fields.length) return false;
+
+  return db.prepare(`
+    UPDATE memories SET ${fields.join(', ')} WHERE id = @id AND agent_id = @agent_id AND retired_at IS NULL
+  `).run(params).changes > 0;
+}
+
+export function listMemories(input: {
+  agent_id?: string; category?: string; memory_type?: string;
+  scope?: string; limit?: number; offset?: number;
+  include_retired?: boolean;
+}): Memory[] {
+  const db = getDb();
+  const agentId = input.agent_id ?? 'default';
+  const limit = input.limit ?? 50;
+  const offset = input.offset ?? 0;
+
+  let sql = 'SELECT * FROM memories WHERE agent_id = @agent_id';
+  const params: Record<string, unknown> = { agent_id: agentId, limit, offset };
+
+  if (!input.include_retired) { sql += ' AND retired_at IS NULL'; }
+  if (input.category) { sql += ' AND category = @category'; params['category'] = input.category; }
+  if (input.memory_type) { sql += ' AND memory_type = @memory_type'; params['memory_type'] = input.memory_type; }
+  if (input.scope) { sql += ' AND scope = @scope'; params['scope'] = input.scope; }
+
+  sql += ' ORDER BY created_at DESC LIMIT @limit OFFSET @offset';
+  return db.prepare(sql).all(params) as Memory[];
+}
+
 export function getMemory(id: number, agentId = 'default'): Memory | undefined {
   const db = getDb();
   const memory = db.prepare(

@@ -1,11 +1,27 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { addMemory, searchMemories, forgetMemory, getMemory } from '../services/memory.service.js';
+import { addMemory, searchMemories, forgetMemory, getMemory, updateMemory, listMemories } from '../services/memory.service.js';
 import { MemorySchema, ErrorSchema, DeletedSchema } from '../schemas.js';
 
 export async function MemoryRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
+
+  // List memories with optional filters and pagination
+  f.get('/memories', {
+    schema: {
+      querystring: z.object({
+        category: z.string().optional(),
+        memory_type: z.string().optional(),
+        scope: z.string().optional(),
+        include_retired: z.coerce.boolean().optional(),
+        limit: z.coerce.number().int().min(1).max(500).optional(),
+        offset: z.coerce.number().int().min(0).optional(),
+        agent_id: z.string().optional(),
+      }),
+      response: { 200: z.array(MemorySchema) },
+    },
+  }, async (req, reply) => reply.send(listMemories(req.query)));
 
   f.post('/memories', {
     schema: {
@@ -62,6 +78,26 @@ export async function MemoryRoutes(fastify: FastifyInstance) {
     const memory = getMemory(req.params.id, req.query.agent_id);
     if (!memory) return reply.status(404).send({ error: 'Memory not found' });
     return reply.send(memory);
+  });
+
+  f.patch('/memories/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      body: z.object({
+        content: z.string().optional(),
+        category: z.string().optional(),
+        tags: z.union([z.string(), z.array(z.string())]).optional(),
+        confidence: z.number().min(0).max(1).optional(),
+        memory_type: z.enum(['episodic', 'semantic', 'procedural']).optional(),
+        temporal_class: z.enum(['ephemeral', 'short', 'medium', 'long']).optional(),
+        scope: z.string().optional(),
+        agent_id: z.string().optional(),
+      }),
+    },
+  }, async (req, reply) => {
+    const updated = updateMemory(req.params.id, req.body);
+    if (!updated) return reply.status(404).send({ error: 'Memory not found' });
+    return reply.send({ updated });
   });
 
   f.delete('/memories/:id', {

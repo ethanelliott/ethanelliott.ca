@@ -7,6 +7,8 @@ import {
   searchEntities,
   relateEntities,
   getEntityRelations,
+  updateEntity,
+  deleteEntity,
 } from '../services/entity.service.js';
 import { EntitySchema, ErrorSchema } from '../schemas.js';
 
@@ -76,6 +78,36 @@ export async function EntityRoutes(fastify: FastifyInstance) {
   }, async (req, reply) => {
     const relations = getEntityRelations(req.params.name, req.query.agent_id);
     return reply.send(relations);
+  });
+
+  f.patch('/entities/:name', {
+    schema: {
+      params: z.object({ name: z.string() }),
+      body: z.object({
+        entity_type: z.string().optional(),
+        properties: z.record(z.unknown()).optional(),
+        observations: z.array(z.string()).optional(),
+        compiled_truth: z.string().optional(),
+        agent_id: z.string().optional(),
+      }),
+      response: { 200: z.object({ updated: z.boolean() }), 404: ErrorSchema },
+    },
+  }, async (req, reply) => {
+    const updated = await updateEntity(req.params.name, req.body);
+    if (!updated) return reply.status(404).send({ error: 'Entity not found' });
+    return reply.send({ updated });
+  });
+
+  f.delete('/entities/:name', {
+    schema: {
+      params: z.object({ name: z.string() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+      response: { 200: z.object({ deleted: z.boolean() }), 404: ErrorSchema },
+    },
+  }, async (req, reply) => {
+    const deleted = deleteEntity(req.params.name, req.query.agent_id ?? 'default');
+    if (!deleted) return reply.status(404).send({ error: 'Entity not found' });
+    return reply.send({ deleted });
   });
 
   f.post('/entities/relate', {
