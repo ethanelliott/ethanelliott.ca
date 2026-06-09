@@ -13,6 +13,7 @@ import { ConsolidationRoutes } from './routes/consolidation.js';
 import { ReasoningRoutes } from './routes/reasoning.js';
 import { SchedulerRoutes } from './routes/scheduler.js';
 import { GraphRoutes } from './routes/graph.js';
+import { AdminRoutes } from './routes/admin.js';
 
 export async function Application(fastify: FastifyInstance) {
   fastify.register(MemoryRoutes);
@@ -29,4 +30,5 @@ export async function Application(fastify: FastifyInstance) {
   fastify.register(ReasoningRoutes);
   fastify.register(SchedulerRoutes);
   fastify.register(GraphRoutes);
+  fastify.register(AdminRoutes);
 }
