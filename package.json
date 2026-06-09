@@ -142,6 +142,7 @@
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.19",
     "@types/bcrypt": "^6.0.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/crypto-js": "^4.2.2",
     "@types/express": "^5.0.6",
     "@types/fluent-ffmpeg": "^2.1.28",
