@@ -1,11 +1,46 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { logEvent, searchEvents, getRecentEvents } from '../services/event.service.js';
+import { logEvent, searchEvents, getRecentEvents, getEvent, deleteEvent, listEvents } from '../services/event.service.js';
 import { EventSchema } from '../schemas.js';
 
 export async function EventRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
+
+  f.get('/events', {
+    schema: {
+      querystring: z.object({
+        event_type: z.string().optional(),
+        project: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(500).optional(),
+        offset: z.coerce.number().int().min(0).optional(),
+        agent_id: z.string().optional(),
+      }),
+      response: { 200: z.array(EventSchema) },
+    },
+  }, async (req, reply) => reply.send(listEvents(req.query)));
+
+  f.get('/events/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+    },
+  }, async (req, reply) => {
+    const event = getEvent(req.params.id, req.query.agent_id ?? 'default');
+    if (!event) return reply.status(404).send({ error: 'Event not found' });
+    return reply.send(event);
+  });
+
+  f.delete('/events/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+    },
+  }, async (req, reply) => {
+    const deleted = deleteEvent(req.params.id, req.query.agent_id ?? 'default');
+    if (!deleted) return reply.status(404).send({ error: 'Event not found' });
+    return reply.send({ deleted });
+  });
 
   f.post('/events', {
     schema: {

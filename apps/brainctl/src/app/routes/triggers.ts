@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { createTrigger, checkTriggers, getActiveTriggers, deleteTrigger } from '../services/trigger.service.js';
+import { createTrigger, checkTriggers, getActiveTriggers, deleteTrigger, getTrigger, updateTrigger, fireTrigger } from '../services/trigger.service.js';
 
 export async function TriggerRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
@@ -44,6 +44,44 @@ export async function TriggerRoutes(fastify: FastifyInstance) {
   }, async (req, reply) => {
     const matches = checkTriggers(req.query.q, req.query.agent_id);
     return reply.send(matches);
+  });
+
+  f.get('/triggers/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+    },
+  }, async (req, reply) => {
+    const trigger = getTrigger(req.params.id, req.query.agent_id ?? 'default');
+    if (!trigger) return reply.status(404).send({ error: 'Trigger not found' });
+    return reply.send(trigger);
+  });
+
+  f.patch('/triggers/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      body: z.object({
+        active: z.boolean().optional(),
+        expires: z.string().nullable().optional(),
+        priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+        agent_id: z.string().optional(),
+      }),
+    },
+  }, async (req, reply) => {
+    const updated = updateTrigger(req.params.id, req.body);
+    if (!updated) return reply.status(404).send({ error: 'Trigger not found' });
+    return reply.send({ updated });
+  });
+
+  f.post('/triggers/:id/fire', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+    },
+  }, async (req, reply) => {
+    const trigger = fireTrigger(req.params.id, req.query.agent_id ?? 'default');
+    if (!trigger) return reply.status(404).send({ error: 'Trigger not found' });
+    return reply.send(trigger);
   });
 
   f.delete('/triggers/:id', {

@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
-  ingestDocument, getDocument, listDocuments, deleteDocument, searchContext,
+  ingestDocument, getDocument, listDocuments, deleteDocument, searchContext, getChunk,
 } from '../services/context.service.js';
 
 const AgentQ = z.object({ agent_id: z.string().optional() });
@@ -42,6 +42,21 @@ export async function ContextRoutes(fastify: FastifyInstance) {
     const chunks = getDocument(req.params.document, req.query.agent_id ?? 'default');
     if (!chunks.length) return reply.status(404).send({ error: 'Document not found' });
     return reply.send(chunks);
+  });
+
+  // Retrieve a specific chunk by index
+  f.get('/context/:document/:chunk_index', {
+    schema: {
+      params: z.object({
+        document: z.string().min(1),
+        chunk_index: z.coerce.number().int().min(0),
+      }),
+      querystring: AgentQ,
+    },
+  }, async (req, reply) => {
+    const chunk = getChunk(req.params.document, req.params.chunk_index, req.query.agent_id ?? 'default');
+    if (!chunk) return reply.status(404).send({ error: 'Chunk not found' });
+    return reply.send(chunk);
   });
 
   // Delete a document and all its chunks

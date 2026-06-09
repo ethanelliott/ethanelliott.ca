@@ -30,6 +30,16 @@ export function createDecision(input: CreateDecisionInput): number {
   return result.lastInsertRowid as number;
 }
 
+export function getDecision(id: number, agentId = 'default'): Decision | undefined {
+  return getDb().prepare('SELECT * FROM decisions WHERE id = ? AND agent_id = ?')
+    .get(id, agentId) as Decision | undefined;
+}
+
+export function deleteDecision(id: number, agentId = 'default'): boolean {
+  return getDb().prepare('DELETE FROM decisions WHERE id = ? AND agent_id = ?')
+    .run(id, agentId).changes > 0;
+}
+
 export function listDecisions(agentId = 'default', project?: string, limit = 20): Decision[] {
   const db = getDb();
   let sql = 'SELECT * FROM decisions WHERE agent_id = @agent_id';

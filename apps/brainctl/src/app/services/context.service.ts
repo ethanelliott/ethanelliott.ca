@@ -134,6 +134,13 @@ export function listDocuments(agentId: string): DocumentSummary[] {
   `).all(agentId) as DocumentSummary[];
 }
 
+export function getChunk(document: string, chunkIndex: number, agentId: string): ContextChunk | undefined {
+  ensureContextTable();
+  return getDb().prepare(
+    'SELECT * FROM context WHERE document = ? AND chunk_index = ? AND agent_id = ?',
+  ).get(document, chunkIndex, agentId) as ContextChunk | undefined;
+}
+
 export function deleteDocument(document: string, agentId: string): number {
   ensureContextTable();
   const db = getDb();

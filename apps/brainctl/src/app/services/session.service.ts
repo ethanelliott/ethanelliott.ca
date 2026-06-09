@@ -76,6 +76,16 @@ export function getLatestHandoff(agentId = 'default', project?: string): Handoff
   return db.prepare(sql).get(params) as Handoff | undefined;
 }
 
+export function listHandoffs(agentId = 'default', project?: string, includeConsumed = false): Handoff[] {
+  const db = getDb();
+  let sql = 'SELECT * FROM handoffs WHERE agent_id = @agent_id';
+  const params: Record<string, unknown> = { agent_id: agentId };
+  if (!includeConsumed) sql += ' AND consumed_at IS NULL';
+  if (project) { sql += ' AND project = @project'; params['project'] = project; }
+  sql += ' ORDER BY created_at DESC';
+  return db.prepare(sql).all(params) as Handoff[];
+}
+
 export function consumeHandoff(id: number): void {
   const db = getDb();
   db.prepare('UPDATE handoffs SET consumed_at = datetime(\'now\') WHERE id = @id').run({ id });

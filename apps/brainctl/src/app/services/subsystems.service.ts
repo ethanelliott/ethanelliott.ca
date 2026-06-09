@@ -57,6 +57,11 @@ export function upsertBelief(input: {
   return result.lastInsertRowid as number;
 }
 
+export function deleteBelief(id: number, agentId = 'default'): boolean {
+  ensureBeliefTable();
+  return getDb().prepare('DELETE FROM beliefs WHERE id = ? AND agent_id = ?').run(id, agentId).changes > 0;
+}
+
 export function listBeliefs(agentId: string, minConf?: number): Belief[] {
   ensureBeliefTable();
   const db = getDb();
@@ -251,6 +256,11 @@ export function getWorkspace(name: string, agentId: string) {
   return getDb().prepare('SELECT * FROM workspace WHERE name = ? AND agent_id = ?').get(name, agentId);
 }
 
+export function deleteWorkspace(name: string, agentId = 'default'): boolean {
+  ensureWorkspaceTable();
+  return getDb().prepare('DELETE FROM workspace WHERE name = ? AND agent_id = ?').run(name, agentId).changes > 0;
+}
+
 export function listWorkspace(agentId: string, status?: string) {
   ensureWorkspaceTable();
   const db = getDb();
@@ -310,6 +320,16 @@ export function updateTaskStatus(id: number, status: string, result?: string, ag
     WHERE id = @id AND agent_id = @a
   `).run({ s: status, r: result ?? null, id, a: agentId }).changes;
   return changes > 0;
+}
+
+export function getTask(id: number, agentId = 'default') {
+  ensureTaskTable();
+  return getDb().prepare('SELECT * FROM tasks WHERE id = ? AND agent_id = ?').get(id, agentId);
+}
+
+export function deleteTask(id: number, agentId = 'default'): boolean {
+  ensureTaskTable();
+  return getDb().prepare('DELETE FROM tasks WHERE id = ? AND agent_id = ?').run(id, agentId).changes > 0;
 }
 
 export function listTasks(agentId: string, status?: string, assignee?: string) {

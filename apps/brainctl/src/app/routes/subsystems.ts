@@ -2,11 +2,11 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
-  upsertBelief, listBeliefs,
+  upsertBelief, listBeliefs, deleteBelief,
   recordInteraction, getTrust, listTrust,
   reflect, listReflections,
-  upsertWorkspace, getWorkspace, listWorkspace,
-  createTask, updateTaskStatus, listTasks,
+  upsertWorkspace, getWorkspace, listWorkspace, deleteWorkspace,
+  createTask, updateTaskStatus, listTasks, getTask, deleteTask,
   upsertPolicy, evaluatePolicy, listPolicies,
 } from '../services/subsystems.service.js';
 
@@ -28,6 +28,17 @@ export async function SubsystemRoutes(fastify: FastifyInstance) {
       }),
     },
   }, async (req, reply) => reply.status(201).send({ id: upsertBelief(req.body) }));
+
+  f.delete('/belief/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: AgentQ,
+    },
+  }, async (req, reply) => {
+    const deleted = deleteBelief(req.params.id, req.query.agent_id ?? 'default');
+    if (!deleted) return reply.status(404).send({ error: 'Belief not found' });
+    return reply.send({ deleted });
+  });
 
   f.get('/belief', {
     schema: { querystring: AgentQ.extend({ min_confidence: z.coerce.number().optional() }) },
@@ -85,6 +96,17 @@ export async function SubsystemRoutes(fastify: FastifyInstance) {
     },
   }, async (req, reply) => reply.send({ id: upsertWorkspace({ name: req.params.name, ...req.body }) }));
 
+  f.delete('/workspace/:name', {
+    schema: {
+      params: z.object({ name: z.string() }),
+      querystring: AgentQ,
+    },
+  }, async (req, reply) => {
+    const deleted = deleteWorkspace(req.params.name, req.query.agent_id ?? 'default');
+    if (!deleted) return reply.status(404).send({ error: 'Workspace item not found' });
+    return reply.send({ deleted });
+  });
+
   f.get('/workspace', {
     schema: { querystring: AgentQ.extend({ status: z.string().optional() }) },
   }, async (req, reply) => reply.send(listWorkspace(req.query.agent_id ?? 'default', req.query.status)));
@@ -110,6 +132,28 @@ export async function SubsystemRoutes(fastify: FastifyInstance) {
       }),
     },
   }, async (req, reply) => reply.status(201).send({ id: createTask(req.body) }));
+
+  f.get('/tasks/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: AgentQ,
+    },
+  }, async (req, reply) => {
+    const task = getTask(req.params.id, req.query.agent_id ?? 'default');
+    if (!task) return reply.status(404).send({ error: 'Task not found' });
+    return reply.send(task);
+  });
+
+  f.delete('/tasks/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: AgentQ,
+    },
+  }, async (req, reply) => {
+    const deleted = deleteTask(req.params.id, req.query.agent_id ?? 'default');
+    if (!deleted) return reply.status(404).send({ error: 'Task not found' });
+    return reply.send({ deleted });
+  });
 
   f.patch('/tasks/:id/status', {
     schema: {

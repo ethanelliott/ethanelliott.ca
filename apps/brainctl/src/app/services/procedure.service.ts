@@ -144,6 +144,34 @@ export function searchProcedures(input: SearchProceduresInput): Procedure[] {
   }
 }
 
+export function updateProcedure(id: number, input: {
+  goal?: string; title?: string; description?: string;
+  steps?: Array<{ step: number; action: string; notes?: string }>;
+  procedure_kind?: string; scope?: string; category?: string;
+  confidence?: number; status?: string; agent_id?: string;
+}): boolean {
+  const db = getDb();
+  const agentId = input.agent_id ?? 'default';
+  const fields: string[] = ['updated_at = @updated_at'];
+  const params: Record<string, unknown> = { id, agent_id: agentId, updated_at: new Date().toISOString() };
+  if (input.goal !== undefined) { fields.push('goal = @goal'); params['goal'] = input.goal; }
+  if (input.title !== undefined) { fields.push('title = @title'); params['title'] = input.title; }
+  if (input.description !== undefined) { fields.push('description = @description'); params['description'] = input.description; }
+  if (input.steps !== undefined) { fields.push('steps = @steps'); params['steps'] = JSON.stringify(input.steps); }
+  if (input.procedure_kind !== undefined) { fields.push('procedure_kind = @procedure_kind'); params['procedure_kind'] = input.procedure_kind; }
+  if (input.scope !== undefined) { fields.push('scope = @scope'); params['scope'] = input.scope; }
+  if (input.category !== undefined) { fields.push('category = @category'); params['category'] = input.category; }
+  if (input.confidence !== undefined) { fields.push('confidence = @confidence'); params['confidence'] = input.confidence; }
+  if (input.status !== undefined) { fields.push('status = @status'); params['status'] = input.status; }
+  return db.prepare(`UPDATE procedures SET ${fields.join(', ')} WHERE id = @id AND agent_id = @agent_id`)
+    .run(params).changes > 0;
+}
+
+export function deleteProcedure(id: number, agentId = 'default'): boolean {
+  return getDb().prepare('DELETE FROM procedures WHERE id = ? AND agent_id = ?')
+    .run(id, agentId).changes > 0;
+}
+
 export function recordFeedback(input: ProcedureFeedbackInput): number {
   const db = getDb();
   const result = db.prepare(`

@@ -7,6 +7,8 @@ import {
   listProcedures,
   searchProcedures,
   recordFeedback,
+  updateProcedure,
+  deleteProcedure,
 } from '../services/procedure.service.js';
 
 const StepSchema = z.object({
@@ -84,6 +86,39 @@ export async function ProcedureRoutes(fastify: FastifyInstance) {
     const proc = getProcedure(req.params.id, req.query.agent_id);
     if (!proc) return reply.status(404).send({ error: 'Procedure not found' });
     return reply.send(proc);
+  });
+
+  f.patch('/procedures/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      body: z.object({
+        goal: z.string().optional(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        steps: z.array(StepSchema).optional(),
+        procedure_kind: z.string().optional(),
+        scope: z.string().optional(),
+        category: z.string().optional(),
+        confidence: z.number().min(0).max(1).optional(),
+        status: z.string().optional(),
+        agent_id: z.string().optional(),
+      }),
+    },
+  }, async (req, reply) => {
+    const updated = updateProcedure(req.params.id, req.body);
+    if (!updated) return reply.status(404).send({ error: 'Procedure not found' });
+    return reply.send({ updated });
+  });
+
+  f.delete('/procedures/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+    },
+  }, async (req, reply) => {
+    const deleted = deleteProcedure(req.params.id, req.query.agent_id ?? 'default');
+    if (!deleted) return reply.status(404).send({ error: 'Procedure not found' });
+    return reply.send({ deleted });
   });
 
   f.post('/procedures/:id/feedback', {

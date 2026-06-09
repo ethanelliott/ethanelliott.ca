@@ -72,6 +72,35 @@ export function getActiveTriggers(agentId = 'default'): Trigger[] {
   `).all({ agent_id: agentId }) as Trigger[];
 }
 
+export function getTrigger(id: number, agentId = 'default'): Trigger | undefined {
+  return getDb().prepare('SELECT * FROM triggers WHERE id = ? AND agent_id = ?')
+    .get(id, agentId) as Trigger | undefined;
+}
+
+export function updateTrigger(id: number, input: {
+  active?: boolean; expires?: string | null; priority?: string; agent_id?: string;
+}): boolean {
+  const db = getDb();
+  const agentId = input.agent_id ?? 'default';
+  const fields: string[] = [];
+  const params: Record<string, unknown> = { id, agent_id: agentId };
+  if (input.active !== undefined) { fields.push('active = @active'); params['active'] = input.active ? 1 : 0; }
+  if (input.expires !== undefined) { fields.push('expires = @expires'); params['expires'] = input.expires; }
+  if (input.priority !== undefined) { fields.push('priority = @priority'); params['priority'] = input.priority; }
+  if (!fields.length) return false;
+  return db.prepare(`UPDATE triggers SET ${fields.join(', ')} WHERE id = @id AND agent_id = @agent_id`)
+    .run(params).changes > 0;
+}
+
+export function fireTrigger(id: number, agentId = 'default'): Trigger | undefined {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.prepare('UPDATE triggers SET fired_at = @now, active = 0 WHERE id = @id AND agent_id = @agent_id')
+    .run({ now, id, agent_id: agentId });
+  return db.prepare('SELECT * FROM triggers WHERE id = ? AND agent_id = ?')
+    .get(id, agentId) as Trigger | undefined;
+}
+
 export function deleteTrigger(id: number, agentId = 'default'): boolean {
   const db = getDb();
   const result = db.prepare(`

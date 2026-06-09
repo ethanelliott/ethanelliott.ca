@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { createHandoff, getLatestHandoff, orient, wrapUp } from '../services/session.service.js';
+import { createHandoff, getLatestHandoff, listHandoffs, consumeHandoff, orient, wrapUp } from '../services/session.service.js';
 
 export async function SessionRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
@@ -60,6 +60,32 @@ export async function SessionRoutes(fastify: FastifyInstance) {
   }, async (req, reply) => {
     const id = createHandoff(req.body);
     return reply.status(201).send({ id });
+  });
+
+  f.get('/session/handoffs', {
+    schema: {
+      querystring: z.object({
+        project: z.string().optional(),
+        include_consumed: z.coerce.boolean().optional(),
+        agent_id: z.string().optional(),
+      }),
+    },
+  }, async (req, reply) => {
+    const handoffs = listHandoffs(
+      req.query.agent_id,
+      req.query.project,
+      req.query.include_consumed,
+    );
+    return reply.send(handoffs);
+  });
+
+  f.post('/session/handoff/:id/consume', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+    },
+  }, async (req, reply) => {
+    consumeHandoff(req.params.id);
+    return reply.send({ consumed: true });
   });
 
   f.get('/session/handoff/latest', {

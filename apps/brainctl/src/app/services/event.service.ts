@@ -139,6 +139,31 @@ function rrfMergeEvents(fts: BrainEvent[], vec: BrainEvent[], limit: number): Br
     .map(([id]) => byId.get(id)!);
 }
 
+export function getEvent(id: number, agentId = 'default'): BrainEvent | undefined {
+  return getDb().prepare('SELECT * FROM events WHERE id = ? AND agent_id = ?')
+    .get(id, agentId) as BrainEvent | undefined;
+}
+
+export function deleteEvent(id: number, agentId = 'default'): boolean {
+  const db = getDb();
+  if (isVecLoaded()) db.prepare('DELETE FROM vec_events WHERE rowid = ?').run(id);
+  return db.prepare('DELETE FROM events WHERE id = ? AND agent_id = ?').run(id, agentId).changes > 0;
+}
+
+export function listEvents(input: {
+  agent_id?: string; event_type?: string; project?: string;
+  limit?: number; offset?: number;
+}): BrainEvent[] {
+  const db = getDb();
+  const agentId = input.agent_id ?? 'default';
+  let sql = 'SELECT * FROM events WHERE agent_id = @agent_id';
+  const params: Record<string, unknown> = { agent_id: agentId, limit: input.limit ?? 50, offset: input.offset ?? 0 };
+  if (input.event_type) { sql += ' AND event_type = @event_type'; params['event_type'] = input.event_type; }
+  if (input.project) { sql += ' AND project = @project'; params['project'] = input.project; }
+  sql += ' ORDER BY created_at DESC LIMIT @limit OFFSET @offset';
+  return db.prepare(sql).all(params) as BrainEvent[];
+}
+
 export function getRecentEvents(agentId = 'default', limit = 10): BrainEvent[] {
   const db = getDb();
   return db.prepare(`

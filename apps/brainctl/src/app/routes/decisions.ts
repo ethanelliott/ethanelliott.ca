@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { createDecision, listDecisions } from '../services/decision.service.js';
+import { createDecision, listDecisions, getDecision, deleteDecision } from '../services/decision.service.js';
 
 export async function DecisionRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
@@ -21,6 +21,28 @@ export async function DecisionRoutes(fastify: FastifyInstance) {
   }, async (req, reply) => {
     const id = createDecision(req.body);
     return reply.status(201).send({ id });
+  });
+
+  f.get('/decisions/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+    },
+  }, async (req, reply) => {
+    const decision = getDecision(req.params.id, req.query.agent_id ?? 'default');
+    if (!decision) return reply.status(404).send({ error: 'Decision not found' });
+    return reply.send(decision);
+  });
+
+  f.delete('/decisions/:id', {
+    schema: {
+      params: z.object({ id: z.coerce.number().int() }),
+      querystring: z.object({ agent_id: z.string().optional() }),
+    },
+  }, async (req, reply) => {
+    const deleted = deleteDecision(req.params.id, req.query.agent_id ?? 'default');
+    if (!deleted) return reply.status(404).send({ error: 'Decision not found' });
+    return reply.send({ deleted });
   });
 
   f.get('/decisions', {
