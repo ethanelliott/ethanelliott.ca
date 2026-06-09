@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { logEvent, searchEvents, getRecentEvents } from '../services/event.service.js';
+import { EventSchema } from '../schemas.js';
 
 export async function EventRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
@@ -33,6 +34,9 @@ export async function EventRoutes(fastify: FastifyInstance) {
         project: z.string().optional(),
         agent_id: z.string().optional(),
       }),
+      response: {
+        200: z.array(EventSchema),
+      },
     },
   }, async (req, reply) => {
     const results = await searchEvents({
@@ -51,6 +55,9 @@ export async function EventRoutes(fastify: FastifyInstance) {
         limit: z.coerce.number().int().min(1).max(100).optional(),
         agent_id: z.string().optional(),
       }),
+      response: {
+        200: z.array(EventSchema),
+      },
     },
   }, async (req, reply) => {
     const results = getRecentEvents(req.query.agent_id, req.query.limit);

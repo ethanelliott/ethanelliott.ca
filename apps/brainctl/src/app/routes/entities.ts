@@ -8,6 +8,7 @@ import {
   relateEntities,
   getEntityRelations,
 } from '../services/entity.service.js';
+import { EntitySchema, ErrorSchema } from '../schemas.js';
 
 export async function EntityRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
@@ -38,6 +39,9 @@ export async function EntityRoutes(fastify: FastifyInstance) {
         entity_type: z.string().optional(),
         agent_id: z.string().optional(),
       }),
+      response: {
+        200: z.array(EntitySchema),
+      },
     },
   }, async (req, reply) => {
     const results = searchEntities({
@@ -53,6 +57,10 @@ export async function EntityRoutes(fastify: FastifyInstance) {
     schema: {
       params: z.object({ name: z.string() }),
       querystring: z.object({ agent_id: z.string().optional() }),
+      response: {
+        200: EntitySchema,
+        404: ErrorSchema,
+      },
     },
   }, async (req, reply) => {
     const entity = getEntity(req.params.name, req.query.agent_id);

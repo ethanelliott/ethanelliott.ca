@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { addMemory, searchMemories, forgetMemory, getMemory } from '../services/memory.service.js';
+import { MemorySchema, ErrorSchema, DeletedSchema } from '../schemas.js';
 
 export async function MemoryRoutes(fastify: FastifyInstance) {
   const f = fastify.withTypeProvider<ZodTypeProvider>();
@@ -34,6 +35,9 @@ export async function MemoryRoutes(fastify: FastifyInstance) {
         memory_type: z.string().optional(),
         agent_id: z.string().optional(),
       }),
+      response: {
+        200: z.array(MemorySchema),
+      },
     },
   }, async (req, reply) => {
     const results = await searchMemories({
@@ -49,6 +53,10 @@ export async function MemoryRoutes(fastify: FastifyInstance) {
     schema: {
       params: z.object({ id: z.coerce.number().int() }),
       querystring: z.object({ agent_id: z.string().optional() }),
+      response: {
+        200: MemorySchema,
+        404: ErrorSchema,
+      },
     },
   }, async (req, reply) => {
     const memory = getMemory(req.params.id, req.query.agent_id);
@@ -61,7 +69,7 @@ export async function MemoryRoutes(fastify: FastifyInstance) {
       params: z.object({ id: z.coerce.number().int() }),
       querystring: z.object({ agent_id: z.string().optional() }),
       response: {
-        200: z.object({ deleted: z.boolean() }),
+        200: DeletedSchema,
       },
     },
   }, async (req, reply) => {
