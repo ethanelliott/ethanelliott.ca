@@ -15,7 +15,7 @@ export async function SessionRoutes(fastify: FastifyInstance) {
       }),
     },
   }, async (req, reply) => {
-    const result = orient({
+    const result = await orient({
       project: req.query.project,
       query: req.query.q,
       agent_id: req.query.agent_id,
@@ -38,7 +38,7 @@ export async function SessionRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (req, reply) => {
-    const result = wrapUp(req.body);
+    const result = await wrapUp(req.body);
     return reply.send(result);
   });
 

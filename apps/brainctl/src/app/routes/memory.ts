@@ -22,7 +22,7 @@ export async function MemoryRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (req, reply) => {
-    const id = addMemory(req.body);
+    const id = await addMemory(req.body);
     return reply.status(201).send({ id });
   });
 
@@ -36,7 +36,7 @@ export async function MemoryRoutes(fastify: FastifyInstance) {
       }),
     },
   }, async (req, reply) => {
-    const results = searchMemories({
+    const results = await searchMemories({
       query: req.query.q,
       limit: req.query.limit,
       memory_type: req.query.memory_type,

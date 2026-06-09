@@ -1,11 +1,16 @@
 import { getDb } from '../db/database.js';
-import { searchMemories, Memory } from './memory.service.js';
+import { searchMemories, searchMemoriesVec, Memory } from './memory.service.js';
 import { searchEvents, BrainEvent } from './event.service.js';
-import { searchEntities, Entity } from './entity.service.js';
+import { searchEntities, searchEntitiesVec, Entity } from './entity.service.js';
 
 export interface UnifiedSearchResult {
   memories: Memory[];
   events: BrainEvent[];
+  entities: Entity[];
+}
+
+export interface VsearchResult {
+  memories: Memory[];
   entities: Entity[];
 }
 
@@ -14,25 +19,42 @@ export interface ThinkResult {
   activated: Array<{ id: number; content: string; type: string; activation: number }>;
 }
 
-export function unifiedSearch(query: string, limit = 10, agentId = 'default'): UnifiedSearchResult {
+export async function unifiedSearch(
+  query: string,
+  limit = 10,
+  agentId = 'default'
+): Promise<UnifiedSearchResult> {
   const perType = Math.ceil(limit / 3);
-  return {
-    memories: searchMemories({ query, limit: perType, agent_id: agentId }),
-    events: searchEvents({ query, limit: perType, agent_id: agentId }),
-    entities: searchEntities({ query, limit: perType, agent_id: agentId }),
-  };
+  const [memories, events, entities] = await Promise.all([
+    searchMemories({ query, limit: perType, agent_id: agentId }),
+    searchEvents({ query, limit: perType, agent_id: agentId }),
+    searchEntities({ query, limit: perType, agent_id: agentId }),
+  ]);
+  return { memories, events, entities };
 }
 
-export function think(
+export async function vsearch(
+  query: string,
+  limit = 10,
+  agentId = 'default'
+): Promise<VsearchResult> {
+  const [memories, entities] = await Promise.all([
+    searchMemoriesVec({ query, limit, agent_id: agentId }),
+    searchEntitiesVec({ query, limit, agent_id: agentId }),
+  ]);
+  return { memories, entities };
+}
+
+export async function think(
   query: string,
   agentId = 'default',
   seedLimit = 5,
   hops = 2,
   decay = 0.6,
   topK = 20
-): ThinkResult {
+): Promise<ThinkResult> {
   const db = getDb();
-  const seeds = searchMemories({ query, limit: seedLimit, agent_id: agentId });
+  const seeds = await searchMemories({ query, limit: seedLimit, agent_id: agentId });
 
   if (!seeds.length) return { seeds: [], activated: [] };
 
@@ -56,13 +78,13 @@ export function think(
 
     for (const node of frontier) {
       const edges = db.prepare(`
-        SELECT ke.*, m.content, m.confidence
+        SELECT ke.to_type, ke.to_id, ke.from_type, ke.from_id, ke.weight, m.content, m.confidence
         FROM knowledge_edges ke
         JOIN memories m ON m.id = ke.to_id
         WHERE ke.from_type = @type AND ke.from_id = @id AND ke.to_type = 'memory'
           AND m.agent_id = @agent_id AND m.retired_at IS NULL
         UNION ALL
-        SELECT ke.*, m.content, m.confidence
+        SELECT ke.to_type, ke.to_id, ke.from_type, ke.from_id, ke.weight, m.content, m.confidence
         FROM knowledge_edges ke
         JOIN memories m ON m.id = ke.from_id
         WHERE ke.to_type = @type AND ke.to_id = @id AND ke.from_type = 'memory'

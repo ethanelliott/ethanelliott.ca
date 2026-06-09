@@ -1,18 +1,18 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'fs';
+import { readFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { mkdirSync } from 'fs';
+import { EMBEDDING_DIMENSIONS, isEmbeddingAvailable } from '../services/embeddings.service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let _db: Database.Database | null = null;
+let _vecLoaded = false;
 
 export function getDb(): Database.Database {
   if (_db) return _db;
 
   const dbPath = process.env['BRAIN_DB'] ?? join(process.env['HOME'] ?? '/tmp', 'brainctl', 'brain.db');
-
   mkdirSync(dirname(dbPath), { recursive: true });
 
   _db = new Database(dbPath);
@@ -23,12 +23,48 @@ export function getDb(): Database.Database {
   const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
   _db.exec(schema);
 
+  _vecLoaded = tryLoadVec(_db);
+  if (_vecLoaded) {
+    initVecTables(_db);
+  }
+
   return _db;
+}
+
+export function isVecLoaded(): boolean {
+  return _vecLoaded;
+}
+
+function tryLoadVec(db: Database.Database): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sqliteVec = require('sqlite-vec');
+    sqliteVec.load(db);
+    return true;
+  } catch {
+    console.warn('[db] sqlite-vec not available — vector search disabled');
+    return false;
+  }
+}
+
+function initVecTables(db: Database.Database): void {
+  const dim = EMBEDDING_DIMENSIONS;
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_memories
+      USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_entities
+      USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_events
+      USING vec0(rowid INTEGER PRIMARY KEY, embedding FLOAT[${dim}]);
+  `);
 }
 
 export function closeDb(): void {
   if (_db) {
     _db.close();
     _db = null;
+    _vecLoaded = false;
   }
 }

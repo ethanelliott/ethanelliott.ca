@@ -20,7 +20,7 @@ export async function EventRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (req, reply) => {
-    const id = logEvent(req.body);
+    const id = await logEvent(req.body);
     return reply.status(201).send({ id });
   });
 
@@ -35,7 +35,7 @@ export async function EventRoutes(fastify: FastifyInstance) {
       }),
     },
   }, async (req, reply) => {
-    const results = searchEvents({
+    const results = await searchEvents({
       query: req.query.q,
       limit: req.query.limit,
       event_type: req.query.event_type,

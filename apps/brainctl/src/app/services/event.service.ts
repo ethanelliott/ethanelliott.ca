@@ -1,4 +1,5 @@
-import { getDb } from '../db/database.js';
+import { getDb, isVecLoaded } from '../db/database.js';
+import { embed, serializeVec } from './embeddings.service.js';
 
 export interface BrainEvent {
   id: number;
@@ -26,7 +27,7 @@ export interface SearchEventsInput {
   agent_id?: string;
 }
 
-export function logEvent(input: LogEventInput): number {
+export async function logEvent(input: LogEventInput): Promise<number> {
   const db = getDb();
   const result = db.prepare(`
     INSERT INTO events (agent_id, summary, event_type, project, importance)
@@ -38,10 +39,21 @@ export function logEvent(input: LogEventInput): number {
     project: input.project ?? null,
     importance: input.importance ?? 0.5,
   });
-  return result.lastInsertRowid as number;
+
+  const id = result.lastInsertRowid as number;
+
+  if (isVecLoaded()) {
+    const vec = await embed(input.summary);
+    if (vec) {
+      db.prepare('INSERT OR REPLACE INTO vec_events(rowid, embedding) VALUES (?, ?)')
+        .run(id, serializeVec(vec));
+    }
+  }
+
+  return id;
 }
 
-export function searchEvents(input: SearchEventsInput): BrainEvent[] {
+export function searchEventsFts(input: SearchEventsInput): BrainEvent[] {
   const db = getDb();
   const limit = input.limit ?? 10;
   const agentId = input.agent_id ?? 'default';
@@ -85,10 +97,62 @@ export function searchEvents(input: SearchEventsInput): BrainEvent[] {
   }
 }
 
+export async function searchEventsVec(input: SearchEventsInput): Promise<BrainEvent[]> {
+  if (!isVecLoaded()) return [];
+  const db = getDb();
+  const vec = await embed(input.query);
+  if (!vec) return [];
+  const agentId = input.agent_id ?? 'default';
+  const limit = input.limit ?? 10;
+  try {
+    return db.prepare(`
+      SELECT e.* FROM vec_events v
+      JOIN events e ON e.id = v.rowid
+      WHERE v.embedding MATCH ? AND k = ? AND e.agent_id = ?
+      ORDER BY v.distance
+    `).all(serializeVec(vec), limit, agentId) as BrainEvent[];
+  } catch {
+    return [];
+  }
+}
+
+export async function searchEvents(input: SearchEventsInput): Promise<BrainEvent[]> {
+  const [fts, vec] = await Promise.all([searchEventsFts(input), searchEventsVec(input)]);
+  return rrfMergeEvents(fts, vec, input.limit ?? 10);
+}
+
+function rrfMergeEvents(fts: BrainEvent[], vec: BrainEvent[], limit: number): BrainEvent[] {
+  const K = 60;
+  const scores = new Map<number, number>();
+  const byId = new Map<number, BrainEvent>();
+  for (let i = 0; i < fts.length; i++) {
+    scores.set(fts[i].id, (scores.get(fts[i].id) ?? 0) + 1 / (K + i + 1));
+    byId.set(fts[i].id, fts[i]);
+  }
+  for (let i = 0; i < vec.length; i++) {
+    scores.set(vec[i].id, (scores.get(vec[i].id) ?? 0) + 1 / (K + i + 1));
+    byId.set(vec[i].id, vec[i]);
+  }
+  return Array.from(scores.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => byId.get(id)!);
+}
+
 export function getRecentEvents(agentId = 'default', limit = 10): BrainEvent[] {
   const db = getDb();
   return db.prepare(`
     SELECT * FROM events WHERE agent_id = @agent_id
     ORDER BY created_at DESC LIMIT @limit
+  `).all({ agent_id: agentId, limit }) as BrainEvent[];
+}
+
+export function getEventsWithoutEmbeddings(agentId: string, limit: number): BrainEvent[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT e.* FROM events e
+    LEFT JOIN vec_events v ON v.rowid = e.id
+    WHERE e.agent_id = @agent_id AND v.rowid IS NULL
+    LIMIT @limit
   `).all({ agent_id: agentId, limit }) as BrainEvent[];
 }

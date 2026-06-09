@@ -26,7 +26,7 @@ export async function EntityRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (req, reply) => {
-    const id = createOrGetEntity(req.body);
+    const id = await createOrGetEntity(req.body);
     return reply.status(201).send({ id });
   });
 

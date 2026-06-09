@@ -1,10 +1,12 @@
-import { getDb } from '../db/database.js';
+import { getDb, isVecLoaded } from '../db/database.js';
+import { isEmbeddingAvailable, EMBEDDING_DIMENSIONS } from './embeddings.service.js';
 import { statSync } from 'fs';
 import { join } from 'path';
 
 export function getStats(agentId = 'default') {
   const db = getDb();
-  return db.prepare(`
+
+  const base = db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM memories WHERE agent_id = @a AND retired_at IS NULL) AS memories,
       (SELECT COUNT(*) FROM memories WHERE agent_id = @a AND retired_at IS NOT NULL) AS retired_memories,
@@ -15,7 +17,23 @@ export function getStats(agentId = 'default') {
       (SELECT COUNT(*) FROM triggers WHERE agent_id = @a AND active = 1) AS triggers,
       (SELECT COUNT(*) FROM handoffs WHERE agent_id = @a AND consumed_at IS NULL) AS pending_handoffs,
       (SELECT COUNT(*) FROM knowledge_edges) AS knowledge_edges
-  `).get({ a: agentId });
+  `).get({ a: agentId }) as Record<string, number>;
+
+  if (isVecLoaded()) {
+    try {
+      const vecStats = db.prepare(`
+        SELECT
+          (SELECT COUNT(*) FROM vec_memories) AS vec_memories,
+          (SELECT COUNT(*) FROM vec_entities) AS vec_entities,
+          (SELECT COUNT(*) FROM vec_events) AS vec_events
+      `).get() as Record<string, number>;
+      return { ...base, ...vecStats };
+    } catch {
+      // vec tables not yet created
+    }
+  }
+
+  return base;
 }
 
 export function checkHealth(agentId = 'default') {
@@ -56,13 +74,21 @@ export function checkHealth(agentId = 'default') {
   }
 
   const stats = getStats(agentId);
+  const vecAvailable = isVecLoaded();
+  const embeddingAvailable = isEmbeddingAvailable();
+
+  if (!vecAvailable) issues.push('sqlite-vec extension not loaded');
+  if (!embeddingAvailable) issues.push('LITELLM_BASE_URL not set — embeddings disabled');
 
   return {
-    ok: issues.length === 0,
-    healthy: issues.length === 0 && integrityOk,
+    ok: issues.filter((i) => !i.startsWith('sqlite-vec') && !i.startsWith('LITELLM')).length === 0,
+    healthy: integrityOk,
     issues,
     fts5_available: fts5Available,
-    vec_available: false,
+    vec_available: vecAvailable,
+    embedding_available: embeddingAvailable,
+    embedding_dimensions: EMBEDDING_DIMENSIONS,
+    embedding_model: process.env['LITELLM_EMBEDDING_MODEL'] ?? 'text-embedding-3-small',
     db_size_mb: Math.round(dbSizeMb * 100) / 100,
     db_path: dbPath,
     ...(stats as object),

@@ -1,4 +1,5 @@
-import { getDb } from '../db/database.js';
+import { getDb, isVecLoaded } from '../db/database.js';
+import { embed, serializeVec } from './embeddings.service.js';
 
 export interface Entity {
   id: number;
@@ -28,7 +29,7 @@ export interface SearchEntitiesInput {
   agent_id?: string;
 }
 
-export function createOrGetEntity(input: CreateEntityInput): number {
+export async function createOrGetEntity(input: CreateEntityInput): Promise<number> {
   const db = getDb();
   const agentId = input.agent_id ?? 'default';
 
@@ -64,7 +65,18 @@ export function createOrGetEntity(input: CreateEntityInput): number {
     observations: input.observations?.length ? JSON.stringify(input.observations) : null,
   });
 
-  return result.lastInsertRowid as number;
+  const id = result.lastInsertRowid as number;
+
+  if (isVecLoaded()) {
+    const text = [input.name, input.entity_type ?? '', ...(input.observations ?? [])].join(' ');
+    const vec = await embed(text);
+    if (vec) {
+      db.prepare('INSERT OR REPLACE INTO vec_entities(rowid, embedding) VALUES (?, ?)')
+        .run(id, serializeVec(vec));
+    }
+  }
+
+  return id;
 }
 
 export function getEntity(name: string, agentId = 'default'): Entity | undefined {
@@ -112,6 +124,40 @@ export function searchEntities(input: SearchEntitiesInput): Entity[] {
     `;
     return db.prepare(fallback).all({ agent_id: agentId, like: `%${input.query}%`, limit }) as Entity[];
   }
+}
+
+export async function searchEntitiesVec(input: SearchEntitiesInput): Promise<Entity[]> {
+  if (!isVecLoaded()) return [];
+  const db = getDb();
+  const vec = await embed(input.query);
+  if (!vec) return [];
+  const agentId = input.agent_id ?? 'default';
+  const limit = input.limit ?? 10;
+  try {
+    return db.prepare(`
+      SELECT e.* FROM vec_entities v
+      JOIN entities e ON e.id = v.rowid
+      WHERE v.embedding MATCH ? AND k = ? AND e.agent_id = ?
+      ${input.entity_type ? 'AND e.entity_type = ?' : ''}
+      ORDER BY v.distance
+    `).all(
+      ...(input.entity_type
+        ? [serializeVec(vec), limit, agentId, input.entity_type]
+        : [serializeVec(vec), limit, agentId])
+    ) as Entity[];
+  } catch {
+    return [];
+  }
+}
+
+export function getEntitiesWithoutEmbeddings(agentId: string, limit: number): Entity[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT e.* FROM entities e
+    LEFT JOIN vec_entities v ON v.rowid = e.id
+    WHERE e.agent_id = @agent_id AND v.rowid IS NULL
+    LIMIT @limit
+  `).all({ agent_id: agentId, limit }) as Entity[];
 }
 
 export function relateEntities(

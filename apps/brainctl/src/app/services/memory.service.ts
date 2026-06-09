@@ -1,4 +1,5 @@
-import { getDb } from '../db/database.js';
+import { getDb, isVecLoaded } from '../db/database.js';
+import { embed, serializeVec } from './embeddings.service.js';
 
 export interface Memory {
   id: number;
@@ -32,16 +33,14 @@ export interface SearchMemoryInput {
   agent_id?: string;
 }
 
-export function addMemory(input: AddMemoryInput): number {
+export async function addMemory(input: AddMemoryInput): Promise<number> {
   const db = getDb();
   const tags = Array.isArray(input.tags) ? input.tags.join(',') : (input.tags ?? null);
 
-  const stmt = db.prepare(`
+  const result = db.prepare(`
     INSERT INTO memories (agent_id, content, category, tags, confidence, memory_type, scope)
     VALUES (@agent_id, @content, @category, @tags, @confidence, @memory_type, @scope)
-  `);
-
-  const result = stmt.run({
+  `).run({
     agent_id: input.agent_id ?? 'default',
     content: input.content,
     category: input.category ?? 'general',
@@ -51,10 +50,20 @@ export function addMemory(input: AddMemoryInput): number {
     scope: input.scope ?? 'global',
   });
 
-  return result.lastInsertRowid as number;
+  const id = result.lastInsertRowid as number;
+
+  if (isVecLoaded()) {
+    const vec = await embed(input.content);
+    if (vec) {
+      db.prepare('INSERT OR REPLACE INTO vec_memories(rowid, embedding) VALUES (?, ?)')
+        .run(id, serializeVec(vec));
+    }
+  }
+
+  return id;
 }
 
-export function searchMemories(input: SearchMemoryInput): Memory[] {
+export function searchMemoriesFts(input: SearchMemoryInput): Memory[] {
   const db = getDb();
   const limit = input.limit ?? 10;
   const agentId = input.agent_id ?? 'default';
@@ -87,19 +96,82 @@ export function searchMemories(input: SearchMemoryInput): Memory[] {
   try {
     return db.prepare(sql).all(params) as Memory[];
   } catch {
-    const fallback = `
-      SELECT * FROM memories
-      WHERE agent_id = @agent_id
-        AND retired_at IS NULL
-        AND content LIKE @like
-      ${input.memory_type ? 'AND memory_type = @memory_type' : ''}
-      ORDER BY created_at DESC
-      LIMIT @limit
-    `;
     const fp: Record<string, unknown> = { agent_id: agentId, like: `%${input.query}%`, limit };
-    if (input.memory_type) fp['memory_type'] = input.memory_type;
+    let fallback = `
+      SELECT * FROM memories
+      WHERE agent_id = @agent_id AND retired_at IS NULL AND content LIKE @like
+    `;
+    if (input.memory_type) {
+      fallback += ' AND memory_type = @memory_type';
+      fp['memory_type'] = input.memory_type;
+    }
+    fallback += ' ORDER BY created_at DESC LIMIT @limit';
     return db.prepare(fallback).all(fp) as Memory[];
   }
+}
+
+export async function searchMemoriesVec(input: SearchMemoryInput): Promise<Memory[]> {
+  if (!isVecLoaded()) return [];
+
+  const db = getDb();
+  const vec = await embed(input.query);
+  if (!vec) return [];
+
+  const agentId = input.agent_id ?? 'default';
+  const limit = input.limit ?? 10;
+
+  try {
+    const rows = db.prepare(`
+      SELECT m.*, v.distance
+      FROM vec_memories v
+      JOIN memories m ON m.id = v.rowid
+      WHERE v.embedding MATCH ? AND k = ?
+        AND m.agent_id = ?
+        AND m.retired_at IS NULL
+      ${input.memory_type ? 'AND m.memory_type = ?' : ''}
+      ORDER BY v.distance
+    `).all(
+      ...(input.memory_type
+        ? [serializeVec(vec), limit, agentId, input.memory_type]
+        : [serializeVec(vec), limit, agentId])
+    ) as Memory[];
+
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+// Merged hybrid search using Reciprocal Rank Fusion
+export async function searchMemories(input: SearchMemoryInput): Promise<Memory[]> {
+  const [ftsResults, vecResults] = await Promise.all([
+    searchMemoriesFts(input),
+    searchMemoriesVec(input),
+  ]);
+
+  return rrfMergeMemories(ftsResults, vecResults, input.limit ?? 10);
+}
+
+function rrfMergeMemories(fts: Memory[], vec: Memory[], limit: number): Memory[] {
+  const K = 60;
+  const scores = new Map<number, number>();
+  const byId = new Map<number, Memory>();
+
+  for (let i = 0; i < fts.length; i++) {
+    const m = fts[i];
+    scores.set(m.id, (scores.get(m.id) ?? 0) + 1 / (K + i + 1));
+    byId.set(m.id, m);
+  }
+  for (let i = 0; i < vec.length; i++) {
+    const m = vec[i];
+    scores.set(m.id, (scores.get(m.id) ?? 0) + 1 / (K + i + 1));
+    byId.set(m.id, m);
+  }
+
+  return Array.from(scores.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => byId.get(id)!);
 }
 
 export function forgetMemory(id: number, agentId = 'default'): boolean {
@@ -113,5 +185,17 @@ export function forgetMemory(id: number, agentId = 'default'): boolean {
 
 export function getMemory(id: number, agentId = 'default'): Memory | undefined {
   const db = getDb();
-  return db.prepare('SELECT * FROM memories WHERE id = @id AND agent_id = @agent_id').get({ id, agent_id: agentId }) as Memory | undefined;
+  return db.prepare(
+    'SELECT * FROM memories WHERE id = @id AND agent_id = @agent_id'
+  ).get({ id, agent_id: agentId }) as Memory | undefined;
+}
+
+export function getMemoriesWithoutEmbeddings(agentId: string, limit: number): Memory[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT m.* FROM memories m
+    LEFT JOIN vec_memories v ON v.rowid = m.id
+    WHERE m.agent_id = @agent_id AND m.retired_at IS NULL AND v.rowid IS NULL
+    LIMIT @limit
+  `).all({ agent_id: agentId, limit }) as Memory[];
 }

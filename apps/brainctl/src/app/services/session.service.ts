@@ -78,21 +78,22 @@ export function getLatestHandoff(agentId = 'default', project?: string): Handoff
 
 export function consumeHandoff(id: number): void {
   const db = getDb();
-  db.prepare(`
-    UPDATE handoffs SET consumed_at = datetime('now') WHERE id = @id
-  `).run({ id });
+  db.prepare('UPDATE handoffs SET consumed_at = datetime(\'now\') WHERE id = @id').run({ id });
 }
 
-export function orient(input: OrientInput) {
+export async function orient(input: OrientInput) {
   const agentId = input.agent_id ?? 'default';
   const db = getDb();
 
   const handoff = getLatestHandoff(agentId, input.project);
   if (handoff) consumeHandoff(handoff.id);
 
-  const recentEvents = getRecentEvents(agentId, 10);
+  const [recentEvents, memories] = await Promise.all([
+    Promise.resolve(getRecentEvents(agentId, 10)),
+    input.query ? searchMemories({ query: input.query, agent_id: agentId }) : Promise.resolve([]),
+  ]);
+
   const triggers = getActiveTriggers(agentId);
-  const memories = input.query ? searchMemories({ query: input.query, agent_id: agentId }) : [];
   const procedures = listProcedures({ agent_id: agentId, status: 'active' });
 
   const stats = db.prepare(`
@@ -115,10 +116,10 @@ export function orient(input: OrientInput) {
   };
 }
 
-export function wrapUp(input: WrapUpInput) {
+export async function wrapUp(input: WrapUpInput) {
   const agentId = input.agent_id ?? 'default';
 
-  const eventId = logEvent({
+  const eventId = await logEvent({
     summary: input.summary,
     event_type: 'session_end',
     project: input.project,
