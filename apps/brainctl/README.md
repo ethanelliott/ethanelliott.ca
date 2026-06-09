@@ -157,6 +157,9 @@ Append-only observation log. Events are lighter than memories — they record *w
 | Method | Path | Description | MCP equivalent |
 |--------|------|-------------|----------------|
 | `POST` | `/events` | Log a new event | `log_event` |
+| `GET` | `/events` | List events with optional type/project/pagination filters | _(new)_ |
+| `GET` | `/events/:id` | Retrieve a single event by ID | _(new)_ |
+| `DELETE` | `/events/:id` | Delete an event (also removes its embedding) | _(new)_ |
 | `GET` | `/events/search?q=` | Hybrid event search | `search_events` |
 | `GET` | `/events/recent` | Most recent N events | `get_recent_events` |
 
@@ -184,6 +187,8 @@ Immutable decision records with rationale — useful for audit trails and reason
 |--------|------|-------------|----------------|
 | `POST` | `/decisions` | Record a decision | `record_decision` |
 | `GET` | `/decisions` | List decisions, filter by project | `list_decisions` |
+| `GET` | `/decisions/:id` | Retrieve a single decision by ID | _(new)_ |
+| `DELETE` | `/decisions/:id` | Delete a decision record | _(new)_ |
 
 ---
 
@@ -197,6 +202,8 @@ Session continuity tools: orient at the start of a session, hand off at the end.
 | `POST` | `/session/wrap-up` | Log a summary event and create handoff | `wrap_up` |
 | `POST` | `/session/handoff` | Explicit handoff with goal, state, open loops, next step | `create_handoff` |
 | `GET` | `/session/handoff/latest` | Retrieve latest unconsumed handoff | `get_latest_handoff` |
+| `GET` | `/session/handoffs` | List all handoffs (consumed or pending) | _(new)_ |
+| `POST` | `/session/handoff/:id/consume` | Mark a specific handoff as consumed | _(new)_ |
 
 ---
 
@@ -209,7 +216,10 @@ Prospective memory: register conditions that fire when future inputs match.
 | `POST` | `/triggers` | Create a trigger with keywords and action | `create_trigger` |
 | `GET` | `/triggers` | List active triggers | `list_triggers` |
 | `GET` | `/triggers/check?q=` | Test a string against all active triggers | `check_triggers` |
-| `DELETE` | `/triggers/:id` | Remove a trigger | `delete_trigger` |
+| `GET` | `/triggers/:id` | Retrieve a single trigger by ID | _(new)_ |
+| `PATCH` | `/triggers/:id` | Update trigger active state, expiry, or priority | _(new)_ |
+| `POST` | `/triggers/:id/fire` | Manually fire a trigger (marks fired_at, deactivates) | _(new)_ |
+| `DELETE` | `/triggers/:id` | Soft-delete a trigger (sets active=0) | `delete_trigger` |
 
 ---
 
@@ -223,6 +233,8 @@ Reusable workflows and conventions with confidence scores and execution feedback
 | `GET` | `/procedures/search?q=` | FTS search across goal, title, description | `search_procedures` |
 | `GET` | `/procedures` | List procedures with status/scope filter | `list_procedures` |
 | `GET` | `/procedures/:id` | Retrieve full procedure by ID | `get_procedure` |
+| `PATCH` | `/procedures/:id` | Update procedure fields (goal, steps, status, confidence) | _(new)_ |
+| `DELETE` | `/procedures/:id` | Delete a procedure | _(new)_ |
 | `POST` | `/procedures/:id/feedback` | Record execution feedback (success, usefulness score) | `record_feedback` |
 
 ---
@@ -380,6 +392,7 @@ Long-document ingestion with automatic chunking and per-chunk vector search.
 | `PUT` | `/context/:document` | Ingest/re-ingest a named document; auto-chunks at `chunk_size` words (default 300) with `overlap` (default 50) |
 | `GET` | `/context` | List all documents for an agent |
 | `GET` | `/context/:document` | Retrieve all chunks in order |
+| `GET` | `/context/:document/:chunk_index` | Retrieve a single chunk by zero-based index |
 | `DELETE` | `/context/:document` | Remove all chunks for a document |
 | `POST` | `/context/search` | Hybrid FTS5+vec search across chunks, optionally filtered by document |
 
@@ -406,6 +419,7 @@ Six lightweight in-process "subsystems" that model higher-order cognitive proces
 |--------|------|-------------|----------------|
 | `POST` | `/belief` | Upsert a belief with confidence and evidence | `upsert_belief` |
 | `GET` | `/belief` | List beliefs, optionally filtered by minimum confidence | `list_beliefs` |
+| `DELETE` | `/belief/:id` | Delete a belief by ID | _(new)_ |
 
 #### Trust
 | Method | Path | Description | MCP equivalent |
@@ -428,13 +442,16 @@ Trust score starts at 0.5 and updates: +0.05 for positive, −0.08 for negative,
 | `PUT` | `/workspace/:name` | Create or update a named scratchpad | `upsert_workspace` |
 | `GET` | `/workspace` | List workspace items, optionally filter by status | `list_workspace` |
 | `GET` | `/workspace/:name` | Retrieve a specific workspace item | `get_workspace` |
+| `DELETE` | `/workspace/:name` | Delete a workspace item | _(new)_ |
 
 #### Tasks
 | Method | Path | Description | MCP equivalent |
 |--------|------|-------------|----------------|
 | `POST` | `/tasks` | Create a task with priority (`critical` / `high` / `medium` / `low`) | `create_task` |
-| `PATCH` | `/tasks/:id/status` | Update task status and optional result | `update_task_status` |
 | `GET` | `/tasks` | List tasks, filter by status and assignee | `list_tasks` |
+| `GET` | `/tasks/:id` | Retrieve a single task by ID | _(new)_ |
+| `PATCH` | `/tasks/:id/status` | Update task status and optional result | `update_task_status` |
+| `DELETE` | `/tasks/:id` | Delete a task | _(new)_ |
 
 #### Policies
 | Method | Path | Description | MCP equivalent |
@@ -560,14 +577,14 @@ Every LLM call has a fallback path:
 
 | Category | Endpoints |
 |----------|-----------|
-| Core memory | 4 |
+| Core memory | 6 |
 | Memory lifecycle | 9 |
-| Events | 3 |
-| Entities | 5 |
-| Decisions | 2 |
-| Session | 4 |
-| Triggers | 4 |
-| Procedures | 5 |
+| Events | 6 |
+| Entities | 7 |
+| Decisions | 4 |
+| Session | 6 |
+| Triggers | 7 |
+| Procedures | 7 |
 | Search & reasoning | 9 |
 | Affect | 7 |
 | Consolidation | 8 |
@@ -576,11 +593,11 @@ Every LLM call has a fallback path:
 | Admin | 7 |
 | Multi-agent | 6 |
 | Diagnostics | 2 |
-| Context | 5 |
+| Context | 6 |
 | Analytics | 5 |
-| Subsystems (6 × 2–3) | 17 |
+| Subsystems (6 × 2–5) | 21 |
 | Subsystem meta | 5 |
 | Theory of Mind | 3 |
 | Budget | 4 |
 | Push & webhooks | 5 |
-| **Total** | **153** |
+| **Total** | **170** |
