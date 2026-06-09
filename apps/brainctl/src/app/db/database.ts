@@ -50,6 +50,7 @@ function runMigrations(db: Database.Database): void {
   addColumnIfMissing(db, 'memories', 'temporal_class', "TEXT NOT NULL DEFAULT 'medium'");
   addColumnIfMissing(db, 'memories', 'last_accessed_at', 'TEXT');
   addColumnIfMissing(db, 'memories', 'compressed_into', 'INTEGER');
+  addColumnIfMissing(db, 'memories', 'quarantined_at', 'TEXT');
 }
 
 function tryLoadVec(db: Database.Database): boolean {

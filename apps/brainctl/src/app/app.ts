@@ -17,6 +17,7 @@ import { AdminRoutes } from './routes/admin.js';
 import { AgentRoutes } from './routes/agents.js';
 import { SubsystemRoutes } from './routes/subsystems.js';
 import { ContextRoutes } from './routes/context.js';
+import { MemoryLifecycleRoutes } from './routes/memory.lifecycle.js';
 
 export async function Application(fastify: FastifyInstance) {
   fastify.register(MemoryRoutes);
@@ -37,4 +38,5 @@ export async function Application(fastify: FastifyInstance) {
   fastify.register(AgentRoutes);
   fastify.register(SubsystemRoutes);
   fastify.register(ContextRoutes);
+  fastify.register(MemoryLifecycleRoutes);
 }
