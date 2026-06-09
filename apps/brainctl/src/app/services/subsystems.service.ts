@@ -102,6 +102,8 @@ export function recordInteraction(input: {
   ensureTrustTable();
   const db = getDb();
   const agentId = input.agent_id ?? 'default';
+  // Asymmetric update: negative outcomes reduce trust faster than positive ones restore it.
+  // This mirrors the negativity bias observed in human trust calibration.
   const delta = input.outcome === 'positive' ? 0.05 : input.outcome === 'negative' ? -0.08 : 0;
   const posInc = input.outcome === 'positive' ? 1 : 0;
   const negInc = input.outcome === 'negative' ? 1 : 0;

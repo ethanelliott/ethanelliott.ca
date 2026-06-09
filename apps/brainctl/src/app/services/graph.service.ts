@@ -27,7 +27,10 @@ export interface TraversalNode {
 }
 
 // ---------------------------------------------------------------------------
-// PageRank over knowledge_edges
+// Weighted iterative PageRank over the agent's knowledge_edges subgraph.
+// PR(u) = (1-d)/N + d * Σ_v [ PR(v) * w(v→u) / Σ_w w(v→w) ]
+// Edge weight is used as the transfer probability — higher-weight edges
+// propagate more score. Retired memories are excluded from the graph.
 // ---------------------------------------------------------------------------
 
 export function computePageRank(

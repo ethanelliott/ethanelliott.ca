@@ -93,6 +93,10 @@ export function validateDatabase(agentId: string): {
 
 // ---------------------------------------------------------------------------
 // free_energy_check — homeostatic memory pressure
+// Pressure = active_memories / capacity_target, clamped to [0, 1].
+// A score above 0.9 signals the consolidation engine should run immediately.
+// Named after the free-energy principle (Friston): high pressure = high
+// prediction error in the generative model of the memory store.
 // ---------------------------------------------------------------------------
 
 export function freeEnergyCheck(agentId: string, capacityTarget = 10000): {
@@ -135,6 +139,8 @@ export function freeEnergyCheck(agentId: string, capacityTarget = 10000): {
 
 // ---------------------------------------------------------------------------
 // allostatic_prime — surface memories near decay threshold before consolidation
+// decay_risk ≈ 1 / remaining_half_lives: a memory needing 0.1 more half-lives
+// to hit the retire threshold has risk ≈ 1, while one needing 10 has risk ≈ 0.1.
 // ---------------------------------------------------------------------------
 
 export function allostaticPrime(agentId: string, limit = 20): Array<{

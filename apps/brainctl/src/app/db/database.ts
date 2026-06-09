@@ -36,7 +36,8 @@ export function isVecLoaded(): boolean {
 }
 
 // Safe ALTER TABLE for columns added after initial schema deployment.
-// SQLite has no "ADD COLUMN IF NOT EXISTS" — we catch the duplicate-column error.
+// SQLite has no "ADD COLUMN IF NOT EXISTS" so we catch the duplicate-column error.
+// This means migrations are idempotent: safe to re-run on every startup.
 function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string): void {
   try {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
@@ -65,6 +66,9 @@ function tryLoadVec(db: Database.Database): boolean {
   }
 }
 
+// Vec tables must be created with the embedding dimension baked in.
+// If LITELLM_EMBEDDING_DIMENSIONS changes, the old vec tables are incompatible
+// and the DB must be re-created or the vec tables dropped and recreated manually.
 function initVecTables(db: Database.Database): void {
   const dim = EMBEDDING_DIMENSIONS;
   db.exec(`

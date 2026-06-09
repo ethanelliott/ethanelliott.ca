@@ -37,8 +37,10 @@ export interface SearchMemoryInput {
   agent_id?: string;
 }
 
-// Record that a set of memories were accessed: bump recalled_count,
-// last_accessed_at, replay_priority, and ripple_tags in one UPDATE.
+// Record that a set of memories were accessed in one batched UPDATE.
+// replay_priority drives the Promotion pass (episodic→semantic threshold is 0.3).
+// ripple_tags counts how many distinct searches surfaced this memory — high ripple
+// means the memory is broadly relevant, a stronger signal than simple recall count.
 function recordAccess(ids: number[]): void {
   if (!ids.length) return;
   const db = getDb();
@@ -88,6 +90,8 @@ export function searchMemoriesFts(input: SearchMemoryInput): Memory[] {
   const limit = input.limit ?? 10;
   const agentId = input.agent_id ?? 'default';
 
+  // Convert to FTS5 OR query; single-char tokens skipped (too common to be useful).
+  // Falls back to LIKE search if the FTS index throws (e.g. during a rebuild).
   const sanitized = input.query
     .replace(/[^\w\s]/g, ' ')
     .trim()
@@ -160,7 +164,8 @@ export async function searchMemoriesVec(input: SearchMemoryInput): Promise<Memor
   }
 }
 
-// Hybrid search: FTS5 + vector, merged via RRF, then access recorded.
+// Hybrid search: runs FTS5 and vector queries in parallel then merges with RRF.
+// Access is recorded on the merged result set so recall stats stay accurate.
 export async function searchMemories(input: SearchMemoryInput): Promise<Memory[]> {
   const [ftsResults, vecResults] = await Promise.all([
     searchMemoriesFts(input),
@@ -172,6 +177,9 @@ export async function searchMemories(input: SearchMemoryInput): Promise<Memory[]
   return merged;
 }
 
+// Reciprocal Rank Fusion: score(d) = Σ 1/(K + rank_i(d))
+// K=60 is the standard choice — it dampens position sensitivity near the top
+// of each ranked list without over-weighting documents that appear only in one source.
 function rrfMergeMemories(fts: Memory[], vec: Memory[], limit: number): Memory[] {
   const K = 60;
   const scores = new Map<number, number>();

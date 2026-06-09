@@ -64,7 +64,10 @@ const DEFAULTS = {
   batch_limit: 500,
 };
 
-// Half-life in days per temporal class (from brainctl original)
+// Half-life in days per temporal class.
+// Exponential decay formula: confidence(t) = confidence(0) × e^(-λt), λ = ln2/half_life
+// A memory at 0.5 confidence with 'short' class drops below the 0.1 retire threshold
+// after ~33 days without reinforcement.
 const HALF_LIVES: Record<string, number> = {
   ephemeral: 3.5,
   short: 10,
@@ -289,7 +292,9 @@ async function buildVecClusters(
   threshold: number,
   minSize: number
 ): Promise<MemoryRow[][]> {
-  // Union-find clustering via vector KNN
+  // Union-find with path compression: amortised O(α(n)) per lookup.
+  // For each memory we query its K=10 nearest neighbours; any pair within
+  // vec_similarity_threshold distance is merged into the same cluster root.
   const parent = new Map<number, number>();
   const find = (id: number): number => {
     if (parent.get(id) === id) return id;
@@ -338,7 +343,9 @@ function buildFtsClusters(
 
   for (const m of memories) parent.set(m.id, m.id);
 
-  // Group by category first to reduce pairwise comparisons
+  // Group by (category, scope) before pairwise Jaccard — reduces O(n²) to
+  // O(k²) per group where k << n. Each group is further capped at 80 to
+  // prevent runaway comparisons in categories with many similar memories.
   const byCategory = new Map<string, MemoryRow[]>();
   for (const m of memories) {
     const key = `${m.category}::${m.scope}`;

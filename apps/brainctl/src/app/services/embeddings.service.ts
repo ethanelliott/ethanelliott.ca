@@ -1,3 +1,7 @@
+// LiteLLM proxy is used as an OpenAI-compatible gateway.
+// Any model it can serve (OpenAI, local via Ollama, HuggingFace, etc.) works here —
+// change LITELLM_EMBEDDING_MODEL and LITELLM_EMBEDDING_DIMENSIONS to match.
+// When BASE_URL is unset all embedding calls degrade gracefully (null returned).
 const BASE_URL = process.env['LITELLM_BASE_URL'] ?? '';
 const API_KEY = process.env['LITELLM_API_KEY'] ?? 'no-key';
 const MODEL = process.env['LITELLM_EMBEDDING_MODEL'] ?? 'text-embedding-3-small';

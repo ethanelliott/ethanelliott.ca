@@ -25,6 +25,8 @@ const AROUSAL_HIGH = new Set([
   'important', 'immediately', 'now', 'fast', 'quick', 'alert',
 ]);
 
+// Safety flags are appended regardless of valence so that distress signals
+// are visible even in neutrally-toned text (e.g. clinical reporting).
 const SAFETY_PATTERNS = [
   { pattern: /\b(kill|harm|hurt|destroy|attack)\b/i, flag: 'potential_harm' },
   { pattern: /\b(die|death|suicide)\b/i, flag: 'distress' },
