@@ -12,6 +12,10 @@ export interface Memory {
   scope: string;
   replay_priority: number;
   ripple_tags: number;
+  recalled_count: number;
+  temporal_class: string;
+  last_accessed_at: string | null;
+  compressed_into: number | null;
   created_at: string;
   retired_at: string | null;
 }
@@ -31,6 +35,22 @@ export interface SearchMemoryInput {
   limit?: number;
   memory_type?: string;
   agent_id?: string;
+}
+
+// Record that a set of memories were accessed: bump recalled_count,
+// last_accessed_at, replay_priority, and ripple_tags in one UPDATE.
+function recordAccess(ids: number[]): void {
+  if (!ids.length) return;
+  const db = getDb();
+  const placeholders = ids.map(() => '?').join(',');
+  db.prepare(`
+    UPDATE memories
+    SET recalled_count   = recalled_count + 1,
+        last_accessed_at = datetime('now'),
+        replay_priority  = min(1.0, replay_priority + 0.05),
+        ripple_tags      = ripple_tags + 1
+    WHERE id IN (${placeholders})
+  `).run(...ids);
 }
 
 export async function addMemory(input: AddMemoryInput): Promise<number> {
@@ -121,7 +141,7 @@ export async function searchMemoriesVec(input: SearchMemoryInput): Promise<Memor
   const limit = input.limit ?? 10;
 
   try {
-    const rows = db.prepare(`
+    return db.prepare(`
       SELECT m.*, v.distance
       FROM vec_memories v
       JOIN memories m ON m.id = v.rowid
@@ -135,21 +155,21 @@ export async function searchMemoriesVec(input: SearchMemoryInput): Promise<Memor
         ? [serializeVec(vec), limit, agentId, input.memory_type]
         : [serializeVec(vec), limit, agentId])
     ) as Memory[];
-
-    return rows;
   } catch {
     return [];
   }
 }
 
-// Merged hybrid search using Reciprocal Rank Fusion
+// Hybrid search: FTS5 + vector, merged via RRF, then access recorded.
 export async function searchMemories(input: SearchMemoryInput): Promise<Memory[]> {
   const [ftsResults, vecResults] = await Promise.all([
     searchMemoriesFts(input),
     searchMemoriesVec(input),
   ]);
 
-  return rrfMergeMemories(ftsResults, vecResults, input.limit ?? 10);
+  const merged = rrfMergeMemories(ftsResults, vecResults, input.limit ?? 10);
+  recordAccess(merged.map((m) => m.id));
+  return merged;
 }
 
 function rrfMergeMemories(fts: Memory[], vec: Memory[], limit: number): Memory[] {
@@ -158,14 +178,12 @@ function rrfMergeMemories(fts: Memory[], vec: Memory[], limit: number): Memory[]
   const byId = new Map<number, Memory>();
 
   for (let i = 0; i < fts.length; i++) {
-    const m = fts[i];
-    scores.set(m.id, (scores.get(m.id) ?? 0) + 1 / (K + i + 1));
-    byId.set(m.id, m);
+    scores.set(fts[i].id, (scores.get(fts[i].id) ?? 0) + 1 / (K + i + 1));
+    byId.set(fts[i].id, fts[i]);
   }
   for (let i = 0; i < vec.length; i++) {
-    const m = vec[i];
-    scores.set(m.id, (scores.get(m.id) ?? 0) + 1 / (K + i + 1));
-    byId.set(m.id, m);
+    scores.set(vec[i].id, (scores.get(vec[i].id) ?? 0) + 1 / (K + i + 1));
+    byId.set(vec[i].id, vec[i]);
   }
 
   return Array.from(scores.entries())
@@ -185,9 +203,11 @@ export function forgetMemory(id: number, agentId = 'default'): boolean {
 
 export function getMemory(id: number, agentId = 'default'): Memory | undefined {
   const db = getDb();
-  return db.prepare(
+  const memory = db.prepare(
     'SELECT * FROM memories WHERE id = @id AND agent_id = @agent_id'
   ).get({ id, agent_id: agentId }) as Memory | undefined;
+  if (memory) recordAccess([memory.id]);
+  return memory;
 }
 
 export function getMemoriesWithoutEmbeddings(agentId: string, limit: number): Memory[] {
