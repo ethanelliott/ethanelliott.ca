@@ -14,6 +14,7 @@ import { RecordingRouter } from './recording/recording.router';
 import { WebSocketService } from './websocket/websocket.service';
 import { StreamService } from './stream/stream.service';
 import { DetectionService } from './detection/detection.service';
+import { RecordingService } from './recording/recording.service';
 import { NotificationService } from './notification/notification.service';
 import { AnalysisService } from './analysis/analysis.service';
 import { CleanupService } from './cleanup/cleanup.service';
@@ -22,6 +23,7 @@ import { CleanupService } from './cleanup/cleanup.service';
 import './detection';
 import './notification';
 import './analysis';
+import './recording';
 
 export async function Application(fastify: FastifyInstance) {
   // Initialize Socket.io on the underlying HTTP server
@@ -81,6 +83,16 @@ export async function Application(fastify: FastifyInstance) {
   fastify.addHook('onReady', async () => {
     const streamService = inject(StreamService);
     const detectionService = inject(DetectionService);
+
+    // Recording settings must be loaded before the stream starts so the
+    // FFmpeg recording output reflects the persisted configuration.
+    const recordingService = inject(RecordingService);
+    try {
+      await recordingService.initialize();
+      console.log('🎞️ Recording service initialized');
+    } catch (err) {
+      console.error('❌ Failed to initialize recording service:', err);
+    }
 
     try {
       await streamService.start();

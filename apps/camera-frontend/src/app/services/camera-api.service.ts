@@ -140,6 +140,12 @@ export interface CleanupStatus {
   videoRetentionDays: number;
 }
 
+export interface RecordingSettings {
+  enabled: boolean;
+  retentionDays: number;
+  segmentSeconds: number;
+}
+
 export interface RecordingStatus {
   enabled: boolean;
   segmentCount: number;
@@ -329,6 +335,21 @@ export class CameraApiService {
 
   getRecordingStatus(): Observable<RecordingStatus> {
     return this.http.get<RecordingStatus>(`${this.baseUrl}/recordings/status`);
+  }
+
+  getRecordingSettings(): Observable<RecordingSettings> {
+    return this.http.get<RecordingSettings>(
+      `${this.baseUrl}/recordings/settings`
+    );
+  }
+
+  updateRecordingSettings(
+    update: Partial<RecordingSettings>
+  ): Observable<RecordingSettings> {
+    return this.http.put<RecordingSettings>(
+      `${this.baseUrl}/recordings/settings`,
+      update
+    );
   }
 
   getClipUrl(start: Date, durationSec: number): string {

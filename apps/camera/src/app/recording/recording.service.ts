@@ -1,3 +1,4 @@
+import { inject } from '@ee/di';
 import { spawn } from 'child_process';
 import {
   existsSync,
@@ -8,6 +9,12 @@ import {
   writeFileSync,
 } from 'fs';
 import { join } from 'path';
+import { Database } from '../data-source';
+import {
+  RecordingSettings,
+  RecordingSettingsEntity,
+  UpdateRecordingSettings,
+} from './recording.entity';
 
 /** A completed recording segment on disk. */
 interface SegmentInfo {
@@ -41,16 +48,21 @@ export interface RecordingStatus {
  * clip boundaries snap to segment boundaries (~±1 segment of slack).
  */
 export class RecordingService {
-  private readonly _enabled = process.env.RECORDING_ENABLED !== 'false';
+  private readonly _db = inject(Database);
+  private readonly _settingsRepo = this._db.repositoryFor(
+    RecordingSettingsEntity
+  );
 
-  /** Target duration of each recording segment in seconds */
-  private readonly _segmentSeconds = parseInt(
+  /** In-memory cache of the current settings (DB-backed) */
+  private _settings: RecordingSettingsEntity | null = null;
+
+  /** Env-var defaults, used to seed the settings row and as fallbacks */
+  private readonly _envEnabled = process.env.RECORDING_ENABLED !== 'false';
+  private readonly _envSegmentSeconds = parseInt(
     process.env.RECORDING_SEGMENT_SECONDS || '10',
     10
   );
-
-  /** How long to keep recorded video (separate from snapshot retention) */
-  private readonly _retentionDays = parseInt(
+  private readonly _envRetentionDays = parseInt(
     process.env.VIDEO_RETENTION_DAYS || '3',
     10
   );
@@ -79,16 +91,96 @@ export class RecordingService {
     return join(this._dataDir, 'clips');
   }
 
+  /**
+   * Load settings from the database (or create defaults from env vars).
+   * Called once during startup, before the stream starts.
+   */
+  async initialize(): Promise<void> {
+    try {
+      let row = await this._settingsRepo.findOne({ where: {} });
+      if (!row) {
+        row = this._settingsRepo.create({
+          enabled: this._envEnabled,
+          retentionDays: this._envRetentionDays,
+          segmentSeconds: this._envSegmentSeconds,
+        });
+        await this._settingsRepo.save(row);
+        console.log('🎞️ Initialized default recording settings');
+      }
+      this._settings = row;
+      console.log(
+        `🎞️ Recording ${row.enabled ? 'ENABLED' : 'disabled'} ` +
+          `(${row.segmentSeconds}s segments, ${row.retentionDays}d retention)`
+      );
+    } catch (err) {
+      console.error('Failed to load recording settings:', err);
+    }
+  }
+
   isEnabled(): boolean {
-    return this._enabled;
+    return this._settings?.enabled ?? this._envEnabled;
   }
 
   getSegmentSeconds(): number {
-    return this._segmentSeconds;
+    return this._settings?.segmentSeconds ?? this._envSegmentSeconds;
   }
 
   getRetentionDays(): number {
-    return this._retentionDays;
+    return this._settings?.retentionDays ?? this._envRetentionDays;
+  }
+
+  getSettings(): RecordingSettings {
+    return {
+      enabled: this.isEnabled(),
+      retentionDays: this.getRetentionDays(),
+      segmentSeconds: this.getSegmentSeconds(),
+    };
+  }
+
+  /**
+   * Update recording settings and persist them.
+   * Returns whether the FFmpeg stream must be restarted for the change
+   * to take effect (enabling/disabling recording or resizing segments).
+   * A lowered retention is applied to disk immediately.
+   */
+  async updateSettings(
+    update: UpdateRecordingSettings
+  ): Promise<{ settings: RecordingSettings; requiresStreamRestart: boolean }> {
+    if (!this._settings) {
+      await this.initialize();
+    }
+    const row = this._settings;
+    if (!row) {
+      throw new Error('Recording settings unavailable');
+    }
+
+    const requiresStreamRestart =
+      (update.enabled !== undefined && update.enabled !== row.enabled) ||
+      (update.segmentSeconds !== undefined &&
+        update.segmentSeconds !== row.segmentSeconds);
+
+    if (update.enabled !== undefined) row.enabled = update.enabled;
+    if (update.retentionDays !== undefined)
+      row.retentionDays = update.retentionDays;
+    if (update.segmentSeconds !== undefined)
+      row.segmentSeconds = update.segmentSeconds;
+
+    await this._settingsRepo.save(row);
+
+    // Apply a shortened retention right away so the storage card
+    // reflects the change without waiting for the next cleanup run.
+    if (update.retentionDays !== undefined) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - row.retentionDays);
+      const pruned = this.pruneOlderThan(cutoff);
+      if (pruned > 0) {
+        console.log(
+          `🎞️ Retention change pruned ${pruned} recording segments`
+        );
+      }
+    }
+
+    return { settings: this.getSettings(), requiresStreamRestart };
   }
 
   /**
@@ -120,17 +212,18 @@ export class RecordingService {
     start: Date,
     durationSec: number
   ): Promise<{ path: string; filename: string } | null> {
-    if (!this._enabled) return null;
+    if (!this.isEnabled()) return null;
     this.ensureDirs();
     this._pruneClips();
 
+    const segmentSeconds = this.getSegmentSeconds();
     const startEpoch = Math.floor(start.getTime() / 1000);
     const endEpoch = startEpoch + Math.ceil(durationSec);
     const nowEpoch = Math.floor(Date.now() / 1000);
 
     // Skip segments that may still be written by FFmpeg
     const completed = this._listSegments().filter(
-      (s) => s.epoch + this._segmentSeconds + 3 <= nowEpoch
+      (s) => s.epoch + segmentSeconds + 3 <= nowEpoch
     );
 
     const inWindow = completed.filter(
@@ -142,7 +235,7 @@ export class RecordingService {
     const before = completed
       .filter(
         (s) =>
-          s.epoch < startEpoch && s.epoch + this._segmentSeconds * 2 > startEpoch
+          s.epoch < startEpoch && s.epoch + segmentSeconds * 2 > startEpoch
       )
       .pop();
     const segments = before ? [before, ...inWindow] : inWindow;
@@ -198,6 +291,7 @@ export class RecordingService {
   }
 
   getStatus(): RecordingStatus {
+    const segmentSeconds = this.getSegmentSeconds();
     const segments = this._listSegments();
     const totalBytes = segments.reduce((sum, s) => sum + s.size, 0);
     const oldest = segments[0];
@@ -206,7 +300,7 @@ export class RecordingService {
     // Estimate the daily write rate once we have ≥10 minutes of footage
     let estimatedDailyGB: number | null = null;
     if (oldest && newest) {
-      const spanSec = newest.epoch + this._segmentSeconds - oldest.epoch;
+      const spanSec = newest.epoch + segmentSeconds - oldest.epoch;
       if (spanSec >= 600) {
         estimatedDailyGB =
           Math.round(((totalBytes / spanSec) * 86_400) / 1e7) / 100;
@@ -214,17 +308,17 @@ export class RecordingService {
     }
 
     return {
-      enabled: this._enabled,
+      enabled: this.isEnabled(),
       segmentCount: segments.length,
       totalSizeMB: Math.round(totalBytes / 1024 / 1024),
       oldestTimestamp: oldest
         ? new Date(oldest.epoch * 1000).toISOString()
         : null,
       newestTimestamp: newest
-        ? new Date((newest.epoch + this._segmentSeconds) * 1000).toISOString()
+        ? new Date((newest.epoch + segmentSeconds) * 1000).toISOString()
         : null,
-      retentionDays: this._retentionDays,
-      segmentSeconds: this._segmentSeconds,
+      retentionDays: this.getRetentionDays(),
+      segmentSeconds,
       estimatedDailyGB,
     };
   }
