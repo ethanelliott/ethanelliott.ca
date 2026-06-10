@@ -10,6 +10,7 @@ import {
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { CameraService } from '../camera/camera.service';
+import { RecordingService } from '../recording/recording.service';
 
 /**
  * StreamService manages the FFmpeg process that converts
@@ -17,6 +18,7 @@ import { CameraService } from '../camera/camera.service';
  */
 export class StreamService {
   private readonly _cameraService = inject(CameraService);
+  private readonly _recordingService = inject(RecordingService);
   private _ffmpegProcess: ChildProcess | null = null;
   private _isRunning = false;
   private _restartAttempts = 0;
@@ -70,6 +72,11 @@ export class StreamService {
     // Ensure HLS directory exists
     if (!existsSync(this._hlsDir)) {
       mkdirSync(this._hlsDir, { recursive: true });
+    }
+
+    // Ensure recording directories exist (segments persist across restarts)
+    if (this._recordingService.isEnabled()) {
+      this._recordingService.ensureDirs();
     }
 
     // Purge stale HLS files from previous runs so the player doesn't
@@ -239,6 +246,30 @@ export class StreamService {
       '-an',
       this._detectionFramePath,
     ];
+
+    // ── Output #2: continuous rolling recording for event playback ──
+    // Fixed-length MPEG-TS segments named by their start epoch so the
+    // RecordingService can assemble clips around detection timestamps.
+    if (this._recordingService.isEnabled()) {
+      args.push(
+        '-map',
+        '0:v',
+        '-an',
+        '-c:v',
+        'copy',
+        '-f',
+        'segment',
+        '-segment_time',
+        String(this._recordingService.getSegmentSeconds()),
+        '-segment_format',
+        'mpegts',
+        '-reset_timestamps',
+        '1',
+        '-strftime',
+        '1',
+        this._recordingService.getSegmentPattern()
+      );
+    }
 
     console.log('🎬 Starting FFmpeg with args:', args.join(' '));
 

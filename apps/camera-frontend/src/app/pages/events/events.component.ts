@@ -4,6 +4,7 @@ import {
   OnInit,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,11 +14,13 @@ import { ButtonDirective } from 'primeng/button';
 import {
   CameraApiService,
   DetectionEvent,
+  RecordingStatus,
   SceneAnalysis,
   SceneEntity,
   AnomalyRating,
 } from '../../services/camera-api.service';
 import { LABEL_OPTIONS } from '../../constants/labels';
+import { ClipPlayerComponent } from '../../components/clip-player/clip-player.component';
 
 @Component({
   selector: 'app-events',
@@ -29,6 +32,7 @@ import { LABEL_OPTIONS } from '../../constants/labels';
     Select,
     Paginator,
     ButtonDirective,
+    ClipPlayerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -78,6 +82,7 @@ import { LABEL_OPTIONS } from '../../constants/labels';
           <span class="col-confidence">Confidence</span>
           <span class="col-analysis">Analysis</span>
           <span class="col-snapshot">Snapshot</span>
+          <span class="col-video">Video</span>
         </div>
 
         @for (event of events(); track event.id) {
@@ -130,6 +135,19 @@ import { LABEL_OPTIONS } from '../../constants/labels';
             >
               <i class="pi pi-image"></i>
             </a>
+            } @else {
+            <i class="pi pi-minus no-snapshot"></i>
+            }
+          </span>
+          <span class="col-video">
+            @if (hasRecording(event)) {
+            <button
+              pButton
+              [text]="true"
+              icon="pi pi-play-circle"
+              class="play-clip-btn"
+              (click)="playClip(event); $event.stopPropagation()"
+            ></button>
             } @else {
             <i class="pi pi-minus no-snapshot"></i>
             }
@@ -195,6 +213,8 @@ import { LABEL_OPTIONS } from '../../constants/labels';
           [showFirstLastIcon]="true"
         />
       </div>
+
+      <app-clip-player #clipPlayer />
     </div>
   `,
   styles: `
@@ -238,7 +258,7 @@ import { LABEL_OPTIONS } from '../../constants/labels';
 
     .table-header {
       display: grid;
-      grid-template-columns: 180px 120px 160px 1fr 60px;
+      grid-template-columns: 180px 120px 160px 1fr 60px 60px;
       gap: 12px;
       padding: 12px 16px;
       background: rgba(255, 255, 255, 0.03);
@@ -251,7 +271,7 @@ import { LABEL_OPTIONS } from '../../constants/labels';
 
     .table-row {
       display: grid;
-      grid-template-columns: 180px 120px 160px 1fr 60px;
+      grid-template-columns: 180px 120px 160px 1fr 60px 60px;
       gap: 12px;
       padding: 10px 16px;
       align-items: center;
@@ -466,6 +486,12 @@ import { LABEL_OPTIONS } from '../../constants/labels';
       font-size: 18px;
     }
 
+    .play-clip-btn {
+      font-size: 18px !important;
+      padding: 4px !important;
+      color: var(--accent-blue) !important;
+    }
+
     .empty-row {
       display: flex;
       flex-direction: column;
@@ -484,10 +510,14 @@ import { LABEL_OPTIONS } from '../../constants/labels';
 export class EventsComponent implements OnInit {
   private readonly api = inject(CameraApiService);
 
+  private readonly clipPlayer =
+    viewChild.required<ClipPlayerComponent>('clipPlayer');
+
   readonly events = signal<DetectionEvent[]>([]);
   readonly totalEvents = signal(0);
   readonly expandedId = signal<string | null>(null);
   readonly loadingAnalysis = signal<Set<string>>(new Set());
+  readonly recordingStatus = signal<RecordingStatus | null>(null);
 
   /** Cache of fetched analyses keyed by detectionEventId */
   readonly analysisCache = new Map<string, SceneAnalysis>();
@@ -508,6 +538,24 @@ export class EventsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadEvents();
+    this.api.getRecordingStatus().subscribe({
+      next: (status) => this.recordingStatus.set(status),
+      error: () => this.recordingStatus.set(null),
+    });
+  }
+
+  /** True when the recording window still covers this event's timestamp. */
+  hasRecording(event: DetectionEvent): boolean {
+    const status = this.recordingStatus();
+    if (!status?.enabled || !status.oldestTimestamp) return false;
+    return (
+      new Date(event.timestamp).getTime() >=
+      new Date(status.oldestTimestamp).getTime()
+    );
+  }
+
+  playClip(event: DetectionEvent): void {
+    this.clipPlayer().open(event);
   }
 
   loadEvents(): void {

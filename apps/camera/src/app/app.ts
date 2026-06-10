@@ -10,6 +10,7 @@ import { SnapshotRouter } from './snapshot/snapshot.router';
 import { NotificationRouter } from './notification/notification.router';
 import { AnalysisRouter } from './analysis/analysis.router';
 import { CleanupRouter } from './cleanup/cleanup.router';
+import { RecordingRouter } from './recording/recording.router';
 import { WebSocketService } from './websocket/websocket.service';
 import { StreamService } from './stream/stream.service';
 import { DetectionService } from './detection/detection.service';
@@ -71,6 +72,10 @@ export async function Application(fastify: FastifyInstance) {
   fastify
     .withTypeProvider<ZodTypeProvider>()
     .register(CleanupRouter, { prefix: '/cleanup' });
+
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(RecordingRouter, { prefix: '/recordings' });
 
   // Start the stream and detection pipeline after server is ready
   fastify.addHook('onReady', async () => {

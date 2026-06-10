@@ -135,6 +135,20 @@ export interface CleanupStatus {
   dbSizeMB: number;
   detectionEventCount: number;
   analysisCount: number;
+  recordingCount: number;
+  recordingSizeMB: number;
+  videoRetentionDays: number;
+}
+
+export interface RecordingStatus {
+  enabled: boolean;
+  segmentCount: number;
+  totalSizeMB: number;
+  oldestTimestamp: string | null;
+  newestTimestamp: string | null;
+  retentionDays: number;
+  segmentSeconds: number;
+  estimatedDailyGB: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -309,6 +323,18 @@ export class CameraApiService {
       `${this.baseUrl}/analysis/settings`,
       update
     );
+  }
+
+  // ── Recordings ──
+
+  getRecordingStatus(): Observable<RecordingStatus> {
+    return this.http.get<RecordingStatus>(`${this.baseUrl}/recordings/status`);
+  }
+
+  getClipUrl(start: Date, durationSec: number): string {
+    return `${this.baseUrl}/recordings/clip?start=${encodeURIComponent(
+      start.toISOString()
+    )}&duration=${durationSec}`;
   }
 
   // ── Cleanup / Storage ──
