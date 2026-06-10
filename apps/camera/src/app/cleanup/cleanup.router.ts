@@ -14,6 +14,9 @@ const CleanupStatusSchema = z.object({
   dbSizeMB: z.number(),
   detectionEventCount: z.number(),
   analysisCount: z.number(),
+  recordingCount: z.number(),
+  recordingSizeMB: z.number(),
+  videoRetentionDays: z.number(),
 });
 
 export async function CleanupRouter(fastify: FastifyInstance) {

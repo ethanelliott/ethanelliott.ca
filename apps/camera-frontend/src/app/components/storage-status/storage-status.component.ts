@@ -93,6 +93,15 @@ import {
             <div class="breakdown-value">{{ status()!.dbSizeMB }} MB</div>
             <div class="breakdown-label">Database</div>
           </div>
+          <div class="breakdown-item">
+            <div class="breakdown-value">
+              {{ status()!.recordingSizeMB / 1024 | number : '1.1-1' }} GB
+            </div>
+            <div class="breakdown-label">Recordings</div>
+            <div class="breakdown-sub">
+              {{ status()!.recordingCount | number }} segments
+            </div>
+          </div>
         </div>
       </div>
 
@@ -101,6 +110,12 @@ import {
         <div class="limit-row">
           <span class="limit-label">Retention</span>
           <span class="limit-value">{{ status()!.retentionDays }} days</span>
+        </div>
+        <div class="limit-row">
+          <span class="limit-label">Video Retention</span>
+          <span class="limit-value">
+            {{ status()!.videoRetentionDays }} days
+          </span>
         </div>
         <div class="limit-row">
           <span class="limit-label">Snapshot Cap</span>
@@ -226,7 +241,7 @@ import {
 
     .breakdown-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
       gap: 8px;
     }
 

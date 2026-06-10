@@ -45,6 +45,9 @@ env:
   CLEANUP_INTERVAL_MINUTES: '30'
   MAX_SNAPSHOTS: '5000'
   DISK_THRESHOLD_PCT: '85'
+  RECORDING_ENABLED: 'true'
+  RECORDING_SEGMENT_SECONDS: '10'
+  VIDEO_RETENTION_DAYS: '3'
 
 # Camera credentials from Kubernetes Secret
 secretEnv:

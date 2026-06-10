@@ -7,6 +7,7 @@ import {
   DetectionSettingsEntity,
 } from '../detection/detection.entity';
 import { SceneAnalysis } from '../analysis/analysis.entity';
+import { RecordingService } from '../recording/recording.service';
 
 /**
  * CleanupService provides centralised, scheduled age-off for all
@@ -15,8 +16,9 @@ import { SceneAnalysis } from '../analysis/analysis.entity';
  * 1. Detection events & snapshots (respects retention + pinned flag)
  * 2. Scene-analysis records linked to expired detections
  * 3. Orphaned snapshot files not tracked in the DB
- * 4. Disk-space-aware emergency cleanup when usage exceeds a threshold
- * 5. SQLite VACUUM after large deletions to reclaim space
+ * 4. Continuous video recording segments (separate, shorter retention)
+ * 5. Disk-space-aware emergency cleanup when usage exceeds a threshold
+ * 6. SQLite VACUUM after large deletions to reclaim space
  *
  * Runs on startup and then at a configurable interval (default: 30 min).
  */
@@ -27,6 +29,7 @@ export class CleanupService {
     DetectionSettingsEntity
   );
   private readonly _analysisRepo = this._db.repositoryFor(SceneAnalysis);
+  private readonly _recordingService = inject(RecordingService);
 
   private _timer: ReturnType<typeof setInterval> | null = null;
   private _running = false;
@@ -113,13 +116,15 @@ export class CleanupService {
       const analysesDeleted = await this._purgeExpiredAnalyses(cutoff);
       const orphansDeleted = this._purgeOrphanedSnapshots(cutoff);
       const cappedDeleted = this._capSnapshotCount();
+      const recordingsDeleted = this._pruneRecordings();
 
       const totalDeleted =
         eventsDeleted.rows +
         eventsDeleted.files +
         analysesDeleted +
         orphansDeleted +
-        cappedDeleted;
+        cappedDeleted +
+        recordingsDeleted;
 
       // Reclaim SQLite space after large deletions
       if (eventsDeleted.rows + analysesDeleted > 100) {
@@ -154,7 +159,7 @@ export class CleanupService {
         console.log(
           `🧹 Cleanup: ${eventsDeleted.rows} events, ${eventsDeleted.files} event snapshots, ` +
             `${analysesDeleted} analyses, ${orphansDeleted} orphans, ` +
-            `${cappedDeleted} over cap${diskStr}`
+            `${cappedDeleted} over cap, ${recordingsDeleted} recordings${diskStr}`
         );
       }
     } catch (err) {
@@ -262,6 +267,21 @@ export class CleanupService {
     return deleted;
   }
 
+  // ── Recording segments ──
+
+  /**
+   * Delete recording segments older than the video retention period.
+   * Video retention is separate (and typically shorter) than snapshot
+   * retention because continuous video dominates disk usage.
+   */
+  private _pruneRecordings(retentionDaysOverride?: number): number {
+    const retentionDays =
+      retentionDaysOverride ?? this._recordingService.getRetentionDays();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - retentionDays);
+    return this._recordingService.pruneOlderThan(cutoff);
+  }
+
   // ── Snapshot cap ──
 
   /**
@@ -349,7 +369,14 @@ export class CleanupService {
     const emergencyCap = Math.floor(this._maxSnapshots / 2);
     totalDeleted += this._capSnapshotsTo(emergencyCap);
 
-    // Phase 3: VACUUM to reclaim SQLite space
+    // Phase 3: Halve video retention — recordings are the biggest consumer
+    const emergencyVideoRetention = Math.max(
+      1,
+      Math.floor(this._recordingService.getRetentionDays() / 2)
+    );
+    totalDeleted += this._pruneRecordings(emergencyVideoRetention);
+
+    // Phase 4: VACUUM to reclaim SQLite space
     if (totalDeleted > 0) {
       try {
         await this._db.dataSource.query('VACUUM');
@@ -450,6 +477,8 @@ export class CleanupService {
       // ignore
     }
 
+    const recordingStats = this._recordingService.getStorageStats();
+
     return {
       retentionDays,
       maxSnapshots: this._maxSnapshots,
@@ -460,6 +489,9 @@ export class CleanupService {
       dbSizeMB,
       detectionEventCount: detectionCount,
       analysisCount,
+      recordingCount: recordingStats.segmentCount,
+      recordingSizeMB: recordingStats.sizeMB,
+      videoRetentionDays: this._recordingService.getRetentionDays(),
     };
   }
 }
@@ -474,4 +506,7 @@ export interface CleanupStatus {
   dbSizeMB: number;
   detectionEventCount: number;
   analysisCount: number;
+  recordingCount: number;
+  recordingSizeMB: number;
+  videoRetentionDays: number;
 }

@@ -2,24 +2,28 @@ import {
   ChangeDetectionStrategy,
   Component,
   Input,
+  OnInit,
   inject,
   signal,
   computed,
+  viewChild,
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ButtonDirective } from 'primeng/button';
 import {
   CameraApiService,
   DetectionEvent,
+  RecordingStatus,
   SceneAnalysis,
   SceneEntity,
 } from '../../services/camera-api.service';
 import { EventService } from '../../services/event.service';
+import { ClipPlayerComponent } from '../clip-player/clip-player.component';
 
 @Component({
   selector: 'app-event-feed',
   standalone: true,
-  imports: [CommonModule, DatePipe, ButtonDirective],
+  imports: [CommonModule, DatePipe, ButtonDirective, ClipPlayerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="feed-container glass-card">
@@ -72,6 +76,14 @@ import { EventService } from '../../services/event.service';
           </div>
           @if (event.snapshotFilename) {
           <i class="pi pi-camera snapshot-indicator"></i>
+          } @if (hasRecording(event)) {
+          <button
+            pButton
+            [text]="true"
+            icon="pi pi-play-circle"
+            (click)="playClip(event)"
+            class="play-btn"
+          ></button>
           }
           <button
             pButton
@@ -89,6 +101,8 @@ import { EventService } from '../../services/event.service';
         </div>
         }
       </div>
+
+      <app-clip-player #clipPlayer />
     </div>
   `,
   styles: `
@@ -273,7 +287,17 @@ import { EventService } from '../../services/event.service';
       }
     }
 
-    .event-item:hover .pin-btn {
+    .play-btn {
+      flex-shrink: 0;
+      font-size: 16px !important;
+      padding: 4px !important;
+      opacity: 0;
+      transition: opacity 0.15s;
+      color: var(--accent-blue) !important;
+    }
+
+    .event-item:hover .pin-btn,
+    .event-item:hover .play-btn {
       opacity: 1;
     }
 
@@ -299,11 +323,37 @@ import { EventService } from '../../services/event.service';
     }
   `,
 })
-export class EventFeedComponent {
+export class EventFeedComponent implements OnInit {
   private readonly api = inject(CameraApiService);
   private readonly eventService = inject(EventService);
 
+  private readonly clipPlayer =
+    viewChild.required<ClipPlayerComponent>('clipPlayer');
+
   @Input() events = signal<DetectionEvent[]>([]);
+
+  readonly recordingStatus = signal<RecordingStatus | null>(null);
+
+  ngOnInit(): void {
+    this.api.getRecordingStatus().subscribe({
+      next: (status) => this.recordingStatus.set(status),
+      error: () => this.recordingStatus.set(null),
+    });
+  }
+
+  /** True when the recording window still covers this event's timestamp. */
+  hasRecording(event: DetectionEvent): boolean {
+    const status = this.recordingStatus();
+    if (!status?.enabled || !status.oldestTimestamp) return false;
+    return (
+      new Date(event.timestamp).getTime() >=
+      new Date(status.oldestTimestamp).getTime()
+    );
+  }
+
+  playClip(event: DetectionEvent): void {
+    this.clipPlayer().open(event);
+  }
 
   getAnalysis(detectionEventId: string): SceneAnalysis | undefined {
     return this.eventService.analysisMap().get(detectionEventId);
