@@ -3,6 +3,21 @@
 Audit of `apps/aritzia-scanner` covering `main.ts`, `ai-routes.ts`, `scraper.ts`, `db.ts`,
 `ollama.ts`, all 18 EJS views, and `styles.css` (~7,900 lines total).
 
+## Implementation status
+
+**All items below have been implemented**, with these deliberate exceptions:
+
+- **1.12 (fleece-only scrape): WON'T FIX — intentional.** Scanning the `fleece`
+  query is the whole point of the app; `scraper.ts` keeps `query: 'fleece'`.
+- **gzip compression**: skipped to avoid adding a new npm dependency to the
+  deploy pipeline. Static assets get `maxAge` cache headers instead.
+- **Image resizing via sharp**: skipped (native dependency). Mitigated instead
+  by capping new image downloads at `w_1200` via the CDN transform and fixing
+  layout shift with `aspect-ratio` CSS.
+- **§6 "diff before UPDATE" in the scraper**: not done — `last_seen_at` must be
+  written for every variant on every scan (it drives active/discontinued
+  tracking), so the per-row UPDATE can't be skipped.
+
 Legend: 🔴 bug / broken behavior · 🟠 inconsistency between pages · 🟡 improvement
 
 ---

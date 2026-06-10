@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Style Advisor - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   </head>
   <body>
     <%- include('partials/nav') %>
@@ -32,40 +30,22 @@
     </form>
 
     <div class="ai-quick-prompts">
-      <button
-        class="quick-prompt"
-        onclick="setPrompt('casual weekend brunch outfit')"
-      >
+      <button class="quick-prompt" onclick="setPrompt('casual weekend brunch outfit')">
         Weekend Brunch
       </button>
-      <button
-        class="quick-prompt"
-        onclick="setPrompt('professional office outfit that is warm for winter')"
-      >
+      <button class="quick-prompt" onclick="setPrompt('professional office outfit that is warm for winter')">
         Winter Office
       </button>
-      <button
-        class="quick-prompt"
-        onclick="setPrompt('cozy work from home loungewear')"
-      >
+      <button class="quick-prompt" onclick="setPrompt('cozy work from home loungewear')">
         WFH Cozy
       </button>
-      <button
-        class="quick-prompt"
-        onclick="setPrompt('date night outfit, chic and elegant')"
-      >
+      <button class="quick-prompt" onclick="setPrompt('date night outfit, chic and elegant')">
         Date Night
       </button>
-      <button
-        class="quick-prompt"
-        onclick="setPrompt('athleisure for running errands in fall')"
-      >
+      <button class="quick-prompt" onclick="setPrompt('athleisure for running errands in fall')">
         Fall Errands
       </button>
-      <button
-        class="quick-prompt"
-        onclick="setPrompt('sustainable and eco-friendly outfit')"
-      >
+      <button class="quick-prompt" onclick="setPrompt('sustainable and eco-friendly outfit')">
         Sustainable
       </button>
     </div>
@@ -89,9 +69,7 @@
     <script>
       function setPrompt(text) {
         document.getElementById('style-input').value = text;
-        document
-          .getElementById('style-form')
-          .dispatchEvent(new Event('submit'));
+        document.getElementById('style-form').dispatchEvent(new Event('submit'));
       }
 
       function handleStyle(e) {
@@ -103,84 +81,57 @@
         btn.disabled = true;
         btn.textContent = 'Thinking...';
 
+        const reasoningEl = document.getElementById('ai-reasoning');
         document.getElementById('ai-stream').style.display = 'block';
         document.getElementById('ai-picks').style.display = 'none';
         document.getElementById('ai-error').style.display = 'none';
         document.getElementById('ai-content').innerHTML = '';
-        document.getElementById('ai-reasoning').innerHTML = '';
-        document.getElementById('ai-reasoning').style.display = 'none';
+        reasoningEl.textContent = '';
+        reasoningEl.style.display = 'none';
+        reasoningEl.classList.remove('reasoning-collapsed');
 
         const evtSource = new EventSource(
           `/api/ai/style?occasion=${encodeURIComponent(occasion)}`
         );
 
         evtSource.addEventListener('status', (e) => {
-          const data = JSON.parse(e.data);
-          document.getElementById('stream-status').textContent = data.message;
+          document.getElementById('stream-status').textContent =
+            JSON.parse(e.data).message;
         });
 
         evtSource.addEventListener('html', (e) => {
           const data = JSON.parse(e.data);
           const contentEl = document.getElementById('ai-content');
-          contentEl.innerHTML = data.html;
+          setSafeHTML(contentEl, data.html);
           contentEl.scrollTop = contentEl.scrollHeight;
         });
 
         evtSource.addEventListener('reasoning', (e) => {
           const data = JSON.parse(e.data);
-          const reasoningEl = document.getElementById('ai-reasoning');
           reasoningEl.style.display = 'block';
-          reasoningEl.innerHTML += escapeHtml(data.content);
+          reasoningEl.textContent += data.content;
           reasoningEl.scrollTop = reasoningEl.scrollHeight;
         });
 
         evtSource.addEventListener('reasoning-done', () => {
-          document
-            .getElementById('ai-reasoning')
-            .classList.add('reasoning-collapsed');
+          reasoningEl.classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('picks', (e) => {
           const data = JSON.parse(e.data);
           if (data.products && data.products.length > 0) {
-            const picksEl = document.getElementById('ai-picks');
-            const gridEl = document.getElementById('picks-grid');
-            picksEl.style.display = 'block';
-
-            gridEl.innerHTML = data.products
-              .map(
-                (p) => `
-              <div class="product-card">
-                <div class="product-info">
-                  <a href="/product/${p.id}" class="product-name">${escapeHtml(
-                  p.name
-                )}</a>
-                  <div class="product-price-container">
-                    ${
-                      p.price < p.list_price
-                        ? `<span class="price-sale">$${p.price}</span> <span class="price-list">$${p.list_price}</span>`
-                        : `<span>$${p.price}</span>`
-                    }
-                  </div>
-                  ${
-                    p.brand
-                      ? `<div class="variant-details">${escapeHtml(
-                          p.brand
-                        )}</div>`
-                      : ''
-                  }
-                  ${
-                    p.rating
-                      ? `<div class="product-meta">${'★'.repeat(
-                          Math.round(p.rating)
-                        )}${'☆'.repeat(
-                          5 - Math.round(p.rating)
-                        )} ${p.rating.toFixed(1)}</div>`
-                      : ''
-                  }
-                </div>
-              </div>
-            `
+            document.getElementById('ai-picks').style.display = 'block';
+            document.getElementById('picks-grid').innerHTML = data.products
+              .map((p) =>
+                renderProductCard({
+                  href: '/product/' + p.id,
+                  name: p.name,
+                  thumbnail_id: p.thumbnail_id,
+                  price: p.price,
+                  list_price: p.list_price,
+                  subtext: p.brand || '',
+                  rating: p.rating,
+                })
               )
               .join('');
           }
@@ -195,11 +146,13 @@
         });
 
         evtSource.addEventListener('error', (e) => {
+          const errorEl = document.getElementById('ai-error');
+          errorEl.style.display = 'block';
           try {
-            const data = JSON.parse(e.data);
-            document.getElementById('ai-error').style.display = 'block';
-            document.getElementById('ai-error').textContent = data.error;
-          } catch {}
+            errorEl.textContent = JSON.parse(e.data).error;
+          } catch {
+            errorEl.textContent = 'Connection lost. Please try again.';
+          }
           evtSource.close();
           btn.disabled = false;
           btn.textContent = 'Get Recommendations';
@@ -212,13 +165,6 @@
         };
 
         return false;
-      }
-
-      function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(text));
-        return div.innerHTML;
       }
     </script>
   </body>

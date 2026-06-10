@@ -1,0 +1,85 @@
+<%
+  /* Shared listing card. `card` fields: href, name, thumbnail_id, price,
+     list_price, pricePrefix, subtext, metaText, favoriteId, discontinued,
+     rating, review_count, sizes. Mirrored client-side by renderProductCard()
+     in public/app.js — keep the two in sync. */
+  const hasDiscount = card.price && card.list_price && card.price < card.list_price;
+%>
+<div class="product-card<%= card.discontinued ? ' discontinued' : '' %>">
+  <% if (hasDiscount) { %>
+  <span class="discount-overlay"><%= Math.round((1 - card.price / card.list_price) * 100) %>% OFF</span>
+  <% } %>
+  <% if (card.favoriteId) { %>
+  <button
+    class="favorite-btn"
+    data-id="<%= card.favoriteId %>"
+    aria-pressed="false"
+    title="Add to favorites"
+  >
+    &#x2661;
+  </button>
+  <% } %>
+  <a href="<%= card.href %>" class="product-image">
+    <% if (card.thumbnail_id) { %>
+    <img
+      src="/api/images/<%= card.thumbnail_id %>"
+      alt="<%= card.name %>"
+      loading="lazy"
+      decoding="async"
+    />
+    <% } else { %>
+    <span class="no-image-placeholder">No Image</span>
+    <% } %>
+  </a>
+  <div class="product-info">
+    <a href="<%= card.href %>" class="product-name"><%= card.name %></a>
+
+    <% if (card.price !== null && card.price !== undefined) { %>
+    <div class="product-price-container">
+      <% if (hasDiscount) { %>
+      <span class="price-sale"><%= fmtPrice(card.price) %></span>
+      <span class="price-list"><%= fmtPrice(card.list_price) %></span>
+      <% } else { %>
+      <span><%= card.pricePrefix || '' %><%= fmtPrice(card.price) %></span>
+      <% } %>
+    </div>
+    <% } %>
+
+    <% if (card.subtext) { %>
+    <div class="variant-details"><%= card.subtext %></div>
+    <% } %>
+
+    <% if (card.rating) { %>
+    <div class="card-rating">
+      <span class="stars"><%= '★'.repeat(Math.round(card.rating)) %><%= '☆'.repeat(Math.max(0, 5 - Math.round(card.rating))) %></span>
+      <%= Number(card.rating).toFixed(1) %>
+      <% if (card.review_count) { %>
+      <span class="review-count">(<%= card.review_count.toLocaleString() %>)</span>
+      <% } %>
+    </div>
+    <% } %>
+
+    <% if (Array.isArray(card.sizes)) { %>
+      <% if (card.sizes.length > 0) { %>
+      <div class="sizes-mini">
+        <% card.sizes.forEach(size => { %>
+        <span class="size-tag-mini available"><%= size %></span>
+        <% }); %>
+      </div>
+      <% if (card.sizes.length <= 2) { %>
+      <div class="low-stock-warning">Low stock</div>
+      <% } %>
+      <% } else { %>
+      <div class="out-of-stock">Out of stock online</div>
+      <% } %>
+    <% } %>
+
+    <% if (card.discontinued) { %>
+    <div class="discontinued-badge">Discontinued</div>
+    <% } %>
+
+    <% if (card.metaText) { %>
+    <div class="product-meta"><%= card.metaText %></div>
+    <% } %>
+  </div>
+</div>

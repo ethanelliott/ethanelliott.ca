@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Deals Report - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   </head>
   <body>
     <%- include('partials/nav') %>
@@ -14,12 +12,7 @@
       AI-generated analysis of the best current deals and restocks
     </p>
 
-    <button
-      id="generate-btn"
-      class="filter-btn"
-      onclick="generateReport()"
-      style="margin-bottom: 20px"
-    >
+    <button id="generate-btn" class="filter-btn generate-btn" onclick="generateReport()">
       Generate Deals Report
     </button>
 
@@ -40,38 +33,37 @@
         btn.disabled = true;
         btn.textContent = 'Generating...';
 
+        const reasoningEl = document.getElementById('ai-reasoning');
         document.getElementById('ai-stream').style.display = 'block';
         document.getElementById('ai-error').style.display = 'none';
         document.getElementById('ai-content').innerHTML = '';
-        document.getElementById('ai-reasoning').innerHTML = '';
-        document.getElementById('ai-reasoning').style.display = 'none';
+        reasoningEl.textContent = '';
+        reasoningEl.style.display = 'none';
+        reasoningEl.classList.remove('reasoning-collapsed');
 
         const evtSource = new EventSource('/api/ai/deals');
 
         evtSource.addEventListener('status', (e) => {
-          const data = JSON.parse(e.data);
-          document.getElementById('stream-status').textContent = data.message;
+          document.getElementById('stream-status').textContent =
+            JSON.parse(e.data).message;
         });
 
         evtSource.addEventListener('html', (e) => {
           const data = JSON.parse(e.data);
           const contentEl = document.getElementById('ai-content');
-          contentEl.innerHTML = data.html;
+          setSafeHTML(contentEl, data.html);
           contentEl.scrollTop = contentEl.scrollHeight;
         });
 
         evtSource.addEventListener('reasoning', (e) => {
           const data = JSON.parse(e.data);
-          const reasoningEl = document.getElementById('ai-reasoning');
           reasoningEl.style.display = 'block';
-          reasoningEl.innerHTML += escapeHtml(data.content);
+          reasoningEl.textContent += data.content;
           reasoningEl.scrollTop = reasoningEl.scrollHeight;
         });
 
         evtSource.addEventListener('reasoning-done', () => {
-          document
-            .getElementById('ai-reasoning')
-            .classList.add('reasoning-collapsed');
+          reasoningEl.classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('done', () => {
@@ -83,11 +75,13 @@
         });
 
         evtSource.addEventListener('error', (e) => {
+          const errorEl = document.getElementById('ai-error');
+          errorEl.style.display = 'block';
           try {
-            const data = JSON.parse(e.data);
-            document.getElementById('ai-error').style.display = 'block';
-            document.getElementById('ai-error').textContent = data.error;
-          } catch {}
+            errorEl.textContent = JSON.parse(e.data).error;
+          } catch {
+            errorEl.textContent = 'Connection lost. Please try again.';
+          }
           evtSource.close();
           btn.disabled = false;
           btn.textContent = 'Generate Deals Report';
@@ -100,15 +94,8 @@
         };
       }
 
-      function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(text));
-        return div.innerHTML;
-      }
-
-      // Auto-generate on page load
-      generateReport();
+      // Auto-generate on page load (after deferred app.js is ready)
+      document.addEventListener('DOMContentLoaded', generateReport);
     </script>
   </body>
 </html>

@@ -1,10 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %> - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
   </head>
   <body>
     <%- include('partials/nav') %>
@@ -12,282 +9,109 @@
     <h1><%= title %></h1>
 
     <!-- Search and Filters -->
-    <form action="" method="GET" class="filters-form">
-      <input 
-        type="text" 
-        name="q" 
-        placeholder="Search products..." 
+    <form action="<%= baseUrl %>" method="GET" class="filters-form">
+      <input
+        type="text"
+        name="q"
+        placeholder="Search products..."
         value="<%= searchQuery || '' %>"
         class="filter-input filter-search"
       />
-      
-      <% if (locals.brands && brands.length > 0) { %>
-      <select name="brand" class="filter-input">
+
+      <% if (brands && brands.length > 0) { %>
+      <select name="brand" class="filter-input" aria-label="Brand">
         <option value="">All Brands</option>
         <% brands.forEach(brand => { %>
-        <option value="<%= brand %>" <%= locals.currentBrand === brand ? 'selected' : '' %>><%= brand %></option>
+        <option value="<%= brand %>" <%= currentBrand === brand ? 'selected' : '' %>><%= brand %></option>
         <% }); %>
       </select>
       <% } %>
 
-      <% if (locals.fits && fits.length > 0) { %>
-      <select name="fit" class="filter-input">
+      <% if (fits && fits.length > 0) { %>
+      <select name="fit" class="filter-input" aria-label="Fit">
         <option value="">All Fits</option>
         <% fits.forEach(fit => { %>
-        <option value="<%= fit %>" <%= locals.currentFit === fit ? 'selected' : '' %>><%= fit %></option>
+        <option value="<%= fit %>" <%= currentFit === fit ? 'selected' : '' %>><%= fit %></option>
         <% }); %>
       </select>
       <% } %>
 
-      <% if (locals.categories && categories.length > 0) { %>
-      <select name="category" class="filter-input">
+      <% if (categories && categories.length > 0) { %>
+      <select name="category" class="filter-input" aria-label="Category">
         <option value="">All Categories</option>
         <% categories.forEach(cat => { %>
-        <option value="<%= cat %>" <%= locals.currentCategory === cat ? 'selected' : '' %>><%= cat %></option>
+        <option value="<%= cat %>" <%= currentCategory === cat ? 'selected' : '' %>><%= cat %></option>
         <% }); %>
       </select>
       <% } %>
 
-      <% if (locals.sizes && sizes.length > 0) { %>
-      <select name="size" class="filter-input">
+      <% if (sizes && sizes.length > 0) { %>
+      <select name="size" class="filter-input" aria-label="Size">
         <option value="">All Sizes</option>
         <% sizes.forEach(size => { %>
-        <option value="<%= size %>" <%= locals.currentSize === size ? 'selected' : '' %>><%= size %></option>
+        <option value="<%= size %>" <%= currentSize === size ? 'selected' : '' %>><%= size %></option>
         <% }); %>
       </select>
       <% } %>
 
-      <select name="sort" class="filter-input">
-        <option value="newest" <%= locals.currentSort === 'newest' ? 'selected' : '' %>>Newest</option>
-        <option value="price-low" <%= locals.currentSort === 'price-low' ? 'selected' : '' %>>Price: Low</option>
-        <option value="price-high" <%= locals.currentSort === 'price-high' ? 'selected' : '' %>>Price: High</option>
-        <option value="rating" <%= locals.currentSort === 'rating' ? 'selected' : '' %>>Top Rated</option>
-        <option value="discount" <%= locals.currentSort === 'discount' ? 'selected' : '' %>>Discount</option>
+      <% if (showPriceFilters) { %>
+      <input
+        type="number"
+        name="minPrice"
+        placeholder="Min $"
+        min="0"
+        step="1"
+        value="<%= minPrice !== null && minPrice !== undefined ? minPrice : '' %>"
+        class="filter-input filter-price"
+        aria-label="Minimum price"
+      />
+      <input
+        type="number"
+        name="maxPrice"
+        placeholder="Max $"
+        min="0"
+        step="1"
+        value="<%= maxPrice !== null && maxPrice !== undefined ? maxPrice : '' %>"
+        class="filter-input filter-price"
+        aria-label="Maximum price"
+      />
+      <% } %>
+
+      <select name="sort" class="filter-input" aria-label="Sort">
+        <% sortOptions.forEach(opt => { %>
+        <option value="<%= opt.value %>" <%= currentSort === opt.value ? 'selected' : '' %>><%= opt.label %></option>
+        <% }); %>
       </select>
 
-      <button type="submit" class="filter-btn">Go</button>
-      <a href="<%= title === 'All Products' ? '/products' : '/' %>" class="filter-clear">Clear</a>
+      <button type="submit" class="filter-btn">Apply</button>
+      <a href="<%= baseUrl %>" class="filter-clear">Clear</a>
     </form>
 
-    <% if (activeProducts && activeProducts.length > 0) { %>
-    <h2>Active Products (<%= totalCount || activeProducts.length %>)</h2>
+    <% if (cards && cards.length > 0) { %>
+    <p class="results-count"><%= totalCount.toLocaleString() %> result<%= totalCount === 1 ? '' : 's' %></p>
     <div class="product-grid">
-      <% activeProducts.forEach(product => { %>
-      <% 
-        const link = product.isVariant 
-          ? `/product/${product.product_id}/variant/${product.color_id}` 
-          : `/product/${product.id}`;
-        const subtext = product.isVariant 
-          ? `${product.color} (${product.length})` 
-          : '';
-        const aritziaLink = product.isVariant
-          ? `https://www.aritzia.com/en/product/${product.slug}?color=${product.color_id}`
-          : `https://www.aritzia.com/en/product/${product.slug}`;
-      %>
-      <div class="product-card">
-        <% if (product.price && product.list_price && product.price < product.list_price) { %>
-        <span class="discount-overlay"><%= Math.round((1 - product.price / product.list_price) * 100) %>% OFF</span>
-        <% } %>
-        <% if (product.isVariant) { %>
-        <button class="favorite-btn" data-id="<%= product.id %>" onclick="toggleFavorite(this)" title="Add to favorites">&#x2661;</button>
-        <% } %>
-        <a href="<%= link %>" class="product-image">
-          <% if (product.thumbnail_id) { %>
-          <img
-            src="/api/images/<%= product.thumbnail_id %>"
-            alt="<%= product.display_name || product.name %>"
-            loading="lazy"
-          />
-          <% } else { %>
-          <span class="no-image-placeholder">No Image</span>
-          <% } %>
-        </a>
-        
-        <div class="product-info">
-          <a href="<%= link %>" class="product-name"><%= product.display_name || product.name %></a>
-          
-          <% if (product.price) { %>
-          <div class="product-price-container">
-            <% if (product.price < product.list_price) { %>
-            <span class="price-sale">$<%= product.price %></span>
-            <span class="price-list">$<%= product.list_price %></span>
-            <% } else { %>
-            <span>$<%= product.price %></span>
-            <% } %>
-          </div>
-          <% } else if (product.min_price) { %>
-          <div class="product-price-container">
-            <span>From $<%= product.min_price %></span>
-          </div>
-          <% } %>
-          
-          <% if (subtext) { %>
-          <div class="variant-details"><%= subtext %></div>
-          <% } %>
-          
-          <% if (product.added_at_formatted) { %>
-          <div class="product-meta">Added <%= product.added_at_formatted %></div>
-          <% } %>
-        </div>
-      </div>
+      <% cards.forEach(card => { %>
+      <%- include('partials/product_card', { card }) %>
       <% }); %>
     </div>
-    <% } %>
-    
-    <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
-    <h2>Discontinued Products (<%= discontinuedProducts.length %>)</h2>
-    <div class="product-grid">
-      <% discontinuedProducts.forEach(product => { %>
-      <% 
-        const link = product.isVariant 
-          ? `/product/${product.product_id}/variant/${product.color_id}` 
-          : `/product/${product.id}`;
-        const subtext = product.isVariant 
-          ? `${product.color} (${product.length})` 
-          : '';
-      %>
-      <div class="product-card discontinued">
-        <a href="<%= link %>" class="product-image">
-          <% if (product.thumbnail_id) { %>
-          <img
-            src="/api/images/<%= product.thumbnail_id %>"
-            alt="<%= product.display_name || product.name %>"
-            loading="lazy"
-          />
-          <% } else { %>
-          <span class="no-image-placeholder">No Image</span>
-          <% } %>
-        </a>
-        <div class="product-info">
-          <a href="<%= link %>" class="product-name"><%= product.display_name || product.name %></a>
-          
-          <% if (product.price) { %>
-          <div class="product-price-container">
-            <% if (product.price < product.list_price) { %>
-            <span class="price-sale">$<%= product.price %></span>
-            <span class="price-list">$<%= product.list_price %></span>
-            <% } else { %>
-            <span>$<%= product.price %></span>
-            <% } %>
-          </div>
-          <% } %>
-          
-          <% if (subtext) { %>
-          <div class="variant-details"><%= subtext %></div>
-          <% } %>
-          
-          <div class="discontinued-badge">Discontinued</div>
-        </div>
-      </div>
-      <% }); %>
-    </div>
-    <% } %>
-    
-    <% if (showAllLink) { %>
-    <div class="view-all-container">
-      <a href="/products" class="view-all-button">View All Products</a>
-    </div>
+    <% } else { %>
+    <%- include('partials/empty_state', { message: emptyMessage }) %>
     <% } %>
 
-    <% if (locals.totalPages && totalPages > 1) { %>
-    <nav class="pagination" aria-label="Pagination">
-      <%
-        // Build base URL preserving all current filters
-        const baseUrl = title === 'All Products' ? '/products' : '/';
-        const qp = new URLSearchParams();
-        if (searchQuery) qp.set('q', searchQuery);
-        if (currentBrand) qp.set('brand', currentBrand);
-        if (currentFit) qp.set('fit', currentFit);
-        if (currentCategory) qp.set('category', currentCategory);
-        if (locals.currentSize && currentSize) qp.set('size', currentSize);
-        if (currentSort && currentSort !== 'newest' && currentSort !== 'name') qp.set('sort', currentSort);
-        if (locals.minPrice && minPrice) qp.set('minPrice', String(minPrice));
-        if (locals.maxPrice && maxPrice) qp.set('maxPrice', String(maxPrice));
-        
-        function pageUrl(p) {
-          const params = new URLSearchParams(qp);
-          if (p > 1) params.set('page', String(p));
-          const qs = params.toString();
-          return baseUrl + (qs ? '?' + qs : '');
-        }
-        
-        // Calculate page range to show
-        const maxVisible = 7;
-        let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-        if (endPage - startPage < maxVisible - 1) {
-          startPage = Math.max(1, endPage - maxVisible + 1);
-        }
-      %>
-      
-      <% if (page > 1) { %>
-      <a href="<%= pageUrl(page - 1) %>" class="page-link" aria-label="Previous">&laquo; Prev</a>
-      <% } else { %>
-      <span class="page-link disabled">&laquo; Prev</span>
-      <% } %>
-
-      <% if (startPage > 1) { %>
-      <a href="<%= pageUrl(1) %>" class="page-link">1</a>
-      <% if (startPage > 2) { %><span class="page-ellipsis">&hellip;</span><% } %>
-      <% } %>
-
-      <% for (let i = startPage; i <= endPage; i++) { %>
-      <% if (i === page) { %>
-      <span class="page-link active"><%= i %></span>
-      <% } else { %>
-      <a href="<%= pageUrl(i) %>" class="page-link"><%= i %></a>
-      <% } %>
-      <% } %>
-
-      <% if (endPage < totalPages) { %>
-      <% if (endPage < totalPages - 1) { %><span class="page-ellipsis">&hellip;</span><% } %>
-      <a href="<%= pageUrl(totalPages) %>" class="page-link"><%= totalPages %></a>
-      <% } %>
-
-      <% if (page < totalPages) { %>
-      <a href="<%= pageUrl(page + 1) %>" class="page-link" aria-label="Next">Next &raquo;</a>
-      <% } else { %>
-      <span class="page-link disabled">Next &raquo;</span>
-      <% } %>
-    </nav>
-    <% } %>
-
-    <script>
-      const FAVORITES_KEY = 'aritzia_favorites';
-      function getFavorites() {
-        try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); }
-        catch { return []; }
-      }
-      function toggleFavorite(btn) {
-        const id = btn.dataset.id;
-        let favs = getFavorites();
-        if (favs.includes(id)) {
-          favs = favs.filter(f => f !== id);
-          btn.innerHTML = '\u2661';
-          btn.classList.remove('favorited');
-        } else {
-          favs.push(id);
-          btn.innerHTML = '\u2665';
-          btn.classList.add('favorited');
-        }
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
-        updateFavCount();
-      }
-      function updateFavCount() {
-        const badge = document.getElementById('fav-count');
-        if (badge) badge.textContent = getFavorites().length || '';
-      }
-      // Initialize favorite states on page load
-      document.addEventListener('DOMContentLoaded', function() {
-        const favs = getFavorites();
-        document.querySelectorAll('.favorite-btn[data-id]').forEach(btn => {
-          if (favs.includes(btn.dataset.id)) {
-            btn.innerHTML = '\u2665';
-            btn.classList.add('favorited');
-          }
-        });
-        updateFavCount();
-      });
-    </script>
+    <%- include('partials/pagination', {
+      page,
+      totalPages,
+      baseUrl,
+      query: {
+        q: searchQuery,
+        brand: currentBrand,
+        fit: currentFit,
+        category: currentCategory,
+        size: currentSize,
+        minPrice,
+        maxPrice,
+        sort: currentSort !== defaultSort ? currentSort : null,
+      },
+    }) %>
   </body>
 </html>

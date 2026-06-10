@@ -1,10 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= color %> - <%= product.display_name || product.name %></title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
   </head>
   <body>
     <%- include('partials/nav') %>
@@ -15,31 +12,31 @@
         -
         <a href="/colors/<%= encodeURIComponent(color) %>" class="color-link"><%= color %></a>
       </h1>
-      
+
       <div class="product-meta-badges">
         <% if (product.rating) { %>
         <span class="badge rating-badge">
-          <span class="stars"><%= '★'.repeat(Math.round(product.rating)) %><%= '☆'.repeat(5 - Math.round(product.rating)) %></span>
+          <span class="stars"><%= '★'.repeat(Math.round(product.rating)) %><%= '☆'.repeat(Math.max(0, 5 - Math.round(product.rating))) %></span>
           <%= product.rating.toFixed(1) %>
           <% if (product.review_count) { %>
           (<%= product.review_count.toLocaleString() %> reviews)
           <% } %>
         </span>
         <% } %>
-        
-        <% 
+
+        <%
           const naturalFibers = ['Cotton', 'Wool', 'Silk', 'Linen', 'Cashmere', 'Merino', 'Alpaca'];
           const isNatural = product.fabric && product.fabric.some(f => naturalFibers.some(nf => f.includes(nf)));
         %>
         <% if (isNatural) { %>
         <span class="badge natural-fiber">Natural Fiber</span>
         <% } %>
-        
+
         <% if (product.sustainability && product.sustainability.length > 0) { %>
         <span class="badge sustainability-badge">Sustainable</span>
         <% } %>
-        
-        <% 
+
+        <%
           const warmthLevels = ['Warmest', 'Warmer', 'Warm'];
           const warmth = product.warmth && product.warmth.find(w => warmthLevels.some(wl => w.includes(wl)));
         %>
@@ -54,6 +51,7 @@
         <a
           href="https://www.aritzia.com/en/product/<%= product.slug %>?color=<%= color_id %>"
           target="_blank"
+          rel="noopener"
           class="external-link"
           >View on Aritzia</a>
       </p>
@@ -61,7 +59,7 @@
         Added: <%= variants[0].added_at_formatted %> | Last Seen: <%= variants[0].last_seen_at_formatted %>
       </p>
     </div>
-    
+
     <% if (product.fabric && product.fabric.length > 0) { %>
     <div class="product-attributes-inline">
       <span><strong>Fabric:</strong> <%= product.fabric.join(', ') %></span>
@@ -75,40 +73,40 @@
     <% } %>
 
     <div class="lengths-list">
-      <h3>Available Lengths</h3>
+      <h3><%= hasMultipleLengths ? 'Available Lengths' : 'Availability' %></h3>
       <div class="variant-length-wrapper">
         <% variants.forEach(v => { %>
         <div class="variant-length <%= !v.isActive ? 'discontinued' : '' %>">
+          <% if (hasMultipleLengths) { %>
           <strong>
             <a
               href="https://www.aritzia.com/en/product/<%= product.slug %>?color=<%= v.color_id %>"
               target="_blank"
+              rel="noopener"
               class="length-link"
             ><%= v.length %></a>
           </strong>
+          <% } %>
 
           <% if (v.price) { %>
           <div class="price-container">
             <% if (v.price < v.list_price) { %>
-            <span class="price-sale">$<%= v.price %></span>
-            <span class="price-list">$<%= v.list_price %></span>
+            <span class="price-sale"><%= fmtPrice(v.price) %></span>
+            <span class="price-list"><%= fmtPrice(v.list_price) %></span>
             <span class="discount-badge">(<%= Math.round((1 - v.price / v.list_price) * 100) %>% OFF)</span>
             <% } else { %>
-            <span>$<%= v.price %></span>
+            <span><%= fmtPrice(v.price) %></span>
             <% } %>
           </div>
           <% if (v.lowest_price && v.lowest_price < v.price) { %>
-          <div class="price-lowest">Lowest seen: $<%= v.lowest_price %></div>
+          <div class="price-lowest">Lowest seen: <%= fmtPrice(v.lowest_price) %></div>
           <% } %>
           <% } %>
-          
+
           <% if (v.all_sizes && v.all_sizes.length > 0) { %>
           <div class="sizes-container">
             <% v.all_sizes.forEach(size => { %>
-            <% const isAvailable = v.available_sizes.includes(size); %>
-            <span class="size-tag <%= !isAvailable ? 'unavailable' : '' %>">
-              <%= size %>
-            </span>
+            <span class="size-tag <%= !v.available_sizes.includes(size) ? 'unavailable' : '' %>"><%= size %></span>
             <% }); %>
           </div>
           <% if (v.available_sizes && v.available_sizes.length > 0 && v.available_sizes.length <= 2) { %>
@@ -122,10 +120,10 @@
           <br />
           <small class="discontinued-badge">Discontinued</small>
           <% } %>
-          
-          <div style="margin-top: 10px;">
+
+          <div class="price-history-toggle">
             <button onclick="toggleChart('<%= v.id %>')" class="btn-small">Show Price History</button>
-            <div id="chart-container-<%= v.id %>" style="display: none; margin-top: 10px; height: 200px;">
+            <div id="chart-container-<%= v.id %>" class="chart-container" style="display: none">
               <canvas id="chart-<%= v.id %>"></canvas>
             </div>
           </div>
@@ -139,20 +137,21 @@
       <% if (images && images.length > 0) { %>
       <% images.forEach(image => { %>
       <div class="image-container">
-        <a href="/api/images/<%= image.id %>" target="_blank">
+        <a href="/api/images/<%= image.id %>" target="_blank" rel="noopener">
           <img
             src="/api/images/<%= image.id %>"
             alt="<%= color %>"
             loading="lazy"
+            decoding="async"
           />
         </a>
       </div>
       <% }); %>
       <% } else { %>
-      <p>No images available</p>
+      <p class="no-results">No images available</p>
       <% } %>
     </div>
-    
+
     <% if (storeAvailability && storeAvailability.length > 0) { %>
     <div class="store-availability-section">
       <h3>Store Availability (<%= storeAvailability.length %> stores)</h3>
@@ -163,15 +162,13 @@
           <% if (store.city) { %>
           <span class="store-location"><%= store.city %>, <%= store.province %></span>
           <% } %>
-          <div class="store-sizes">
-            <%= store.sizes.join(', ') %>
-          </div>
+          <div class="store-sizes"><%= store.sizes.join(', ') %></div>
         </a>
         <% }); %>
       </div>
     </div>
     <% } %>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       const charts = {};
@@ -179,14 +176,14 @@
       async function toggleChart(variantId) {
         const container = document.getElementById(`chart-container-${variantId}`);
         const isVisible = container.style.display !== 'none';
-        
+
         if (isVisible) {
           container.style.display = 'none';
           return;
         }
-        
+
         container.style.display = 'block';
-        
+
         if (charts[variantId]) {
           return;
         }
@@ -194,19 +191,21 @@
         try {
           const response = await fetch(`/api/history/${variantId}`);
           const data = await response.json();
-          
+
           const ctx = document.getElementById(`chart-${variantId}`).getContext('2d');
-          
+
           charts[variantId] = new Chart(ctx, {
             type: 'line',
             data: {
-              labels: data.map(d => new Date(d.timestamp).toLocaleDateString()),
-              datasets: [{
-                label: 'Price',
-                data: data.map(d => d.price),
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1
-              }]
+              labels: data.map((d) => new Date(d.timestamp).toLocaleDateString()),
+              datasets: [
+                {
+                  label: 'Price',
+                  data: data.map((d) => d.price),
+                  borderColor: 'rgb(75, 192, 192)',
+                  stepped: true,
+                },
+              ],
             },
             options: {
               responsive: true,
@@ -215,13 +214,13 @@
                 y: {
                   beginAtZero: false,
                   ticks: {
-                    callback: function(value) {
+                    callback: function (value) {
                       return '$' + value;
-                    }
-                  }
-                }
-              }
-            }
+                    },
+                  },
+                },
+              },
+            },
           });
         } catch (error) {
           console.error('Error loading chart data:', error);

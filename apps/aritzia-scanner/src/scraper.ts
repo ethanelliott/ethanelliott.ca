@@ -13,6 +13,7 @@ import {
   prepareRunAll,
   runPromise,
 } from './db';
+import { invalidatePageContext } from './page-data';
 import { createProgressBar } from './utils';
 import storeData from './stores.json';
 
@@ -28,10 +29,22 @@ const DEBUG_LOGGING = process.env.DEBUG_LOGGING === 'true';
 
 const url = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${INDEX_NAME}/query`;
 
+// w_1200 caps the longest dimension so we don't store multi-MB originals just
+// to render 250px grid thumbnails. Accept below pins f_auto to JPEG so the
+// stored blobs match the image/jpeg content type we serve them with.
 const BASE_IMAGE_URL =
-  'https://assets.aritzia.com/image/upload/c_crop,ar_1920:2623,g_south/q_auto,f_auto,dpr_auto/';
+  'https://assets.aritzia.com/image/upload/c_crop,ar_1920:2623,g_south/q_auto,f_auto,dpr_auto,w_1200/';
+
+const BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 let BROWSER: Browser | null = null;
+
+let updateInProgress = false;
+
+export function isUpdateInProgress(): boolean {
+  return updateInProgress;
+}
 
 async function getBrowser() {
   if (!BROWSER) {
@@ -54,22 +67,68 @@ export async function closeBrowser() {
   }
 }
 
-async function downloadImageWithPuppeteer(
+/**
+ * Fast path: plain HTTP fetch of the CDN asset. Returns null when the
+ * response isn't a usable image so the caller can fall back to Puppeteer.
+ */
+async function fetchImageDirect(imageUrl: string): Promise<Buffer | null> {
+  const response = await fetch(imageUrl, {
+    headers: {
+      'User-Agent': BROWSER_USER_AGENT,
+      Accept: 'image/jpeg,image/png,image/*;q=0.8,*/*;q=0.5',
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) return null;
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.startsWith('image/')) return null;
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function downloadImage(
   db: sqlite3.Database,
   record: ImageDownloadRecord,
   advance: () => void
 ) {
   const imageUrl = `${BASE_IMAGE_URL}${record.id}`;
   if (DEBUG_LOGGING) console.log(`Starting download for ${record.id}`);
+
+  try {
+    const buffer = await fetchImageDirect(imageUrl);
+    if (buffer) {
+      await runPromise.call(db, `UPDATE images SET image = ? WHERE id = ?`, [
+        buffer,
+        record.id,
+      ]);
+      if (DEBUG_LOGGING) console.log(`Finished download for ${record.id}`);
+      advance();
+      return;
+    }
+    if (DEBUG_LOGGING)
+      console.log(`Direct fetch rejected for ${record.id}, trying Puppeteer`);
+  } catch (error: any) {
+    if (DEBUG_LOGGING)
+      console.log(
+        `Direct fetch failed for ${record.id} (${error.message}), trying Puppeteer`
+      );
+  }
+
+  await downloadImageWithPuppeteer(db, record, advance);
+}
+
+async function downloadImageWithPuppeteer(
+  db: sqlite3.Database,
+  record: ImageDownloadRecord,
+  advance: () => void
+) {
+  const imageUrl = `${BASE_IMAGE_URL}${record.id}`;
   const browser = await getBrowser();
   let page: Page | undefined;
   try {
     page = await browser.newPage();
 
     // Set a common user agent to help mimic a regular browser
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    );
+    await page.setUserAgent(BROWSER_USER_AGENT);
 
     let imageBuffer: Buffer | null = null;
 
@@ -267,9 +326,30 @@ function groupByMasterId(data: Array<Item>) {
 }
 
 export async function updateDatabase() {
+  // Guard against overlapping runs (boot-time update, cron, manual trigger).
+  // Interleaved scrapes would write two different scrape timestamps and
+  // corrupt the active/discontinued tracking.
+  if (updateInProgress) {
+    throw new Error('Update already in progress');
+  }
+  updateInProgress = true;
+  try {
+    await runUpdate();
+  } finally {
+    updateInProgress = false;
+  }
+}
+
+async function runUpdate() {
   const DB = getDB();
   const scrapeTime = new Date().toISOString();
   console.log(`Current Scrape Timestamp: ${scrapeTime}`);
+
+  await runPromise.call(
+    DB,
+    `INSERT INTO scans (scrape_time, started_at) VALUES (?, ?)`,
+    [scrapeTime, scrapeTime]
+  );
 
   const data = await fetchApiData();
   const groupedData = groupByMasterId(data);
@@ -326,6 +406,7 @@ export async function updateDatabase() {
         JSON.stringify(product.about.sleeve || []),
         JSON.stringify(product.about.style || []),
         product.defaultImage || '',
+        scrapeTime, // added_at for new inserts
         scrapeTime, // last_seen_at for new inserts
       ]);
       productUpdateRecords.push([
@@ -360,6 +441,8 @@ export async function updateDatabase() {
 
           const variantId = `${product.id}-${colorId}`;
 
+          const thumbnailId = color.images[0] || null;
+
           // 2. Prepare variant insert record with swatch and refColor
           variantInsertRecords.push([
             variantId,
@@ -373,6 +456,8 @@ export async function updateDatabase() {
             JSON.stringify(color.all_sizes),
             color.swatch || '',
             color.refColor || '',
+            thumbnailId,
+            scrapeTime, // added_at for new inserts
             scrapeTime, // last_seen_at for new inserts
           ]);
           variantUpdateRecords.push([
@@ -383,6 +468,7 @@ export async function updateDatabase() {
             JSON.stringify(color.all_sizes),
             color.swatch || '',
             color.refColor || '',
+            thumbnailId,
             variantId,
           ]); // parameters for UPDATE
 
@@ -409,7 +495,7 @@ export async function updateDatabase() {
           }
 
           for (const imageId of color.images) {
-            imageInsertRecords.push([imageId, product.id, variantId]);
+            imageInsertRecords.push([imageId, product.id, variantId, scrapeTime]);
           }
         }
       }
@@ -459,15 +545,15 @@ export async function updateDatabase() {
   // Products (with all new columns)
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO products (id, name, display_name, slug, description, designers_notes, fabric, brand, warmth, fit, category, rating, review_count, sustainability, neckline, sleeve, style, default_image, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO products (id, name, display_name, slug, description, designers_notes, fabric, brand, warmth, fit, category, rating, review_count, sustainability, neckline, sleeve, style, default_image, added_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     productInsertRecords,
     'Products'
   );
 
-  // Variants (with swatch and ref_color)
+  // Variants (with swatch, ref_color and thumbnail_id)
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO variants (id, product_id, color, color_id, length, price, list_price, available_sizes, all_sizes, swatch, ref_color, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO variants (id, product_id, color, color_id, length, price, list_price, available_sizes, all_sizes, swatch, ref_color, thumbnail_id, added_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     variantInsertRecords,
     'Variants'
   );
@@ -475,7 +561,7 @@ export async function updateDatabase() {
   // Images
   await prepareRunAll(
     DB,
-    `INSERT OR IGNORE INTO images (id, product_id, variant_id) VALUES (?, ?, ?)`,
+    `INSERT OR IGNORE INTO images (id, product_id, variant_id, added_at) VALUES (?, ?, ?, ?)`,
     imageInsertRecords,
     'Image IDs'
   );
@@ -496,17 +582,19 @@ export async function updateDatabase() {
     'Restocks'
   );
 
-  // Store Availability (clear old data for this scrape and insert new)
-  await runPromise.call(
-    DB,
-    `DELETE FROM store_availability WHERE timestamp < ?`,
-    [scrapeTime]
-  );
+  // Store Availability: insert the new snapshot first, then clear older
+  // snapshots. The previous delete-then-insert order left an empty (or
+  // permanently lost, on failure) store availability table mid-scrape.
   await prepareRunAll(
     DB,
     `INSERT OR IGNORE INTO store_availability (store_id, variant_id, color_id, available_sizes, timestamp) VALUES (?, ?, ?, ?, ?)`,
     storeAvailabilityRecords,
     'Store Availability'
+  );
+  await runPromise.call(
+    DB,
+    `DELETE FROM store_availability WHERE timestamp < ?`,
+    [scrapeTime]
   );
 
   // Populate stores table from stores.json and discovered store IDs
@@ -545,13 +633,23 @@ export async function updateDatabase() {
     'Product Status'
   );
 
-  // Update last_seen_at for variants (with swatch and ref_color)
+  // Update last_seen_at for variants (with swatch, ref_color and thumbnail_id)
   await prepareRunAll(
     DB,
-    `UPDATE variants SET last_seen_at = ?, price = ?, list_price = ?, available_sizes = ?, all_sizes = ?, swatch = ?, ref_color = ? WHERE id = ?`,
+    `UPDATE variants SET last_seen_at = ?, price = ?, list_price = ?, available_sizes = ?, all_sizes = ?, swatch = ?, ref_color = ?, thumbnail_id = ? WHERE id = ?`,
     variantUpdateRecords,
     'Variant Status'
   );
+
+  // Catalog data is fully written: mark the scan complete so this scrape time
+  // becomes the active/discontinued reference, then drop the cached stats.
+  // Image downloads below are best-effort and shouldn't gate scan completion.
+  await runPromise.call(
+    DB,
+    `UPDATE scans SET completed_at = ? WHERE scrape_time = ?`,
+    [new Date().toISOString(), scrapeTime]
+  );
+  invalidatePageContext();
 
   // --- Step 3: Image Download ---
   if (process.env.SKIP_IMAGE_DOWNLOAD === 'true') {
@@ -592,7 +690,7 @@ export async function updateDatabase() {
           // but Node.js is single-threaded event loop, so this is safe!
           const record = queue.shift();
           if (record) {
-            await downloadImageWithPuppeteer(DB, record, downloadAdvance);
+            await downloadImage(DB, record, downloadAdvance);
           }
         }
       };

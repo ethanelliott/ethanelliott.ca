@@ -1,52 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Favorites - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
   </head>
   <body>
     <%- include('partials/nav') %>
 
-    <h1>&#x2764; My Favorites</h1>
+    <h1>&#x2665; My Favorites</h1>
 
-    <div id="favorites-empty" class="favorites-empty" style="display: none">
-      <p>You haven't saved any favorites yet.</p>
-      <p>
+    <div id="favorites-empty" class="empty-state" style="display: none">
+      <div class="empty-state-icon">&#x2661;</div>
+      <p class="empty-state-text">You haven't saved any favorites yet.</p>
+      <p class="empty-state-text">
         Click the <span class="heart-icon-demo">&#x2661;</span> on any product
         to save it here!
       </p>
-      <a href="/" class="view-all-button">Browse Products</a>
+      <p><a href="/" class="view-all-button">Browse Products</a></p>
     </div>
 
     <div id="favorites-loading" class="skeleton-container">
-      <div
-        class="skeleton-shimmer"
-        style="height: 200px; border-radius: 8px"
-      ></div>
-      <p style="text-align: center; color: #999">Loading your favorites...</p>
+      <div class="skeleton-shimmer"></div>
+      <p class="skeleton-caption">Loading your favorites...</p>
     </div>
 
     <div id="favorites-grid" class="product-grid" style="display: none"></div>
 
     <script>
-      const FAVORITES_KEY = 'aritzia_favorites';
-
-      function getFavorites() {
-        try {
-          return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
-        } catch {
-          return [];
-        }
-      }
-
-      function removeFavorite(variantId) {
-        const favs = getFavorites().filter((id) => id !== String(variantId));
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
-        loadFavorites();
-      }
-
       async function loadFavorites() {
         const favs = getFavorites();
         const loading = document.getElementById('favorites-loading');
@@ -65,7 +44,9 @@
         grid.style.display = 'none';
 
         try {
-          const resp = await fetch('/api/variants?ids=' + favs.join(','));
+          const resp = await fetch(
+            '/api/variants?ids=' + encodeURIComponent(favs.join(','))
+          );
           const variants = await resp.json();
 
           if (variants.length === 0) {
@@ -75,71 +56,38 @@
           }
 
           grid.innerHTML = variants
-            .map((v) => {
-              const link =
-                '/product/' + v.product_id + '/variant/' + v.color_id;
-              const name = v.display_name || v.name;
-              const hasDiscount =
-                v.price && v.list_price && v.price < v.list_price;
-              const discountPct = hasDiscount
-                ? Math.round((1 - v.price / v.list_price) * 100)
-                : 0;
-              return (
-                '<div class="product-card">' +
-                (hasDiscount
-                  ? '<span class="discount-overlay">' +
-                    discountPct +
-                    '% OFF</span>'
-                  : '') +
-                '<button class="favorite-btn favorited" onclick="removeFavorite(\'' +
-                v.id +
-                '\')" title="Remove from favorites">&#x2665;</button>' +
-                '<a href="' +
-                link +
-                '" class="product-image">' +
-                (v.thumbnail_id
-                  ? '<img src="/api/images/' +
-                    v.thumbnail_id +
-                    '" alt="' +
-                    name +
-                    '" loading="lazy" />'
-                  : '<span class="no-image-placeholder">No Image</span>') +
-                '</a>' +
-                '<div class="product-info">' +
-                '<a href="' +
-                link +
-                '" class="product-name">' +
-                name +
-                '</a>' +
-                '<div class="product-price-container">' +
-                (hasDiscount
-                  ? '<span class="price-sale">$' +
-                    v.price +
-                    '</span><span class="price-list">$' +
-                    v.list_price +
-                    '</span>'
-                  : v.price
-                  ? '<span>$' + v.price + '</span>'
-                  : '') +
-                '</div>' +
-                '<div class="variant-details">' +
-                (v.color || '') +
-                (v.length ? ' (' + v.length + ')' : '') +
-                '</div>' +
-                '</div></div>'
-              );
-            })
+            .map((v) =>
+              renderProductCard({
+                href: '/product/' + v.product_id + '/variant/' + v.color_id,
+                name: v.display_name || v.name,
+                thumbnail_id: v.thumbnail_id,
+                price: v.price,
+                list_price: v.list_price,
+                subtext:
+                  (v.color || '') +
+                  (v.length && v.length !== 'REGULAR' ? ' (' + v.length + ')' : ''),
+                favoriteId: v.id,
+                rating: v.rating,
+                review_count: v.review_count,
+              })
+            )
             .join('');
 
           loading.style.display = 'none';
           grid.style.display = 'grid';
         } catch (err) {
           loading.innerHTML =
-            '<p style="color: red;">Failed to load favorites.</p>';
+            '<p class="ai-error">Failed to load favorites.</p>';
         }
       }
 
-      loadFavorites();
+      // Re-render the page when a favorite is removed
+      window.onFavoriteToggled = function () {
+        loadFavorites();
+      };
+
+      // app.js is deferred, so wait for it before using its helpers
+      document.addEventListener('DOMContentLoaded', loadFavorites);
     </script>
   </body>
 </html>

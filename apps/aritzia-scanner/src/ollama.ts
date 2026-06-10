@@ -177,6 +177,29 @@ export class OllamaClient {
       let buffer = '';
       let inThinkBlock = false;
 
+      // Split chunk text on <think>/</think> boundaries, stripping the tags
+      // themselves so they never leak into the displayed reasoning or answer.
+      const splitThinkSegments = (
+        content: string
+      ): Array<{ text: string; thinking: boolean }> => {
+        const segments: Array<{ text: string; thinking: boolean }> = [];
+        let rest = content;
+        while (rest.length > 0) {
+          const tag = inThinkBlock ? '</think>' : '<think>';
+          const idx = rest.indexOf(tag);
+          if (idx === -1) {
+            segments.push({ text: rest, thinking: inThinkBlock });
+            break;
+          }
+          if (idx > 0) {
+            segments.push({ text: rest.slice(0, idx), thinking: inThinkBlock });
+          }
+          inThinkBlock = !inThinkBlock;
+          rest = rest.slice(idx + tag.length);
+        }
+        return segments;
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -191,21 +214,16 @@ export class OllamaClient {
             const chunk: OllamaStreamChunk = JSON.parse(line);
             const content = chunk.message?.content || '';
 
-            // Track <think> blocks for reasoning display
-            if (content.includes('<think>')) {
-              inThinkBlock = true;
+            for (const segment of splitThinkSegments(content)) {
+              yield {
+                content: segment.text,
+                done: false,
+                thinking: segment.thinking,
+              };
             }
-            if (content.includes('</think>')) {
-              inThinkBlock = false;
-              yield { content, done: false, thinking: true };
-              continue;
+            if (chunk.done) {
+              yield { content: '', done: true, thinking: false };
             }
-
-            yield {
-              content,
-              done: chunk.done,
-              thinking: inThinkBlock,
-            };
           } catch {
             // Skip malformed JSON lines
           }
@@ -216,11 +234,17 @@ export class OllamaClient {
       if (buffer.trim()) {
         try {
           const chunk: OllamaStreamChunk = JSON.parse(buffer);
-          yield {
-            content: chunk.message?.content || '',
-            done: chunk.done,
-            thinking: false,
-          };
+          const content = chunk.message?.content || '';
+          for (const segment of splitThinkSegments(content)) {
+            yield {
+              content: segment.text,
+              done: false,
+              thinking: segment.thinking,
+            };
+          }
+          if (chunk.done) {
+            yield { content: '', done: true, thinking: false };
+          }
         } catch {
           // Skip
         }

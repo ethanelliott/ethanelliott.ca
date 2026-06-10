@@ -1,0 +1,54 @@
+<%/* Per-color variant tile on the product page. Locals: variant (grouped color), product, discontinued. */%>
+<div
+  class="variant<%= discontinued ? ' discontinued' : '' %>"
+  data-lengths="<%= JSON.stringify(variant.lengths) %>"
+>
+  <% if (variant.thumbnail) { %>
+  <a href="/product/<%= product.id %>/variant/<%= variant.color_id %>">
+    <img
+      src="/api/images/<%= variant.thumbnail %>"
+      alt="<%= variant.color %>"
+      class="variant-image"
+      loading="lazy"
+      decoding="async"
+    />
+  </a>
+  <% } %>
+
+  <div class="variant-info">
+    <h3 class="variant-title">
+      <a
+        href="/product/<%= product.id %>/variant/<%= variant.color_id %>"
+        class="variant-link"
+        ><%= variant.color %></a
+      >
+    </h3>
+
+    <% if (variant.price) { %>
+    <div class="variant-price-container">
+      <% if (variant.price < variant.list_price) { %>
+      <span class="price-sale"><%= fmtPrice(variant.price) %></span>
+      <span class="price-list"><%= fmtPrice(variant.list_price) %></span>
+      <% } else { %>
+      <span><%= fmtPrice(variant.price) %></span>
+      <% } %>
+    </div>
+    <% } %>
+
+    <% if (!discontinued && variant.all_sizes && variant.all_sizes.length > 0 && variant.available_sizes) { %>
+    <div class="sizes-mini">
+      <% variant.all_sizes.forEach(size => { %>
+      <span class="size-tag-mini <%= variant.available_sizes.includes(size) ? 'available' : 'unavailable' %>"><%= size %></span>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <% if (product.allLengths && product.allLengths.length > 1) { %>
+    <p class="variant-lengths"><%= variant.lengths.join(', ') %></p>
+    <% } %>
+
+    <% if (discontinued) { %>
+    <p class="discontinued-label">Discontinued</p>
+    <% } %>
+  </div>
+</div>

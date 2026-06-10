@@ -1,10 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Search - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
   </head>
   <body>
     <%- include('partials/nav') %>
@@ -35,14 +32,10 @@
     <div id="ai-thinking" class="ai-stream-container" style="display: none">
       <div class="ai-thinking-header">
         <span class="ai-thinking-icon">🤖</span>
-        <span>Understanding your query...</span>
+        <span id="ai-search-status">Understanding your query...</span>
       </div>
       <div id="ai-reasoning" class="ai-reasoning" style="display: none"></div>
-      <div
-        id="ai-filters"
-        class="ai-filters-display"
-        style="display: none"
-      ></div>
+      <div id="ai-filters" class="ai-filters-display" style="display: none"></div>
     </div>
 
     <div id="ai-results" style="display: none">
@@ -63,37 +56,36 @@
         btn.disabled = true;
         btn.textContent = 'Searching...';
 
+        const reasoningEl = document.getElementById('ai-reasoning');
         document.getElementById('ai-thinking').style.display = 'block';
+        document.getElementById('ai-search-status').textContent =
+          'Understanding your query...';
         document.getElementById('ai-results').style.display = 'none';
         document.getElementById('ai-error').style.display = 'none';
-        document.getElementById('ai-reasoning').style.display = 'none';
-        document.getElementById('ai-reasoning').innerHTML = '';
+        reasoningEl.style.display = 'none';
+        reasoningEl.textContent = '';
+        reasoningEl.classList.remove('reasoning-collapsed');
         document.getElementById('ai-filters').style.display = 'none';
 
         const evtSource = new EventSource(
           `/api/ai/search?q=${encodeURIComponent(query)}`
         );
 
-        evtSource.addEventListener('thinking', (e) => {
-          const data = JSON.parse(e.data);
-          const reasoningEl = document.getElementById('ai-reasoning');
-          reasoningEl.innerHTML += escapeHtml(data.content);
-          reasoningEl.scrollTop = reasoningEl.scrollHeight;
+        evtSource.addEventListener('status', (e) => {
+          document.getElementById('ai-search-status').textContent =
+            JSON.parse(e.data).message;
         });
 
         evtSource.addEventListener('reasoning', (e) => {
           const data = JSON.parse(e.data);
-          const reasoningEl = document.getElementById('ai-reasoning');
           reasoningEl.style.display = 'block';
           reasoningEl.classList.add('thinking-active');
-          reasoningEl.innerHTML += escapeHtml(data.content);
+          reasoningEl.textContent += data.content;
           reasoningEl.scrollTop = reasoningEl.scrollHeight;
         });
 
         evtSource.addEventListener('reasoning-done', () => {
-          document
-            .getElementById('ai-reasoning')
-            .classList.add('reasoning-collapsed');
+          reasoningEl.classList.add('reasoning-collapsed');
         });
 
         evtSource.addEventListener('filters', (e) => {
@@ -102,7 +94,6 @@
           if (data.filters && Object.keys(data.filters).length > 0) {
             filtersEl.style.display = 'block';
             const f = data.filters;
-            let html = '<strong>Interpreted filters:</strong> ';
             const parts = [];
             if (f.searchTerms?.length)
               parts.push(`Keywords: ${f.searchTerms.join(', ')}`);
@@ -114,10 +105,12 @@
             if (f.maxPrice != null) parts.push(`Max: $${f.maxPrice}`);
             if (f.onSale) parts.push('On Sale');
             if (f.sortBy) parts.push(`Sort: ${f.sortBy}`);
-            html += parts
-              .map((p) => `<span class="ai-filter-tag">${p}</span>`)
-              .join(' ');
-            filtersEl.innerHTML = html;
+            // Filter values come from model output — escape before innerHTML
+            filtersEl.innerHTML =
+              '<strong>Interpreted filters:</strong> ' +
+              parts
+                .map((p) => `<span class="ai-filter-tag">${escapeHtml(p)}</span>`)
+                .join(' ');
           }
         });
 
@@ -125,81 +118,46 @@
           const data = JSON.parse(e.data);
           const resultsEl = document.getElementById('ai-results');
           const gridEl = document.getElementById('results-grid');
-          const headingEl = document.getElementById('results-heading');
-          const explanationEl = document.getElementById('ai-explanation');
 
           resultsEl.style.display = 'block';
-          headingEl.textContent = `Found ${data.count} result${
-            data.count !== 1 ? 's' : ''
-          }`;
-          explanationEl.textContent = data.explanation || '';
+          document.getElementById('results-heading').textContent = `Found ${
+            data.count
+          } result${data.count !== 1 ? 's' : ''}`;
+          document.getElementById('ai-explanation').textContent =
+            data.explanation || '';
 
           if (data.products.length === 0) {
             gridEl.innerHTML =
-              '<div class="empty-state">No products matched your search. Try a different description.</div>';
+              '<div class="empty-state"><p class="empty-state-text">No products matched your search. Try a different description.</p></div>';
             return;
           }
 
           gridEl.innerHTML = data.products
-            .map(
-              (p) => `
-            <div class="product-card">
-              <a href="/product/${p.product_id}/variant/${
-                p.color_id
-              }" class="product-image">
-                ${
-                  p.thumbnail_id
-                    ? `<img src="/api/images/${
-                        p.thumbnail_id
-                      }" alt="${escapeHtml(
-                        p.display_name || p.name
-                      )}" loading="lazy" />`
-                    : '<span class="no-image-placeholder">No Image</span>'
-                }
-              </a>
-              <div class="product-info">
-                <a href="/product/${p.product_id}/variant/${
-                p.color_id
-              }" class="product-name">${escapeHtml(
-                p.display_name || p.name
-              )}</a>
-                <div class="product-price-container">
-                  ${
-                    p.price < p.list_price
-                      ? `<span class="price-sale">$${p.price}</span> <span class="price-list">$${p.list_price}</span>`
-                      : `<span>$${p.price}</span>`
-                  }
-                </div>
-                <div class="variant-details">${escapeHtml(
-                  p.color
-                )} (${escapeHtml(p.length)})</div>
-                ${
-                  p.rating
-                    ? `<div class="product-meta">${'★'.repeat(
-                        Math.round(p.rating)
-                      )}${'☆'.repeat(
-                        5 - Math.round(p.rating)
-                      )} ${p.rating.toFixed(1)}</div>`
-                    : ''
-                }
-              </div>
-            </div>
-          `
+            .map((p) =>
+              renderProductCard({
+                href: '/product/' + p.product_id + '/variant/' + p.color_id,
+                name: p.display_name || p.name,
+                thumbnail_id: p.thumbnail_id,
+                price: p.price,
+                list_price: p.list_price,
+                subtext:
+                  (p.color || '') +
+                  (p.length && p.length !== 'REGULAR' ? ' (' + p.length + ')' : ''),
+                favoriteId: p.id,
+                rating: p.rating,
+                review_count: p.review_count,
+              })
             )
             .join('');
         });
 
         evtSource.addEventListener('error', (e) => {
+          const errorEl = document.getElementById('ai-error');
+          errorEl.style.display = 'block';
           try {
-            const data = JSON.parse(e.data);
-            document.getElementById('ai-error').style.display = 'block';
-            document.getElementById(
-              'ai-error'
-            ).textContent = `Error: ${data.error}`;
+            errorEl.textContent = `Error: ${JSON.parse(e.data).error}`;
           } catch {
-            document.getElementById('ai-error').style.display = 'block';
-            document.getElementById('ai-error').textContent =
-              'Connection lost. Please try again.';
+            errorEl.textContent = 'Connection lost. Please try again.';
           }
           evtSource.close();
           btn.disabled = false;
@@ -210,10 +168,8 @@
           evtSource.close();
           btn.disabled = false;
           btn.textContent = 'Search';
-          // Collapse thinking
-          document.querySelector(
-            '.ai-thinking-header span:last-child'
-          ).textContent = 'Query processed';
+          document.getElementById('ai-search-status').textContent =
+            'Query processed';
         });
 
         evtSource.onerror = () => {
@@ -223,13 +179,6 @@
         };
 
         return false;
-      }
-
-      function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(text));
-        return div.innerHTML;
       }
     </script>
   </body>

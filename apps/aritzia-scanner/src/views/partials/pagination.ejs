@@ -1,0 +1,56 @@
+<%
+  /* Locals: page, totalPages, baseUrl, query (object of params to preserve). */
+  if (totalPages > 1) {
+    const qp = new URLSearchParams();
+    Object.entries(query || {}).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        qp.set(key, String(value));
+      }
+    });
+
+    function pageUrl(p) {
+      const params = new URLSearchParams(qp);
+      if (p > 1) params.set('page', String(p));
+      const qs = params.toString();
+      return baseUrl + (qs ? '?' + qs : '');
+    }
+
+    const maxVisible = 7;
+    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+%>
+<nav class="pagination" aria-label="Pagination">
+  <% if (page > 1) { %>
+  <a href="<%= pageUrl(page - 1) %>" class="page-link" aria-label="Previous">&laquo; Prev</a>
+  <% } else { %>
+  <span class="page-link disabled">&laquo; Prev</span>
+  <% } %>
+
+  <% if (startPage > 1) { %>
+  <a href="<%= pageUrl(1) %>" class="page-link">1</a>
+  <% if (startPage > 2) { %><span class="page-ellipsis">&hellip;</span><% } %>
+  <% } %>
+
+  <% for (let i = startPage; i <= endPage; i++) { %>
+  <% if (i === page) { %>
+  <span class="page-link active"><%= i %></span>
+  <% } else { %>
+  <a href="<%= pageUrl(i) %>" class="page-link"><%= i %></a>
+  <% } %>
+  <% } %>
+
+  <% if (endPage < totalPages) { %>
+  <% if (endPage < totalPages - 1) { %><span class="page-ellipsis">&hellip;</span><% } %>
+  <a href="<%= pageUrl(totalPages) %>" class="page-link"><%= totalPages %></a>
+  <% } %>
+
+  <% if (page < totalPages) { %>
+  <a href="<%= pageUrl(page + 1) %>" class="page-link" aria-label="Next">Next &raquo;</a>
+  <% } else { %>
+  <span class="page-link disabled">Next &raquo;</span>
+  <% } %>
+</nav>
+<% } %>
