@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %> - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
   </head>
   <body>
     <%- include('partials/nav') %>
 
     <h1><%= title %></h1>
-    
-    <p class="results-count"><%= categories.length %> categories</p>
 
+    <% if (categories && categories.length > 0) { %>
+    <p class="results-count"><%= categories.length %> categories</p>
     <div class="categories-grid">
       <% categories.forEach(cat => { %>
       <a href="/categories/<%= encodeURIComponent(cat.name) %>" class="category-card">
@@ -26,5 +23,8 @@
       </a>
       <% }); %>
     </div>
+    <% } else { %>
+    <%- include('partials/empty_state', { message: 'No categories tracked yet.', icon: '🗂️' }) %>
+    <% } %>
   </body>
 </html>

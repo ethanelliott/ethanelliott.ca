@@ -1,75 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %> - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <%- include('partials/head') %>
   </head>
   <body>
     <%- include('partials/nav') %>
 
     <h1><%= title %></h1>
+    <p><a href="/colors" class="back-link">&larr; Back to all colors</a></p>
 
-    <% if (activeProducts && activeProducts.length > 0) { %>
-    <h2>Active Products</h2>
+    <% if (cards && cards.length > 0) { %>
+    <p class="results-count"><%= cards.length %> product<%= cards.length === 1 ? '' : 's' %></p>
     <div class="product-grid">
-      <% activeProducts.forEach(product => { %>
-      <div class="product-card">
-        <a
-          href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>"
-          class="product-image"
-        >
-          <% if (product.thumbnail_id) { %>
-          <img
-            src="/api/images/<%= product.thumbnail_id %>"
-            alt="<%= product.name %>"
-            loading="lazy"
-          />
-          <% } else { %>
-          <span class="no-image-placeholder">No Image</span>
-          <% } %>
-        </a>
-        <div class="product-info">
-          <a
-            href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>"
-            class="product-name"
-            ><%= product.name %></a
-          >
-        </div>
-      </div>
+      <% cards.forEach(card => { %>
+      <%- include('partials/product_card', { card }) %>
       <% }); %>
     </div>
-    <% } %> <% if (discontinuedProducts && discontinuedProducts.length > 0) { %>
-    <h2>Discontinued Products</h2>
-    <div class="product-grid">
-      <% discontinuedProducts.forEach(product => { %>
-      <div class="product-card discontinued">
-        <a
-          href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>"
-          class="product-image"
-        >
-          <% if (product.thumbnail_id) { %>
-          <img
-            src="/api/images/<%= product.thumbnail_id %>"
-            alt="<%= product.name %>"
-            loading="lazy"
-          />
-          <% } else { %>
-          <span class="no-image-placeholder">No Image</span>
-          <% } %>
-        </a>
-        <div class="product-info">
-          <a
-            href="/product/<%= product.id %>/variant/<%= product.variant_color_id %>"
-            class="product-name"
-            ><%= product.name %></a
-          >
-          <div class="discontinued-badge">Discontinued</div>
-        </div>
-      </div>
-      <% }); %>
-    </div>
+    <% } else { %>
+    <%- include('partials/empty_state', { message: `No products found in ${color}.`, icon: '🎨' }) %>
     <% } %>
   </body>
 </html>

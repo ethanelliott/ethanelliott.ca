@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('partials/head') %>
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <div class="empty-state">
+      <div class="empty-state-icon"><%= status === 404 ? '🧭' : '⚠️' %></div>
+      <h1 class="empty-state-title"><%= status %></h1>
+      <p class="empty-state-text"><%= message %></p>
+      <p><a href="/" class="view-all-button">Back to home</a></p>
+    </div>
+  </body>
+</html>

@@ -1,56 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title %> - Aritzia Scanner</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
+  <head>
+    <%- include('partials/head') %>
+  </head>
+  <body>
     <%- include('partials/nav') %>
 
     <h1><%= title %></h1>
-    
+
     <p class="results-count"><%= activeColors.length %> active colors, <%= inactiveColors.length %> inactive</p>
-    
+
+    <% if (activeColors.length > 0) { %>
     <h2>Active Colors (<%= activeColors.length %>)</h2>
     <div class="color-grid">
-        <% activeColors.forEach(color => { %>
-            <div class="color-card">
-                <% if (color.thumbnail) { %>
-                    <a href="/colors/<%= encodeURIComponent(color.color) %>">
-                        <img src="/api/images/<%= color.thumbnail.image_id %>" alt="<%= color.thumbnail.product_name %>" class="color-thumbnail">
-                    </a>
-                <% } else { %>
-                    <a href="/colors/<%= encodeURIComponent(color.color) %>">
-                        <div class="color-placeholder">No Image</div>
-                    </a>
-                <% } %>
-                <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
-                <span class="color-count"><%= color.variant_count %> variants</span>
-            </div>
-        <% }); %>
+      <% activeColors.forEach(color => { %>
+      <div class="color-card">
+        <a href="/colors/<%= encodeURIComponent(color.color) %>">
+          <% if (color.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= color.thumbnail_id %>"
+            alt="<%= color.color %>"
+            class="color-thumbnail"
+            loading="lazy"
+            decoding="async"
+          />
+          <% } else { %>
+          <div class="color-placeholder">No Image</div>
+          <% } %>
+        </a>
+        <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
+        <span class="color-count"><%= color.variant_count %> variants</span>
+      </div>
+      <% }); %>
     </div>
+    <% } else { %>
+    <%- include('partials/empty_state', { message: 'No colors tracked yet.', icon: '🎨' }) %>
+    <% } %>
 
     <% if (inactiveColors.length > 0) { %>
-        <h2>Inactive Colors (<%= inactiveColors.length %>)</h2>
-        <div class="color-grid">
-            <% inactiveColors.forEach(color => { %>
-                <div class="color-card inactive">
-                    <% if (color.thumbnail) { %>
-                        <a href="/colors/<%= encodeURIComponent(color.color) %>">
-                            <img src="/api/images/<%= color.thumbnail.image_id %>" alt="<%= color.thumbnail.product_name %>" class="color-thumbnail">
-                        </a>
-                    <% } else { %>
-                        <a href="/colors/<%= encodeURIComponent(color.color) %>">
-                            <div class="color-placeholder">No Image</div>
-                        </a>
-                    <% } %>
-                    <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
-                    <span class="color-count"><%= color.variant_count %> variants</span>
-                </div>
-            <% }); %>
-        </div>
+    <h2>Inactive Colors (<%= inactiveColors.length %>)</h2>
+    <div class="color-grid">
+      <% inactiveColors.forEach(color => { %>
+      <div class="color-card inactive">
+        <a href="/colors/<%= encodeURIComponent(color.color) %>">
+          <% if (color.thumbnail_id) { %>
+          <img
+            src="/api/images/<%= color.thumbnail_id %>"
+            alt="<%= color.color %>"
+            class="color-thumbnail"
+            loading="lazy"
+            decoding="async"
+          />
+          <% } else { %>
+          <div class="color-placeholder">No Image</div>
+          <% } %>
+        </a>
+        <a href="/colors/<%= encodeURIComponent(color.color) %>" class="color-name"><%= color.color %></a>
+        <span class="color-count"><%= color.variant_count %> variants</span>
+      </div>
+      <% }); %>
+    </div>
     <% } %>
-</body>
+  </body>
 </html>

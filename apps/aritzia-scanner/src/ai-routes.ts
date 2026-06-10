@@ -1,8 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { getOllamaClient, Message } from './ollama';
 import { allPromise, getDB, getPromise, runPromise } from './db';
+import { getPageContext, parseJsonArr } from './page-data';
 import { marked } from 'marked';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime.js';
+import utc from 'dayjs/plugin/utc.js';
+
+dayjs.extend(relativeTime);
+dayjs.extend(utc);
 
 const router = Router();
 
@@ -62,13 +68,9 @@ async function streamAIWithMarkdown(
   return fullContent;
 }
 
-// Helper to get last scan time
-async function getLastScanTime(db: any): Promise<string> {
-  const lastScanRow = await getPromise.call(
-    db,
-    'SELECT MAX(last_seen_at) as max_time FROM variants'
-  );
-  return lastScanRow ? lastScanRow.max_time : new Date().toISOString();
+async function getLastScanTime(db: any): Promise<string | null> {
+  const { lastScanTime } = await getPageContext(db);
+  return lastScanTime;
 }
 
 // ==================== AI Product Summary (Streaming) ====================
@@ -246,7 +248,7 @@ router.get('/api/ai/search', async (req: Request, res: Response) => {
 
     const priceRange = await getPromise.call(
       db,
-      `SELECT MIN(price) as min_price, MAX(price) as max_price FROM variants WHERE last_seen_at = ?`,
+      `SELECT MIN(price) as min_price, MAX(price) as max_price FROM variants WHERE last_seen_at >= ?`,
       [lastScanTime]
     );
 
@@ -287,12 +289,13 @@ Return JSON:
     // First: stream the AI's interpretation
     sendSSE(res, 'status', { message: 'Understanding your query...' });
 
-    let fullResponse = '';
+    // Accumulate only the answer (non-thinking) content; otherwise the JSON
+    // extraction below can match a JSON object inside the reasoning block.
+    let answerContent = '';
     let inThinking = false;
     for await (const chunk of ollama.chatStream(messages, {
       temperature: 0.1,
     })) {
-      fullResponse += chunk.content;
       if (chunk.thinking) {
         inThinking = true;
         sendSSE(res, 'reasoning', { content: chunk.content });
@@ -301,10 +304,7 @@ Return JSON:
           inThinking = false;
           sendSSE(res, 'reasoning-done', {});
         }
-        sendSSE(res, 'thinking', {
-          content: chunk.content,
-          thinking: false,
-        });
+        answerContent += chunk.content;
       }
     }
 
@@ -312,7 +312,7 @@ Return JSON:
     let filters: any = {};
     try {
       // Extract JSON from response (may be wrapped in markdown code blocks)
-      const jsonMatch = fullResponse.match(/\{[\s\S]*\}/);
+      const jsonMatch = answerContent.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         filters = JSON.parse(jsonMatch[0]);
       }
@@ -325,16 +325,12 @@ Return JSON:
     // Build SQL query from parsed filters
     let sql = `
       SELECT v.id, v.color, v.color_id, v.length, v.price, v.list_price,
-             v.available_sizes, v.swatch, v.ref_color,
+             v.available_sizes, v.swatch, v.ref_color, v.thumbnail_id,
              p.name, p.display_name, p.brand, p.id as product_id, p.slug,
-             p.rating, p.review_count, p.category, p.sustainability,
-             COALESCE(
-               (SELECT id FROM images WHERE variant_id = v.id LIMIT 1),
-               (SELECT i.id FROM images i JOIN variants v2 ON i.variant_id = v2.id WHERE v2.product_id = v.product_id AND v2.color = v.color LIMIT 1)
-             ) as thumbnail_id
+             p.rating, p.review_count, p.category, p.sustainability
       FROM variants v
       JOIN products p ON v.product_id = p.id
-      WHERE v.last_seen_at = ?
+      WHERE v.last_seen_at >= ?
     `;
     const params: any[] = [lastScanTime];
 
@@ -396,7 +392,7 @@ Return JSON:
         sql += ` ORDER BY p.rating DESC, p.review_count DESC`;
         break;
       case 'discount':
-        sql += ` ORDER BY ((v.list_price - v.price) / v.list_price) DESC`;
+        sql += ` ORDER BY (CASE WHEN v.list_price > 0 THEN (v.list_price - v.price) / v.list_price ELSE 0 END) DESC`;
         break;
       case 'newest':
         sql += ` ORDER BY v.added_at DESC`;
@@ -411,13 +407,9 @@ Return JSON:
     const results = await allPromise.call(db, sql, params);
 
     results.forEach((v: any) => {
-      v.available_sizes_arr = v.available_sizes
-        ? JSON.parse(v.available_sizes)
-        : [];
-      v.category_arr = v.category ? JSON.parse(v.category) : [];
-      v.sustainability_arr = v.sustainability
-        ? JSON.parse(v.sustainability)
-        : [];
+      v.available_sizes_arr = parseJsonArr(v.available_sizes);
+      v.category_arr = parseJsonArr(v.category);
+      v.sustainability_arr = parseJsonArr(v.sustainability);
     });
 
     sendSSE(res, 'results', {
@@ -458,10 +450,11 @@ router.get('/api/ai/style', async (req: Request, res: Response) => {
       `SELECT p.id, p.name, p.display_name, p.brand, p.category, p.fabric,
               p.rating, p.review_count, p.sustainability, p.warmth,
               MIN(v.price) as price, MAX(v.list_price) as list_price,
+              MIN(v.thumbnail_id) as thumbnail_id,
               GROUP_CONCAT(DISTINCT v.color) as colors
        FROM products p
        JOIN variants v ON p.id = v.product_id
-       WHERE v.last_seen_at = ? AND v.available_sizes != '[]'
+       WHERE v.last_seen_at >= ? AND v.available_sizes != '[]'
        GROUP BY p.id
        ORDER BY p.review_count DESC
        LIMIT 80`,
@@ -529,6 +522,7 @@ Recommend 3-5 items that work together. Explain your styling choices.`;
               brand: p.brand,
               rating: p.rating,
               colors: p.colors,
+              thumbnail_id: p.thumbnail_id,
             };
           });
         sendSSE(res, 'picks', { products: picks });
@@ -573,10 +567,11 @@ router.get('/api/ai/outfit/:productId', async (req: Request, res: Response) => {
       `SELECT p.id, p.name, p.display_name, p.brand, p.category, p.fabric,
               p.rating, p.review_count, p.sustainability, p.warmth,
               MIN(v.price) as price, MAX(v.list_price) as list_price,
+              MIN(v.thumbnail_id) as thumbnail_id,
               GROUP_CONCAT(DISTINCT v.color) as colors
        FROM products p
        JOIN variants v ON p.id = v.product_id
-       WHERE v.last_seen_at = ? AND p.id != ? AND v.available_sizes != '[]'
+       WHERE v.last_seen_at >= ? AND p.id != ? AND v.available_sizes != '[]'
        GROUP BY p.id
        ORDER BY p.review_count DESC
        LIMIT 60`,
@@ -644,6 +639,7 @@ ${productList}`;
               price: p.price,
               list_price: p.list_price,
               rating: p.rating,
+              thumbnail_id: p.thumbnail_id,
             };
           });
         sendSSE(res, 'picks', { products: picks });
@@ -680,7 +676,7 @@ router.get('/api/ai/deals', async (req: Request, res: Response) => {
               (SELECT MIN(pr.price) FROM prices pr WHERE pr.variant_id = v.id) as lowest_ever
        FROM variants v
        JOIN products p ON v.product_id = p.id
-       WHERE v.last_seen_at = ? AND v.price < v.list_price
+       WHERE v.last_seen_at >= ? AND v.price < v.list_price AND v.list_price > 0
        ORDER BY ((v.list_price - v.price) / v.list_price) DESC
        LIMIT 20`,
       [lastScanTime]
@@ -713,7 +709,7 @@ router.get('/api/ai/deals', async (req: Request, res: Response) => {
         (r: any) =>
           `- ${r.display_name || r.name} in ${r.color}: $${
             r.price
-          } (restocked ${dayjs(r.timestamp).fromNow()})`
+          } (restocked ${dayjs.utc(r.timestamp).fromNow()})`
       )
       .join('\n');
 

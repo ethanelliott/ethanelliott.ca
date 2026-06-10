@@ -36,6 +36,15 @@
       <a href="/ai/style" class="nav-ai-link">👗 Style Advisor</a>
       <a href="/ai/deals" class="nav-ai-link">💰 Deals Report</a>
     </div>
+    <form action="/" method="GET" class="quick-search" role="search">
+      <input
+        type="search"
+        name="q"
+        class="quick-search-input"
+        placeholder="Quick search…"
+        aria-label="Search products"
+      />
+    </form>
   </div>
   <% if (typeof stats !== 'undefined' && stats) { %>
   <div class="nav-stats nav-stats-desktop">
@@ -47,6 +56,15 @@
 </nav>
 <!-- Mobile drawer lives outside <nav> to avoid backdrop-filter containing block issues -->
 <div class="nav-drawer" id="nav-drawer">
+  <form action="/" method="GET" class="quick-search quick-search-drawer" role="search">
+    <input
+      type="search"
+      name="q"
+      class="quick-search-input"
+      placeholder="Quick search…"
+      aria-label="Search products"
+    />
+  </form>
   <div class="nav-group">
     <a href="/">Newest</a>
     <a href="/products">All Products</a>
@@ -73,45 +91,3 @@
 >
   🌙
 </button>
-<script>
-  (function () {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light') {
-      document.documentElement.style.colorScheme = 'light';
-      document.getElementById('theme-toggle').textContent = '☀️';
-    } else if (saved === 'dark') {
-      document.documentElement.style.colorScheme = 'dark';
-      document.getElementById('theme-toggle').textContent = '🌙';
-    }
-  })();
-  function toggleTheme() {
-    const html = document.documentElement;
-    const current =
-      html.style.colorScheme ||
-      (window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light');
-    const next = current === 'dark' ? 'light' : 'dark';
-    html.style.colorScheme = next;
-    localStorage.setItem('theme', next);
-    document.getElementById('theme-toggle').textContent =
-      next === 'dark' ? '🌙' : '☀️';
-  }
-
-  function toggleMobileNav() {
-    document.getElementById('nav-drawer').classList.toggle('nav-open');
-    document.getElementById('nav-hamburger').classList.toggle('open');
-    document.getElementById('nav-overlay').classList.toggle('visible');
-    document.body.classList.toggle('nav-locked');
-  }
-  function closeMobileNav() {
-    document.getElementById('nav-drawer').classList.remove('nav-open');
-    document.getElementById('nav-hamburger').classList.remove('open');
-    document.getElementById('nav-overlay').classList.remove('visible');
-    document.body.classList.remove('nav-locked');
-  }
-  // Auto-close drawer when a link is tapped
-  document.querySelectorAll('#nav-drawer a').forEach(function (a) {
-    a.addEventListener('click', closeMobileNav);
-  });
-</script>
