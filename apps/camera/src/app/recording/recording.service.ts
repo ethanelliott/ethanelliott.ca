@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  renameSync,
   statSync,
   unlinkSync,
   writeFileSync,
@@ -244,12 +245,17 @@ export class RecordingService {
 
     const clipFilename = `clip_${startEpoch}_${Math.ceil(durationSec)}.mp4`;
     const clipPath = join(this._clipsDir, clipFilename);
+
+    // Browsers issue several parallel range requests for the same clip
+    // URL — join an in-flight extraction before trusting the filesystem.
+    const inFlight = this._inFlight.get(clipFilename);
+    if (inFlight) return inFlight;
+
+    // Completed clips are renamed into place atomically, so an existing
+    // file is always a fully written MP4.
     if (existsSync(clipPath)) {
       return { path: clipPath, filename: clipFilename };
     }
-
-    const inFlight = this._inFlight.get(clipFilename);
-    if (inFlight) return inFlight;
 
     const promise = this._concatSegments(segments, clipPath, clipFilename);
     this._inFlight.set(clipFilename, promise);
@@ -356,6 +362,9 @@ export class RecordingService {
     clipPath: string,
     clipFilename: string
   ): Promise<{ path: string; filename: string } | null> {
+    // Write to a temp file and rename into place on success so that
+    // concurrent requests never see a partially written MP4.
+    const partPath = `${clipPath}.part`;
     const listPath = `${clipPath}.txt`;
     const listContent = segments
       .map((s) => `file '${join(this._recordingsDir, s.filename)}'`)
@@ -382,7 +391,9 @@ export class RecordingService {
         'copy',
         '-movflags',
         '+faststart',
-        clipPath,
+        '-f',
+        'mp4',
+        partPath,
       ];
 
       const proc = spawn('ffmpeg', args, {
@@ -409,19 +420,24 @@ export class RecordingService {
 
       proc.on('close', (code) => {
         cleanup();
-        if (code === 0 && existsSync(clipPath)) {
-          resolve({ path: clipPath, filename: clipFilename });
-        } else {
-          console.error(
-            `❌ Clip extraction failed (code ${code}): ${stderr.slice(-500)}`
-          );
+        if (code === 0 && existsSync(partPath)) {
           try {
-            unlinkSync(clipPath);
-          } catch {
-            // ignore
+            renameSync(partPath, clipPath);
+            resolve({ path: clipPath, filename: clipFilename });
+            return;
+          } catch (err) {
+            console.error('❌ Failed to finalize clip:', err);
           }
-          resolve(null);
         }
+        console.error(
+          `❌ Clip extraction failed (code ${code}): ${stderr.slice(-500)}`
+        );
+        try {
+          unlinkSync(partPath);
+        } catch {
+          // ignore
+        }
+        resolve(null);
       });
 
       proc.on('error', (err) => {
@@ -438,7 +454,13 @@ export class RecordingService {
     const cutoff = Date.now() - this._clipMaxAgeMs;
     try {
       for (const filename of readdirSync(this._clipsDir)) {
-        if (!filename.endsWith('.mp4') && !filename.endsWith('.txt')) continue;
+        if (
+          !filename.endsWith('.mp4') &&
+          !filename.endsWith('.txt') &&
+          !filename.endsWith('.part')
+        ) {
+          continue;
+        }
         const filePath = join(this._clipsDir, filename);
         try {
           if (statSync(filePath).mtimeMs < cutoff) {

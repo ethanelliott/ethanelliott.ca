@@ -107,10 +107,14 @@ export async function RecordingRouter(fastify: FastifyInstance) {
 
       const { size } = statSync(clip.path);
 
+      // Cross-Origin-Resource-Policy must override helmet's same-origin
+      // default — without it the browser blocks the <video> element's
+      // cross-origin media request right after the headers arrive.
       reply
         .header('Content-Type', 'video/mp4')
         .header('Accept-Ranges', 'bytes')
         .header('Cache-Control', 'private, max-age=300')
+        .header('Cross-Origin-Resource-Policy', 'cross-origin')
         .header('Access-Control-Allow-Origin', '*');
 
       const range = request.headers.range;
@@ -127,7 +131,7 @@ export async function RecordingRouter(fastify: FastifyInstance) {
             .code(416)
             .header('Content-Range', `bytes */${size}`)
             .send({ error: 'Range not satisfiable' });
-          return;
+          return reply;
         }
 
         reply
@@ -135,12 +139,13 @@ export async function RecordingRouter(fastify: FastifyInstance) {
           .header('Content-Range', `bytes ${rangeStart}-${rangeEnd}/${size}`)
           .header('Content-Length', rangeEnd - rangeStart + 1)
           .send(createReadStream(clip.path, { start: rangeStart, end: rangeEnd }));
-        return;
+        return reply;
       }
 
       reply
         .header('Content-Length', size)
         .send(createReadStream(clip.path));
+      return reply;
     }
   );
 }
