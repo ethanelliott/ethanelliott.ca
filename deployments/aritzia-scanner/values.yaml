@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/aritzia-scanner
-  tag: s-a54919d
+  tag: s-9c1230a
   pullPolicy: Always
 
 service:
