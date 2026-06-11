@@ -357,6 +357,13 @@ export class HomeComponent {
       color: '#22c55e',
     },
     {
+      name: 'Split',
+      url: 'https://split.elliott.haus',
+      description: 'Split expenses and manage shared finances.',
+      icon: 'mdi:wallet',
+      color: '#08ed00',
+    },
+    {
       name: 'Wheel',
       url: 'https://wheel.elliott.haus',
       description: 'Spin the wheel for random decisions.',
