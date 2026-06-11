@@ -42,8 +42,8 @@ postgres:
   username: split
   # Admin credentials used by the init Job to create the role/database.
   adminUser: postgres
-  adminSecretName: split-db-secrets
-  adminSecretKey: db-password
+  adminSecretName: postgres-secrets
+  adminSecretKey: postgres-password
 
 # Application secrets (DB password + JWT signing key) live in the secret
 # `<release>-split-db-secrets` with keys `db-password` and `jwt-secret`.
