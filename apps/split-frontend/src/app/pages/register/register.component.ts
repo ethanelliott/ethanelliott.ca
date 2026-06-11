@@ -32,7 +32,6 @@ import { AuthService } from '../../core/auth.service';
             pInputText
             id="username"
             [(ngModel)]="username"
-            placeholder="jane_doe"
             autocapitalize="none"
             autocomplete="username"
             (keyup.enter)="register()"

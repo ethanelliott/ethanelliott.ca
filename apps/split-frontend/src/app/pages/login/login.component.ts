@@ -23,19 +23,7 @@ import { AuthService } from '../../core/auth.service';
           <i class="pi pi-wallet"></i>
         </div>
         <h1>Welcome back</h1>
-        <p class="subtitle">Sign in with your passkey — no password needed.</p>
-
-        <div class="field">
-          <label for="username">Username (optional)</label>
-          <input
-            pInputText
-            id="username"
-            [(ngModel)]="username"
-            placeholder="your_username"
-            autocapitalize="none"
-            autocomplete="username webauthn"
-          />
-        </div>
+        <p class="subtitle">Sign in with your passkey.</p>
 
         <p-button
           [loading]="loading()"
@@ -47,9 +35,7 @@ import { AuthService } from '../../core/auth.service';
 
         <div class="divider"><span>new here?</span></div>
 
-        <a routerLink="/register" class="create-account">
-          Create an account
-        </a>
+        <a routerLink="/register" class="create-account"> Create an account </a>
       </div>
     </div>
   `,
@@ -96,21 +82,6 @@ import { AuthService } from '../../core/auth.service';
       margin-bottom: 22px;
     }
 
-    .field {
-      text-align: left;
-      margin-bottom: 18px;
-      label {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        margin-bottom: 6px;
-        color: var(--text-secondary);
-      }
-      input {
-        width: 100%;
-      }
-    }
-
     .divider {
       display: flex;
       align-items: center;
@@ -143,13 +114,12 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
 
-  username = '';
   readonly loading = signal(false);
 
   async login(): Promise<void> {
     this.loading.set(true);
     try {
-      await this.auth.loginWithPasskey(this.username.trim() || undefined);
+      await this.auth.loginWithPasskey();
       await this.router.navigate(['/groups']);
     } catch (error: any) {
       this.messages.add({

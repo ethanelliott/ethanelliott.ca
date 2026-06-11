@@ -31,11 +31,9 @@ export class AuthService {
   }
 
   /** Passwordless login with a passkey. */
-  async loginWithPasskey(username?: string): Promise<void> {
+  async loginWithPasskey(): Promise<void> {
     const start: any = await firstValueFrom(
-      this.http.post(`${this.baseUrl}/users/login`, {
-        username: username || undefined,
-      })
+      this.http.post(`${this.baseUrl}/users/login`, {})
     );
 
     const assertion = await startAuthentication({ optionsJSON: start.options });
