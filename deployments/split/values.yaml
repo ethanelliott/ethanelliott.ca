@@ -53,7 +53,7 @@ postgres:
 #
 # For quick bring-up, set `createSecret: true` and provide values below — Helm
 # will create the secret as a pre-sync hook. CHANGE THESE before any real use.
-createSecret: true
+createSecret: false
 secrets:
-  dbPassword: 'change-me-split-db-password'
-  jwtSecret: 'change-me-split-jwt-secret-make-it-long-and-random'
+  dbPassword: ''
+  jwtSecret: ''
