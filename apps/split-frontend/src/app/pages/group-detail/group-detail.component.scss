@@ -1,0 +1,280 @@
+:host {
+  display: block;
+}
+
+.detail-header {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 30;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.back-btn,
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: none;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  i {
+    font-size: 17px;
+  }
+}
+
+.title-block {
+  flex: 1;
+  min-width: 0;
+  h1 {
+    font-size: 19px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.members-line {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 10px;
+
+  button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 0;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+
+    &.active {
+      color: var(--brand);
+      border-bottom-color: var(--brand);
+    }
+  }
+}
+
+.rows {
+  overflow: hidden;
+}
+
+.expense-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.exp-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 38px;
+  flex-shrink: 0;
+  .mon {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--owe);
+    font-weight: 600;
+  }
+  .day {
+    font-size: 17px;
+    font-weight: 700;
+  }
+}
+
+.exp-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  .exp-desc {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .exp-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+}
+
+.exp-share {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.debt-row,
+.balance-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.debt-row {
+  justify-content: space-between;
+}
+.debt-text {
+  font-size: 14px;
+}
+.debt-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.balance-row {
+  .bal-name {
+    flex: 1;
+    font-weight: 500;
+  }
+}
+
+::ng-deep .member-avatar,
+::ng-deep .p-avatar {
+  background: var(--brand-light) !important;
+  color: var(--brand) !important;
+  font-weight: 600;
+}
+
+// ── Dialog internals ──
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  input,
+  ::ng-deep .p-inputnumber,
+  ::ng-deep .p-select {
+    width: 100%;
+  }
+  small {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.splits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.split-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  &.off {
+    opacity: 0.5;
+  }
+}
+
+.split-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--brand);
+  }
+}
+
+::ng-deep .split-input {
+  max-width: 130px;
+}
+
+.split-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  .member-meta {
+    display: flex;
+    flex-direction: column;
+    span {
+      font-weight: 600;
+    }
+    small {
+      color: var(--text-muted);
+    }
+  }
+}
+
+.add-member-row {
+  display: flex;
+  gap: 8px;
+  input {
+    flex: 1;
+  }
+}
