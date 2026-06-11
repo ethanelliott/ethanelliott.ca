@@ -1,0 +1,9 @@
+apiVersion: v2
+name: split
+description: Split-style shared expense backend API
+type: application
+
+version: 0.0.1
+appVersion: '0.0.1'
+
+dependencies: []
