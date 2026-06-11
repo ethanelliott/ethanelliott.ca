@@ -266,9 +266,10 @@ export class AuthService {
     const webAuthnUserId = randomBytes(32).toString('base64url');
 
     const user = new User();
-    user.name = userData.name;
+    // Registration only collects a username; the display name defaults to it
+    // and can be changed later from the profile screen.
+    user.name = userData.username;
     user.username = userData.username;
-    user.email = userData.email;
     user.webAuthnUserId = webAuthnUserId;
     user.isActive = true;
 

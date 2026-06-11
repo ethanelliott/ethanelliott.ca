@@ -138,13 +138,11 @@ export const UserCredentialSchema = z.object({
 });
 
 export const UserRegistrationSchema = z.object({
-  name: z.string().min(1).max(100),
   username: z
     .string()
     .min(3)
     .max(50)
     .regex(/^[a-zA-Z0-9_]+$/),
-  email: z.string().email().optional(),
 });
 
 export const FullUserSchema = z.object({

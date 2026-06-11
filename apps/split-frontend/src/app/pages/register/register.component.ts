@@ -20,21 +20,11 @@ import { AuthService } from '../../core/auth.service';
     <div class="auth-screen">
       <div class="auth-card card">
         <div class="logo"><i class="pi pi-user-plus"></i></div>
-        <h1>Create your account</h1>
+        <h1>Choose a username</h1>
         <p class="subtitle">
-          Set up your profile and secure it with a passkey.
+          That's it — secure your account with a passkey. You can add a display
+          name later.
         </p>
-
-        <div class="field">
-          <label for="name">Full name</label>
-          <input
-            pInputText
-            id="name"
-            [(ngModel)]="name"
-            placeholder="Jane Doe"
-            autocomplete="name"
-          />
-        </div>
 
         <div class="field">
           <label for="username">Username</label>
@@ -45,20 +35,9 @@ import { AuthService } from '../../core/auth.service';
             placeholder="jane_doe"
             autocapitalize="none"
             autocomplete="username"
+            (keyup.enter)="register()"
           />
           <small>Letters, numbers and underscores. Min 3 characters.</small>
-        </div>
-
-        <div class="field">
-          <label for="email">Email (optional)</label>
-          <input
-            pInputText
-            id="email"
-            type="email"
-            [(ngModel)]="email"
-            placeholder="jane@example.com"
-            autocomplete="email"
-          />
         </div>
 
         <p-button
@@ -160,30 +139,23 @@ export class RegisterComponent {
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
 
-  name = '';
   username = '';
-  email = '';
   readonly loading = signal(false);
 
   async register(): Promise<void> {
-    const name = this.name.trim();
     const username = this.username.trim();
-    if (name.length < 1 || username.length < 3) {
+    if (username.length < 3) {
       this.messages.add({
         severity: 'warn',
-        summary: 'Missing details',
-        detail: 'Enter your name and a username of at least 3 characters.',
+        summary: 'Username too short',
+        detail: 'Pick a username of at least 3 characters.',
       });
       return;
     }
 
     this.loading.set(true);
     try {
-      await this.auth.register({
-        name,
-        username,
-        email: this.email.trim() || undefined,
-      });
+      await this.auth.register({ username });
       await this.router.navigate(['/groups']);
     } catch (error: any) {
       this.messages.add({

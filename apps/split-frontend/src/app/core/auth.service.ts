@@ -50,12 +50,8 @@ export class AuthService {
     this.storeTokens(complete.accessToken, complete.refreshToken);
   }
 
-  /** Account creation: create the user, then register a passkey. */
-  async register(input: {
-    name: string;
-    username: string;
-    email?: string;
-  }): Promise<void> {
+  /** Account creation: pick a username, then register a passkey. */
+  async register(input: { username: string }): Promise<void> {
     const start: any = await firstValueFrom(
       this.http.post(`${this.baseUrl}/users/register`, input)
     );
