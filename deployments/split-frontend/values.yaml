@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/split-frontend
-  tag: latest
+  tag: 's-106be90'
   pullPolicy: Always
 
 service:
