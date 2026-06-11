@@ -199,26 +199,24 @@ interface SplitRow {
             placeholder="Dinner, groceries…"
           />
         </div>
-        <div class="two-col">
-          <div class="field">
-            <label>Amount</label>
-            <p-inputNumber
-              [(ngModel)]="expAmount"
-              mode="currency"
-              [currency]="group()?.currency || 'CAD'"
-              [min]="0"
-            />
-          </div>
-          <div class="field">
-            <label>Paid by</label>
-            <p-select
-              [options]="memberOptions()"
-              [(ngModel)]="expPaidBy"
-              optionLabel="name"
-              optionValue="userId"
-              appendTo="body"
-            />
-          </div>
+        <div class="field">
+          <label>Amount</label>
+          <p-inputNumber
+            [(ngModel)]="expAmount"
+            mode="currency"
+            [currency]="group()?.currency || 'CAD'"
+            [min]="0"
+          />
+        </div>
+        <div class="field">
+          <label>Paid by</label>
+          <p-select
+            [options]="memberOptions()"
+            [(ngModel)]="expPaidBy"
+            optionLabel="name"
+            optionValue="userId"
+            appendTo="body"
+          />
         </div>
 
         <div class="field">
