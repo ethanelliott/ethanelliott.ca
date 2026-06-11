@@ -1,0 +1,59 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/split
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  hostname: 'split-api.elliott.haus'
+  cors:
+    enabled: true
+    allowOrigins:
+      - https://split.elliott.haus
+
+resources:
+  limits:
+    cpu: 300m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+  RP_NAME: 'Split'
+  # WebAuthn relying-party id MUST match the frontend domain.
+  RP_ID: 'split.elliott.haus'
+  ORIGIN: 'https://split.elliott.haus'
+  CORS_ORIGIN: 'https://split.elliott.haus'
+
+postgres:
+  host: postgres
+  port: 5432
+  database: split
+  username: split
+  # Admin credentials used by the init Job to create the role/database.
+  adminUser: postgres
+  adminSecretName: postgres-secrets
+  adminSecretKey: postgres-password
+
+# Application secrets (DB password + JWT signing key) live in the secret
+# `<release>-split-db-secrets` with keys `db-password` and `jwt-secret`.
+#
+# For production, manage these out-of-band with a Bitnami SealedSecret (see
+# deployments/split/README.md) and set `createSecret: false`.
+#
+# For quick bring-up, set `createSecret: true` and provide values below — Helm
+# will create the secret as a pre-sync hook. CHANGE THESE before any real use.
+createSecret: true
+secrets:
+  dbPassword: 'change-me-split-db-password'
+  jwtSecret: 'change-me-split-jwt-secret-make-it-long-and-random'
