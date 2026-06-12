@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/wheel-frontend
-  tag: s-a54919d
+  tag: s-cf8d9fb
   pullPolicy: Always
 
 service:
