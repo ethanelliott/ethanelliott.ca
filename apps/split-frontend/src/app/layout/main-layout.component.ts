@@ -61,7 +61,10 @@ interface NavItem {
   `,
   styles: `
     .shell {
+      // dvh tracks the visible viewport as mobile browsers collapse/expand
+      // their URL bar; plain vh overshoots while the bar is visible.
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
     }
@@ -122,7 +125,9 @@ interface NavItem {
 
     .app-content {
       flex: 1;
-      padding-bottom: calc(var(--bottom-nav-height) + 16px);
+      padding-bottom: calc(
+        var(--bottom-nav-height) + var(--safe-bottom) + 16px
+      );
     }
 
     .bottom-nav {
@@ -131,11 +136,14 @@ interface NavItem {
       left: 0;
       right: 0;
       z-index: 40;
-      height: var(--bottom-nav-height);
+      // The safe-area inset must grow the bar, not eat into the fixed
+      // height — otherwise the links get squished when the inset appears
+      // (e.g. when the URL bar retracts on iOS).
+      height: calc(var(--bottom-nav-height) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
       background: var(--bg-surface);
       border-top: 1px solid var(--border);
       display: flex;
-      padding-bottom: env(safe-area-inset-bottom);
     }
 
     .bottom-nav-link {

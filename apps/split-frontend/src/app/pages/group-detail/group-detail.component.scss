@@ -57,6 +57,11 @@
   display: block;
 }
 
+// Inline "Add expense" button — desktop replacement for the mobile FAB.
+.desktop-add {
+  display: none;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -80,6 +85,48 @@
   }
 }
 
+// Mobile: one pane at a time, driven by the tabs. The pane titles are
+// redundant with the tab labels, so hide them.
+.pane {
+  display: none;
+
+  &.active {
+    display: block;
+  }
+}
+
+.pane-title {
+  display: none;
+}
+
+// Desktop: no tabs — expenses and balances live side by side.
+@media (min-width: 768px) {
+  .desktop-add {
+    display: block;
+  }
+
+  .tabs {
+    display: none;
+  }
+
+  .panes {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 0 24px;
+    align-items: start;
+  }
+
+  .pane {
+    display: block;
+    min-width: 0;
+  }
+
+  .pane-title {
+    display: block;
+    margin-top: 4px;
+  }
+}
+
 .rows {
   overflow: hidden;
 }
@@ -93,6 +140,12 @@
   border-bottom: 1px solid var(--border);
   &:last-child {
     border-bottom: none;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background: var(--bg-subtle);
+    }
   }
 }
 
@@ -177,7 +230,7 @@
   font-weight: 600;
 }
 
-// ── Dialog internals ──
+// ── Modal internals (content projected into app-modal) ──
 .dialog-body {
   display: flex;
   flex-direction: column;

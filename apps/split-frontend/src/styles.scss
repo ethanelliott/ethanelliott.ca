@@ -25,7 +25,15 @@
 
   --header-height: 56px;
   --bottom-nav-height: 60px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   --content-max-width: 720px;
+}
+
+// Wider canvas on desktop so pages can use multi-column layouts.
+@media (min-width: 1024px) {
+  :root {
+    --content-max-width: 1000px;
+  }
 }
 
 *,
@@ -48,11 +56,22 @@ body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
   color: var(--brand);
   text-decoration: none;
+}
+
+// Prevent iOS Safari from zooming into focused inputs (it zooms when the
+// effective font size is below 16px).
+@media (max-width: 767px) {
+  .p-inputtext,
+  .p-select-label,
+  .p-inputnumber-input {
+    font-size: 16px;
+  }
 }
 
 // ── Scrollbars ──
@@ -124,17 +143,139 @@ a {
   font-weight: 600;
 }
 
-// Floating action button used to add expenses
+// Floating action button used to add expenses (mobile only — desktop
+// surfaces the same action as a regular button in the page header).
 .fab {
   position: fixed;
   right: 18px;
-  bottom: calc(var(--bottom-nav-height) + 18px);
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 18px);
   z-index: 50;
 }
 
 @media (min-width: 768px) {
   .fab {
-    bottom: 28px;
-    right: calc(50% - var(--content-max-width) / 2 + 18px);
+    display: none;
+  }
+}
+
+// ── Responsive modal (app-modal) ──
+// Desktop: centered dialog. Mobile: full-screen page that slides up.
+.p-dialog.responsive-modal {
+  width: 92vw;
+  max-width: 460px;
+
+  // The shell owns scrolling (so header/footer stay pinned) — the
+  // dialog's own content area must not scroll or pad.
+  .p-dialog-content {
+    padding: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.p-dialog.responsive-modal-wide {
+  max-width: 620px;
+}
+
+.responsive-modal .modal-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.responsive-modal .modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+
+  h2 {
+    flex: 1;
+    font-size: 17px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.responsive-modal .modal-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  i {
+    font-size: 16px;
+  }
+}
+
+.responsive-modal .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-modal .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+// Desktop: hide the back arrow, show the X; cap dialog height.
+@media (min-width: 768px) {
+  .responsive-modal .modal-back {
+    display: none;
+  }
+
+  .p-dialog.responsive-modal {
+    max-height: 86vh;
+  }
+}
+
+// Mobile: take over the whole (dynamic) viewport as a page.
+@media (max-width: 767px) {
+  .responsive-modal .modal-close {
+    display: none;
+  }
+
+  .p-dialog.responsive-modal,
+  .p-dialog.responsive-modal-wide {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none !important;
+    // Cancel the 1rem margin PrimeNG puts on bottom-positioned dialogs.
+    margin: 0 !important;
+    border-radius: 0;
+    border: none;
+  }
+
+  // Push the primary (last) action wide so it reads as a page CTA.
+  .responsive-modal .modal-footer > :last-child {
+    flex: 1;
+
+    .p-button {
+      width: 100%;
+      justify-content: center;
+    }
   }
 }

@@ -7,14 +7,13 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
-import { InputText } from 'primeng/inputtext';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../core/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, RouterLink, Button, InputText],
+  imports: [FormsModule, RouterLink, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="auth-screen">
@@ -42,6 +41,7 @@ import { AuthService } from '../../core/auth.service';
   styles: `
     .auth-screen {
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
