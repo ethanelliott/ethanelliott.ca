@@ -1,7 +1,7 @@
-import { bootstrapApplication } from '@angular/platform-browser';
+import 'dotenv/config';
+import 'reflect-metadata';
+import { Application } from './app/app';
+import { starter } from '@ee/starter';
 import { appConfig } from './app/app.config';
-import { AppComponent } from './app/app.component';
 
-bootstrapApplication(AppComponent, appConfig).catch((err) =>
-  console.error(err)
-);
+starter(Application, appConfig).catch((error) => console.error(error));
