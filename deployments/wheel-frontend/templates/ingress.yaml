@@ -13,10 +13,6 @@ spec:
   routes:
     - kind: Rule
       match: Host(`{{ .Values.ingress.hostname }}`)
-      {{- if .Values.ingress.cors.enabled }}
-      middlewares:
-        - name: {{ include "wheel.fullname" . }}-cors
-      {{- end }}
       services:
         - name: {{ include "wheel.fullname" . }}
           port: {{ .Values.service.port }}
