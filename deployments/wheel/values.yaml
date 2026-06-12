@@ -2,28 +2,58 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/wheel
-  tag: s-a54919d
+  tag: 's-a54919d'
   pullPolicy: Always
 
 service:
   type: ClusterIP
-  port: 80
+  port: 3000
 
 ingress:
   enabled: true
-  hostname: 'wheel.elliott.haus'
+  hostname: 'wheel-api.elliott.haus'
+  cors:
+    enabled: true
+    allowOrigins:
+      - https://wheel.elliott.haus
 
 resources:
   limits:
-    cpu: 200m
-    memory: 128Mi
+    cpu: 300m
+    memory: 256Mi
   requests:
     cpu: 100m
-    memory: 64Mi
+    memory: 128Mi
 
-# ConfigMap for nginx configuration
-configMap:
-  enabled: true
-  name: wheel-nginx-config
-  mountPath: /etc/nginx/conf.d/default.conf
-  subPath: nginx.conf
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+  RP_NAME: 'Wheel'
+  # WebAuthn relying-party id MUST match the frontend domain.
+  RP_ID: 'wheel.elliott.haus'
+  ORIGIN: 'https://wheel.elliott.haus'
+  CORS_ORIGIN: 'https://wheel.elliott.haus'
+
+postgres:
+  host: postgres
+  port: 5432
+  database: wheel
+  username: wheel
+  # Admin credentials used by the init Job to create the role/database.
+  adminUser: postgres
+  adminSecretName: postgres-secrets
+  adminSecretKey: postgres-password
+
+# Application secrets (DB password + JWT signing key) live in the secret
+# `<release>-wheel-db-secrets` with keys `db-password` and `jwt-secret`.
+#
+# For production, manage these out-of-band with a Bitnami SealedSecret (see
+# deployments/wheel/README.md) and keep `createSecret: false`.
+#
+# For quick bring-up, set `createSecret: true` and provide values below — Helm
+# will create the secret as a pre-sync hook. CHANGE THESE before any real use.
+createSecret: false
+secrets:
+  dbPassword: ''
+  jwtSecret: ''

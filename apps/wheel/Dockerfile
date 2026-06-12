@@ -1,10 +1,27 @@
-# Production build using pre-built Angular app from CI
-FROM docker.io/nginx:alpine
+# Runtime-only Docker image for the pre-built wheel backend
+FROM docker.io/node:lts-alpine
 
-# Copy pre-built app to nginx html directory
-COPY dist/apps/wheel/browser /usr/share/nginx/html
+ENV HOST=0.0.0.0
+ENV PORT=3000
+ENV CI=true
 
-# Expose port 80
-EXPOSE 80
+WORKDIR /app
 
-CMD ["nginx", "-g", "daemon off;"]
+# Build tooling for any native modules (e.g. pg native bindings)
+RUN apk add --no-cache python3 make g++ libc6-compat
+
+# Create non-root user
+RUN addgroup --system server && \
+    adduser --system -G server server
+
+# Copy the pre-built application
+COPY --chown=server:server dist/apps/wheel ./
+
+# Install runtime dependencies
+RUN npm install --omit=dev
+
+USER server
+
+EXPOSE 3000
+
+CMD ["node", "main.js"]

@@ -1,80 +1,63 @@
 {
   "name": "wheel",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "projectType": "application",
-  "prefix": "app",
   "sourceRoot": "apps/wheel/src",
+  "projectType": "application",
   "tags": [],
   "targets": {
     "build": {
-      "executor": "@angular/build:application",
+      "executor": "@nx/esbuild:esbuild",
       "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
       "options": {
+        "platform": "node",
         "outputPath": "dist/apps/wheel",
-        "browser": "apps/wheel/src/main.ts",
+        "format": ["esm"],
+        "bundle": true,
+        "main": "apps/wheel/src/main.ts",
         "tsConfig": "apps/wheel/tsconfig.app.json",
-        "inlineStyleLanguage": "scss",
-        "assets": [
-          {
-            "glob": "**/*",
-            "input": "apps/wheel/public"
+        "assets": ["apps/wheel/src/assets"],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
           }
-        ],
-        "styles": ["apps/wheel/src/styles.scss"]
-      },
-      "configurations": {
-        "production": {
-          "budgets": [
-            {
-              "type": "initial",
-              "maximumWarning": "500kb",
-              "maximumError": "1mb"
-            },
-            {
-              "type": "anyComponentStyle",
-              "maximumWarning": "4kb",
-              "maximumError": "8kb"
-            }
-          ],
-          "outputHashing": "all"
-        },
-        "development": {
-          "optimization": false,
-          "extractLicenses": false,
-          "sourceMap": true
         }
       },
-      "defaultConfiguration": "production"
+      "configurations": {
+        "development": {
+          "thirdParty": false
+        },
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
     },
     "serve": {
       "continuous": true,
-      "executor": "@angular/build:dev-server",
-      "configurations": {
-        "production": {
-          "buildTarget": "wheel:build:production"
-        },
-        "development": {
-          "buildTarget": "wheel:build:development"
-        }
-      },
-      "defaultConfiguration": "development"
-    },
-    "extract-i18n": {
-      "executor": "@angular/build:extract-i18n",
-      "options": {
-        "buildTarget": "wheel:build"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint"
-    },
-    "serve-static": {
-      "continuous": true,
-      "executor": "@nx/web:file-server",
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
       "options": {
         "buildTarget": "wheel:build",
-        "staticFilePath": "dist/apps/wheel/browser",
-        "spa": true
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "wheel:build:development"
+        },
+        "production": {
+          "buildTarget": "wheel:build:production"
+        }
       }
     },
     "container": {
