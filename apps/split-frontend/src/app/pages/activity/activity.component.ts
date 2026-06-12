@@ -53,6 +53,11 @@ import { MoneyPipe } from '../../core/money.pipe';
     </div>
   `,
   styles: `
+    // A feed reads better narrow, even on a wide canvas.
+    .page {
+      max-width: 720px;
+    }
+
     .rows {
       overflow: hidden;
     }

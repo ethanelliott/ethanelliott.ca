@@ -11,12 +11,12 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Button } from 'primeng/button';
-import { Dialog } from 'primeng/dialog';
 import { InputText } from 'primeng/inputtext';
 import { InputNumber } from 'primeng/inputnumber';
 import { Select } from 'primeng/select';
 import { SelectButton } from 'primeng/selectbutton';
 import { Avatar } from 'primeng/avatar';
+import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -28,6 +28,7 @@ import {
   SplitType,
 } from '../../core/models';
 import { MoneyPipe } from '../../core/money.pipe';
+import { ResponsiveModalComponent } from '../../shared/responsive-modal.component';
 
 interface SplitRow {
   userId: string;
@@ -43,13 +44,14 @@ interface SplitRow {
     FormsModule,
     DatePipe,
     Button,
-    Dialog,
     InputText,
     InputNumber,
     Select,
     SelectButton,
     Avatar,
+    ConfirmDialog,
     MoneyPipe,
+    ResponsiveModalComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -64,11 +66,19 @@ interface SplitRow {
           <h1>{{ g.name }}</h1>
           <span class="members-line">{{ memberNames() }}</span>
         </div>
+        <p-button
+          class="desktop-add"
+          label="Add expense"
+          icon="pi pi-plus"
+          size="small"
+          (onClick)="openExpense()"
+        />
         <button class="icon-btn" (click)="openMembers()">
           <i class="pi pi-user-plus"></i>
         </button>
       </div>
 
+      <!-- Tabs only exist on mobile; desktop shows both panes side by side -->
       <div class="page tabs">
         <button
           [class.active]="tab() === 'expenses'"
@@ -85,92 +95,98 @@ interface SplitRow {
       </div>
     </div>
 
-    <div class="page">
-      @if (tab() === 'expenses') { @if (expenses().length === 0) {
-      <div class="empty-state card">
-        <i class="pi pi-receipt"></i>
-        <p>No expenses yet. Add the first one.</p>
-      </div>
-      } @else {
-      <div class="rows card">
-        @for (e of expenses(); track e.id) {
-        <div class="expense-row" (click)="editExpense(e)">
-          <div class="exp-date">
-            <span class="mon">{{ e.date | date : 'MMM' }}</span>
-            <span class="day">{{ e.date | date : 'd' }}</span>
-          </div>
-          <div class="exp-main">
-            <span class="exp-desc">{{ e.description }}</span>
-            <span class="exp-sub"
-              >{{ e.paidBy.name }} paid
-              {{ e.amountCents | money : e.currency }}</span
-            >
-          </div>
-          <div class="exp-share">{{ shareLabel(e) }}</div>
+    <div class="page panes">
+      <section class="pane" [class.active]="tab() === 'expenses'">
+        <h2 class="section-title pane-title">Expenses</h2>
+        @if (expenses().length === 0) {
+        <div class="empty-state card">
+          <i class="pi pi-receipt"></i>
+          <p>No expenses yet. Add the first one.</p>
         </div>
-        }
-      </div>
-      } } @else {
-      <!-- Balances tab -->
-      @if (balances(); as b) { @if (b.debts.length === 0) {
-      <div class="empty-state card">
-        <i class="pi pi-check-circle" style="color: var(--brand)"></i>
-        <p>Everyone is settled up!</p>
-      </div>
-      } @else {
-      <div class="rows card">
-        @for (d of b.debts; track d.from.id + d.to.id) {
-        <div class="debt-row">
-          <span class="debt-text">
-            <strong>{{ youOrName(d.from) }}</strong> owe{{
-              d.from.id === myId() ? '' : 's'
-            }}
-            <strong>{{ youOrName(d.to) }}</strong>
-          </span>
-          <span class="debt-actions">
-            <span class="amount-negative">{{
-              d.amountCents | money : b.currency
-            }}</span>
-            <p-button
-              label="Settle"
-              size="small"
-              [text]="true"
-              (onClick)="openSettle(d.from.id, d.to.id, d.amountCents)"
-            />
-          </span>
-        </div>
-        }
-      </div>
-      }
-
-      <h2 class="section-title">Member balances</h2>
-      <div class="rows card">
-        @for (m of b.balances; track m.user.id) {
-        <div class="balance-row">
-          <p-avatar
-            [label]="initial(m.user.name)"
-            shape="circle"
-            styleClass="member-avatar"
-          />
-          <span class="bal-name">{{ youOrName(m.user) }}</span>
-          @if (m.netCents === 0) {
-          <span class="muted">settled</span>
-          } @else if (m.netCents > 0) {
-          <span class="amount-positive"
-            >gets back {{ m.netCents | money : b.currency }}</span
-          >
-          } @else {
-          <span class="amount-negative"
-            >owes {{ -m.netCents | money : b.currency }}</span
-          >
+        } @else {
+        <div class="rows card">
+          @for (e of expenses(); track e.id) {
+          <div class="expense-row" (click)="editExpense(e)">
+            <div class="exp-date">
+              <span class="mon">{{ e.date | date : 'MMM' }}</span>
+              <span class="day">{{ e.date | date : 'd' }}</span>
+            </div>
+            <div class="exp-main">
+              <span class="exp-desc">{{ e.description }}</span>
+              <span class="exp-sub"
+                >{{ e.paidBy.name }} paid
+                {{ e.amountCents | money : e.currency }}</span
+              >
+            </div>
+            <div class="exp-share">{{ shareLabel(e) }}</div>
+          </div>
           }
         </div>
         }
-      </div>
-      } }
+      </section>
+
+      <section class="pane" [class.active]="tab() === 'balances'">
+        <h2 class="section-title pane-title">Balances</h2>
+        @if (balances(); as b) { @if (b.debts.length === 0) {
+        <div class="empty-state card">
+          <i class="pi pi-check-circle" style="color: var(--brand)"></i>
+          <p>Everyone is settled up!</p>
+        </div>
+        } @else {
+        <div class="rows card">
+          @for (d of b.debts; track d.from.id + d.to.id) {
+          <div class="debt-row">
+            <span class="debt-text">
+              <strong>{{ youOrName(d.from) }}</strong> owe{{
+                d.from.id === myId() ? '' : 's'
+              }}
+              <strong>{{ youOrName(d.to) }}</strong>
+            </span>
+            <span class="debt-actions">
+              <span class="amount-negative">{{
+                d.amountCents | money : b.currency
+              }}</span>
+              <p-button
+                label="Settle"
+                size="small"
+                [text]="true"
+                (onClick)="openSettle(d.from.id, d.to.id, d.amountCents)"
+              />
+            </span>
+          </div>
+          }
+        </div>
+        }
+
+        <h2 class="section-title">Member balances</h2>
+        <div class="rows card">
+          @for (m of b.balances; track m.user.id) {
+          <div class="balance-row">
+            <p-avatar
+              [label]="initial(m.user.name)"
+              shape="circle"
+              styleClass="member-avatar"
+            />
+            <span class="bal-name">{{ youOrName(m.user) }}</span>
+            @if (m.netCents === 0) {
+            <span class="muted">settled</span>
+            } @else if (m.netCents > 0) {
+            <span class="amount-positive"
+              >gets back {{ m.netCents | money : b.currency }}</span
+            >
+            } @else {
+            <span class="amount-negative"
+              >owes {{ -m.netCents | money : b.currency }}</span
+            >
+            }
+          </div>
+          }
+        </div>
+        }
+      </section>
     </div>
 
-    <!-- FAB add expense -->
+    <!-- FAB add expense (mobile only) -->
     <p-button
       class="fab"
       icon="pi pi-plus"
@@ -182,13 +198,11 @@ interface SplitRow {
     <div class="empty-state"><i class="pi pi-spin pi-spinner"></i></div>
     }
 
-    <!-- Add / edit expense dialog -->
-    <p-dialog
+    <!-- Add / edit expense: dialog on desktop, full page on mobile -->
+    <app-modal
       [header]="editingId() ? 'Edit expense' : 'Add expense'"
+      [wide]="true"
       [(visible)]="showExpense"
-      [modal]="true"
-      [draggable]="false"
-      [style]="{ width: '94vw', maxWidth: '600px' }"
     >
       <div class="dialog-body">
         <div class="field">
@@ -252,7 +266,8 @@ interface SplitRow {
           <small class="split-hint">{{ splitHint() }}</small>
         </div>
       </div>
-      <ng-template #footer>
+      <!-- ngProjectAs: conditional content needs an explicit slot -->
+      <ng-container ngProjectAs="[modal-footer]">
         @if (editingId()) {
         <p-button
           label="Delete"
@@ -261,27 +276,23 @@ interface SplitRow {
           (onClick)="deleteExpense()"
         />
         }
-        <p-button
-          label="Cancel"
-          [text]="true"
-          (onClick)="showExpense.set(false)"
-        />
-        <p-button
-          label="Save"
-          [loading]="savingExpense()"
-          (onClick)="saveExpense()"
-        />
-      </ng-template>
-    </p-dialog>
+      </ng-container>
+      <p-button
+        modal-footer
+        label="Cancel"
+        [text]="true"
+        (onClick)="showExpense.set(false)"
+      />
+      <p-button
+        modal-footer
+        label="Save"
+        [loading]="savingExpense()"
+        (onClick)="saveExpense()"
+      />
+    </app-modal>
 
-    <!-- Settle up dialog -->
-    <p-dialog
-      header="Record a payment"
-      [(visible)]="showSettle"
-      [modal]="true"
-      [draggable]="false"
-      [style]="{ width: '92vw', maxWidth: '500px' }"
-    >
+    <!-- Settle up: dialog on desktop, full page on mobile -->
+    <app-modal header="Record a payment" [(visible)]="showSettle">
       <div class="dialog-body">
         <div class="two-col">
           <div class="field">
@@ -315,28 +326,22 @@ interface SplitRow {
           />
         </div>
       </div>
-      <ng-template #footer>
-        <p-button
-          label="Cancel"
-          [text]="true"
-          (onClick)="showSettle.set(false)"
-        />
-        <p-button
-          label="Save payment"
-          [loading]="savingSettle()"
-          (onClick)="saveSettle()"
-        />
-      </ng-template>
-    </p-dialog>
+      <p-button
+        modal-footer
+        label="Cancel"
+        [text]="true"
+        (onClick)="showSettle.set(false)"
+      />
+      <p-button
+        modal-footer
+        label="Save payment"
+        [loading]="savingSettle()"
+        (onClick)="saveSettle()"
+      />
+    </app-modal>
 
-    <!-- Members dialog -->
-    <p-dialog
-      header="Members"
-      [(visible)]="showMembers"
-      [modal]="true"
-      [draggable]="false"
-      [style]="{ width: '92vw', maxWidth: '500px' }"
-    >
+    <!-- Members: dialog on desktop, full page on mobile -->
+    <app-modal header="Members" [(visible)]="showMembers">
       <div class="dialog-body">
         <div class="member-list">
           @for (m of group()?.members || []; track m.id) {
@@ -365,15 +370,23 @@ interface SplitRow {
             />
           </div>
         </div>
-        <p-button
-          label="Delete group"
-          severity="danger"
-          [text]="true"
-          icon="pi pi-trash"
-          (onClick)="deleteGroup()"
-        />
       </div>
-    </p-dialog>
+      <p-button
+        modal-footer
+        label="Delete group"
+        severity="danger"
+        [text]="true"
+        icon="pi pi-trash"
+        (onClick)="deleteGroup()"
+      />
+      <p-button
+        modal-footer
+        label="Done"
+        (onClick)="showMembers.set(false)"
+      />
+    </app-modal>
+
+    <p-confirmdialog [style]="{ width: '90vw', maxWidth: '420px' }" />
   `,
   styleUrl: './group-detail.component.scss',
 })
@@ -382,6 +395,7 @@ export class GroupDetailComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
+  private readonly confirm = inject(ConfirmationService);
 
   // Bound from the route param via withComponentInputBinding.
   readonly id = input.required<string>();
@@ -584,9 +598,18 @@ export class GroupDetailComponent implements OnInit {
   deleteExpense(): void {
     const editId = this.editingId();
     if (!editId) return;
-    this.api.deleteExpense(editId).subscribe(() => {
-      this.showExpense.set(false);
-      this.reload();
+    this.confirm.confirm({
+      header: 'Delete expense',
+      message: 'Delete this expense? This cannot be undone.',
+      icon: 'pi pi-trash',
+      acceptButtonProps: { label: 'Delete', severity: 'danger' },
+      rejectButtonProps: { label: 'Cancel', text: true },
+      accept: () => {
+        this.api.deleteExpense(editId).subscribe(() => {
+          this.showExpense.set(false);
+          this.reload();
+        });
+      },
     });
   }
 
@@ -666,9 +689,19 @@ export class GroupDetailComponent implements OnInit {
   }
 
   deleteGroup(): void {
-    this.api.deleteGroup(this.id()).subscribe(() => {
-      this.showMembers.set(false);
-      this.router.navigate(['/groups']);
+    this.confirm.confirm({
+      header: 'Delete group',
+      message:
+        'Delete this group and all of its expenses? This cannot be undone.',
+      icon: 'pi pi-trash',
+      acceptButtonProps: { label: 'Delete group', severity: 'danger' },
+      rejectButtonProps: { label: 'Cancel', text: true },
+      accept: () => {
+        this.api.deleteGroup(this.id()).subscribe(() => {
+          this.showMembers.set(false);
+          this.router.navigate(['/groups']);
+        });
+      },
     });
   }
 }

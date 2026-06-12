@@ -67,6 +67,11 @@ import { AuthService } from '../../core/auth.service';
     </div>
   `,
   styles: `
+    // Settings-style page reads better narrow, even on a wide canvas.
+    .page {
+      max-width: 560px;
+    }
+
     .profile-head {
       display: flex;
       flex-direction: column;

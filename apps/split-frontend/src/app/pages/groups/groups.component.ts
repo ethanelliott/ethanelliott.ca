@@ -7,18 +7,25 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Button } from 'primeng/button';
-import { Dialog } from 'primeng/dialog';
 import { InputText } from 'primeng/inputtext';
 import { SelectButton } from 'primeng/selectbutton';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/api.service';
 import { GroupSummary, Overview } from '../../core/models';
 import { MoneyPipe } from '../../core/money.pipe';
+import { ResponsiveModalComponent } from '../../shared/responsive-modal.component';
 
 @Component({
   selector: 'app-groups',
   standalone: true,
-  imports: [FormsModule, Button, Dialog, InputText, SelectButton, MoneyPipe],
+  imports: [
+    FormsModule,
+    Button,
+    InputText,
+    SelectButton,
+    MoneyPipe,
+    ResponsiveModalComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -110,14 +117,8 @@ import { MoneyPipe } from '../../core/money.pipe';
       }
     </div>
 
-    <!-- Create group dialog -->
-    <p-dialog
-      header="New group"
-      [(visible)]="showCreate"
-      [modal]="true"
-      [draggable]="false"
-      [style]="{ width: '92vw', maxWidth: '440px' }"
-    >
+    <!-- Create group: dialog on desktop, full page on mobile -->
+    <app-modal header="New group" [(visible)]="showCreate">
       <div class="dialog-body">
         <div class="field">
           <label>Group name</label>
@@ -143,15 +144,19 @@ import { MoneyPipe } from '../../core/money.pipe';
           <small>You're added automatically. Others must already have an account.</small>
         </div>
       </div>
-      <ng-template #footer>
-        <p-button label="Cancel" [text]="true" (onClick)="showCreate.set(false)" />
-        <p-button
-          label="Create"
-          [loading]="creating()"
-          (onClick)="create()"
-        />
-      </ng-template>
-    </p-dialog>
+      <p-button
+        modal-footer
+        label="Cancel"
+        [text]="true"
+        (onClick)="showCreate.set(false)"
+      />
+      <p-button
+        modal-footer
+        label="Create"
+        [loading]="creating()"
+        (onClick)="create()"
+      />
+    </app-modal>
   `,
   styles: `
     .overview {
@@ -199,6 +204,15 @@ import { MoneyPipe } from '../../core/money.pipe';
       gap: 10px;
     }
 
+    // Desktop: lay the groups out as a card grid instead of a list.
+    @media (min-width: 768px) {
+      .group-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+    }
+
     .group-card {
       display: flex;
       align-items: center;
@@ -208,10 +222,18 @@ import { MoneyPipe } from '../../core/money.pipe';
       cursor: pointer;
       width: 100%;
       background: var(--bg-surface);
-      transition: transform 0.06s ease, box-shadow 0.12s ease;
+      transition: transform 0.06s ease, box-shadow 0.12s ease,
+        border-color 0.12s ease;
     }
     .group-card:active {
       transform: scale(0.99);
+    }
+
+    @media (hover: hover) {
+      .group-card:hover {
+        box-shadow: var(--shadow-md);
+        border-color: #d6dae1;
+      }
     }
 
     .group-avatar {
