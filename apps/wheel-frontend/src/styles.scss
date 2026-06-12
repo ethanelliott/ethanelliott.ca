@@ -1,0 +1,136 @@
+// ── PrimeIcons ──
+@import 'primeicons/primeicons.css';
+
+// ── Design tokens ──
+:root {
+  --brand: #11998e;
+  --brand-dark: #0c756c;
+  --brand-light: #e4f5f2;
+  --accent: #38ef7d;
+
+  --bg-page: #f5f6f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f0f1f4;
+  --text-primary: #1f2430;
+  --text-secondary: #6b7280;
+  --text-muted: #9aa1ad;
+  --border: #e6e8ec;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.08);
+
+  --header-height: 56px;
+  --bottom-nav-height: 60px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --content-max-width: 760px;
+}
+
+// Wider canvas on desktop so the wheel + editor can sit side by side.
+@media (min-width: 1024px) {
+  :root {
+    --content-max-width: 1040px;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+// Prevent iOS Safari from zooming into focused inputs (it zooms when the
+// effective font size is below 16px).
+@media (max-width: 767px) {
+  .p-inputtext,
+  .p-select-label,
+  .p-multiselect-label {
+    font-size: 16px;
+  }
+}
+
+// ── Scrollbars ──
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d3d7df;
+  border-radius: 4px;
+}
+
+// ── Shared utility classes ──
+.muted {
+  color: var(--text-secondary);
+}
+
+.page {
+  padding: 16px;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 18px 4px 8px;
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+
+  i {
+    font-size: 40px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: block;
+  }
+}
+
+// ── PrimeNG overrides to match the brand ──
+:root {
+  --p-primary-color: var(--brand);
+  --p-primary-500: var(--brand);
+  --p-primary-600: var(--brand-dark);
+}
+
+.p-button {
+  font-weight: 600;
+}
