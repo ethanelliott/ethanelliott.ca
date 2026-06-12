@@ -272,7 +272,6 @@
 .split-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   padding: 6px 0;
   &.off {
@@ -281,12 +280,21 @@
 }
 
 .split-check {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 500;
   cursor: pointer;
+  // Clip long names rather than pushing the input off-screen.
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   input {
+    flex-shrink: 0;
     width: 18px;
     height: 18px;
     accent-color: var(--brand);
@@ -294,7 +302,16 @@
 }
 
 ::ng-deep .split-input {
-  max-width: 80px;
+  flex-shrink: 0;
+  width: 100px;
+  min-width: 0;
+
+  // The inner input must respect the container width regardless of currency
+  // prefix width — without this PrimeNG lets it grow beyond 100px.
+  .p-inputnumber-input {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 .split-hint {
