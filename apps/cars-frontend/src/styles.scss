@@ -1,0 +1,47 @@
+@import 'primeicons/primeicons.css';
+
+:root {
+  --paper: #EBEEEA;
+  --raised: #FFFFFF;
+  --ink: #15191C;
+  --soft: #5C636A;
+  --faint: #929aa0;
+  --line: #D9DDD8;
+  --line-2: #E7EAE6;
+  --shadow: 0 1px 0 rgba(20, 25, 28, .04), 0 6px 22px -12px rgba(20, 25, 28, .18);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
