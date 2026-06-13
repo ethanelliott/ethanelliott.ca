@@ -548,43 +548,67 @@ Guidelines:
       }
     }
 
-    if (!recipeData) {
+    if (recipeData) {
+      logger.info(
+        { url, recipeName: recipeData.name },
+        'Extracted recipe from JSON-LD'
+      );
+      const mapped = await this.mapJsonLdToRecipe(recipeData, url);
+      // JSON-LD is sometimes present but incomplete (e.g. empty ingredients).
+      // Only trust it when it actually produced a usable recipe.
+      if (this.isUsableRecipe(mapped)) return mapped;
+      logger.warn(
+        { url },
+        'JSON-LD recipe was incomplete, falling back to content extraction'
+      );
+    } else {
       logger.warn(
         { url },
         'No JSON-LD recipe data found, falling back to content extraction + LLM'
       );
-
-      // Fallback: extract readable content from the page and use LLM to parse
-      const recipeText = this.extractRecipeContent(root);
-      if (!recipeText || recipeText.length < 50) {
-        throw HttpErrors.UnprocessableEntity(
-          'Could not find recipe content on this page. Try copying and pasting the recipe text instead.'
-        );
-      }
-
-      logger.info(
-        { url, contentLength: recipeText.length },
-        'Extracted page content, sending to LLM for parsing'
-      );
-      const parsed = await this.parseRecipeFromText(recipeText);
-      // Attach source URL if not already set
-      if (!parsed.source) {
-        parsed.source = url;
-      }
-      // Extract images from the HTML for the LLM fallback path
-      const imageUrls = this.extractImageUrlsFromHtml(root, url);
-      if (imageUrls.length > 0) {
-        parsed.imageUrls = imageUrls;
-      }
-      return parsed;
     }
 
-    // Map schema.org Recipe to our format
+    return this.parseViaContentExtraction(root, url);
+  }
+
+  /**
+   * Fallback parsing path: extract readable content from the page and use the
+   * LLM to structure it. Shared by the JSON-LD-missing and JSON-LD-incomplete
+   * cases.
+   */
+  private async parseViaContentExtraction(
+    root: ReturnType<typeof parseHTML>,
+    url: string
+  ): Promise<ParsedRecipe> {
+    const recipeText = this.extractRecipeContent(root);
+    if (!recipeText || recipeText.length < 50) {
+      throw HttpErrors.UnprocessableEntity(
+        'Could not find recipe content on this page. Try copying and pasting the recipe text instead.'
+      );
+    }
+
     logger.info(
-      { url, recipeName: recipeData.name },
-      'Extracted recipe from JSON-LD'
+      { url, contentLength: recipeText.length },
+      'Extracted page content, sending to LLM for parsing'
     );
-    return this.mapJsonLdToRecipe(recipeData, url);
+    const parsed = await this.parseRecipeFromText(recipeText);
+    if (!parsed.source) parsed.source = url;
+
+    const imageUrls = this.extractImageUrlsFromHtml(root, url);
+    if (imageUrls.length > 0) parsed.imageUrls = imageUrls;
+
+    return parsed;
+  }
+
+  /**
+   * A recipe is usable if it has at least one ingredient or some instructions.
+   * Used to decide whether to trust JSON-LD or fall back to content extraction.
+   */
+  private isUsableRecipe(recipe: ParsedRecipe): boolean {
+    return (
+      recipe.ingredients.length > 0 ||
+      (!!recipe.instructions && recipe.instructions.trim().length > 20)
+    );
   }
 
   /**
@@ -625,69 +649,68 @@ Guidelines:
       }
     }
 
-    if (!recipeData) {
+    // Try JSON-LD first; fall back to content extraction when it is missing
+    // or produced an incomplete recipe.
+    if (recipeData) {
       yield {
         type: 'progress',
-        step: 'extract-content',
-        message: 'No structured data found — extracting content...',
-        percent: 35,
+        step: 'extract-recipe',
+        message: 'Found structured recipe data — extracting...',
+        percent: 45,
       };
 
-      const recipeText = this.extractRecipeContent(root);
-      if (!recipeText || recipeText.length < 50) {
+      const result = await this.mapJsonLdToRecipe(recipeData, url);
+      if (this.isUsableRecipe(result)) {
         yield {
-          type: 'error',
-          error:
-            'Could not find recipe content on this page. Try pasting the text instead.',
+          type: 'progress',
+          step: 'done',
+          message: 'Recipe parsed!',
+          percent: 100,
         };
+        yield { type: 'result', result };
         return;
       }
+      logger.warn({ url }, 'JSON-LD incomplete, falling back to content (stream)');
+    }
 
+    yield {
+      type: 'progress',
+      step: 'extract-content',
+      message: recipeData
+        ? 'Structured data was incomplete — reading the page...'
+        : 'No structured data found — extracting content...',
+      percent: 35,
+    };
+
+    const recipeText = this.extractRecipeContent(root);
+    if (!recipeText || recipeText.length < 50) {
       yield {
-        type: 'progress',
-        step: 'llm-parse',
-        message: 'AI is reading the recipe...',
-        percent: 50,
+        type: 'error',
+        error:
+          'Could not find recipe content on this page. Try pasting the text instead.',
       };
-
-      const parsed = await this.parseRecipeFromText(recipeText);
-      if (!parsed.source) parsed.source = url;
-
-      yield {
-        type: 'progress',
-        step: 'extract-images',
-        message: 'Looking for photos...',
-        percent: 85,
-      };
-
-      const imageUrls = this.extractImageUrlsFromHtml(root, url);
-      if (imageUrls.length > 0) parsed.imageUrls = imageUrls;
-
-      yield {
-        type: 'progress',
-        step: 'done',
-        message: 'Recipe parsed!',
-        percent: 100,
-      };
-      yield { type: 'result', result: parsed };
       return;
     }
 
     yield {
       type: 'progress',
-      step: 'extract-recipe',
-      message: 'Found structured recipe data — extracting...',
-      percent: 40,
+      step: 'llm-parse',
+      message: 'AI is reading the recipe...',
+      percent: 50,
     };
+
+    const parsed = await this.parseRecipeFromText(recipeText);
+    if (!parsed.source) parsed.source = url;
 
     yield {
       type: 'progress',
-      step: 'map-recipe',
-      message: 'Structuring recipe details...',
-      percent: 55,
+      step: 'extract-images',
+      message: 'Looking for photos...',
+      percent: 85,
     };
 
-    const result = await this.mapJsonLdToRecipe(recipeData, url);
+    const imageUrls = this.extractImageUrlsFromHtml(root, url);
+    if (imageUrls.length > 0) parsed.imageUrls = imageUrls;
 
     yield {
       type: 'progress',
@@ -695,7 +718,7 @@ Guidelines:
       message: 'Recipe parsed!',
       percent: 100,
     };
-    yield { type: 'result', result };
+    yield { type: 'result', result: parsed };
   }
 
   /**
