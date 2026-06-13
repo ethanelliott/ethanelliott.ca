@@ -130,9 +130,10 @@ import {
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+
     .random-page {
-      max-width: 600px;
-      margin: 0 auto;
+      @include page(600px);
       text-align: center;
     }
 
@@ -254,6 +255,20 @@ import {
       to {
         opacity: 1;
         transform: translateY(0);
+      }
+    }
+
+    @include small {
+      .hero h1 {
+        font-size: 1.6rem;
+      }
+
+      .result-card {
+        padding: 24px 18px;
+      }
+
+      .result-actions {
+        flex-direction: column;
       }
     }
   `,

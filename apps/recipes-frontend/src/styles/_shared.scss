@@ -1,0 +1,171 @@
+// ============================================================
+// Shared design tokens & mixins for the Recipes app
+// Usable from component inline styles via:  @use 'styles/shared' as *;
+// (resolved through stylePreprocessorOptions.includePaths -> src/)
+// ============================================================
+
+// ----- Breakpoints -------------------------------------------------
+// Standardized across the whole app. Use these mixins instead of
+// hand-rolling @media queries so behaviour stays consistent.
+$bp-small: 480px; // phones
+$bp-mobile: 768px; // sidebar collapses below this (see layout)
+$bp-tablet: 1024px; // multi-column layouts collapse below this
+
+@mixin small {
+  @media (max-width: $bp-small) {
+    @content;
+  }
+}
+
+@mixin mobile {
+  @media (max-width: $bp-mobile) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (max-width: $bp-tablet) {
+    @content;
+  }
+}
+
+// ----- Page scaffold ----------------------------------------------
+@mixin page($max: 1200px) {
+  max-width: $max;
+  margin: 0 auto;
+}
+
+// Standard page header: title on the left, actions on the right,
+// wraps gracefully and goes full-width on mobile.
+@mixin page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+@mixin page-title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--p-text-color);
+  letter-spacing: -0.01em;
+
+  @include small {
+    font-size: 1.4rem;
+  }
+}
+
+@mixin page-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: var(--p-text-muted-color);
+}
+
+// Header action button group: aligns right on desktop, stretches on
+// mobile so the buttons are easy tap targets.
+@mixin header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  @include small {
+    width: 100%;
+
+    > * {
+      flex: 1;
+    }
+  }
+}
+
+// ----- Surfaces ----------------------------------------------------
+@mixin card {
+  background: var(--p-surface-800);
+  border: 1px solid var(--p-surface-700);
+  border-radius: 12px;
+}
+
+@mixin loading-container {
+  display: flex;
+  justify-content: center;
+  padding: 64px 0;
+}
+
+@mixin empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--p-text-muted-color);
+
+  .empty-icon,
+  > i {
+    font-size: 3rem;
+    color: var(--p-text-muted-color);
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--p-text-color);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+// ----- Chips -------------------------------------------------------
+// Category chips: solid fill (color set inline per-category).
+@mixin chip-category {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+// Tag chips: outlined (border/text color set inline per-tag).
+@mixin chip-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1.5px solid;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+  background: transparent;
+}
+
+@mixin chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+// ----- Animations --------------------------------------------------
+// Emits the fade-in keyframes + applies the staggered entrance.
+@mixin fade-in {
+  animation: sharedFadeIn 0.3s ease forwards;
+  opacity: 0;
+}
+
+@mixin fade-in-keyframes {
+  @keyframes sharedFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

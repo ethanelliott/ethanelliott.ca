@@ -98,8 +98,9 @@ import {
         [(visible)]="formVisible"
         [header]="editing() ? 'Edit Category' : 'New Category'"
         [modal]="true"
-        [style]="{ width: '400px' }"
+        [style]="{ width: '90vw', maxWidth: '420px' }"
         [closable]="true"
+        [dismissableMask]="true"
       >
         <div class="form-fields">
           <div class="form-field">
@@ -148,64 +149,50 @@ import {
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+    @include fade-in-keyframes;
+
     .categories-page {
-      max-width: 1000px;
-      margin: 0 auto;
+      @include page(1000px);
     }
 
     .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
+      @include page-header;
 
       h1 {
-        margin: 0 0 4px;
-        font-size: 1.5rem;
-        font-weight: 700;
+        @include page-title;
       }
 
       .subtitle {
-        margin: 0;
-        color: var(--p-text-muted-color);
-        font-size: 0.9rem;
+        @include page-subtitle;
       }
     }
 
     .loading-container {
-      display: flex;
-      justify-content: center;
-      padding: 64px 0;
+      @include loading-container;
     }
 
     .empty-state {
-      text-align: center;
-      padding: 64px 0;
-      color: var(--p-text-muted-color);
-
-      i {
-        font-size: 3rem;
-        margin-bottom: 16px;
-      }
+      @include empty-state;
     }
 
     .categories-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 16px;
     }
 
     .category-card {
+      @include card;
+      @include fade-in;
       display: flex;
-      background: var(--p-surface-800);
-      border-radius: 12px;
       overflow: hidden;
-      animation: fadeIn 0.3s ease-out both;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 
       &:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        border-color: var(--p-surface-600);
       }
     }
 
@@ -267,17 +254,6 @@ import {
       display: flex;
       gap: 8px;
       justify-content: flex-end;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
     }
   `,
 })

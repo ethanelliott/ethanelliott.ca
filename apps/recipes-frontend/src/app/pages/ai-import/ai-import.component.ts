@@ -204,9 +204,10 @@ import { Subscription } from 'rxjs';
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+
     .ai-import-page {
-      max-width: 800px;
-      margin: 0 auto;
+      @include page(800px);
     }
 
     .page-header {
@@ -214,8 +215,7 @@ import { Subscription } from 'rxjs';
     }
 
     .page-title {
-      font-size: 1.75rem;
-      font-weight: 700;
+      @include page-title;
       margin: 12px 0 0;
     }
 
@@ -431,6 +431,36 @@ import { Subscription } from 'rxjs';
       color: var(--p-text-muted-color);
       white-space: pre-wrap;
       margin: 0;
+    }
+
+    @include mobile {
+      .mode-toggle .mode-btn {
+        font-size: 0.82rem;
+        padding: 10px 8px;
+      }
+
+      .preview {
+        padding: 18px;
+      }
+
+      .ingredient-list {
+        grid-template-columns: max-content max-content 1fr;
+      }
+
+      .ingredient-list .ing-notes {
+        grid-column: 1 / -1;
+        padding-left: 0;
+      }
+    }
+
+    @include small {
+      .actions {
+        flex-direction: column-reverse;
+      }
+
+      .actions :where(p-button) {
+        width: 100%;
+      }
     }
   `,
 })

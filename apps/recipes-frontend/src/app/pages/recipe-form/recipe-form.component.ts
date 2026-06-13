@@ -298,28 +298,26 @@ import {
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+
     .recipe-form-page {
-      max-width: 800px;
-      margin: 0 auto;
+      @include page(800px);
     }
 
     .form-header {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       margin-bottom: 24px;
     }
 
     .form-title {
+      @include page-title;
       font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0;
     }
 
     .loading-container {
-      display: flex;
-      justify-content: center;
-      padding: 64px 0;
+      @include loading-container;
     }
 
     :host ::ng-deep .form-card {
@@ -437,7 +435,7 @@ import {
       padding: 16px 0;
     }
 
-    @media (max-width: 640px) {
+    @include small {
       .form-grid {
         grid-template-columns: 1fr;
       }
@@ -446,8 +444,22 @@ import {
         flex-wrap: wrap;
       }
 
+      .ing-qty-input,
+      .ing-unit-input {
+        width: calc(50% - 4px);
+        min-width: 0;
+        max-width: none;
+      }
+
+      .ing-name-input {
+        flex-basis: 100%;
+      }
+
       .ing-notes-input {
-        width: 100%;
+        flex: 1;
+        width: auto;
+        min-width: 0;
+        max-width: none;
       }
     }
   `,

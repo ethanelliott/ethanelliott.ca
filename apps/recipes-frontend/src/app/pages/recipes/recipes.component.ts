@@ -195,35 +195,28 @@ import {
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+    @include fade-in-keyframes;
+
     .recipes-page {
-      max-width: 1200px;
-      margin: 0 auto;
+      @include page(1200px);
     }
 
     .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 16px;
+      @include page-header;
     }
 
     .page-title {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin: 0;
-      color: var(--p-text-color);
+      @include page-title;
     }
 
     .page-subtitle {
-      font-size: 0.875rem;
-      color: var(--p-text-muted-color);
+      @include page-subtitle;
+      margin: 0;
     }
 
     .header-actions {
-      display: flex;
-      gap: 8px;
+      @include header-actions;
     }
 
     .filters {
@@ -250,70 +243,44 @@ import {
       min-width: 180px;
     }
 
+    @include mobile {
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-search,
+      .filter-select {
+        min-width: 0;
+        width: 100%;
+      }
+    }
+
     .loading-container {
-      display: flex;
-      justify-content: center;
-      padding: 64px 0;
+      @include loading-container;
     }
 
     .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 64px 24px;
-      text-align: center;
-      gap: 8px;
-    }
-
-    .empty-icon {
-      font-size: 3rem;
-      color: var(--p-text-muted-color);
-      margin-bottom: 8px;
-    }
-
-    .empty-state h2 {
-      margin: 0;
-      font-size: 1.25rem;
-      color: var(--p-text-color);
-    }
-
-    .empty-state p {
-      margin: 0;
-      color: var(--p-text-muted-color);
+      @include empty-state;
     }
 
     .recipe-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 16px;
     }
 
     .recipe-card {
-      background: var(--p-surface-800);
-      border: 1px solid var(--p-surface-700);
-      border-radius: 12px;
+      @include card;
+      @include fade-in;
       padding: 20px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      animation: fadeIn 0.3s ease forwards;
-      opacity: 0;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 
       &:hover {
         border-color: var(--p-primary-color);
         box-shadow: 0 0 20px color-mix(in srgb, var(--p-primary-color) 15%, transparent);
         transform: translateY(-2px);
-      }
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
       }
     }
 
@@ -353,35 +320,21 @@ import {
     }
 
     .card-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
+      @include chip-row;
       margin-top: 8px;
     }
 
     .category-chip {
-      padding: 2px 10px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
+      @include chip-category;
     }
 
     .tag-chip {
-      padding: 2px 10px;
-      border: 1.5px solid;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      background: transparent;
+      @include chip-tag;
     }
 
-    @media (max-width: 640px) {
+    @include mobile {
       .recipe-grid {
         grid-template-columns: 1fr;
-      }
-
-      .header-actions {
-        width: 100%;
       }
     }
   `,
