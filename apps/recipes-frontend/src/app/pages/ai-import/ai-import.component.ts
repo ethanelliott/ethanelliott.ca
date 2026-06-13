@@ -2,21 +2,36 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
+  OnDestroy,
   signal,
 } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import {
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { CardModule } from 'primeng/card';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { TextareaModule } from 'primeng/textarea';
 import {
   RecipesApiService,
   ParsedRecipe,
-  ImportProgressEvent,
+  Category,
+  Tag,
+  RecipeInput,
+  SuggestionContent,
 } from '../../services/recipes-api.service';
+import { AiSuggestComponent } from '../../components/ai-suggest/ai-suggest.component';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -25,12 +40,17 @@ import { Subscription } from 'rxjs';
   imports: [
     RouterModule,
     FormsModule,
+    ReactiveFormsModule,
     ButtonModule,
     InputGroupModule,
     InputGroupAddonModule,
     InputTextModule,
+    InputNumberModule,
+    MultiSelectModule,
+    CardModule,
     ProgressBarModule,
     TextareaModule,
+    AiSuggestComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -59,14 +79,16 @@ import { Subscription } from 'rxjs';
           [showValue]="false"
           [style]="{ height: '6px' }"
         />
-        <p class="progress-detail">{{ progressDetail() }}</p>
+        <p class="progress-detail">
+          {{ progressDetail() || 'This can take up to a minute for big pages.' }}
+        </p>
       </div>
       } @else if (!parsed()) {
       <!-- Input Phase -->
       <div class="input-section">
         <p class="intro-text">
           Import a recipe from a URL or paste recipe text and AI will parse it
-          into a structured recipe for you.
+          into a structured recipe you can review and tweak before saving.
         </p>
 
         <!-- Mode Toggle -->
@@ -97,6 +119,7 @@ import { Subscription } from 'rxjs';
             [(ngModel)]="urlText"
             placeholder="https://www.allrecipes.com/recipe/..."
             class="full-width"
+            (keydown.enter)="parseUrl()"
           />
         </p-inputgroup>
         <p class="helper-text">
@@ -115,7 +138,12 @@ import { Subscription } from 'rxjs';
         } @if (error()) {
         <div class="error-banner">
           <i class="pi pi-exclamation-triangle"></i>
-          {{ error() }}
+          <span>{{ error() }}</span>
+          @if (mode() === 'url') {
+          <button class="link-btn" (click)="switchToText()">
+            Paste text instead
+          </button>
+          }
         </div>
         }
 
@@ -129,74 +157,210 @@ import { Subscription } from 'rxjs';
         </div>
       </div>
       } @else {
-      <!-- Preview Phase -->
+      <!-- Editable Preview Phase -->
       <div class="preview-section">
         <div class="success-indicator">
           <i class="pi pi-check-circle"></i>
-          Recipe parsed successfully!
+          Recipe parsed — review and edit anything before saving.
         </div>
 
-        <div class="preview">
-          <h2 class="preview-title">{{ parsed()!.title }}</h2>
-          @if (parsed()!.description) {
-          <p class="preview-desc">{{ parsed()!.description }}</p>
-          }
+        <form [formGroup]="form">
+          <p-card header="Details" styleClass="form-card">
+            <div class="form-grid">
+              <div class="form-field full-width">
+                <label for="title">Title *</label>
+                <input
+                  pInputText
+                  id="title"
+                  formControlName="title"
+                  placeholder="Recipe title"
+                />
+              </div>
+              <div class="form-field full-width">
+                <label for="description">Description</label>
+                <textarea
+                  pTextarea
+                  [autoResize]="true"
+                  id="description"
+                  formControlName="description"
+                  rows="2"
+                ></textarea>
+              </div>
+              <div class="form-field">
+                <label for="servings">Servings</label>
+                <p-inputnumber
+                  id="servings"
+                  formControlName="servings"
+                  [min]="1"
+                  [showButtons]="true"
+                  [fluid]="true"
+                />
+              </div>
+              <div class="form-field">
+                <label for="prep">Prep (min)</label>
+                <p-inputnumber
+                  id="prep"
+                  formControlName="prepTimeMinutes"
+                  [min]="0"
+                  [showButtons]="true"
+                  [fluid]="true"
+                />
+              </div>
+              <div class="form-field">
+                <label for="cook">Cook (min)</label>
+                <p-inputnumber
+                  id="cook"
+                  formControlName="cookTimeMinutes"
+                  [min]="0"
+                  [showButtons]="true"
+                  [fluid]="true"
+                />
+              </div>
+              <div class="form-field">
+                <label for="source">Source</label>
+                <input
+                  pInputText
+                  id="source"
+                  formControlName="source"
+                  placeholder="URL or reference"
+                />
+              </div>
+            </div>
+          </p-card>
 
-          <div class="preview-meta">
-            @if (parsed()!.prepTimeMinutes) {
-            <div class="meta-badge">
-              <i class="pi pi-stopwatch"></i>
-              <span>{{ parsed()!.prepTimeMinutes }}m prep</span>
-            </div>
-            } @if (parsed()!.cookTimeMinutes) {
-            <div class="meta-badge">
-              <i class="pi pi-clock"></i>
-              <span>{{ parsed()!.cookTimeMinutes }}m cook</span>
-            </div>
-            } @if (parsed()!.servings) {
-            <div class="meta-badge">
-              <i class="pi pi-users"></i>
-              <span>{{ parsed()!.servings }} servings</span>
-            </div>
+          <p-card header="Ingredients" styleClass="form-card">
+            @if (ingredients.length === 0) {
+            <p class="empty-message">No ingredients parsed — add some below.</p>
             }
-          </div>
-
-          <div class="preview-detail">
-            <h3>Ingredients</h3>
-            <ul class="ingredient-list">
-              @for (ing of parsed()!.ingredients; track $index) {
-              <li>
-                <span class="ing-qty">{{ ing.quantity }}</span>
-                <span class="ing-unit">{{ ing.unit }}</span>
-                <span class="ing-name">{{ ing.name }}</span>
-                @if (ing.notes) {
-                <span class="ing-notes">({{ ing.notes }})</span>
-                }
-              </li>
+            <div class="ingredients-list" formArrayName="ingredients">
+              @for (ing of ingredients.controls; track $index; let i = $index) {
+              <div class="ingredient-row" [formGroupName]="i">
+                <p-inputnumber
+                  formControlName="quantity"
+                  placeholder="Qty"
+                  [min]="0"
+                  [fluid]="true"
+                  class="ing-qty-input"
+                />
+                <input
+                  pInputText
+                  formControlName="unit"
+                  placeholder="Unit"
+                  class="ing-unit-input"
+                />
+                <input
+                  pInputText
+                  formControlName="name"
+                  placeholder="Ingredient name"
+                  class="ing-name-input"
+                />
+                <input
+                  pInputText
+                  formControlName="notes"
+                  placeholder="Notes"
+                  class="ing-notes-input"
+                />
+                <p-button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [text]="true"
+                  [rounded]="true"
+                  (click)="removeIngredient(i)"
+                />
+              </div>
               }
-            </ul>
-          </div>
+            </div>
+            <p-button
+              label="Add Ingredient"
+              icon="pi pi-plus"
+              severity="secondary"
+              [outlined]="true"
+              (click)="addIngredient()"
+              styleClass="mt-3"
+            />
+          </p-card>
 
-          @if (parsed()!.instructions) {
-          <div class="preview-detail">
-            <h3>Instructions</h3>
-            <p class="instructions-text">{{ parsed()!.instructions }}</p>
-          </div>
+          <p-card header="Instructions" styleClass="form-card">
+            <textarea
+              pTextarea
+              [autoResize]="true"
+              formControlName="instructions"
+              rows="10"
+              placeholder="Recipe instructions (Markdown supported)"
+              class="full-width"
+            ></textarea>
+          </p-card>
+
+          <p-card header="Categories & Tags" styleClass="form-card">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Categories</label>
+                <p-multiselect
+                  [options]="categories()"
+                  formControlName="categoryIds"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Select categories"
+                  display="chip"
+                  [fluid]="true"
+                />
+              </div>
+              <div class="form-field">
+                <label>Tags</label>
+                <p-multiselect
+                  [options]="tags()"
+                  formControlName="tagIds"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Select tags"
+                  display="chip"
+                  [fluid]="true"
+                />
+              </div>
+              <div class="form-field full-width ai-suggest-field">
+                <app-ai-suggest
+                  [content]="suggestionContent()"
+                  [selectedCategoryIds]="form.value.categoryIds || []"
+                  [selectedTagIds]="form.value.tagIds || []"
+                  (applyCategory)="toggleSelection('categoryIds', $event, true)"
+                  (removeCategory)="
+                    toggleSelection('categoryIds', $event, false)
+                  "
+                  (applyTag)="toggleSelection('tagIds', $event, true)"
+                  (removeTag)="toggleSelection('tagIds', $event, false)"
+                  (categoryCreated)="categories.set([...categories(), $event])"
+                  (tagCreated)="tags.set([...tags(), $event])"
+                />
+              </div>
+            </div>
+          </p-card>
+
+          @if (imageUrls().length > 0) {
+          <p-card header="Photos" styleClass="form-card">
+            <p class="photos-note">
+              <i class="pi pi-image"></i>
+              {{ imageUrls().length }} photo{{
+                imageUrls().length === 1 ? '' : 's'
+              }}
+              will be imported from the source.
+            </p>
+          </p-card>
           }
-        </div>
+        </form>
 
         <div class="actions">
           <p-button
-            label="Try Again"
+            label="Start Over"
             severity="secondary"
             [outlined]="true"
             icon="pi pi-refresh"
-            (click)="parsed.set(null)"
+            (click)="reset()"
           />
           <p-button
             label="Create Recipe"
             icon="pi pi-check"
             (click)="create()"
+            [disabled]="form.invalid"
           />
         </div>
       </div>
@@ -204,9 +368,10 @@ import { Subscription } from 'rxjs';
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+
     .ai-import-page {
-      max-width: 800px;
-      margin: 0 auto;
+      @include page(800px);
     }
 
     .page-header {
@@ -214,8 +379,7 @@ import { Subscription } from 'rxjs';
     }
 
     .page-title {
-      font-size: 1.75rem;
-      font-weight: 700;
+      @include page-title;
       margin: 12px 0 0;
     }
 
@@ -314,6 +478,17 @@ import { Subscription } from 'rxjs';
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .link-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      text-decoration: underline;
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
     }
 
     .actions {
@@ -336,106 +511,130 @@ import { Subscription } from 'rxjs';
       margin-bottom: 20px;
     }
 
-    .preview {
-      background: var(--p-surface-800);
-      border-radius: 12px;
-      padding: 24px;
+    :host ::ng-deep .form-card {
+      margin-bottom: 16px;
     }
 
-    .preview-title {
-      margin: 0 0 8px;
-      font-size: 1.4rem;
-      font-weight: 700;
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
     }
 
-    .preview-desc {
-      color: var(--p-text-muted-color);
-      margin: 0 0 16px;
-      font-size: 0.95rem;
+    .full-width {
+      grid-column: 1 / -1;
     }
 
-    .preview-meta {
+    .ai-suggest-field {
+      padding-top: 12px;
+      border-top: 1px dashed var(--p-surface-700);
+    }
+
+    .form-field {
       display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+      flex-direction: column;
+      gap: 6px;
+
+      label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--p-text-muted-color);
+      }
+
+      input,
+      textarea {
+        width: 100%;
+      }
     }
 
-    .meta-badge {
-      display: inline-flex;
+    .ingredients-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ingredient-row {
+      display: flex;
+      gap: 8px;
       align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: 20px;
-      background: var(--p-surface-700);
-      font-size: 0.85rem;
+    }
+
+    .ing-qty-input,
+    .ing-unit-input {
+      width: 80px;
+      min-width: 80px;
+      max-width: 80px;
+      flex-shrink: 0;
+    }
+
+    .ing-name-input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ing-notes-input {
+      width: 120px;
+      min-width: 120px;
+      max-width: 120px;
+      flex-shrink: 0;
+    }
+
+    .empty-message {
       color: var(--p-text-muted-color);
+      text-align: center;
+      padding: 16px;
+      margin: 0;
+    }
+
+    .photos-note {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      color: var(--p-text-muted-color);
+      font-size: 0.9rem;
 
       i {
         color: var(--p-primary-color);
       }
     }
 
-    .preview-detail {
-      margin-bottom: 20px;
-
-      h3 {
-        font-size: 1rem;
-        font-weight: 600;
-        margin: 0 0 10px;
+    @include small {
+      .form-grid {
+        grid-template-columns: 1fr;
       }
-    }
 
-    .ingredient-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      grid-template-columns: max-content max-content 1fr max-content;
-      gap: 6px 0;
-
-      li {
-        display: grid;
-        grid-template-columns: subgrid;
-        grid-column: 1 / -1;
-        gap: 0 10px;
-        padding: 8px 12px;
-        background: var(--p-surface-700);
-        border-radius: 6px;
-        font-size: 0.9rem;
+      .ingredient-row {
+        flex-wrap: wrap;
       }
-    }
 
-    .ing-qty {
-      font-weight: 600;
-      color: var(--p-primary-color);
-      text-align: right;
-    }
+      .ing-qty-input,
+      .ing-unit-input {
+        width: calc(50% - 4px);
+        min-width: 0;
+        max-width: none;
+      }
 
-    .ing-unit {
-      color: var(--p-text-muted-color);
-    }
+      .ing-name-input {
+        flex-basis: 100%;
+      }
 
-    .ing-name {
-      font-weight: 600;
-    }
+      .ing-notes-input {
+        flex: 1;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+      }
 
-    .ing-notes {
-      color: var(--p-text-muted-color);
-      font-style: italic;
-    }
-
-    .instructions-text {
-      font-size: 0.95rem;
-      line-height: 1.7;
-      color: var(--p-text-muted-color);
-      white-space: pre-wrap;
-      margin: 0;
+      .actions {
+        flex-direction: column-reverse;
+      }
     }
   `,
 })
-export class AiImportComponent {
+export class AiImportComponent implements OnDestroy {
   private api = inject(RecipesApiService);
+  private fb = inject(FormBuilder);
   router = inject(Router);
 
   mode = signal<'url' | 'text'>('url');
@@ -449,7 +648,86 @@ export class AiImportComponent {
   progressMessage = signal('Starting...');
   progressDetail = signal('');
 
+  categories = signal<Category[]>([]);
+  tags = signal<Tag[]>([]);
+  imageUrls = signal<string[]>([]);
+
+  form: FormGroup = this.fb.group({
+    title: ['', Validators.required],
+    description: [''],
+    servings: [4],
+    prepTimeMinutes: [null as number | null],
+    cookTimeMinutes: [null as number | null],
+    source: [''],
+    categoryIds: [[] as string[]],
+    tagIds: [[] as string[]],
+    ingredients: this.fb.array([]),
+    instructions: [''],
+  });
+
   private streamSub?: Subscription;
+
+  constructor() {
+    this.api.getCategories().subscribe((c) => this.categories.set(c));
+    this.api.getTags().subscribe((t) => this.tags.set(t));
+  }
+
+  ngOnDestroy() {
+    this.streamSub?.unsubscribe();
+  }
+
+  get ingredients(): FormArray {
+    return this.form.get('ingredients') as FormArray;
+  }
+
+  suggestionContent(): SuggestionContent {
+    const v = this.form.value;
+    return {
+      title: v.title || '',
+      description: v.description || undefined,
+      instructions: v.instructions || undefined,
+      ingredients: (v.ingredients || [])
+        .map((i: { name?: string }) => ({ name: (i.name || '').trim() }))
+        .filter((i: { name: string }) => i.name.length > 0),
+    };
+  }
+
+  toggleSelection(
+    control: 'categoryIds' | 'tagIds',
+    id: string,
+    selected: boolean
+  ) {
+    const current: string[] = this.form.get(control)?.value || [];
+    const next = selected
+      ? current.includes(id)
+        ? current
+        : [...current, id]
+      : current.filter((x) => x !== id);
+    this.form.get(control)?.setValue(next);
+  }
+
+  addIngredient() {
+    this.ingredients.push(
+      this.fb.group({ quantity: [1], unit: [''], name: [''], notes: [''] })
+    );
+  }
+
+  removeIngredient(index: number) {
+    this.ingredients.removeAt(index);
+  }
+
+  switchToText() {
+    this.mode.set('text');
+    this.error.set('');
+  }
+
+  reset() {
+    this.streamSub?.unsubscribe();
+    this.parsed.set(null);
+    this.imageUrls.set([]);
+    this.error.set('');
+    this.resetProgress();
+  }
 
   private resetProgress() {
     this.progressPercent.set(0);
@@ -470,15 +748,15 @@ export class AiImportComponent {
           this.progressPercent.set(event.percent ?? 0);
           this.progressMessage.set(event.message ?? 'Processing...');
         } else if (event.type === 'result' && event.result) {
-          this.parsed.set(event.result);
+          this.populateForm(event.result);
           this.parsing.set(false);
         }
       },
       error: (err) => {
-        const message =
+        this.error.set(
           err?.message ||
-          'Failed to import recipe from URL. Try pasting the text instead.';
-        this.error.set(message);
+            'Failed to import recipe from URL. Try pasting the text instead.'
+        );
         this.parsing.set(false);
       },
     });
@@ -499,7 +777,7 @@ export class AiImportComponent {
             this.progressPercent.set(event.percent ?? 0);
             this.progressMessage.set(event.message ?? 'Processing...');
           } else if (event.type === 'result' && event.result) {
-            this.parsed.set(event.result);
+            this.populateForm(event.result);
             this.parsing.set(false);
           }
         },
@@ -510,68 +788,106 @@ export class AiImportComponent {
       });
   }
 
+  private populateForm(recipe: ParsedRecipe) {
+    this.ingredients.clear();
+    (recipe.ingredients || []).forEach((ing) => {
+      this.ingredients.push(
+        this.fb.group({
+          quantity: [ing.quantity ?? 1],
+          unit: [ing.unit ?? ''],
+          name: [ing.name ?? ''],
+          notes: [ing.notes ?? ''],
+        })
+      );
+    });
+
+    this.form.patchValue({
+      title: recipe.title || '',
+      description: recipe.description || '',
+      servings: recipe.servings ?? 4,
+      prepTimeMinutes: recipe.prepTimeMinutes ?? null,
+      cookTimeMinutes: recipe.cookTimeMinutes ?? null,
+      source: recipe.source || '',
+      categoryIds: [],
+      tagIds: [],
+      instructions: recipe.instructions || '',
+    });
+
+    this.imageUrls.set(recipe.imageUrls ?? []);
+    this.parsed.set(recipe);
+  }
+
   create() {
-    const recipe = this.parsed();
-    if (!recipe) return;
+    if (this.form.invalid) return;
+    const v = this.form.value;
 
     this.creating.set(true);
     this.progressPercent.set(30);
     this.progressMessage.set('Creating recipe...');
     this.progressDetail.set('');
 
-    this.api
-      .createRecipe({
-        title: recipe.title,
-        description: recipe.description,
-        instructions: recipe.instructions,
-        servings: recipe.servings,
-        prepTimeMinutes: recipe.prepTimeMinutes,
-        cookTimeMinutes: recipe.cookTimeMinutes,
-        source: recipe.source,
-        ingredients: recipe.ingredients.map((ing, idx) => ({
-          name: ing.name,
-          quantity: ing.quantity,
-          unit: ing.unit,
-          notes: ing.notes,
+    const input: RecipeInput = {
+      title: v.title,
+      description: v.description || undefined,
+      instructions: v.instructions || undefined,
+      servings: v.servings || undefined,
+      prepTimeMinutes: v.prepTimeMinutes || undefined,
+      cookTimeMinutes: v.cookTimeMinutes || undefined,
+      source: v.source || undefined,
+      categoryIds: v.categoryIds || [],
+      tagIds: v.tagIds || [],
+      ingredients: (v.ingredients || []).map(
+        (
+          i: { quantity: number; unit: string; name: string; notes: string },
+          idx: number
+        ) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unit: i.unit,
+          notes: i.notes || undefined,
           orderIndex: idx,
-        })),
-      })
-      .subscribe((created) => {
+        })
+      ),
+    };
+
+    this.api.createRecipe(input).subscribe({
+      next: (created) => {
         const navigateToRecipe = () => {
           this.creating.set(false);
           this.router.navigate(['/recipes', created.id]);
         };
 
-        // Import photos from URLs if available
-        if (recipe.imageUrls?.length) {
+        const urls = this.imageUrls();
+        if (urls.length) {
           this.progressPercent.set(65);
           this.progressMessage.set('Importing photos...');
           this.progressDetail.set(
-            `Downloading ${recipe.imageUrls.length} image${
-              recipe.imageUrls.length > 1 ? 's' : ''
-            }...`
+            `Downloading ${urls.length} image${urls.length > 1 ? 's' : ''}...`
           );
 
-          this.api
-            .importPhotosFromUrls(created.id, recipe.imageUrls)
-            .subscribe({
-              next: (result) => {
-                this.progressPercent.set(100);
-                this.progressMessage.set('Done!');
-                this.progressDetail.set(
-                  `Imported ${result.imported} photo${
-                    result.imported !== 1 ? 's' : ''
-                  }`
-                );
-                setTimeout(() => navigateToRecipe(), 400);
-              },
-              error: () => navigateToRecipe(),
-            });
+          this.api.importPhotosFromUrls(created.id, urls).subscribe({
+            next: (result) => {
+              this.progressPercent.set(100);
+              this.progressMessage.set('Done!');
+              this.progressDetail.set(
+                `Imported ${result.imported} photo${
+                  result.imported !== 1 ? 's' : ''
+                }`
+              );
+              setTimeout(navigateToRecipe, 400);
+            },
+            error: navigateToRecipe,
+          });
         } else {
           this.progressPercent.set(100);
           this.progressMessage.set('Done!');
-          setTimeout(() => navigateToRecipe(), 300);
+          setTimeout(navigateToRecipe, 300);
         }
-      });
+      },
+      error: () => {
+        this.creating.set(false);
+        this.error.set('Could not create the recipe. Please try again.');
+      },
+    });
   }
 }

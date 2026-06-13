@@ -6,14 +6,26 @@ import { AiService } from './ai.service';
 
 // Response schemas
 const SuggestionItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid().nullable(),
   name: z.string(),
   confidence: z.number().min(0).max(1),
+  isNew: z.boolean(),
 });
 
 const SuggestTagsAndCategoriesResponseSchema = z.object({
   suggestedCategories: z.array(SuggestionItemSchema),
   suggestedTags: z.array(SuggestionItemSchema),
+});
+
+// Content-based suggestion (works before a recipe is saved)
+const SuggestForContentRequestSchema = z.object({
+  title: z.string().min(1).max(300),
+  description: z.string().max(5000).optional(),
+  instructions: z.string().max(20000).optional(),
+  ingredients: z
+    .array(z.object({ name: z.string() }))
+    .optional()
+    .default([]),
 });
 
 // Chat schemas
@@ -87,6 +99,23 @@ export async function AiRouter(fastify: FastifyInstance) {
     },
     async (request) => {
       return aiService.suggestTagsAndCategories(request.params.recipeId);
+    }
+  );
+
+  // Suggest tags and categories from raw recipe content (before a recipe is
+  // saved — used by the create form and the AI import preview)
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/suggest-tags',
+    {
+      schema: {
+        body: SuggestForContentRequestSchema,
+        response: {
+          200: SuggestTagsAndCategoriesResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      return aiService.suggestForContent(request.body);
     }
   );
 

@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   OnInit,
   signal,
@@ -57,7 +58,11 @@ interface RecipeSelection {
           <div class="recipe-selection-list">
             @for (sel of recipeSelections(); track sel.recipe.id) {
             <div class="recipe-selection-row">
-              <p-checkbox [(ngModel)]="sel.selected" [binary]="true" />
+              <p-checkbox
+                [(ngModel)]="sel.selected"
+                [binary]="true"
+                (ngModelChange)="bumpSelections()"
+              />
               <label>{{ sel.recipe.title }}</label>
               @if (sel.selected) {
               <div class="servings-input">
@@ -137,31 +142,26 @@ interface RecipeSelection {
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+
     .grocery-page {
-      max-width: 1100px;
-      margin: 0 auto;
+      @include page(1100px);
     }
 
     .page-header {
       margin-bottom: 24px;
 
       h1 {
-        margin: 0 0 4px;
-        font-size: 1.5rem;
-        font-weight: 700;
+        @include page-title;
       }
 
       .subtitle {
-        margin: 0;
-        color: var(--p-text-muted-color);
-        font-size: 0.9rem;
+        @include page-subtitle;
       }
     }
 
     .loading-container {
-      display: flex;
-      justify-content: center;
-      padding: 64px 0;
+      @include loading-container;
     }
 
     .grocery-layout {
@@ -288,9 +288,13 @@ interface RecipeSelection {
       border-top: 1px solid var(--p-surface-700);
     }
 
-    @media (max-width: 768px) {
+    @include mobile {
       .grocery-layout {
         grid-template-columns: 1fr;
+      }
+
+      .list-actions {
+        flex-wrap: wrap;
       }
     }
   `,
@@ -304,7 +308,19 @@ export class GroceryListComponent implements OnInit {
   groceryList = signal<GroceryList | null>(null);
   checkedItems = signal<Array<GroceryItem & { checked: boolean }>>([]);
 
-  selectedCount = signal(0);
+  // Recomputed whenever the selection set changes (see bumpSelections).
+  selectedCount = computed(
+    () => this.recipeSelections().filter((s) => s.selected).length
+  );
+
+  /**
+   * The checkbox mutates `sel.selected` in place via ngModel; reassign the
+   * signal's array so the `selectedCount` computed (and the Generate button's
+   * disabled state) re-evaluate.
+   */
+  bumpSelections() {
+    this.recipeSelections.update((list) => [...list]);
+  }
 
   ngOnInit() {
     this.api.getRecipes().subscribe((recipes) => {

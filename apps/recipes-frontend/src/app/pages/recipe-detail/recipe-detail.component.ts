@@ -33,8 +33,10 @@ import {
   RecipePhoto,
   Category,
   Tag,
+  SuggestionContent,
 } from '../../services/recipes-api.service';
 import { marked } from 'marked';
+import { AiSuggestComponent } from '../../components/ai-suggest/ai-suggest.component';
 
 @Component({
   selector: 'app-recipe-detail',
@@ -51,6 +53,7 @@ import { marked } from 'marked';
     GalleriaModule,
     MultiSelectModule,
     TooltipModule,
+    AiSuggestComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -178,6 +181,19 @@ import { marked } from 'marked';
               [filter]="true"
               filterPlaceholder="Search..."
               [fluid]="true"
+            />
+          </div>
+          <div class="chips-edit-suggest">
+            <app-ai-suggest
+              [content]="suggestionContent()"
+              [selectedCategoryIds]="selectedCategoryIds"
+              [selectedTagIds]="selectedTagIds"
+              (applyCategory)="toggleChip('category', $event, true)"
+              (removeCategory)="toggleChip('category', $event, false)"
+              (applyTag)="toggleChip('tag', $event, true)"
+              (removeTag)="toggleChip('tag', $event, false)"
+              (categoryCreated)="allCategories.set([...allCategories(), $event])"
+              (tagCreated)="allTags.set([...allTags(), $event])"
             />
           </div>
           <div class="chips-edit-actions">
@@ -340,7 +356,7 @@ import { marked } from 'marked';
           <div class="section">
             <h2 class="section-title">Instructions</h2>
             <div
-              class="markdown-content"
+              class="markdown-content instructions"
               [innerHTML]="renderedInstructions()"
             ></div>
           </div>
@@ -550,15 +566,14 @@ import { marked } from 'marked';
     }
   `,
   styles: `
+    @use 'styles/shared' as *;
+
     .loading-container {
-      display: flex;
-      justify-content: center;
-      padding: 64px 0;
+      @include loading-container;
     }
 
     .recipe-detail {
-      max-width: 1800px;
-      margin: 0 auto;
+      @include page(1200px);
     }
 
     .detail-header {
@@ -621,27 +636,18 @@ import { marked } from 'marked';
     }
 
     .chips-section {
-      display: flex;
-      flex-wrap: wrap;
+      @include chip-row;
       gap: 8px;
       margin-bottom: 24px;
       align-items: center;
     }
 
     .category-chip {
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 600;
+      @include chip-category;
     }
 
     .tag-chip {
-      padding: 4px 12px;
-      border: 1.5px solid;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      background: transparent;
+      @include chip-tag;
     }
 
     .no-chips-hint {
@@ -671,6 +677,11 @@ import { marked } from 'marked';
         font-weight: 500;
         color: var(--p-text-muted-color);
       }
+    }
+
+    .chips-edit-suggest {
+      padding-top: 12px;
+      border-top: 1px dashed var(--p-surface-700);
     }
 
     .chips-edit-actions {
@@ -737,13 +748,8 @@ import { marked } from 'marked';
       min-width: 0;
     }
 
-    .instructions-section {
-      .section-title {
-        margin-bottom: 20px;
-      }
-    }
-
-    .instructions-content {
+    // Instructions: render an ordered list as numbered "step" cards.
+    .markdown-content.instructions {
       :deep(ol) {
         padding-left: 0;
         list-style: none;
@@ -1285,7 +1291,7 @@ import { marked } from 'marked';
     }
 
     .tips-section-header:has(.pi-exclamation-triangle) i {
-      color: var(--p-orange-400);
+      color: #f59e0b;
     }
 
     .tip-card {
@@ -1305,7 +1311,7 @@ import { marked } from 'marked';
       }
 
       &.mistake {
-        border-left: 3px solid var(--p-orange-400);
+        border-left: 3px solid #f59e0b;
       }
     }
 
@@ -1392,7 +1398,7 @@ import { marked } from 'marked';
     }
 
     // ===== RESPONSIVE: Tablet =====
-    @media (max-width: 1024px) {
+    @include tablet {
       .recipe-body {
         grid-template-columns: 1fr;
         gap: 24px;
@@ -1409,11 +1415,7 @@ import { marked } from 'marked';
     }
 
     // ===== RESPONSIVE: Mobile =====
-    @media (max-width: 640px) {
-      .recipe-detail {
-        margin: 0 -4px;
-      }
-
+    @include mobile {
       .recipe-title {
         font-size: 1.5rem;
       }
@@ -1465,7 +1467,7 @@ import { marked } from 'marked';
         gap: 8px;
       }
 
-      .instructions-content {
+      .markdown-content.instructions {
         :deep(ol li) {
           padding: 10px 12px 10px 42px;
 
@@ -1627,6 +1629,33 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
 
   cancelEditingChips() {
     this.editingChips.set(false);
+  }
+
+  /** Recipe content used to drive AI category/tag suggestions. */
+  suggestionContent(): SuggestionContent {
+    const r = this.recipe();
+    return {
+      title: r?.title || '',
+      description: r?.description || undefined,
+      instructions: r?.instructions || undefined,
+      ingredients: (r?.ingredients || []).map((i) => ({ name: i.name })),
+    };
+  }
+
+  /** Add or remove an id from the in-progress category/tag selection. */
+  toggleChip(kind: 'category' | 'tag', id: string, selected: boolean) {
+    const current =
+      kind === 'category' ? this.selectedCategoryIds : this.selectedTagIds;
+    const next = selected
+      ? current.includes(id)
+        ? current
+        : [...current, id]
+      : current.filter((x) => x !== id);
+    if (kind === 'category') {
+      this.selectedCategoryIds = next;
+    } else {
+      this.selectedTagIds = next;
+    }
   }
 
   saveChips() {

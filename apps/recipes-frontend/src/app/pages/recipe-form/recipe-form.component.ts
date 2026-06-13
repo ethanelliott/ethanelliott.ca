@@ -28,7 +28,9 @@ import {
   Category,
   Tag,
   RecipeInput,
+  SuggestionContent,
 } from '../../services/recipes-api.service';
+import { AiSuggestComponent } from '../../components/ai-suggest/ai-suggest.component';
 
 @Component({
   selector: 'app-recipe-form',
@@ -44,6 +46,7 @@ import {
     ConfirmDialogModule,
     ProgressSpinnerModule,
     TextareaModule,
+    AiSuggestComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -155,6 +158,19 @@ import {
                 placeholder="Select tags"
                 display="chip"
                 [fluid]="true"
+              />
+            </div>
+            <div class="form-field full-width ai-suggest-field">
+              <app-ai-suggest
+                [content]="suggestionContent()"
+                [selectedCategoryIds]="form.value.categoryIds || []"
+                [selectedTagIds]="form.value.tagIds || []"
+                (applyCategory)="toggleSelection('categoryIds', $event, true)"
+                (removeCategory)="toggleSelection('categoryIds', $event, false)"
+                (applyTag)="toggleSelection('tagIds', $event, true)"
+                (removeTag)="toggleSelection('tagIds', $event, false)"
+                (categoryCreated)="categories.set([...categories(), $event])"
+                (tagCreated)="tags.set([...tags(), $event])"
               />
             </div>
           </div>
@@ -298,28 +314,26 @@ import {
     </div>
   `,
   styles: `
+    @use 'styles/shared' as *;
+
     .recipe-form-page {
-      max-width: 800px;
-      margin: 0 auto;
+      @include page(800px);
     }
 
     .form-header {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       margin-bottom: 24px;
     }
 
     .form-title {
+      @include page-title;
       font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0;
     }
 
     .loading-container {
-      display: flex;
-      justify-content: center;
-      padding: 64px 0;
+      @include loading-container;
     }
 
     :host ::ng-deep .form-card {
@@ -334,6 +348,11 @@ import {
 
     .full-width {
       grid-column: 1 / -1;
+    }
+
+    .ai-suggest-field {
+      padding-top: 12px;
+      border-top: 1px dashed var(--p-surface-700);
     }
 
     .form-field {
@@ -437,7 +456,7 @@ import {
       padding: 16px 0;
     }
 
-    @media (max-width: 640px) {
+    @include small {
       .form-grid {
         grid-template-columns: 1fr;
       }
@@ -446,8 +465,22 @@ import {
         flex-wrap: wrap;
       }
 
+      .ing-qty-input,
+      .ing-unit-input {
+        width: calc(50% - 4px);
+        min-width: 0;
+        max-width: none;
+      }
+
+      .ing-name-input {
+        flex-basis: 100%;
+      }
+
       .ing-notes-input {
-        width: 100%;
+        flex: 1;
+        width: auto;
+        min-width: 0;
+        max-width: none;
       }
     }
   `,
@@ -484,6 +517,34 @@ export class RecipeFormComponent implements OnInit {
 
   get ingredients(): FormArray {
     return this.form.get('ingredients') as FormArray;
+  }
+
+  /** Snapshot of the form content used to drive AI category/tag suggestions. */
+  suggestionContent(): SuggestionContent {
+    const v = this.form.value;
+    return {
+      title: v.title || '',
+      description: v.description || undefined,
+      instructions: v.instructions || undefined,
+      ingredients: (v.ingredients || [])
+        .map((i: { name?: string }) => ({ name: (i.name || '').trim() }))
+        .filter((i: { name: string }) => i.name.length > 0),
+    };
+  }
+
+  /** Add or remove an id from a multiselect-backed form control. */
+  toggleSelection(
+    control: 'categoryIds' | 'tagIds',
+    id: string,
+    selected: boolean
+  ) {
+    const current: string[] = this.form.get(control)?.value || [];
+    const next = selected
+      ? current.includes(id)
+        ? current
+        : [...current, id]
+      : current.filter((x) => x !== id);
+    this.form.get(control)?.setValue(next);
   }
 
   ngOnInit() {
