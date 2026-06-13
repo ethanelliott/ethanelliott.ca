@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/cars-frontend
-  tag: latest
+  tag: s-6f22594
   pullPolicy: Always
 
 service:
