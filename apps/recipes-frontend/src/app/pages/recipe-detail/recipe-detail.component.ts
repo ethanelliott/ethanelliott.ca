@@ -33,8 +33,10 @@ import {
   RecipePhoto,
   Category,
   Tag,
+  SuggestionContent,
 } from '../../services/recipes-api.service';
 import { marked } from 'marked';
+import { AiSuggestComponent } from '../../components/ai-suggest/ai-suggest.component';
 
 @Component({
   selector: 'app-recipe-detail',
@@ -51,6 +53,7 @@ import { marked } from 'marked';
     GalleriaModule,
     MultiSelectModule,
     TooltipModule,
+    AiSuggestComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -178,6 +181,19 @@ import { marked } from 'marked';
               [filter]="true"
               filterPlaceholder="Search..."
               [fluid]="true"
+            />
+          </div>
+          <div class="chips-edit-suggest">
+            <app-ai-suggest
+              [content]="suggestionContent()"
+              [selectedCategoryIds]="selectedCategoryIds"
+              [selectedTagIds]="selectedTagIds"
+              (applyCategory)="toggleChip('category', $event, true)"
+              (removeCategory)="toggleChip('category', $event, false)"
+              (applyTag)="toggleChip('tag', $event, true)"
+              (removeTag)="toggleChip('tag', $event, false)"
+              (categoryCreated)="allCategories.set([...allCategories(), $event])"
+              (tagCreated)="allTags.set([...allTags(), $event])"
             />
           </div>
           <div class="chips-edit-actions">
@@ -661,6 +677,11 @@ import { marked } from 'marked';
         font-weight: 500;
         color: var(--p-text-muted-color);
       }
+    }
+
+    .chips-edit-suggest {
+      padding-top: 12px;
+      border-top: 1px dashed var(--p-surface-700);
     }
 
     .chips-edit-actions {
@@ -1608,6 +1629,33 @@ export class RecipeDetailComponent implements OnInit, OnDestroy {
 
   cancelEditingChips() {
     this.editingChips.set(false);
+  }
+
+  /** Recipe content used to drive AI category/tag suggestions. */
+  suggestionContent(): SuggestionContent {
+    const r = this.recipe();
+    return {
+      title: r?.title || '',
+      description: r?.description || undefined,
+      instructions: r?.instructions || undefined,
+      ingredients: (r?.ingredients || []).map((i) => ({ name: i.name })),
+    };
+  }
+
+  /** Add or remove an id from the in-progress category/tag selection. */
+  toggleChip(kind: 'category' | 'tag', id: string, selected: boolean) {
+    const current =
+      kind === 'category' ? this.selectedCategoryIds : this.selectedTagIds;
+    const next = selected
+      ? current.includes(id)
+        ? current
+        : [...current, id]
+      : current.filter((x) => x !== id);
+    if (kind === 'category') {
+      this.selectedCategoryIds = next;
+    } else {
+      this.selectedTagIds = next;
+    }
   }
 
   saveChips() {

@@ -139,14 +139,25 @@ const FLAVOR_PROFILE_SCHEMA: JsonSchema = {
 };
 
 export interface SuggestionItem {
-  id: string;
+  /** Existing category/tag id, or null when the suggestion is brand new. */
+  id: string | null;
   name: string;
   confidence: number;
+  /** True when this category/tag does not exist yet and would be created. */
+  isNew: boolean;
 }
 
 export interface TagsAndCategoriesSuggestion {
   suggestedCategories: SuggestionItem[];
   suggestedTags: SuggestionItem[];
+}
+
+/** Recipe content used to generate category/tag suggestions. */
+export interface SuggestionContent {
+  title: string;
+  description?: string | null;
+  instructions?: string | null;
+  ingredients: Array<{ name: string }>;
 }
 
 export interface ChatResponse {
@@ -203,14 +214,29 @@ export class AiService {
   private readonly _ollamaClient = new OllamaClient();
 
   /**
-   * Suggest tags and categories for a recipe based on its content
+   * Suggest tags and categories for an already-saved recipe.
    */
   async suggestTagsAndCategories(
     recipeId: string
   ): Promise<TagsAndCategoriesSuggestion> {
-    // Get recipe details
     const recipe = await this._recipesService.getById(recipeId);
+    return this.suggestForContent({
+      title: recipe.title,
+      description: recipe.description,
+      instructions: recipe.instructions,
+      ingredients: recipe.ingredients ?? [],
+    });
+  }
 
+  /**
+   * Suggest tags and categories from raw recipe content (used before a recipe
+   * is saved, e.g. the create form and the AI import preview). The AI prefers
+   * existing categories/tags but may also propose brand-new ones, which are
+   * flagged with `isNew` so the client can offer to create them.
+   */
+  async suggestForContent(
+    content: SuggestionContent
+  ): Promise<TagsAndCategoriesSuggestion> {
     // Get all available categories and tags
     const [categories, tags] = await Promise.all([
       this._categoriesService.getAll(),
@@ -218,13 +244,13 @@ export class AiService {
     ]);
 
     // Build the prompt
-    const prompt = this.buildPrompt(recipe, categories, tags);
+    const prompt = this.buildPrompt(content, categories, tags);
 
     // Get AI suggestions
     const messages: Message[] = [
       {
         role: 'system',
-        content: `You are a recipe classification assistant. Your task is to analyze recipes and suggest the most appropriate categories and tags from a given list. Always respond with valid JSON only, no additional text or explanation.`,
+        content: `You are a recipe classification assistant. Your task is to analyze recipes and suggest the most appropriate categories and tags. Strongly prefer reusing the existing categories and tags provided, but you may propose a small number of new ones when none of the existing options fit. Always respond with valid JSON only, no additional text or explanation.`,
       },
       {
         role: 'user',
@@ -238,9 +264,7 @@ export class AiService {
     });
 
     // Parse the response
-    const suggestions = this.parseResponse(response, categories, tags);
-
-    return suggestions;
+    return this.parseResponse(response, categories, tags);
   }
 
   /**
@@ -269,11 +293,11 @@ Description: ${recipe.description || 'No description'}
 Ingredients: ${ingredientsList || 'No ingredients listed'}
 Instructions: ${recipe.instructions || 'No instructions'}
 
-AVAILABLE CATEGORIES (choose from these only):
-${categoryNames || 'None available'}
+EXISTING CATEGORIES (strongly prefer these):
+${categoryNames || 'None yet'}
 
-AVAILABLE TAGS (choose from these only):
-${tagNames || 'None available'}
+EXISTING TAGS (strongly prefer these):
+${tagNames || 'None yet'}
 
 Respond with a JSON object in this exact format:
 {
@@ -282,11 +306,14 @@ Respond with a JSON object in this exact format:
 }
 
 Rules:
-- Only suggest categories and tags from the available lists above
+- Strongly prefer reusing the existing categories and tags listed above, matching their exact spelling
+- Only propose a NEW category or tag when none of the existing ones reasonably fit
+- Keep any new names short, generic and reusable (e.g. "Dessert", "Vegetarian", "Quick"), not specific to this one dish
+- Use Title Case for new names
 - Confidence should be between 0.0 and 1.0
 - Only include suggestions with confidence > 0.5
 - Sort by confidence descending
-- Maximum 3 categories and 5 tags`;
+- Maximum 3 categories and 6 tags total`;
   }
 
   /**
@@ -311,48 +338,59 @@ Rules:
       };
     }
 
-    // Map category names to IDs
     const categoryMap = new Map(
       categories.map((c) => [c.name.toLowerCase(), c])
     );
-    const suggestedCategories: SuggestionItem[] = (parsed.categories || [])
-      .map((suggestion) => {
-        const category = categoryMap.get(suggestion.name.toLowerCase());
-        if (category && suggestion.confidence > 0.5) {
-          return {
-            id: category.id,
-            name: category.name,
-            confidence: Math.round(suggestion.confidence * 100) / 100,
-          };
-        }
-        return null;
-      })
-      .filter((item): item is SuggestionItem => item !== null)
-      .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 3);
-
-    // Map tag names to IDs
     const tagMap = new Map(tags.map((t) => [t.name.toLowerCase(), t]));
-    const suggestedTags: SuggestionItem[] = (parsed.tags || [])
-      .map((suggestion) => {
-        const tag = tagMap.get(suggestion.name.toLowerCase());
-        if (tag && suggestion.confidence > 0.5) {
-          return {
-            id: tag.id,
-            name: tag.name,
-            confidence: Math.round(suggestion.confidence * 100) / 100,
-          };
-        }
-        return null;
-      })
-      .filter((item): item is SuggestionItem => item !== null)
-      .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 5);
 
     return {
-      suggestedCategories,
-      suggestedTags,
+      suggestedCategories: this.mapSuggestions(
+        parsed.categories,
+        categoryMap,
+        3
+      ),
+      suggestedTags: this.mapSuggestions(parsed.tags, tagMap, 6),
     };
+  }
+
+  /**
+   * Map raw AI suggestions to suggestion items. Names matching an existing
+   * category/tag (case-insensitive) reuse its id; unmatched names become
+   * "new" suggestions the client can create on demand.
+   */
+  private mapSuggestions(
+    raw: Array<{ name: string; confidence: number }> | undefined,
+    existingByName: Map<string, { id: string; name: string }>,
+    limit: number
+  ): SuggestionItem[] {
+    const seen = new Set<string>();
+
+    return (raw || [])
+      .map((suggestion): SuggestionItem | null => {
+        const name = (suggestion.name || '').trim();
+        const key = name.toLowerCase();
+
+        // Filter junk: empty, too long, or below the confidence threshold.
+        if (!name || name.length > 50 || suggestion.confidence <= 0.5) {
+          return null;
+        }
+        if (seen.has(key)) return null;
+        seen.add(key);
+
+        const confidence = Math.round(suggestion.confidence * 100) / 100;
+        const existing = existingByName.get(key);
+        if (existing) {
+          return { id: existing.id, name: existing.name, confidence, isNew: false };
+        }
+        return { id: null, name, confidence, isNew: true };
+      })
+      .filter((item): item is SuggestionItem => item !== null)
+      // Surface existing matches before brand-new proposals, then by confidence.
+      .sort((a, b) => {
+        if (a.isNew !== b.isNew) return a.isNew ? 1 : -1;
+        return b.confidence - a.confidence;
+      })
+      .slice(0, limit);
   }
 
   /**

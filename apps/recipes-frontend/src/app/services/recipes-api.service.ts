@@ -161,14 +161,24 @@ export interface Message {
 }
 
 export interface SuggestionItem {
-  id: string;
+  /** Existing id, or null when the suggestion is a brand-new category/tag. */
+  id: string | null;
   name: string;
   confidence: number;
+  /** True when selecting this suggestion would create a new category/tag. */
+  isNew: boolean;
 }
 
 export interface TagsAndCategoriesSuggestion {
   suggestedCategories: SuggestionItem[];
   suggestedTags: SuggestionItem[];
+}
+
+export interface SuggestionContent {
+  title: string;
+  description?: string;
+  instructions?: string;
+  ingredients?: Array<{ name: string }>;
 }
 
 export interface ChatRequest {
@@ -390,6 +400,19 @@ export class RecipesApiService {
     return this.http.post<TagsAndCategoriesSuggestion>(
       `${this.baseUrl}/ai/suggest-tags/${recipeId}`,
       {}
+    );
+  }
+
+  /**
+   * Suggest categories and tags from raw recipe content, before the recipe is
+   * saved (used by the create form and the AI import preview).
+   */
+  suggestTagsAndCategoriesForContent(
+    content: SuggestionContent
+  ): Observable<TagsAndCategoriesSuggestion> {
+    return this.http.post<TagsAndCategoriesSuggestion>(
+      `${this.baseUrl}/ai/suggest-tags`,
+      content
     );
   }
 
