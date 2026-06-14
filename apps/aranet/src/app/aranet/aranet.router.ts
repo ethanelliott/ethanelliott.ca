@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { inject } from '@ee/di';
-import { AranetService } from './aranet.service';
+import { AranetService, HistoryQuery } from './aranet.service';
 import { DeviceService } from './device.service';
+import { MeasurementType } from './measurement-types';
 
 export async function AranetRouter(fastify: FastifyInstance) {
   const aranetService = inject(AranetService);
@@ -68,10 +69,89 @@ export async function AranetRouter(fastify: FastifyInstance) {
     return reply.status(204).send();
   });
 
-  /** GET /aranet/devices/:id/readings?limit=.. — history for one device. */
-  fastify.get('/devices/:id/readings', async (req) => {
+  /** GET /aranet/devices/:id/readings?limit=.. — simple latest-N readings. */
+  fastify.get('/devices/:id/readings', async (req, reply) => {
     const { id } = req.params as { id: string };
+    if (!(await deviceService.getById(id))) {
+      return reply.status(404).send({ error: 'Device not found' });
+    }
     const limit = Number((req.query as { limit?: string }).limit) || 200;
     return aranetService.getReadings(id, limit);
   });
+
+  /**
+   * GET /aranet/devices/:id/history?before=<ISO>&hours=24&limit=..
+   * Paged full readings, newest first; each page is a time window (default
+   * 1 day). Follow `nextBefore` in the response to page to older data.
+   */
+  fastify.get('/devices/:id/history', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!(await deviceService.getById(id))) {
+      return reply.status(404).send({ error: 'Device not found' });
+    }
+    const parsed = parseHistoryQuery(req.query);
+    if ('error' in parsed) return reply.status(400).send(parsed);
+    return aranetService.getHistory(id, parsed);
+  });
+
+  /**
+   * GET /aranet/devices/:id/series?type=co2&before=<ISO>&hours=24&limit=..
+   * Paged flat {t, v} points for a single measurement type — for charting.
+   */
+  fastify.get('/devices/:id/series', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!(await deviceService.getById(id))) {
+      return reply.status(404).send({ error: 'Device not found' });
+    }
+    const type = (req.query as { type?: string }).type;
+    if (!type || !(MEASUREMENT_TYPES as readonly string[]).includes(type)) {
+      return reply
+        .status(400)
+        .send({ error: `type must be one of: ${MEASUREMENT_TYPES.join(', ')}` });
+    }
+    const parsed = parseHistoryQuery(req.query);
+    if ('error' in parsed) return reply.status(400).send(parsed);
+    return aranetService.getSeries(id, type as MeasurementType, parsed);
+  });
+}
+
+const MEASUREMENT_TYPES = [
+  'co2',
+  'radon',
+  'temperature',
+  'humidity',
+  'pressure',
+  'battery',
+  'status',
+] as const;
+
+/** Parse common history paging params, or return an `{ error }`. */
+function parseHistoryQuery(
+  query: unknown
+): HistoryQuery | { error: string } {
+  const q = (query ?? {}) as {
+    before?: string;
+    hours?: string;
+    limit?: string;
+  };
+
+  let before: Date | undefined;
+  if (q.before !== undefined) {
+    before = new Date(q.before);
+    if (Number.isNaN(before.getTime())) {
+      return { error: 'before must be a valid ISO timestamp' };
+    }
+  }
+
+  const hours = q.hours !== undefined ? Number(q.hours) : undefined;
+  if (hours !== undefined && (!Number.isFinite(hours) || hours <= 0)) {
+    return { error: 'hours must be a positive number' };
+  }
+
+  const limit = q.limit !== undefined ? Number(q.limit) : undefined;
+  if (limit !== undefined && (!Number.isFinite(limit) || limit <= 0)) {
+    return { error: 'limit must be a positive number' };
+  }
+
+  return { before, hours, limit };
 }

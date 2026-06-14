@@ -11,9 +11,52 @@ import {
   ScannedReading,
 } from './aranet.scanner';
 import { AranetDeviceType } from './aranet.parser';
-import { readingToMeasurements } from './measurement-types';
+import {
+  MEASUREMENT_UNITS,
+  MeasurementType,
+  readingToMeasurements,
+} from './measurement-types';
 
 const DEFAULT_SCAN_INTERVAL_SECONDS = 30;
+const DEFAULT_WINDOW_HOURS = 24;
+const MAX_WINDOW_HOURS = 24 * 7;
+const DEFAULT_ROW_CAP = 10_000;
+const MAX_ROW_CAP = 50_000;
+
+const clamp = (n: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, n));
+
+export interface HistoryQuery {
+  /** Exclusive upper bound; defaults to now. */
+  before?: Date;
+  /** Window size in hours back from `before`; default 24, capped at 7 days. */
+  hours?: number;
+  /** Safety cap on rows returned. */
+  limit?: number;
+}
+
+export interface PageWindow {
+  from: string;
+  to: string;
+  /** Pass as `before` to fetch the next (older) page. */
+  nextBefore: string;
+  hasMore: boolean;
+  count: number;
+  /** True when the row cap was hit — narrow the window for the full set. */
+  capped: boolean;
+}
+
+export interface HistoryPage extends PageWindow {
+  deviceId: string;
+  readings: ReadingEntity[];
+}
+
+export interface SeriesPage extends PageWindow {
+  deviceId: string;
+  type: MeasurementType;
+  unit: string;
+  points: Array<{ t: string; v: number }>;
+}
 
 export class AranetService {
   private readonly _db = inject(Database);
@@ -124,7 +167,100 @@ export class AranetService {
     });
   }
 
+  /**
+   * Time-windowed page of full readings (with measurements), newest first.
+   * Each page covers (`before` - `hours`, `before`]; follow `nextBefore` to
+   * walk older pages.
+   */
+  async getHistory(deviceId: string, query: HistoryQuery): Promise<HistoryPage> {
+    const { from, to, limit } = this._resolveWindow(query);
+
+    const readings = await this._readingRepo
+      .createQueryBuilder('r')
+      .innerJoin('r.device', 'd')
+      .leftJoinAndSelect('r.measurements', 'm')
+      .where('d.id = :deviceId', { deviceId })
+      .andWhere('r.measuredAt > :from', { from })
+      .andWhere('r.measuredAt <= :to', { to })
+      .orderBy('r.measuredAt', 'DESC')
+      .take(limit)
+      .getMany();
+
+    const page = await this._pageMeta(deviceId, from, to, readings.length, limit);
+    return { deviceId, readings, ...page };
+  }
+
+  /**
+   * Time-windowed page of a single measurement type as flat {t, v} points,
+   * newest first — convenient for charting one metric.
+   */
+  async getSeries(
+    deviceId: string,
+    type: MeasurementType,
+    query: HistoryQuery
+  ): Promise<SeriesPage> {
+    const { from, to, limit } = this._resolveWindow(query);
+
+    const rows = await this._measurementRepo
+      .createQueryBuilder('m')
+      .innerJoin('m.reading', 'r')
+      .innerJoin('r.device', 'd')
+      .where('d.id = :deviceId', { deviceId })
+      .andWhere('m.type = :type', { type })
+      .andWhere('r.measuredAt > :from', { from })
+      .andWhere('r.measuredAt <= :to', { to })
+      .orderBy('r.measuredAt', 'DESC')
+      .take(limit)
+      .select(['r.measuredAt AS t', 'm.value AS v'])
+      .getRawMany<{ t: Date; v: number }>();
+
+    const points = rows.map((row) => ({
+      t: new Date(row.t).toISOString(),
+      v: Number(row.v),
+    }));
+    const page = await this._pageMeta(deviceId, from, to, points.length, limit);
+    return { deviceId, type, unit: MEASUREMENT_UNITS[type], points, ...page };
+  }
+
   // ── private helpers ──────────────────────────────────────────────
+
+  /** Resolve a history query into a concrete [from, to) window + row cap. */
+  private _resolveWindow(query: HistoryQuery): {
+    from: Date;
+    to: Date;
+    limit: number;
+  } {
+    const to = query.before ?? new Date();
+    const hours = clamp(query.hours ?? DEFAULT_WINDOW_HOURS, 1, MAX_WINDOW_HOURS);
+    const from = new Date(to.getTime() - hours * 3_600_000);
+    const limit = clamp(query.limit ?? DEFAULT_ROW_CAP, 1, MAX_ROW_CAP);
+    return { from, to, limit };
+  }
+
+  /** Common pagination metadata: whether older data exists, next cursor, etc. */
+  private async _pageMeta(
+    deviceId: string,
+    from: Date,
+    to: Date,
+    count: number,
+    limit: number
+  ): Promise<PageWindow> {
+    const olderCount = await this._readingRepo
+      .createQueryBuilder('r')
+      .innerJoin('r.device', 'd')
+      .where('d.id = :deviceId', { deviceId })
+      .andWhere('r.measuredAt <= :from', { from })
+      .getCount();
+
+    return {
+      from: from.toISOString(),
+      to: to.toISOString(),
+      nextBefore: from.toISOString(),
+      hasMore: olderCount > 0,
+      count,
+      capped: count >= limit,
+    };
+  }
 
   private _isNewReading(mac: string, age: number): boolean {
     const last = this._lastAge.get(mac);
