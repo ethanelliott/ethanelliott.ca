@@ -1,0 +1,9 @@
+apiVersion: v2
+name: aranet
+description: Polls Aranet CO2 and Radon sensors over Bluetooth LE and stores readings in Postgres
+type: application
+
+version: 0.0.1
+appVersion: '0.0.1'
+
+dependencies: []

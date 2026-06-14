@@ -1,0 +1,73 @@
+{
+  "name": "aranet",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/aranet/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/apps/aranet",
+        "format": ["esm"],
+        "bundle": true,
+        "main": "apps/aranet/src/main.ts",
+        "tsConfig": "apps/aranet/tsconfig.app.json",
+        "assets": ["apps/aranet/src/assets"],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {
+          "thirdParty": false
+        },
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "aranet:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "aranet:build:development"
+        },
+        "production": {
+          "buildTarget": "aranet:build:production"
+        }
+      }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "./tools/executors/deploy:container",
+      "options": {
+        "image": "ethanelliottio/aranet",
+        "dockerfile": "apps/aranet/Dockerfile",
+        "deployment": "aranet"
+      }
+    }
+  }
+}

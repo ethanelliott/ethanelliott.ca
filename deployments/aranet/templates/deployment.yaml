@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aranet.fullname" . }}
+  labels:
+    {{- include "aranet.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # Only one pod may own the Bluetooth adapter at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "aranet.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "aranet.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.service.port }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      securityContext:
+        # Required so the process is uid 0 when talking to host bluetoothd
+        # over D-Bus (default BlueZ policy only permits root).
+        runAsUser: 0
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: dbus
+              mountPath: /run/dbus
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: DBUS_SYSTEM_BUS_ADDRESS
+              value: "unix:path=/run/dbus/system_bus_socket"
+            - name: DB_HOST
+              value: {{ .Values.postgres.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.postgres.port | quote }}
+            - name: DB_NAME
+              value: {{ .Values.postgres.database | quote }}
+            - name: DB_USER
+              value: {{ .Values.postgres.username | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "aranet.fullname" . }}-db-secrets
+                  key: db-password
+      volumes:
+        - name: dbus
+          hostPath:
+            path: {{ .Values.bluetooth.dbusHostPath | quote }}
+            type: Directory

@@ -95,6 +95,7 @@
     "marked": "^17.0.2",
     "marked-highlight": "^2.2.3",
     "ng2-charts": "^8.0.0",
+    "node-ble": "^1.13.0",
     "node-cron": "^4.2.1",
     "node-html-parser": "^7.0.2",
     "onvif": "^0.8.1",

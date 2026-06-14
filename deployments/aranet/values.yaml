@@ -1,0 +1,58 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/aranet
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  hostname: 'aranet.elliott.haus'
+
+# Pin the pod to the Bluetooth-capable node (the laptop with the BLE radio
+# that is physically near the sensors). Label that node first:
+#   kubectl label node <node-name> aranet.elliott.haus/bluetooth=true
+nodeSelector:
+  aranet.elliott.haus/bluetooth: 'true'
+
+# Mount the host's system D-Bus socket so the process can talk to the host
+# bluetoothd. The container runs as root (uid 0) because the default BlueZ
+# D-Bus policy only allows root to call org.bluez.
+bluetooth:
+  dbusHostPath: /run/dbus
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 192Mi
+  requests:
+    cpu: 50m
+    memory: 96Mi
+
+postgres:
+  host: postgres
+  port: 5432
+  database: aranet
+  username: aranet
+  # Secret containing the aranet DB password (key 'db-password').
+  # Managed via the sealed-secret template — reseal it with kubeseal before
+  # first sync (see templates/sealed-secret.yaml).
+  createSecret: false
+  adminUser: postgres
+  adminSecretName: postgres-secrets
+  adminSecretKey: postgres-password
+
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+  # One-time seed used only when the devices table is empty (fresh deploy).
+  # After that, manage devices via the API (POST/DELETE /aranet/devices).
+  # Format: "MAC=type,MAC=type" where type is co2 or radon.
+  ARANET_DEVICES: 'FA:96:47:9D:FB:3B=co2,FE:13:16:26:64:8D=radon'
+  # How often to read each device's cached advertisement, in seconds.
+  SCAN_INTERVAL_SECONDS: '30'
