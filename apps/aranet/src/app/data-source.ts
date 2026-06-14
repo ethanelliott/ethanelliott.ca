@@ -20,9 +20,12 @@ export class Database {
     entities: this._entities,
   });
 
+  /** Resolves once the DataSource is initialized and entity metadata is built. */
+  readonly ready: Promise<unknown>;
+
   constructor() {
-    this.dataSource
-      .initialize()
+    this.ready = this.dataSource.initialize();
+    this.ready
       .then(() => {
         console.log(
           `📊 Registered entities: ${this._entities

@@ -37,6 +37,8 @@ export class AranetService {
   }
 
   async start(): Promise<void> {
+    // Ensure TypeORM has finished initializing before any query runs.
+    await this._db.ready;
     await this._devices.seedFromEnv();
     await this._scanner.init();
     await this.poll();
