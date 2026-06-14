@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/aranet
-  tag: s-104db03
+  tag: s-392322d
   pullPolicy: Always
 
 service:
