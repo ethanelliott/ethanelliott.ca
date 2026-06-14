@@ -20,6 +20,10 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{ .Values.service.port }}"
         prometheus.io/path: "/metrics"
+        # Run unconfined so the host dbus-daemon's AppArmor mediation accepts
+        # our connection to bluetoothd. Without this the very first D-Bus
+        # "Hello" is denied (org.freedesktop.DBus.Error.AccessDenied).
+        container.apparmor.security.beta.kubernetes.io/{{ .Chart.Name }}: unconfined
     spec:
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
