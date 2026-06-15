@@ -1,0 +1,76 @@
+{
+  "name": "sensors-frontend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/sensors-frontend/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/sensors-frontend",
+        "index": "apps/sensors-frontend/src/index.html",
+        "browser": "apps/sensors-frontend/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "apps/sensors-frontend/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/sensors-frontend/public"
+          }
+        ],
+        "styles": ["apps/sensors-frontend/src/styles.scss"],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "1mb",
+              "maximumError": "2mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "200kb",
+              "maximumError": "400kb"
+            }
+          ],
+          "optimization": {
+            "scripts": true,
+            "styles": { "minify": true, "inlineCritical": false },
+            "fonts": true
+          },
+          "outputHashing": "all",
+          "fileReplacements": []
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": { "buildTarget": "sensors-frontend:build:production" },
+        "development": { "buildTarget": "sensors-frontend:build:development" }
+      },
+      "defaultConfiguration": "development"
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "./tools/executors/deploy:container",
+      "options": {
+        "image": "ethanelliottio/sensors-frontend",
+        "dockerfile": "apps/sensors-frontend/Dockerfile",
+        "deployment": "sensors-frontend"
+      }
+    }
+  }
+}

@@ -1,0 +1,148 @@
+/* ─── Global reset ─────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #07060f;
+  color: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* ─── Theme variable contract ──────────────────────────────────────
+   Each .vibe-* class supplies the same set of custom properties, so
+   shared components (gauge, sparkline, charts, detail overlay) restyle
+   themselves automatically when the active vibe changes.            */
+
+.vibe-aero {
+  --bg: #eef3f6;
+  --bg-2: #e3eaef;
+  --surface: #ffffff;
+  --surface-2: #f6f9fb;
+  --border: #e2e8ee;
+  --text: #14222e;
+  --text-dim: #5a6b78;
+  --text-faint: #9aa9b4;
+  --accent: #1ba8a0;
+  --accent-2: #4fc3bd;
+  --good: #1fb56b;
+  --ok: #e6a417;
+  --bad: #e15241;
+  --radius: 16px;
+  --radius-lg: 26px;
+  --font: 'Inter', system-ui, sans-serif;
+  --font-num: 'Inter', system-ui, sans-serif;
+  --shadow: 0 8px 30px rgba(20, 34, 46, 0.07);
+  --glow: none;
+}
+
+.vibe-console {
+  --bg: #080b0f;
+  --bg-2: #0b0f14;
+  --surface: #0f151b;
+  --surface-2: #131b22;
+  --border: #1e2a33;
+  --text: #cdd9e0;
+  --text-dim: #7b8f9b;
+  --text-faint: #4a5d68;
+  --accent: #54f2a0;
+  --accent-2: #ffb454;
+  --good: #54f2a0;
+  --ok: #ffb454;
+  --bad: #ff5c6c;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --font: 'JetBrains Mono', ui-monospace, monospace;
+  --font-num: 'JetBrains Mono', ui-monospace, monospace;
+  --shadow: 0 0 0 1px rgba(84, 242, 160, 0.04);
+  --glow: 0 0 14px rgba(84, 242, 160, 0.25);
+}
+
+.vibe-hearth {
+  --bg: #f7ede4;
+  --bg-2: #f1e3d6;
+  --surface: #fffaf4;
+  --surface-2: #fbf0e6;
+  --border: #ecdccd;
+  --text: #43352c;
+  --text-dim: #8a7567;
+  --text-faint: #b7a597;
+  --accent: #ef7d57;
+  --accent-2: #f4a259;
+  --good: #5fae72;
+  --ok: #e0a73c;
+  --bad: #db6a52;
+  --radius: 22px;
+  --radius-lg: 34px;
+  --font: 'Quicksand', system-ui, sans-serif;
+  --font-num: 'Quicksand', system-ui, sans-serif;
+  --shadow: 0 12px 34px rgba(120, 80, 50, 0.12);
+  --glow: none;
+}
+
+.vibe-nebula {
+  --bg: #07060f;
+  --bg-2: #0b0a18;
+  --surface: rgba(28, 24, 54, 0.45);
+  --surface-2: rgba(40, 34, 72, 0.5);
+  --border: rgba(150, 130, 255, 0.18);
+  --text: #ece9ff;
+  --text-dim: #a39ed1;
+  --text-faint: #6d6896;
+  --accent: #a06bff;
+  --accent-2: #3bdcff;
+  --good: #45e0a0;
+  --ok: #ffcf5c;
+  --bad: #ff5d8f;
+  --radius: 18px;
+  --radius-lg: 28px;
+  --font: 'Space Grotesk', system-ui, sans-serif;
+  --font-num: 'Space Grotesk', system-ui, sans-serif;
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 22px rgba(160, 107, 255, 0.45);
+}
+
+/* Each mockup animates in when the active vibe switches (the @switch in the
+   shell recreates the component, re-triggering this entrance). */
+app-aero,
+app-console,
+app-hearth,
+app-nebula {
+  display: block;
+  animation: mockIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mockIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
