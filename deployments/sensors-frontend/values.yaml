@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/sensors-frontend
-  tag: latest
+  tag: s-476b5a3
   pullPolicy: Always
 
 service:
