@@ -6,6 +6,20 @@ export interface Conversation {
   messages: ChatMessage[];
   displayMessages: DisplayMessage[];
   config?: ChatConfig;
+  artifacts?: Artifact[];
+}
+
+/**
+ * An LLM-authored HTML artifact rendered live in the canvas (sandboxed iframe).
+ */
+export interface Artifact {
+  id: string;
+  title: string;
+  html: string;
+  createdAt: number;
+  updatedAt: number;
+  /** Incremented each time the artifact is updated, for version display. */
+  version: number;
 }
 
 export interface ChatMessage {
