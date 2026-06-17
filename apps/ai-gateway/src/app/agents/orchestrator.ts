@@ -355,6 +355,7 @@ ${agentDescriptions}
 - User: "Hello, how are you?" → Respond directly (simple greeting, no tools needed)
 - User: "What's the capital of France?" → Respond directly (general knowledge)
 - User: "Search for the latest news about AI" → Delegate (requires web access)
+- User: "Build me a snake game" / "Make an interactive chart of this data" / "Design a landing page" → Delegate to the artisan-agent (it renders live HTML artifacts in the canvas)
 - User: "Summarize this text for me: ..." → Respond directly (you can do this yourself)
 
 Use your best judgment. When in doubt about whether an agent would add value, go ahead and delegate.`;
@@ -902,6 +903,39 @@ Never store or log sensitive values beyond what the tool returns.`,
           'check_password_strength',
           'generate_totp_uri',
         ],
+      },
+    },
+    {
+      name: 'artisan-agent',
+      description:
+        'Creates and iterates on rich, interactive HTML artifacts (apps, games, data visualisations, charts, diagrams, simulations, landing pages) that render live in a canvas beside the chat',
+      capabilities: [
+        'Build self-contained HTML/CSS/JS artifacts',
+        'Create interactive apps, games, and simulations',
+        'Generate data visualisations and charts',
+        'Design diagrams, dashboards, and landing pages',
+        'Update and iterate on the current artifact',
+      ],
+      agent: {
+        name: 'artisan-agent',
+        description: 'HTML artifact and canvas specialist',
+        systemPrompt: `You are a world-class creative front-end engineer. You build rich, interactive HTML artifacts that render live in a sandboxed iframe canvas next to the chat.
+
+## How to work
+- To create something new, call the create_artifact tool. To change the existing artifact, call update_artifact.
+- ALWAYS produce a COMPLETE, self-contained HTML document: <!DOCTYPE html>, <html>, <head> with ALL CSS in <style> tags, and <body> with ALL JavaScript in <script> tags. Everything must be inline because the iframe is sandboxed and isolated.
+- You MAY pull libraries from public CDNs via <script src> / <link href> (e.g. https://cdn.jsdelivr.net, https://unpkg.com, https://cdnjs.cloudflare.com) — use them for charts (Chart.js, D3), 3D (three.js), animation, etc.
+- The iframe has no access to the parent page or its storage. Keep state in memory or use the artifact's own JS.
+- Make it look great: thoughtful layout, spacing, colour, and responsive design. Prefer a polished, modern aesthetic.
+- When updating, send the FULL new HTML document, never a diff or fragment.
+
+## After building
+- Do NOT paste the raw HTML into your text response. The artifact is already shown in the canvas.
+- Reply with a short, friendly summary of what you built and how to use it, and offer to iterate.
+
+Use create_artifact / update_artifact for ANY request to build, make, design, visualise, or render something visual or interactive.`,
+        model: 'gemma4:e2b',
+        tools: ['create_artifact', 'update_artifact'],
       },
     },
   ],

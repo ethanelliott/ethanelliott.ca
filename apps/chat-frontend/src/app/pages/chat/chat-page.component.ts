@@ -16,16 +16,21 @@ import { ConversationService } from '../../services/conversation.service';
 import { ChatApiService } from '../../services/chat-api.service';
 import { MarkdownService } from '../../services/markdown.service';
 import { SettingsService } from '../../services/settings.service';
+import { CanvasService } from '../../services/canvas.service';
 import {
   ChatMessage,
   DisplayMessage,
   StreamEvent,
   DisplayToolCall,
   FileAttachment,
+  Artifact,
 } from '../../models/types';
 import { MessageListComponent } from './message-list.component';
 import { ChatInputComponent, SendMessageEvent } from './chat-input.component';
 import { ModelSelectorComponent } from './model-selector.component';
+import { ArtifactCanvasComponent } from './artifact-canvas.component';
+import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import {
   ApprovalDialogComponent,
   ApprovalRequest,
@@ -48,9 +53,13 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     ModelSelectorComponent,
     ApprovalDialogComponent,
     QuestionnaireDialogComponent,
+    ArtifactCanvasComponent,
+    ButtonModule,
+    TooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <div class="chat-shell" [class.canvas-open]="canvasVisible()">
     <div
       class="chat-page"
       [class.drag-over]="isDragOver()"
@@ -59,6 +68,19 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       (drop)="onDrop($event)"
     >
       <div class="chat-header">
+        <div class="header-left">
+          @if (artifacts().length && !canvas.isOpen()) {
+          <p-button
+            icon="pi pi-palette"
+            label="Canvas"
+            [text]="true"
+            severity="secondary"
+            size="small"
+            pTooltip="Show artifact canvas"
+            (click)="canvas.open()"
+          />
+          }
+        </div>
         <app-model-selector />
       </div>
       <app-message-list
@@ -92,6 +114,16 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       </div>
       }
     </div>
+    @if (canvasVisible()) {
+    <app-artifact-canvas
+      class="canvas-pane"
+      [artifacts]="artifacts()"
+      [activeId]="canvas.activeArtifactId()"
+      (closePanel)="canvas.close()"
+      (activeIdChange)="canvas.activeArtifactId.set($event)"
+    />
+    }
+    </div>
   `,
   styles: `
     :host {
@@ -100,21 +132,54 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       overflow: hidden;
     }
 
+    .chat-shell {
+      display: flex;
+      flex-direction: row;
+      height: 100%;
+      overflow: hidden;
+    }
+
     .chat-page {
       display: flex;
       flex-direction: column;
       height: 100%;
+      flex: 1 1 0;
+      min-width: 0;
       overflow: hidden;
       position: relative;
+    }
+
+    .canvas-pane {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 100%;
+      border-left: 1px solid var(--p-surface-800);
     }
 
     .chat-header {
       display: flex;
       align-items: center;
-      justify-content: flex-end;
+      justify-content: space-between;
+      gap: 8px;
       padding: 8px 16px;
       border-bottom: 1px solid var(--p-surface-800);
       flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+    }
+
+    @media (max-width: 900px) {
+      .chat-shell.canvas-open .chat-page {
+        display: none;
+      }
+
+      .canvas-pane {
+        border-left: none;
+      }
     }
 
     .drop-overlay {
@@ -153,6 +218,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   private readonly markdown = inject(MarkdownService);
   private readonly settings = inject(SettingsService);
   private readonly messageService = inject(MessageService);
+  readonly canvas = inject(CanvasService);
 
   readonly statusText = signal('');
   readonly pendingApproval = signal<ApprovalRequest | null>(null);
@@ -169,11 +235,22 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     return convo?.displayMessages ?? [];
   });
 
+  readonly artifacts = computed<Artifact[]>(() => {
+    const convo = this.conversationService.activeConversation();
+    return convo?.artifacts ?? [];
+  });
+
+  readonly canvasVisible = computed(
+    () => this.canvas.isOpen() && this.artifacts().length > 0
+  );
+
   ngOnInit(): void {
     this.routeSub = this.route.paramMap.subscribe((params) => {
       const id = params.get('id');
       if (id) {
         this.conversationService.setActiveConversation(id);
+        // Show the latest artifact for the newly active conversation.
+        this.canvas.activeArtifactId.set(null);
       } else {
         // /chat with no id — check if there's an active conversation
         const active = this.conversationService.activeConversation();
@@ -513,6 +590,8 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         };
         this.conversationService.addToolCallToLastAssistant(convoId, toolCall);
         this.statusText.set(`Using tool: ${toolCall.name}...`);
+        // Artifact tools render live in the canvas as soon as the HTML arrives.
+        this.handleArtifactTool(convoId, toolCall.name, toolCall.input);
         break;
       }
 
@@ -683,6 +762,54 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         break;
       }
     }
+  }
+
+  /**
+   * Detect artifact tool calls and render/update the canvas live.
+   * The HTML payload rides in the tool-call input.
+   */
+  private handleArtifactTool(
+    convoId: string,
+    toolName: string,
+    input: Record<string, unknown> | undefined
+  ): void {
+    if (
+      !input ||
+      (toolName !== 'create_artifact' && toolName !== 'update_artifact')
+    ) {
+      return;
+    }
+
+    const html = typeof input['html'] === 'string' ? input['html'] : '';
+    if (!html.trim()) return;
+    const title =
+      typeof input['title'] === 'string'
+        ? (input['title'] as string)
+        : undefined;
+
+    let artifact;
+    if (toolName === 'update_artifact') {
+      artifact = this.conversationService.updateArtifact(convoId, {
+        html,
+        title,
+      });
+      // Fall back to creating one if there was nothing to update.
+      if (!artifact) {
+        artifact = this.conversationService.createArtifact(
+          convoId,
+          title || 'Artifact',
+          html
+        );
+      }
+    } else {
+      artifact = this.conversationService.createArtifact(
+        convoId,
+        title || 'Artifact',
+        html
+      );
+    }
+
+    this.canvas.open(artifact.id);
   }
 
   private finalizeStream(convoId: string): void {

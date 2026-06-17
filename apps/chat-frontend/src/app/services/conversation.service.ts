@@ -7,6 +7,7 @@ import {
   DisplayDelegation,
   ChatConfig,
   MessageStats,
+  Artifact,
 } from '../models/types';
 
 const STORAGE_KEY = 'chat-conversations';
@@ -287,6 +288,72 @@ export class ConversationService {
         return { ...c, displayMessages, updatedAt: Date.now() };
       })
     );
+  }
+
+  /**
+   * Create a new artifact on a conversation and return it.
+   */
+  createArtifact(
+    conversationId: string,
+    title: string,
+    html: string
+  ): Artifact {
+    const artifact: Artifact = {
+      id: crypto.randomUUID(),
+      title: title || 'Untitled Artifact',
+      html,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      version: 1,
+    };
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        return {
+          ...c,
+          artifacts: [...(c.artifacts || []), artifact],
+          updatedAt: Date.now(),
+        };
+      })
+    );
+    return artifact;
+  }
+
+  /**
+   * Update an existing artifact's HTML (and optionally its title), bumping the
+   * version. If no artifactId is given, the most recently updated artifact is
+   * patched. Returns the affected artifact, or null if there was none.
+   */
+  updateArtifact(
+    conversationId: string,
+    patch: { html: string; title?: string; artifactId?: string }
+  ): Artifact | null {
+    let updated: Artifact | null = null;
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const artifacts = [...(c.artifacts || [])];
+        if (artifacts.length === 0) return c;
+
+        let index = artifacts.length - 1;
+        if (patch.artifactId) {
+          const found = artifacts.findIndex((a) => a.id === patch.artifactId);
+          if (found >= 0) index = found;
+        }
+
+        const current = artifacts[index];
+        updated = {
+          ...current,
+          html: patch.html,
+          title: patch.title?.trim() || current.title,
+          updatedAt: Date.now(),
+          version: current.version + 1,
+        };
+        artifacts[index] = updated;
+        return { ...c, artifacts, updatedAt: Date.now() };
+      })
+    );
+    return updated;
   }
 
   setActiveConversation(id: string | null): void {
