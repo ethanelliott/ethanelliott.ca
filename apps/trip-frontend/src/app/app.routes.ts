@@ -53,6 +53,13 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'trips/:id/packing',
+        loadComponent: () =>
+          import('./pages/packing/packing.component').then(
+            (m) => m.PackingComponent
+          ),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./pages/profile/profile.component').then(

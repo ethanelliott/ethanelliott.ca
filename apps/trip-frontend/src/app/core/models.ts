@@ -172,3 +172,36 @@ export interface CreateExpenseRequest {
 }
 
 export type UpdateExpenseRequest = Partial<CreateExpenseRequest>;
+
+export interface PackingContainer {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+}
+
+export interface PackingItem {
+  id: string;
+  containerId: string | null;
+  name: string;
+  count: number;
+  ready: boolean;
+  packed: boolean;
+  verify: boolean;
+  position: number;
+}
+
+export interface PackingList {
+  id: string;
+  tripId: string;
+  containers: PackingContainer[];
+  items: PackingItem[];
+}
+
+export interface PackingTemplateSummary {
+  id: string;
+  name: string;
+  containerCount: number;
+  itemCount: number;
+  createdAt: string;
+}

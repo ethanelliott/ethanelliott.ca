@@ -8,6 +8,10 @@ import {
   CreateExpenseRequest,
   CreateTripRequest,
   Expense,
+  PackingContainer,
+  PackingItem,
+  PackingList,
+  PackingTemplateSummary,
   PublicUser,
   Segment,
   SegmentRequest,
@@ -184,6 +188,102 @@ export class ApiService {
   ): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(
       `${this.base}/trips/${tripId}/expenses/${expenseId}`
+    );
+  }
+
+  // ── Packing ──
+  getPackingList(tripId: string): Observable<PackingList> {
+    return this.http.get<PackingList>(`${this.base}/trips/${tripId}/packing`);
+  }
+
+  addContainer(
+    tripId: string,
+    body: { name: string; color: string }
+  ): Observable<PackingList> {
+    return this.http.post<PackingList>(
+      `${this.base}/trips/${tripId}/packing/containers`,
+      body
+    );
+  }
+
+  updateContainer(
+    tripId: string,
+    containerId: string,
+    body: Partial<Pick<PackingContainer, 'name' | 'color'>>
+  ): Observable<PackingList> {
+    return this.http.put<PackingList>(
+      `${this.base}/trips/${tripId}/packing/containers/${containerId}`,
+      body
+    );
+  }
+
+  deleteContainer(tripId: string, containerId: string): Observable<PackingList> {
+    return this.http.delete<PackingList>(
+      `${this.base}/trips/${tripId}/packing/containers/${containerId}`
+    );
+  }
+
+  addPackingItem(
+    tripId: string,
+    body: { name: string; count?: number; containerId?: string | null }
+  ): Observable<PackingList> {
+    return this.http.post<PackingList>(
+      `${this.base}/trips/${tripId}/packing/items`,
+      body
+    );
+  }
+
+  updatePackingItem(
+    tripId: string,
+    itemId: string,
+    body: Partial<
+      Pick<
+        PackingItem,
+        'name' | 'count' | 'containerId' | 'ready' | 'packed' | 'verify'
+      >
+    >
+  ): Observable<PackingList> {
+    return this.http.put<PackingList>(
+      `${this.base}/trips/${tripId}/packing/items/${itemId}`,
+      body
+    );
+  }
+
+  deletePackingItem(tripId: string, itemId: string): Observable<PackingList> {
+    return this.http.delete<PackingList>(
+      `${this.base}/trips/${tripId}/packing/items/${itemId}`
+    );
+  }
+
+  getPackingTemplates(): Observable<PackingTemplateSummary[]> {
+    return this.http.get<PackingTemplateSummary[]>(
+      `${this.base}/packing-templates`
+    );
+  }
+
+  savePackingTemplate(
+    tripId: string,
+    name: string
+  ): Observable<{ success: boolean }> {
+    return this.http.post<{ success: boolean }>(
+      `${this.base}/trips/${tripId}/packing/save-template`,
+      { name }
+    );
+  }
+
+  applyPackingTemplate(
+    tripId: string,
+    templateId: string
+  ): Observable<PackingList> {
+    return this.http.post<PackingList>(
+      `${this.base}/trips/${tripId}/packing/apply-template`,
+      { templateId }
+    );
+  }
+
+  deletePackingTemplate(templateId: string): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/packing-templates/${templateId}`
     );
   }
 }
