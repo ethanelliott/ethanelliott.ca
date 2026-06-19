@@ -5,7 +5,9 @@ import { environment } from '../../environments/environment';
 import {
   Activity,
   CreateActivityRequest,
+  CreateExpenseRequest,
   CreateTripRequest,
+  Expense,
   PublicUser,
   Segment,
   SegmentRequest,
@@ -14,6 +16,7 @@ import {
   Trip,
   TripSummary,
   UpdateActivityRequest,
+  UpdateExpenseRequest,
   UpdateTripRequest,
 } from './models';
 
@@ -149,6 +152,38 @@ export class ApiService {
   ): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(
       `${this.base}/trips/${tripId}/activities/${activityId}`
+    );
+  }
+
+  // ── Expenses ──
+  getExpenses(tripId: string): Observable<Expense[]> {
+    return this.http.get<Expense[]>(`${this.base}/trips/${tripId}/expenses`);
+  }
+
+  createExpense(
+    tripId: string,
+    body: CreateExpenseRequest
+  ): Observable<Expense> {
+    return this.http.post<Expense>(`${this.base}/trips/${tripId}/expenses`, body);
+  }
+
+  updateExpense(
+    tripId: string,
+    expenseId: string,
+    body: UpdateExpenseRequest
+  ): Observable<Expense> {
+    return this.http.put<Expense>(
+      `${this.base}/trips/${tripId}/expenses/${expenseId}`,
+      body
+    );
+  }
+
+  deleteExpense(
+    tripId: string,
+    expenseId: string
+  ): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/trips/${tripId}/expenses/${expenseId}`
     );
   }
 }

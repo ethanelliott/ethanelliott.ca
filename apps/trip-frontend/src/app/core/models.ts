@@ -147,3 +147,28 @@ export interface CreateActivityRequest {
 }
 
 export type UpdateActivityRequest = Partial<CreateActivityRequest>;
+
+export interface Expense {
+  id: string;
+  tripId: string;
+  activityId: string | null;
+  activityTitle: string | null;
+  item: string;
+  type: string;
+  amountCents: number;
+  chargeDate: string | null;
+  paid: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpenseRequest {
+  item: string;
+  type: string;
+  amount: number;
+  chargeDate?: string | null;
+  paid?: boolean;
+  activityId?: string | null;
+}
+
+export type UpdateExpenseRequest = Partial<CreateExpenseRequest>;

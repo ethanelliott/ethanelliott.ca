@@ -7,6 +7,18 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
+/** Format integer cents as a currency string in the given ISO currency. */
+export function formatMoney(cents: number, currency = 'CAD'): string {
+  try {
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency,
+    }).format(cents / 100);
+  } catch {
+    return `${(cents / 100).toFixed(2)} ${currency}`;
+  }
+}
+
 /** "Jun 3, 2026" from "2026-06-03". */
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '';

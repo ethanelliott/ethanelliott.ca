@@ -74,6 +74,13 @@ interface SegmentForm extends SegmentRequest {
             (onClick)="openMap()"
           />
           <p-button
+            label="Budget"
+            icon="pi pi-wallet"
+            size="small"
+            severity="secondary"
+            (onClick)="openBudget()"
+          />
+          <p-button
             icon="pi pi-pencil"
             severity="secondary"
             [text]="true"
@@ -628,6 +635,10 @@ export class TripDetailComponent {
 
   openMap(): void {
     void this.router.navigate(['/trips', this.id(), 'map']);
+  }
+
+  openBudget(): void {
+    void this.router.navigate(['/trips', this.id(), 'budget']);
   }
 
   initial(name: string): string {
