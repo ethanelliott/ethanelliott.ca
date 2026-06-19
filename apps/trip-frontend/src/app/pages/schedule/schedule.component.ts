@@ -114,8 +114,16 @@ interface DragState {
             appendTo="body"
           />
         }
+        <p-button label="Add" icon="pi pi-plus" size="small" (onClick)="openCreateDefault()" />
         <p-button label="Tags" icon="pi pi-tag" severity="secondary" [outlined]="true" size="small" (onClick)="openTagManager()" />
       </div>
+
+      @if (!loading() && columns().length > 0) {
+        <div class="hint">
+          <i class="pi pi-info-circle"></i>
+          Tap any empty time slot to add an activity, or use <b>Add</b>. Drag to move, drag the bottom edge to resize.
+        </div>
+      }
 
       @if (loading()) {
         <div class="empty-state"><i class="pi pi-spin pi-spinner"></i></div>
@@ -310,6 +318,12 @@ interface DragState {
     .toolbar .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .toolbar .spacer { flex: 1; }
     .back { width: 34px; height: 34px; border: none; border-radius: 9px; background: var(--bg-subtle); cursor: pointer; }
+    .hint {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; font-size: 12px; color: var(--text-secondary);
+      background: var(--brand-light); border-bottom: 1px solid var(--border);
+    }
+    .hint i { color: var(--brand); }
     .grid-scroll { flex: 1; overflow: auto; }
     .grid { display: grid; position: relative; }
     .corner { position: sticky; left: 0; top: 0; z-index: 5; background: var(--bg-surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -327,13 +341,22 @@ interface DragState {
     .hour-label .home { font-size: 10px; }
     .col-body {
       position: relative; border-left: 1px solid var(--border);
-      background-image: repeating-linear-gradient(
-        to bottom,
-        var(--border) 0,
-        var(--border) 1px,
-        transparent 1px,
-        transparent ${HOUR_PX}px
-      );
+      background-image:
+        repeating-linear-gradient(
+          to bottom,
+          var(--border) 0, var(--border) 1px,
+          transparent 1px, transparent ${HOUR_PX}px
+        ),
+        repeating-linear-gradient(
+          to bottom,
+          rgba(120, 130, 150, 0.16) 0, rgba(120, 130, 150, 0.16) 1px,
+          transparent 1px, transparent ${HOUR_PX / 2}px
+        ),
+        repeating-linear-gradient(
+          to bottom,
+          rgba(120, 130, 150, 0.07) 0, rgba(120, 130, 150, 0.07) 1px,
+          transparent 1px, transparent ${HOUR_PX / 4}px
+        );
       cursor: copy;
     }
     .event {
@@ -678,6 +701,23 @@ export class ScheduleComponent implements OnInit {
 
   onLocationCleared(): void {
     this.form = { ...this.form, lat: null, lng: null, locationLabel: '' };
+  }
+
+  /** Open the create dialog from the toolbar button (no click position). */
+  openCreateDefault(): void {
+    const dates = this.columnDates();
+    if (dates.length === 0) {
+      this.messages.add({
+        severity: 'warn',
+        summary: 'Add a stop first',
+        detail: 'Add a stop with dates to the trip, then schedule activities.',
+      });
+      return;
+    }
+    // Default to today's column if the trip covers it, otherwise the first day.
+    const today = zonedParts(new Date(), this.displayTz()).date;
+    const idx = dates.indexOf(today);
+    this.openCreate(idx >= 0 ? idx : 0, 9 * 60);
   }
 
   openCreate(ci: number, minutes: number): void {
