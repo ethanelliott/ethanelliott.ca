@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "trip.fullname" . }}-db-init
+  labels:
+    {{- include "trip.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-5"
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "trip.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: db-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-init
+          image: postgres:17.5-alpine
+          env:
+            - name: PGHOST
+              value: {{ .Values.postgres.host | quote }}
+            - name: PGPORT
+              value: {{ .Values.postgres.port | quote }}
+            - name: PGUSER
+              value: {{ .Values.postgres.adminUser | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.adminSecretName }}
+                  key: {{ .Values.postgres.adminSecretKey }}
+            - name: TRIP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "trip.fullname" . }}-db-secrets
+                  key: db-password
+            - name: TRIP_DB_NAME
+              value: {{ .Values.postgres.database | quote }}
+            - name: TRIP_DB_USER
+              value: {{ .Values.postgres.username | quote }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              echo "Creating role '${TRIP_DB_USER}' if it does not exist..."
+              psql -d postgres -c "DO \$\$BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${TRIP_DB_USER}') THEN CREATE ROLE ${TRIP_DB_USER} LOGIN; END IF; END\$\$;"
+
+              echo "Setting password for '${TRIP_DB_USER}'..."
+              psql -d postgres -c "ALTER ROLE ${TRIP_DB_USER} WITH PASSWORD '${TRIP_DB_PASSWORD}';"
+
+              echo "Creating database '${TRIP_DB_NAME}' if it does not exist..."
+              DB_EXISTS=$(psql -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='${TRIP_DB_NAME}'" | tr -d '[:space:]')
+              if [ -z "${DB_EXISTS}" ]; then
+                psql -d postgres -c "CREATE DATABASE ${TRIP_DB_NAME} OWNER ${TRIP_DB_USER};"
+              fi
+
+              echo "Granting privileges..."
+              psql -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE ${TRIP_DB_NAME} TO ${TRIP_DB_USER};"
+
+              echo "Done."

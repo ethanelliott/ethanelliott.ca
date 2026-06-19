@@ -1,0 +1,29 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/trip-frontend
+  tag: s-386f3f1
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  hostname: 'trip.elliott.haus'
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+
+# ConfigMap for nginx configuration
+configMap:
+  enabled: true
+  name: trip-frontend-nginx-config
+  mountPath: /etc/nginx/conf.d/default.conf
+  subPath: nginx.conf
