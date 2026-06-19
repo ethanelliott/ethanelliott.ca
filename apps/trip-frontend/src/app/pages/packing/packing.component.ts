@@ -105,7 +105,7 @@ interface Group {
           </div>
         </div>
       </div>
-      <ng-template pTemplate="footer">
+      <ng-template #footer>
         <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="editVisible.set(false)" />
         <p-button label="Save" icon="pi pi-check" (onClick)="saveEdit()" />
       </ng-template>

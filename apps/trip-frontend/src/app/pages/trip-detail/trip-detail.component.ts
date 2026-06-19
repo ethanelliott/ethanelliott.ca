@@ -254,7 +254,7 @@ interface SegmentForm extends SegmentRequest {
           <input pInputText [(ngModel)]="tripForm.baseCurrency" />
         </div>
       </div>
-      <ng-template pTemplate="footer">
+      <ng-template #footer>
         <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="editTripVisible.set(false)" />
         <p-button label="Save" icon="pi pi-check" [loading]="savingTrip()" (onClick)="saveTrip()" />
       </ng-template>
@@ -321,7 +321,7 @@ interface SegmentForm extends SegmentRequest {
           </div>
         </div>
       </div>
-      <ng-template pTemplate="footer">
+      <ng-template #footer>
         <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="segmentVisible.set(false)" />
         <p-button label="Save" icon="pi pi-check" [loading]="savingSegment()" (onClick)="saveSegment()" />
       </ng-template>

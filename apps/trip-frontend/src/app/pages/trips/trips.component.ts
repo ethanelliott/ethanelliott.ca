@@ -100,7 +100,7 @@ import { formatDateRange } from '../../core/format';
         </div>
       </div>
 
-      <ng-template pTemplate="footer">
+      <ng-template #footer>
         <p-button
           label="Cancel"
           severity="secondary"

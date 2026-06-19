@@ -264,7 +264,7 @@ interface DragState {
           <textarea pTextarea rows="2" [(ngModel)]="form.notes"></textarea>
         </div>
       </div>
-      <ng-template pTemplate="footer">
+      <ng-template #footer>
         @if (form.id) {
           <p-button label="Delete" severity="danger" [text]="true" (onClick)="deleteActivity()" />
         }
