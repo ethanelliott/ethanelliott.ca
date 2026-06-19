@@ -46,6 +46,16 @@ export class Segment {
   @Column('text', { nullable: true })
   color?: string;
 
+  // Optional hotel/stay pin location for the map.
+  @Column('double precision', { nullable: true })
+  lat?: number | null;
+
+  @Column('double precision', { nullable: true })
+  lng?: number | null;
+
+  @Column('text', { nullable: true })
+  locationLabel?: string | null;
+
   // Ordering of segments within the trip.
   @Column('integer', { default: 0 })
   position!: number;

@@ -4,6 +4,9 @@ const hexColor = z
   .string()
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Expected a hex colour');
 
+const lat = z.number().min(-90).max(90);
+const lng = z.number().min(-180).max(180);
+
 // ─────────────────────────────────────────────────────────────
 // Tags
 // ─────────────────────────────────────────────────────────────
@@ -39,6 +42,9 @@ export const ActivitySchema = z.object({
   startAt: z.date(),
   endAt: z.date(),
   color: z.string().nullable().optional(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  locationLabel: z.string().nullable(),
   tags: z.array(TagSchema),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -52,6 +58,9 @@ export const CreateActivitySchema = z
     startAt: z.string().datetime(),
     endAt: z.string().datetime(),
     color: hexColor.optional(),
+    lat: lat.nullable().optional(),
+    lng: lng.nullable().optional(),
+    locationLabel: z.string().max(300).nullable().optional(),
     tagIds: z.array(z.string().uuid()).optional(),
   })
   .refine((a) => new Date(a.endAt) > new Date(a.startAt), {
@@ -67,6 +76,9 @@ export const UpdateActivitySchema = z
     startAt: z.string().datetime().optional(),
     endAt: z.string().datetime().optional(),
     color: hexColor.nullable().optional(),
+    lat: lat.nullable().optional(),
+    lng: lng.nullable().optional(),
+    locationLabel: z.string().max(300).nullable().optional(),
     tagIds: z.array(z.string().uuid()).optional(),
   })
   .refine(

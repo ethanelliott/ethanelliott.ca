@@ -17,12 +17,16 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { Segment, SegmentRequest, Trip } from '../../core/models';
+import { LocationSearchComponent } from '../../shared/location-search.component';
+import { LatLng, Segment, SegmentRequest, Trip } from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
 import { formatDate, formatDateRange } from '../../core/format';
 
 interface SegmentForm extends SegmentRequest {
   id: string | null;
+  lat: number | null;
+  lng: number | null;
+  locationLabel: string;
 }
 
 @Component({
@@ -36,6 +40,7 @@ interface SegmentForm extends SegmentRequest {
     Select,
     Textarea,
     ConfirmDialog,
+    LocationSearchComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +65,13 @@ interface SegmentForm extends SegmentRequest {
             icon="pi pi-calendar"
             size="small"
             (onClick)="openSchedule()"
+          />
+          <p-button
+            label="Map"
+            icon="pi pi-map"
+            size="small"
+            severity="secondary"
+            (onClick)="openMap()"
           />
           <p-button
             icon="pi pi-pencil"
@@ -260,6 +272,17 @@ interface SegmentForm extends SegmentRequest {
         <div class="field">
           <label>Hotel</label>
           <input pInputText [(ngModel)]="segmentForm.hotelName" />
+        </div>
+        <div class="field">
+          <label>Hotel location</label>
+          <app-location-search
+            [locationLabel]="segmentForm.locationLabel"
+            (picked)="onSegmentLocationPicked($event)"
+            (cleared)="onSegmentLocationCleared()"
+          />
+          @if (segmentForm.locationLabel) {
+            <small class="muted">📍 {{ segmentForm.locationLabel }}</small>
+          }
         </div>
         <div class="field">
           <label>Timezone</label>
@@ -557,6 +580,27 @@ export class TripDetailComponent {
       startDate: '',
       endDate: '',
       color: '#4f46e5',
+      lat: null,
+      lng: null,
+      locationLabel: '',
+    };
+  }
+
+  onSegmentLocationPicked(loc: LatLng): void {
+    this.segmentForm = {
+      ...this.segmentForm,
+      lat: loc.lat,
+      lng: loc.lng,
+      locationLabel: loc.label,
+    };
+  }
+
+  onSegmentLocationCleared(): void {
+    this.segmentForm = {
+      ...this.segmentForm,
+      lat: null,
+      lng: null,
+      locationLabel: '',
     };
   }
 
@@ -580,6 +624,10 @@ export class TripDetailComponent {
 
   openSchedule(): void {
     void this.router.navigate(['/trips', this.id(), 'schedule']);
+  }
+
+  openMap(): void {
+    void this.router.navigate(['/trips', this.id(), 'map']);
   }
 
   initial(name: string): string {
@@ -660,6 +708,9 @@ export class TripDetailComponent {
       startDate: s.startDate,
       endDate: s.endDate,
       color: s.color ?? '#4f46e5',
+      lat: s.lat ?? null,
+      lng: s.lng ?? null,
+      locationLabel: s.locationLabel ?? '',
     };
     this.segmentVisible.set(true);
   }
@@ -691,6 +742,9 @@ export class TripDetailComponent {
       startDate: f.startDate,
       endDate: f.endDate,
       color: f.color || undefined,
+      lat: f.lat,
+      lng: f.lng,
+      locationLabel: f.locationLabel || null,
     };
 
     this.savingSegment.set(true);

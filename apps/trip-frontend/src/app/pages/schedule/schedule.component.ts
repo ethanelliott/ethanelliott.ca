@@ -17,9 +17,11 @@ import { Textarea } from 'primeng/textarea';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
+import { LocationSearchComponent } from '../../shared/location-search.component';
 import {
   Activity,
   CreateActivityRequest,
+  LatLng,
   Tag,
   Trip,
 } from '../../core/models';
@@ -56,6 +58,9 @@ interface EditorForm {
   startTime: string;
   endDate: string;
   endTime: string;
+  lat: number | null;
+  lng: number | null;
+  locationLabel: string;
 }
 
 interface DragState {
@@ -84,6 +89,7 @@ interface DragState {
     Select,
     MultiSelect,
     ConfirmDialog,
+    LocationSearchComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -229,6 +235,17 @@ interface DragState {
             <label>Colour</label>
             <input type="color" [(ngModel)]="form.color" />
           </div>
+        </div>
+        <div class="field">
+          <label>Location</label>
+          <app-location-search
+            [locationLabel]="form.locationLabel"
+            (picked)="onLocationPicked($event)"
+            (cleared)="onLocationCleared()"
+          />
+          @if (form.locationLabel) {
+            <small class="muted loc-label">📍 {{ form.locationLabel }}</small>
+          }
         </div>
         <div class="field">
           <label>Tags</label>
@@ -643,7 +660,23 @@ export class ScheduleComponent {
       startTime: '09:00',
       endDate: '',
       endTime: '10:00',
+      lat: null,
+      lng: null,
+      locationLabel: '',
     };
+  }
+
+  onLocationPicked(loc: LatLng): void {
+    this.form = {
+      ...this.form,
+      lat: loc.lat,
+      lng: loc.lng,
+      locationLabel: loc.label,
+    };
+  }
+
+  onLocationCleared(): void {
+    this.form = { ...this.form, lat: null, lng: null, locationLabel: '' };
   }
 
   openCreate(ci: number, minutes: number): void {
@@ -685,6 +718,9 @@ export class ScheduleComponent {
       startTime: formatMinutes(s.minutes),
       endDate: e.date,
       endTime: formatMinutes(e.minutes),
+      lat: a.lat ?? null,
+      lng: a.lng ?? null,
+      locationLabel: a.locationLabel ?? '',
     };
     this.editorVisible.set(true);
   }
@@ -711,6 +747,9 @@ export class ScheduleComponent {
       tagIds: f.tagIds,
       startAt: startISO,
       endAt: endISO,
+      lat: f.lat,
+      lng: f.lng,
+      locationLabel: f.locationLabel || null,
     };
 
     this.saving.set(true);

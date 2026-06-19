@@ -77,6 +77,9 @@ export class ActivitiesService {
         startAt: new Date(input.startAt),
         endAt: new Date(input.endAt),
         color: input.color,
+        lat: input.lat ?? undefined,
+        lng: input.lng ?? undefined,
+        locationLabel: input.locationLabel ?? undefined,
         tags,
       })
     );
@@ -104,11 +107,17 @@ export class ActivitiesService {
       throw new HttpErrors.BadRequest('endAt must be after startAt');
     }
 
+    // Assign null directly so TypeORM clears the column; `undefined` would be
+    // treated as "no change" by save().
     if (input.title !== undefined) activity.title = input.title;
     if (input.notes !== undefined) activity.notes = input.notes;
-    if (input.color !== undefined) activity.color = input.color ?? undefined;
+    if (input.color !== undefined) activity.color = input.color;
     if (input.startAt !== undefined) activity.startAt = startAt;
     if (input.endAt !== undefined) activity.endAt = endAt;
+    if (input.lat !== undefined) activity.lat = input.lat;
+    if (input.lng !== undefined) activity.lng = input.lng;
+    if (input.locationLabel !== undefined)
+      activity.locationLabel = input.locationLabel;
     if (input.segmentId !== undefined) {
       activity.segment = await this.resolveSegment(tripId, input.segmentId);
     }

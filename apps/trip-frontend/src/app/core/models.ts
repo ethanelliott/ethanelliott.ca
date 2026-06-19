@@ -34,9 +34,18 @@ export interface Segment {
   startDate: string;
   endDate: string;
   color?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  locationLabel?: string | null;
   position: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+  label: string;
 }
 
 export interface Trip {
@@ -89,6 +98,9 @@ export interface SegmentRequest {
   startDate: string;
   endDate: string;
   color?: string;
+  lat?: number | null;
+  lng?: number | null;
+  locationLabel?: string | null;
 }
 
 export interface Tag {
@@ -113,6 +125,9 @@ export interface Activity {
   startAt: string;
   endAt: string;
   color?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  locationLabel?: string | null;
   tags: Tag[];
   createdAt: string;
   updatedAt: string;
@@ -125,6 +140,9 @@ export interface CreateActivityRequest {
   startAt: string;
   endAt: string;
   color?: string;
+  lat?: number | null;
+  lng?: number | null;
+  locationLabel?: string | null;
   tagIds?: string[];
 }
 

@@ -47,7 +47,17 @@ export class Activity {
 
   // Optional explicit colour; falls back to the first tag's colour client-side.
   @Column('text', { nullable: true })
-  color?: string;
+  color?: string | null;
+
+  // Optional pin location for the map.
+  @Column('double precision', { nullable: true })
+  lat?: number | null;
+
+  @Column('double precision', { nullable: true })
+  lng?: number | null;
+
+  @Column('text', { nullable: true })
+  locationLabel?: string | null;
 
   @ManyToMany(() => Tag)
   @JoinTable({ name: 'activity_tags' })

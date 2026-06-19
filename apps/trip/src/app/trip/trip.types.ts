@@ -27,6 +27,9 @@ const hexColor = z
   .string()
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Expected a hex colour');
 
+const latVal = z.number().min(-90).max(90);
+const lngVal = z.number().min(-180).max(180);
+
 // ─────────────────────────────────────────────────────────────
 // Trips
 // ─────────────────────────────────────────────────────────────
@@ -48,6 +51,9 @@ export const SegmentSchema = z.object({
   startDate: dateString,
   endDate: dateString,
   color: z.string().nullable().optional(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  locationLabel: z.string().nullable(),
   position: z.number(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -113,6 +119,9 @@ export const CreateSegmentSchema = z
     startDate: dateString,
     endDate: dateString,
     color: hexColor.optional(),
+    lat: latVal.nullable().optional(),
+    lng: lngVal.nullable().optional(),
+    locationLabel: z.string().max(300).nullable().optional(),
   })
   .refine((s) => s.startDate <= s.endDate, {
     message: 'startDate must be on or before endDate',
@@ -128,6 +137,9 @@ export const UpdateSegmentSchema = z
     startDate: dateString.optional(),
     endDate: dateString.optional(),
     color: hexColor.optional(),
+    lat: latVal.nullable().optional(),
+    lng: lngVal.nullable().optional(),
+    locationLabel: z.string().max(300).nullable().optional(),
   })
   .refine((s) => !s.startDate || !s.endDate || s.startDate <= s.endDate, {
     message: 'startDate must be on or before endDate',

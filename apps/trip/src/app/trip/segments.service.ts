@@ -64,6 +64,9 @@ export class SegmentsService {
         startDate: input.startDate,
         endDate: input.endDate,
         color: input.color,
+        lat: input.lat ?? undefined,
+        lng: input.lng ?? undefined,
+        locationLabel: input.locationLabel ?? undefined,
         position,
       })
     );
