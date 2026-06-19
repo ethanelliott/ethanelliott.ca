@@ -15,5 +15,78 @@ export interface Profile {
   updatedAt: string;
 }
 
-// Trip-domain models will be filled in as the schedule + budget features land
-// (step 2 onwards). Kept here so the API service has a shared home for them.
+export type TripRole = 'owner' | 'member';
+
+export interface TripMember {
+  id: string;
+  user: PublicUser;
+  role: TripRole;
+  joinedAt: string;
+}
+
+export interface Segment {
+  id: string;
+  tripId: string;
+  city: string;
+  country?: string | null;
+  hotelName?: string | null;
+  timezone: string;
+  startDate: string;
+  endDate: string;
+  color?: string | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Trip {
+  id: string;
+  name: string;
+  description?: string | null;
+  homeTimezone: string;
+  baseCurrency: string;
+  createdBy?: PublicUser | null;
+  members: TripMember[];
+  segments: Segment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TripSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  homeTimezone: string;
+  baseCurrency: string;
+  memberCount: number;
+  members: TripMember[];
+  segmentCount: number;
+  startDate: string | null;
+  endDate: string | null;
+  updatedAt: string;
+}
+
+export interface CreateTripRequest {
+  name: string;
+  description?: string;
+  homeTimezone: string;
+  baseCurrency: string;
+  memberUsernames?: string[];
+}
+
+export interface UpdateTripRequest {
+  name?: string;
+  description?: string;
+  homeTimezone?: string;
+  baseCurrency?: string;
+}
+
+export interface SegmentRequest {
+  city: string;
+  country?: string;
+  hotelName?: string;
+  timezone: string;
+  startDate: string;
+  endDate: string;
+  color?: string;
+}

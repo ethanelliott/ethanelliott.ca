@@ -2,11 +2,20 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { PublicUser } from './models';
+import {
+  CreateTripRequest,
+  PublicUser,
+  Segment,
+  SegmentRequest,
+  Trip,
+  TripSummary,
+  UpdateTripRequest,
+} from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
+  private readonly base = environment.apiUrl;
   private readonly usersBase = `${environment.apiUrl}/users`;
 
   // ── Users ──
@@ -16,5 +25,67 @@ export class ApiService {
     });
   }
 
-  // Trip / segment / activity / expense endpoints are added in step 2.
+  // ── Trips ──
+  getTrips(): Observable<TripSummary[]> {
+    return this.http.get<TripSummary[]>(`${this.base}/trips`);
+  }
+
+  getTrip(id: string): Observable<Trip> {
+    return this.http.get<Trip>(`${this.base}/trips/${id}`);
+  }
+
+  createTrip(body: CreateTripRequest): Observable<Trip> {
+    return this.http.post<Trip>(`${this.base}/trips`, body);
+  }
+
+  updateTrip(id: string, body: UpdateTripRequest): Observable<Trip> {
+    return this.http.put<Trip>(`${this.base}/trips/${id}`, body);
+  }
+
+  deleteTrip(id: string): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.base}/trips/${id}`);
+  }
+
+  // ── Members ──
+  addMember(id: string, username: string): Observable<Trip> {
+    return this.http.post<Trip>(`${this.base}/trips/${id}/members`, {
+      username,
+    });
+  }
+
+  removeMember(id: string, userId: string): Observable<Trip> {
+    return this.http.delete<Trip>(`${this.base}/trips/${id}/members/${userId}`);
+  }
+
+  // ── Segments ──
+  createSegment(tripId: string, body: SegmentRequest): Observable<Segment> {
+    return this.http.post<Segment>(`${this.base}/trips/${tripId}/segments`, body);
+  }
+
+  updateSegment(
+    tripId: string,
+    segmentId: string,
+    body: Partial<SegmentRequest>
+  ): Observable<Segment> {
+    return this.http.put<Segment>(
+      `${this.base}/trips/${tripId}/segments/${segmentId}`,
+      body
+    );
+  }
+
+  deleteSegment(
+    tripId: string,
+    segmentId: string
+  ): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/trips/${tripId}/segments/${segmentId}`
+    );
+  }
+
+  reorderSegments(tripId: string, segmentIds: string[]): Observable<Segment[]> {
+    return this.http.put<Segment[]>(
+      `${this.base}/trips/${tripId}/segments/reorder`,
+      { segmentIds }
+    );
+  }
 }

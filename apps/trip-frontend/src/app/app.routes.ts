@@ -27,6 +27,13 @@ export const appRoutes: Route[] = [
           import('./pages/trips/trips.component').then((m) => m.TripsComponent),
       },
       {
+        path: 'trips/:id',
+        loadComponent: () =>
+          import('./pages/trip-detail/trip-detail.component').then(
+            (m) => m.TripDetailComponent
+          ),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./pages/profile/profile.component').then(
