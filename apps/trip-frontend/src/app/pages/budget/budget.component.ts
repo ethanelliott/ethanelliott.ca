@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnInit,
   computed,
   inject,
   input,
@@ -252,7 +253,7 @@ interface CashflowRow {
     :host ::ng-deep .w-full { width: 100%; }
   `,
 })
-export class BudgetComponent {
+export class BudgetComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
@@ -311,7 +312,7 @@ export class BudgetComponent {
     });
   });
 
-  constructor() {
+  ngOnInit(): void {
     this.load();
   }
 

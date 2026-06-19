@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnInit,
   computed,
   inject,
   input,
@@ -368,7 +369,7 @@ interface DragState {
     :host ::ng-deep .tz-select { min-width: 150px; }
   `,
 })
-export class ScheduleComponent {
+export class ScheduleComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
@@ -445,7 +446,7 @@ export class ScheduleComponent {
   // ── Drag state ──
   readonly drag = signal<DragState | null>(null);
 
-  constructor() {
+  ngOnInit(): void {
     this.load();
   }
 

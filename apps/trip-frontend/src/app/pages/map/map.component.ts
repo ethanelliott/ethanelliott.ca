@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  OnInit,
   ElementRef,
   OnDestroy,
   computed,
@@ -103,7 +104,7 @@ interface HotelPin {
     }
   `,
 })
-export class MapComponent implements AfterViewInit, OnDestroy {
+export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
 
@@ -186,13 +187,18 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   );
 
   constructor() {
-    this.load();
-    // Redraw whenever the map is ready or the visible pins change.
+    // Redraw whenever the map is ready or the visible pins change. The effect
+    // must be created in the injection context (constructor).
     effect(() => {
       const acts = this.visibleActivities();
       const hotels = this.visibleHotels();
       if (this.mapReady()) this.draw(acts, hotels);
     });
+  }
+
+  ngOnInit(): void {
+    // `id` (a required router input) is only available from ngOnInit onward.
+    this.load();
   }
 
   ngAfterViewInit(): void {

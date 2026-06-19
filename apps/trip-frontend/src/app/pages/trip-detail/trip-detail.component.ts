@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnInit,
   computed,
   inject,
   input,
@@ -526,7 +527,7 @@ interface SegmentForm extends SegmentRequest {
     }
   `,
 })
-export class TripDetailComponent {
+export class TripDetailComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -578,9 +579,10 @@ export class TripDetailComponent {
 
   readonly isOwner = computed(() => this.myMembership()?.role === 'owner');
 
-  constructor() {
+  ngOnInit(): void {
     void this.auth.loadProfile();
-    // `id` is set synchronously by the router input binding before this runs.
+    // `id` (a required router input) is available by ngOnInit, not in the
+    // constructor — reading it earlier throws NG0950.
     this.load();
   }
 

@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnInit,
   computed,
   inject,
   input,
@@ -192,7 +193,7 @@ interface Group {
     :host ::ng-deep .bag-select { min-width: 120px; }
   `,
 })
-export class PackingComponent {
+export class PackingComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
@@ -255,7 +256,7 @@ export class PackingComponent {
     };
   });
 
-  constructor() {
+  ngOnInit(): void {
     this.load();
   }
 
