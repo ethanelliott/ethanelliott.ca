@@ -22,8 +22,11 @@ export class StreamService {
   private _ffmpegProcess: ChildProcess | null = null;
   private _isRunning = false;
   private _restartAttempts = 0;
-  private _maxRestartAttempts = 10;
-  private _restartDelay = 5000; // ms
+  private _restartTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Base delay between restart attempts; grows exponentially up to the cap */
+  private readonly _restartDelay = 5000; // ms
+  /** Upper bound on the backoff delay so we keep retrying at a steady cadence */
+  private readonly _maxRestartDelay = 60_000; // ms
   private _watchdogTimer: ReturnType<typeof setInterval> | null = null;
   private _lastSegmentTime = 0;
 
@@ -94,6 +97,10 @@ export class StreamService {
   stop(): void {
     this._isRunning = false;
     this._stopWatchdog();
+    if (this._restartTimer) {
+      clearTimeout(this._restartTimer);
+      this._restartTimer = null;
+    }
     if (this._ffmpegProcess) {
       this._ffmpegProcess.kill('SIGTERM');
       this._ffmpegProcess = null;
@@ -296,21 +303,7 @@ export class StreamService {
     this._ffmpegProcess.on('close', (code) => {
       console.log(`FFmpeg process exited with code ${code}`);
       this._ffmpegProcess = null;
-
-      if (this._isRunning && this._restartAttempts < this._maxRestartAttempts) {
-        this._restartAttempts++;
-        console.log(
-          `🔄 Restarting FFmpeg (attempt ${this._restartAttempts}/${this._maxRestartAttempts}) in ${this._restartDelay}ms...`
-        );
-        setTimeout(async () => {
-          try {
-            const url = await this._cameraService.getRtspUrl();
-            this._startFfmpeg(url);
-          } catch (err) {
-            console.error('❌ Failed to restart FFmpeg:', err);
-          }
-        }, this._restartDelay);
-      }
+      this._scheduleRestart();
     });
 
     this._ffmpegProcess.on('error', (err) => {
@@ -321,6 +314,44 @@ export class StreamService {
     // Start segment watchdog
     this._lastSegmentTime = Date.now();
     this._startWatchdog(rtspUrl);
+  }
+
+  /**
+   * Schedule the next FFmpeg restart after the process exits.
+   *
+   * A transient camera/network failure (e.g. "No route to host") must never
+   * make us give up permanently — the camera may come back at any time. So we
+   * retry indefinitely with exponential backoff, capped at `_maxRestartDelay`,
+   * which reconnects automatically without hammering an unreachable camera.
+   * The attempt counter is reset to 0 once healthy segments flow again.
+   */
+  private _scheduleRestart(): void {
+    // Only stop retrying when the stream has been explicitly stopped.
+    if (!this._isRunning) return;
+
+    // Coalesce overlapping triggers (e.g. close + watchdog) into one timer.
+    if (this._restartTimer) return;
+
+    this._restartAttempts++;
+    const delay = Math.min(
+      this._restartDelay * 2 ** Math.min(this._restartAttempts - 1, 10),
+      this._maxRestartDelay
+    );
+    console.log(
+      `🔄 Restarting FFmpeg (attempt ${this._restartAttempts}) in ${delay}ms...`
+    );
+    this._restartTimer = setTimeout(async () => {
+      this._restartTimer = null;
+      if (!this._isRunning) return;
+      try {
+        const url = await this._cameraService.getRtspUrl();
+        this._startFfmpeg(url);
+      } catch (err) {
+        console.error('❌ Failed to restart FFmpeg:', err);
+        // Couldn't even build the URL — keep trying rather than giving up.
+        this._scheduleRestart();
+      }
+    }, delay);
   }
 
   /**
