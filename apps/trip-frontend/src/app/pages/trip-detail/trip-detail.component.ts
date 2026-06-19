@@ -56,6 +56,12 @@ interface SegmentForm extends SegmentRequest {
             <p class="muted">{{ rangeLabel() }} · {{ t.baseCurrency }}</p>
           </div>
           <p-button
+            label="Schedule"
+            icon="pi pi-calendar"
+            size="small"
+            (onClick)="openSchedule()"
+          />
+          <p-button
             icon="pi pi-pencil"
             severity="secondary"
             [text]="true"
@@ -570,6 +576,10 @@ export class TripDetailComponent {
 
   back(): void {
     void this.router.navigate(['/trips']);
+  }
+
+  openSchedule(): void {
+    void this.router.navigate(['/trips', this.id(), 'schedule']);
   }
 
   initial(name: string): string {

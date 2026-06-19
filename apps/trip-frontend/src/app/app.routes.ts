@@ -34,6 +34,13 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'trips/:id/schedule',
+        loadComponent: () =>
+          import('./pages/schedule/schedule.component').then(
+            (m) => m.ScheduleComponent
+          ),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./pages/profile/profile.component').then(

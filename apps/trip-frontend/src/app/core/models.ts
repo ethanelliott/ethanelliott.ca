@@ -90,3 +90,42 @@ export interface SegmentRequest {
   endDate: string;
   color?: string;
 }
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TagRequest {
+  name: string;
+  color: string;
+}
+
+export interface Activity {
+  id: string;
+  tripId: string;
+  segmentId: string | null;
+  title: string;
+  notes?: string | null;
+  startAt: string;
+  endAt: string;
+  color?: string | null;
+  tags: Tag[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateActivityRequest {
+  title: string;
+  notes?: string;
+  segmentId?: string | null;
+  startAt: string;
+  endAt: string;
+  color?: string;
+  tagIds?: string[];
+}
+
+export type UpdateActivityRequest = Partial<CreateActivityRequest>;

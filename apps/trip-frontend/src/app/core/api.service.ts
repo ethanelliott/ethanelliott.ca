@@ -3,12 +3,17 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
+  Activity,
+  CreateActivityRequest,
   CreateTripRequest,
   PublicUser,
   Segment,
   SegmentRequest,
+  Tag,
+  TagRequest,
   Trip,
   TripSummary,
+  UpdateActivityRequest,
   UpdateTripRequest,
 } from './models';
 
@@ -86,6 +91,64 @@ export class ApiService {
     return this.http.put<Segment[]>(
       `${this.base}/trips/${tripId}/segments/reorder`,
       { segmentIds }
+    );
+  }
+
+  // ── Tags ──
+  getTags(tripId: string): Observable<Tag[]> {
+    return this.http.get<Tag[]>(`${this.base}/trips/${tripId}/tags`);
+  }
+
+  createTag(tripId: string, body: TagRequest): Observable<Tag> {
+    return this.http.post<Tag>(`${this.base}/trips/${tripId}/tags`, body);
+  }
+
+  updateTag(
+    tripId: string,
+    tagId: string,
+    body: Partial<TagRequest>
+  ): Observable<Tag> {
+    return this.http.put<Tag>(`${this.base}/trips/${tripId}/tags/${tagId}`, body);
+  }
+
+  deleteTag(tripId: string, tagId: string): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/trips/${tripId}/tags/${tagId}`
+    );
+  }
+
+  // ── Activities ──
+  getActivities(tripId: string): Observable<Activity[]> {
+    return this.http.get<Activity[]>(`${this.base}/trips/${tripId}/activities`);
+  }
+
+  createActivity(
+    tripId: string,
+    body: CreateActivityRequest
+  ): Observable<Activity> {
+    return this.http.post<Activity>(
+      `${this.base}/trips/${tripId}/activities`,
+      body
+    );
+  }
+
+  updateActivity(
+    tripId: string,
+    activityId: string,
+    body: UpdateActivityRequest
+  ): Observable<Activity> {
+    return this.http.put<Activity>(
+      `${this.base}/trips/${tripId}/activities/${activityId}`,
+      body
+    );
+  }
+
+  deleteActivity(
+    tripId: string,
+    activityId: string
+  ): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/trips/${tripId}/activities/${activityId}`
     );
   }
 }
