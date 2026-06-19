@@ -23,8 +23,16 @@ export class Database {
     },
   });
 
+  /**
+   * Resolves once the DataSource has finished initializing (connection open
+   * and entity metadata built). Services MUST await this before issuing any
+   * query — otherwise repository calls race the async initialization and fail
+   * with EntityMetadataNotFoundError. See `whenReady()`.
+   */
+  private readonly _ready: Promise<void>;
+
   constructor() {
-    this.dataSource
+    this._ready = this.dataSource
       .initialize()
       .then(() => {
         console.log(
@@ -37,6 +45,14 @@ export class Database {
         console.error('❌ Database initialization failed:', error);
         process.exit(1);
       });
+  }
+
+  /**
+   * Await the DataSource being fully initialized before running queries.
+   * Safe to call any number of times; always returns the same promise.
+   */
+  whenReady(): Promise<void> {
+    return this._ready;
   }
 
   repositoryFor<T extends ObjectLiteral>(entity: new () => T) {

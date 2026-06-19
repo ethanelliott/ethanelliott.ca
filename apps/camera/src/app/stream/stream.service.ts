@@ -288,16 +288,30 @@ export class StreamService {
 
     this._ffmpegProcess.stderr?.on('data', (data: Buffer) => {
       const msg = data.toString().trim();
-      if (msg) {
-        // Track segment output: FFmpeg logs "Opening 'segment_xxx.ts' for writing"
-        if (msg.includes('.ts') && msg.includes('Opening')) {
-          this._lastSegmentTime = Date.now();
-          // Reset restart counter on healthy output
-          this._restartAttempts = 0;
-        }
-        // Log all FFmpeg messages prefixed for easy grep
-        console.log(`FFmpeg: ${msg}`);
+      if (!msg) return;
+
+      // Track segment output: FFmpeg logs "Opening 'segment_xxx.ts' for writing"
+      if (msg.includes('.ts') && msg.includes('Opening')) {
+        this._lastSegmentTime = Date.now();
+        // Reset restart counter on healthy output
+        this._restartAttempts = 0;
       }
+
+      // The MJPEG detection-frame output forces swscale through the
+      // (deprecated but mandatory for mjpeg) full-range yuvj420p format,
+      // which emits this harmless warning on every single frame. No FFmpeg
+      // flag suppresses it at the source, so drop those lines here to keep
+      // the logs readable — raising -loglevel would also hide the segment
+      // lines tracked above. Filter per-line so bundled messages survive.
+      const cleaned = msg
+        .split('\n')
+        .filter((line) => !line.includes('deprecated pixel format used'))
+        .join('\n')
+        .trim();
+      if (!cleaned) return;
+
+      // Log all FFmpeg messages prefixed for easy grep
+      console.log(`FFmpeg: ${cleaned}`);
     });
 
     this._ffmpegProcess.on('close', (code) => {
