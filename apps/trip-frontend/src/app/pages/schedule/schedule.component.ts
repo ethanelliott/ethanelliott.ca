@@ -33,6 +33,7 @@ import {
   resolveColumns,
   Span,
 } from '../../core/schedule-layout';
+import { contrastText } from '../../core/color';
 import {
   formatMinutes,
   tzAbbreviation,
@@ -162,7 +163,8 @@ interface DragState {
                       class="span-bar"
                       [style.gridColumn]="spanCols(sp)"
                       [style.gridRow]="sp.lane + 1"
-                      [style.background]="sp.item.color || 'var(--brand)'"
+                      [style.background]="sp.item.color || '#4f46e5'"
+                      [style.color]="contrastText(sp.item.color || '#4f46e5')"
                     >
                       {{ sp.item.city }}
                     </div>
@@ -184,6 +186,7 @@ interface DragState {
                       [style.gridColumn]="spanCols(sp)"
                       [style.gridRow]="sp.lane + 1"
                       [style.background]="sp.item.color || '#334155'"
+                      [style.color]="contrastText(sp.item.color || '#334155')"
                     >
                       <i class="pi pi-home"></i> {{ sp.item.name }}
                     </div>
@@ -222,6 +225,7 @@ interface DragState {
                     [style.top.px]="p.startMin * PX_PER_MIN"
                     [style.height.px]="(p.endMin - p.startMin) * PX_PER_MIN"
                     [style.background]="p.color"
+                    [style.color]="contrastText(p.color)"
                     (click)="$event.stopPropagation()"
                     (pointerdown)="startMove($event, p)"
                   >
@@ -498,6 +502,7 @@ export class ScheduleComponent implements OnInit {
   readonly PX_PER_MIN = PX_PER_MIN;
   readonly dayHeight = 24 * HOUR_PX;
   readonly hours = Array.from({ length: 24 }, (_, i) => i);
+  readonly contrastText = contrastText;
 
   readonly trip = signal<Trip | null>(null);
   readonly activities = signal<Activity[]>([]);
