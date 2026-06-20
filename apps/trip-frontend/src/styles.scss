@@ -26,6 +26,7 @@
 
   --header-height: 56px;
   --bottom-nav-height: 60px;
+  --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --content-max-width: 720px;
 }

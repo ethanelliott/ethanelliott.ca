@@ -1,21 +1,27 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
 
 /**
- * Keeps the app on the latest deployed version: when the service worker has a
- * new version ready, it activates it and reloads, so a refresh always shows the
- * latest build. Updates are infrequent (only on deploy).
+ * Tracks service-worker updates. When a new deployed version is ready it flips
+ * `updateReady` so the UI can surface an Update affordance; the user applies it
+ * (activate + reload) on their own terms via `apply()`. `check()` lets the user
+ * manually poll for a new deployment.
  */
 @Injectable({ providedIn: 'root' })
 export class UpdateService {
   private readonly swUpdate = inject(SwUpdate);
   private applying = false;
 
+  /** True once a new version has been downloaded and is ready to activate. */
+  readonly updateReady = signal(false);
+  /** True while a manual check is in flight. */
+  readonly checking = signal(false);
+
   constructor() {
     if (!this.swUpdate.isEnabled) return;
 
     this.swUpdate.versionUpdates.subscribe((evt) => {
-      if (evt.type === 'VERSION_READY') this.apply();
+      if (evt.type === 'VERSION_READY') this.updateReady.set(true);
     });
 
     // If the cached app ends up in a broken state, a reload recovers it.
@@ -28,7 +34,23 @@ export class UpdateService {
     );
   }
 
-  private async apply(): Promise<void> {
+  /** Manually check for a new deployment. Resolves true if one is available. */
+  async check(): Promise<boolean> {
+    if (!this.swUpdate.isEnabled) return false;
+    this.checking.set(true);
+    try {
+      const found = await this.swUpdate.checkForUpdate();
+      if (found) this.updateReady.set(true);
+      return found;
+    } catch {
+      return false;
+    } finally {
+      this.checking.set(false);
+    }
+  }
+
+  /** Activate the ready update and reload into it. */
+  async apply(): Promise<void> {
     if (this.applying) return;
     this.applying = true;
     try {

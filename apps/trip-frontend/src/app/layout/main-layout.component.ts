@@ -26,6 +26,12 @@ import { UpdateService } from '../core/update.service';
           </a>
 
           <div class="header-actions">
+            @if (update.updateReady()) {
+              <button class="update-pill" (click)="update.apply()" title="Apply the new version">
+                <i class="pi pi-sync"></i> Update
+              </button>
+            }
+
             <span
               class="net-dot"
               [class.off]="!connectivity.online()"
@@ -83,6 +89,15 @@ import { UpdateService } from '../core/update.service';
             </div>
           </div>
 
+          <button class="menu-item" (click)="checkUpdates()">
+            <i class="pi pi-sync" [class.spin]="update.checking()"></i>
+            @if (update.updateReady()) {
+              Update ready — tap to apply
+            } @else {
+              {{ update.checking() ? 'Checking…' : checkLabel() }}
+            }
+          </button>
+
           <button class="menu-item" (click)="goProfile()">
             <i class="pi pi-user"></i> Profile
           </button>
@@ -109,7 +124,9 @@ import { UpdateService } from '../core/update.service';
     .app-header {
       flex-shrink: 0;
       z-index: 40;
-      height: var(--header-height);
+      box-sizing: border-box;
+      height: calc(var(--header-height) + var(--safe-top));
+      padding-top: var(--safe-top);
       background: var(--brand);
       color: #fff;
       box-shadow: var(--shadow-sm);
@@ -140,6 +157,27 @@ import { UpdateService } from '../core/update.service';
       align-items: center;
       gap: 12px;
     }
+    .update-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--brand);
+      font-weight: 700;
+      font-size: 13px;
+      box-shadow: var(--shadow-sm);
+      i { font-size: 13px; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spin { animation: spin 0.9s linear infinite; }
+
     .net-dot {
       width: 10px;
       height: 10px;
@@ -247,6 +285,7 @@ export class MainLayoutComponent {
   private readonly router = inject(Router);
 
   readonly menuOpen = signal(false);
+  readonly checkLabel = signal('Check for updates');
 
   readonly profileName = computed(
     () => this.auth.profile()?.name || this.auth.profile()?.username || 'Account'
@@ -258,6 +297,18 @@ export class MainLayoutComponent {
   constructor() {
     if (!this.auth.profile()) {
       void this.auth.loadProfile();
+    }
+  }
+
+  async checkUpdates(): Promise<void> {
+    if (this.update.updateReady()) {
+      await this.update.apply();
+      return;
+    }
+    const found = await this.update.check();
+    if (!found) {
+      this.checkLabel.set('Up to date');
+      setTimeout(() => this.checkLabel.set('Check for updates'), 2500);
     }
   }
 
