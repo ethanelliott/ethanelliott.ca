@@ -101,6 +101,12 @@ interface HotelPin {
       width: 24px; height: 24px; border-radius: 6px; background: #334155;
       color: #fff; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
+    :host ::ng-deep .location-pin {
+      display: flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%; background: #0ea5a4;
+      color: #fff; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+      font-size: 12px;
+    }
   `,
 })
 export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -170,6 +176,21 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
     const t = this.trip();
     if (!t) return [];
     const day = this.day();
+    return t.stays
+      .filter((s) => s.lat != null && s.lng != null)
+      .filter((s) => day === 'all' || (s.startDate <= day && day <= s.endDate))
+      .map((s) => ({
+        lat: s.lat as number,
+        lng: s.lng as number,
+        city: s.name,
+        label: s.locationLabel || s.name,
+      }));
+  });
+
+  readonly visibleLocations = computed<HotelPin[]>(() => {
+    const t = this.trip();
+    if (!t) return [];
+    const day = this.day();
     return t.segments
       .filter((s) => s.lat != null && s.lng != null)
       .filter((s) => day === 'all' || (s.startDate <= day && day <= s.endDate))
@@ -177,12 +198,15 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
         lat: s.lat as number,
         lng: s.lng as number,
         city: s.city,
-        label: s.hotelName || s.locationLabel || s.city,
+        label: s.locationLabel || s.city,
       }));
   });
 
   readonly pinCount = computed(
-    () => this.visibleActivities().length + this.visibleHotels().length
+    () =>
+      this.visibleActivities().length +
+      this.visibleHotels().length +
+      this.visibleLocations().length
   );
 
   constructor() {
@@ -191,7 +215,8 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
     effect(() => {
       const acts = this.visibleActivities();
       const hotels = this.visibleHotels();
-      if (this.mapReady()) this.draw(acts, hotels);
+      const locations = this.visibleLocations();
+      if (this.mapReady()) this.draw(acts, hotels, locations);
     });
   }
 
@@ -228,11 +253,27 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
     this.api.getActivities(this.id()).subscribe((a) => this.activities.set(a));
   }
 
-  private draw(acts: ActivityPin[], hotels: HotelPin[]): void {
+  private draw(
+    acts: ActivityPin[],
+    hotels: HotelPin[],
+    locations: HotelPin[]
+  ): void {
     if (!this.map || !this.layer) return;
     this.layer.clearLayers();
 
     const latlngs: L.LatLngExpression[] = [];
+
+    for (const loc of locations) {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="location-pin"><i class="pi pi-map-marker"></i></div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      L.marker([loc.lat, loc.lng], { icon })
+        .bindPopup(`<strong>${this.escape(loc.label)}</strong>`)
+        .addTo(this.layer);
+    }
 
     for (const h of hotels) {
       const icon = L.divIcon({
@@ -274,6 +315,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
     const allPoints: L.LatLngExpression[] = [
       ...latlngs,
       ...hotels.map((h) => [h.lat, h.lng] as L.LatLngExpression),
+      ...locations.map((l) => [l.lat, l.lng] as L.LatLngExpression),
     ];
     if (allPoints.length === 1) {
       this.map.setView(allPoints[0], 14);

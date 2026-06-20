@@ -59,7 +59,6 @@ export class SegmentsService {
         trip: { id: tripId } as Trip,
         city: input.city,
         country: input.country,
-        hotelName: input.hotelName,
         timezone: input.timezone,
         startDate: input.startDate,
         endDate: input.endDate,

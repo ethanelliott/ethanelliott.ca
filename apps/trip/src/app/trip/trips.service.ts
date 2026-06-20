@@ -4,6 +4,7 @@ import { Database } from '../data-source';
 import { User } from '../users/user';
 import { UsersService } from '../users/users.service';
 import { Segment } from './segment.entity';
+import { Stay } from './stay.entity';
 import { Trip, TripMember } from './trip.entity';
 import { toTripDto } from './mappers';
 import {
@@ -18,6 +19,7 @@ export class TripsService {
     inject(Database).repositoryFor(TripMember);
   private readonly _segmentRepository =
     inject(Database).repositoryFor(Segment);
+  private readonly _stayRepository = inject(Database).repositoryFor(Stay);
   private readonly _usersService = inject(UsersService);
 
   /** Throw unless the user is a member of the trip; returns the trip. */
@@ -61,6 +63,13 @@ export class TripsService {
     return this._segmentRepository.find({
       where: { trip: { id: tripId } },
       order: { position: 'ASC', startDate: 'ASC' },
+    });
+  }
+
+  private loadStays(tripId: string): Promise<Stay[]> {
+    return this._stayRepository.find({
+      where: { trip: { id: tripId } },
+      order: { startDate: 'ASC', position: 'ASC' },
     });
   }
 
@@ -115,7 +124,8 @@ export class TripsService {
     const trip = await this.assertMember(tripId, userId);
     const members = await this.loadMembers(tripId);
     const segments = await this.loadSegments(tripId);
-    return toTripDto(trip, members, segments);
+    const stays = await this.loadStays(tripId);
+    return toTripDto(trip, members, segments, stays);
   }
 
   async create(userId: string, input: CreateTripInput) {

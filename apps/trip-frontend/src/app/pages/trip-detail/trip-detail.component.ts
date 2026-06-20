@@ -19,11 +19,18 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { LocationSearchComponent } from '../../shared/location-search.component';
-import { LatLng, Segment, SegmentRequest, Trip } from '../../core/models';
+import { LatLng, Segment, SegmentRequest, Stay, StayRequest, Trip } from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
 import { formatDate, formatDateRange } from '../../core/format';
 
 interface SegmentForm extends SegmentRequest {
+  id: string | null;
+  lat: number | null;
+  lng: number | null;
+  locationLabel: string;
+}
+
+interface StayForm extends StayRequest {
   id: string | null;
   lat: number | null;
   lng: number | null;
@@ -78,11 +85,11 @@ interface SegmentForm extends SegmentRequest {
           <p class="desc">{{ t.description }}</p>
         }
 
-        <!-- Segments -->
+        <!-- Locations -->
         <div class="section-row">
-          <h2 class="section-title">Itinerary</h2>
+          <h2 class="section-title">Locations</h2>
           <p-button
-            label="Add stop"
+            label="Add location"
             icon="pi pi-plus"
             size="small"
             (onClick)="openCreateSegment()"
@@ -92,7 +99,7 @@ interface SegmentForm extends SegmentRequest {
         @if (t.segments.length === 0) {
           <div class="empty-state card">
             <i class="pi pi-map-marker"></i>
-            <p class="muted">No stops yet. Add the first city you'll visit.</p>
+            <p class="muted">No locations yet. Add the first place you'll visit.</p>
           </div>
         } @else {
           <div class="segment-list">
@@ -108,7 +115,7 @@ interface SegmentForm extends SegmentRequest {
                   </div>
                   <div class="segment-sub muted">
                     {{ formatDateRange(s.startDate, s.endDate) }}
-                    @if (s.hotelName) { · {{ s.hotelName }} }
+                    @if (s.locationLabel) { · 📍 {{ s.locationLabel }} }
                   </div>
                   <div class="segment-tz muted">
                     <i class="pi pi-clock"></i> {{ s.timezone }}
@@ -135,6 +142,48 @@ interface SegmentForm extends SegmentRequest {
                     <i class="pi pi-pencil"></i>
                   </button>
                   <button class="icon-btn danger" (click)="confirmDeleteSegment(s)">
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Hotels -->
+        <div class="section-row">
+          <h2 class="section-title">Hotels</h2>
+          <p-button
+            label="Add hotel"
+            icon="pi pi-plus"
+            size="small"
+            severity="secondary"
+            (onClick)="openCreateStay()"
+          />
+        </div>
+
+        @if (t.stays.length === 0) {
+          <div class="empty-state card">
+            <i class="pi pi-home"></i>
+            <p class="muted">No hotels yet. Add where you're staying.</p>
+          </div>
+        } @else {
+          <div class="segment-list">
+            @for (h of t.stays; track h.id) {
+              <div class="segment card">
+                <div class="swatch" [style.background]="h.color || '#334155'"></div>
+                <div class="segment-main">
+                  <div class="segment-city"><i class="pi pi-home"></i> {{ h.name }}</div>
+                  <div class="segment-sub muted">
+                    {{ formatDateRange(h.startDate, h.endDate) }}
+                    @if (h.locationLabel) { · 📍 {{ h.locationLabel }} }
+                  </div>
+                </div>
+                <div class="segment-actions">
+                  <button class="icon-btn" (click)="openEditStay(h)">
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button class="icon-btn danger" (click)="confirmDeleteStay(h)">
                     <i class="pi pi-trash"></i>
                   </button>
                 </div>
@@ -231,17 +280,17 @@ interface SegmentForm extends SegmentRequest {
       </ng-template>
     </p-dialog>
 
-    <!-- Segment dialog -->
+    <!-- Location (segment) dialog -->
     <p-dialog
       [(visible)]="segmentVisible"
       [modal]="true"
       [draggable]="false"
-      [header]="segmentForm.id ? 'Edit stop' : 'Add stop'"
+      [header]="segmentForm.id ? 'Edit location' : 'Add location'"
       [style]="{ width: '460px' }"
     >
       <div class="form">
         <div class="field">
-          <label>City</label>
+          <label>City / place</label>
           <input pInputText [(ngModel)]="segmentForm.city" />
         </div>
         <div class="field-row">
@@ -255,11 +304,7 @@ interface SegmentForm extends SegmentRequest {
           </div>
         </div>
         <div class="field">
-          <label>Hotel</label>
-          <input pInputText [(ngModel)]="segmentForm.hotelName" />
-        </div>
-        <div class="field">
-          <label>Hotel location</label>
+          <label>Location pin</label>
           <app-location-search
             [locationLabel]="segmentForm.locationLabel"
             (picked)="onSegmentLocationPicked($event)"
@@ -295,6 +340,53 @@ interface SegmentForm extends SegmentRequest {
       <ng-template #footer>
         <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="segmentVisible.set(false)" />
         <p-button label="Save" icon="pi pi-check" [loading]="savingSegment()" (onClick)="saveSegment()" />
+      </ng-template>
+    </p-dialog>
+
+    <!-- Hotel (stay) dialog -->
+    <p-dialog
+      [(visible)]="stayVisible"
+      [modal]="true"
+      [draggable]="false"
+      [header]="stayForm.id ? 'Edit hotel' : 'Add hotel'"
+      [style]="{ width: '460px' }"
+    >
+      <div class="form">
+        <div class="field-row">
+          <div class="field">
+            <label>Hotel name</label>
+            <input pInputText [(ngModel)]="stayForm.name" />
+          </div>
+          <div class="field swatch-field">
+            <label>Colour</label>
+            <input type="color" [(ngModel)]="stayForm.color" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Location pin</label>
+          <app-location-search
+            [locationLabel]="stayForm.locationLabel"
+            (picked)="onStayLocationPicked($event)"
+            (cleared)="onStayLocationCleared()"
+          />
+          @if (stayForm.locationLabel) {
+            <small class="muted">📍 {{ stayForm.locationLabel }}</small>
+          }
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Check-in</label>
+            <input type="date" [(ngModel)]="stayForm.startDate" />
+          </div>
+          <div class="field">
+            <label>Check-out</label>
+            <input type="date" [(ngModel)]="stayForm.endDate" />
+          </div>
+        </div>
+      </div>
+      <ng-template #footer>
+        <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="stayVisible.set(false)" />
+        <p-button label="Save" icon="pi pi-check" [loading]="savingStay()" (onClick)="saveStay()" />
       </ng-template>
     </p-dialog>
   `,
@@ -535,10 +627,15 @@ export class TripDetailComponent implements OnInit {
   readonly savingTrip = signal(false);
   tripForm = { name: '', description: '', homeTimezone: '', baseCurrency: '' };
 
-  // Segment dialog state
+  // Segment (location) dialog state
   readonly segmentVisible = signal(false);
   readonly savingSegment = signal(false);
   segmentForm: SegmentForm = this.blankSegment();
+
+  // Stay (hotel) dialog state
+  readonly stayVisible = signal(false);
+  readonly savingStay = signal(false);
+  stayForm: StayForm = this.blankStay();
 
   // Member state
   memberUsername = '';
@@ -577,11 +674,23 @@ export class TripDetailComponent implements OnInit {
       id: null,
       city: '',
       country: '',
-      hotelName: '',
       timezone: this.trip()?.homeTimezone || 'UTC',
       startDate: '',
       endDate: '',
       color: '#4f46e5',
+      lat: null,
+      lng: null,
+      locationLabel: '',
+    };
+  }
+
+  private blankStay(): StayForm {
+    return {
+      id: null,
+      name: '',
+      startDate: '',
+      endDate: '',
+      color: '#334155',
       lat: null,
       lng: null,
       locationLabel: '',
@@ -713,7 +822,6 @@ export class TripDetailComponent implements OnInit {
       id: s.id,
       city: s.city,
       country: s.country ?? '',
-      hotelName: s.hotelName ?? '',
       timezone: s.timezone,
       startDate: s.startDate,
       endDate: s.endDate,
@@ -747,7 +855,6 @@ export class TripDetailComponent implements OnInit {
     const body: SegmentRequest = {
       city: f.city.trim(),
       country: f.country?.trim() || undefined,
-      hotelName: f.hotelName?.trim() || undefined,
       timezone: f.timezone,
       startDate: f.startDate,
       endDate: f.endDate,
@@ -777,12 +884,107 @@ export class TripDetailComponent implements OnInit {
 
   confirmDeleteSegment(s: Segment): void {
     this.confirm.confirm({
-      header: 'Delete stop',
-      message: `Remove ${s.city} from the itinerary?`,
+      header: 'Delete location',
+      message: `Remove ${s.city} from the trip?`,
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.api.deleteSegment(this.id(), s.id).subscribe({
+          next: () => this.load(),
+          error: (e) => this.error(e),
+        });
+      },
+    });
+  }
+
+  // ── Stays (hotels) ──
+  openCreateStay(): void {
+    this.stayForm = this.blankStay();
+    this.stayVisible.set(true);
+  }
+
+  openEditStay(h: Stay): void {
+    this.stayForm = {
+      id: h.id,
+      name: h.name,
+      startDate: h.startDate,
+      endDate: h.endDate,
+      color: h.color ?? '#334155',
+      lat: h.lat ?? null,
+      lng: h.lng ?? null,
+      locationLabel: h.locationLabel ?? '',
+    };
+    this.stayVisible.set(true);
+  }
+
+  onStayLocationPicked(loc: LatLng): void {
+    this.stayForm = {
+      ...this.stayForm,
+      lat: loc.lat,
+      lng: loc.lng,
+      locationLabel: loc.label,
+    };
+  }
+
+  onStayLocationCleared(): void {
+    this.stayForm = { ...this.stayForm, lat: null, lng: null, locationLabel: '' };
+  }
+
+  saveStay(): void {
+    const f = this.stayForm;
+    if (!f.name.trim() || !f.startDate || !f.endDate) {
+      this.messages.add({
+        severity: 'warn',
+        summary: 'Missing details',
+        detail: 'Hotel name, check-in and check-out are required.',
+      });
+      return;
+    }
+    if (f.startDate > f.endDate) {
+      this.messages.add({
+        severity: 'warn',
+        summary: 'Invalid dates',
+        detail: 'Check-in must be on or before check-out.',
+      });
+      return;
+    }
+
+    const body: StayRequest = {
+      name: f.name.trim(),
+      startDate: f.startDate,
+      endDate: f.endDate,
+      color: f.color || undefined,
+      lat: f.lat,
+      lng: f.lng,
+      locationLabel: f.locationLabel || null,
+    };
+
+    this.savingStay.set(true);
+    const req = f.id
+      ? this.api.updateStay(this.id(), f.id, body)
+      : this.api.createStay(this.id(), body);
+
+    req.subscribe({
+      next: () => {
+        this.savingStay.set(false);
+        this.stayVisible.set(false);
+        this.load();
+      },
+      error: (e) => {
+        this.savingStay.set(false);
+        this.error(e);
+      },
+    });
+  }
+
+  confirmDeleteStay(h: Stay): void {
+    this.confirm.confirm({
+      header: 'Delete hotel',
+      message: `Remove ${h.name}?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deleteStay(this.id(), h.id).subscribe({
           next: () => this.load(),
           error: (e) => this.error(e),
         });

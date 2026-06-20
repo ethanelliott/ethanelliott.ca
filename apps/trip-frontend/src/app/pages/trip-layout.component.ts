@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import { TripTabsComponent } from '../shared/trip-tabs.component';
 
 /**
@@ -10,15 +10,11 @@ import { TripTabsComponent } from '../shared/trip-tabs.component';
 @Component({
   selector: 'app-trip-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, TripTabsComponent],
+  imports: [RouterOutlet, TripTabsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="trip-shell">
       <nav class="rail">
-        <a class="rail-back" routerLink="/trips" title="All trips">
-          <i class="pi pi-arrow-left"></i>
-          <span>Trips</span>
-        </a>
         <app-trip-tabs [tripId]="id()" [vertical]="true" />
       </nav>
       <main class="trip-main">

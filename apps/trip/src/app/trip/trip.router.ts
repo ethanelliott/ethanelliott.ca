@@ -3,16 +3,20 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { SegmentsService } from './segments.service';
+import { StaysService } from './stays.service';
 import { TripsService } from './trips.service';
 import {
   AddMemberSchema,
   CreateSegmentSchema,
+  CreateStaySchema,
   CreateTripSchema,
   ReorderSegmentsSchema,
   SegmentSchema,
+  StaySchema,
   TripSchema,
   TripSummarySchema,
   UpdateSegmentSchema,
+  UpdateStaySchema,
   UpdateTripSchema,
 } from './trip.types';
 
@@ -20,6 +24,10 @@ const IdParams = z.object({ id: z.string().uuid() });
 const TripSegmentParams = z.object({
   id: z.string().uuid(),
   segmentId: z.string().uuid(),
+});
+const TripStayParams = z.object({
+  id: z.string().uuid(),
+  stayId: z.string().uuid(),
 });
 const SuccessSchema = z.object({ success: z.boolean() });
 
@@ -31,6 +39,7 @@ export async function TripRouter(fastify: FastifyInstance) {
 
   const _trips = inject(TripsService);
   const _segments = inject(SegmentsService);
+  const _stays = inject(StaysService);
 
   // ── Trips ────────────────────────────────────────────────────
   typedFastify.get(
@@ -250,6 +259,84 @@ export async function TripRouter(fastify: FastifyInstance) {
         await _segments.remove(
           request.params.id,
           request.params.segmentId,
+          request.currentUser.id
+        )
+      )
+  );
+
+  // ── Stays (hotels) ───────────────────────────────────────────
+  typedFastify.get(
+    '/trips/:id/stays',
+    {
+      schema: {
+        tags: ['Trips'],
+        description: 'List the hotels/stays of a trip',
+        params: IdParams,
+        response: { 200: z.array(StaySchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.send(await _stays.list(request.params.id, request.currentUser.id))
+  );
+
+  typedFastify.post(
+    '/trips/:id/stays',
+    {
+      schema: {
+        tags: ['Trips'],
+        description: 'Add a hotel/stay to a trip',
+        params: IdParams,
+        body: CreateStaySchema,
+        response: { 201: StaySchema },
+      },
+    },
+    async (request, reply) => {
+      const stay = await _stays.create(
+        request.params.id,
+        request.currentUser.id,
+        request.body
+      );
+      return reply.code(201).send(stay);
+    }
+  );
+
+  typedFastify.put(
+    '/trips/:id/stays/:stayId',
+    {
+      schema: {
+        tags: ['Trips'],
+        description: 'Update a hotel/stay',
+        params: TripStayParams,
+        body: UpdateStaySchema,
+        response: { 200: StaySchema },
+      },
+    },
+    async (request, reply) =>
+      reply.send(
+        await _stays.update(
+          request.params.id,
+          request.params.stayId,
+          request.currentUser.id,
+          request.body
+        )
+      )
+  );
+
+  typedFastify.delete(
+    '/trips/:id/stays/:stayId',
+    {
+      schema: {
+        tags: ['Trips'],
+        description: 'Delete a hotel/stay',
+        params: TripStayParams,
+        response: { 200: SuccessSchema },
+      },
+    },
+    async (request, reply) =>
+      reply.send(
+        await _stays.remove(
+          request.params.id,
+          request.params.stayId,
           request.currentUser.id
         )
       )

@@ -12,6 +12,7 @@ import {
 import { ENTITIES } from '../data-source';
 import { User } from '../users/user';
 import { Segment } from './segment.entity';
+import { Stay } from './stay.entity';
 
 @Entity()
 export class Trip {
@@ -41,6 +42,9 @@ export class Trip {
 
   @OneToMany(() => Segment, (s) => s.trip)
   segments!: Segment[];
+
+  @OneToMany(() => Stay, (s) => s.trip)
+  stays!: Stay[];
 
   @CreateDateColumn()
   createdAt!: Date;

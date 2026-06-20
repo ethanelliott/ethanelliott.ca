@@ -46,8 +46,22 @@ export const SegmentSchema = z.object({
   tripId: z.string().uuid(),
   city: z.string(),
   country: z.string().nullable().optional(),
-  hotelName: z.string().nullable().optional(),
   timezone: z.string(),
+  startDate: dateString,
+  endDate: dateString,
+  color: z.string().nullable().optional(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  locationLabel: z.string().nullable(),
+  position: z.number(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const StaySchema = z.object({
+  id: z.string().uuid(),
+  tripId: z.string().uuid(),
+  name: z.string(),
   startDate: dateString,
   endDate: dateString,
   color: z.string().nullable().optional(),
@@ -68,6 +82,7 @@ export const TripSchema = z.object({
   createdBy: PublicUserSchema.nullable().optional(),
   members: z.array(TripMemberSchema),
   segments: z.array(SegmentSchema),
+  stays: z.array(StaySchema),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -114,7 +129,6 @@ export const CreateSegmentSchema = z
   .object({
     city: z.string().min(1).max(120),
     country: z.string().max(120).optional(),
-    hotelName: z.string().max(200).optional(),
     timezone: timezone,
     startDate: dateString,
     endDate: dateString,
@@ -132,7 +146,6 @@ export const UpdateSegmentSchema = z
   .object({
     city: z.string().min(1).max(120).optional(),
     country: z.string().max(120).optional(),
-    hotelName: z.string().max(200).optional(),
     timezone: timezone.optional(),
     startDate: dateString.optional(),
     endDate: dateString.optional(),
@@ -151,11 +164,48 @@ export const ReorderSegmentsSchema = z.object({
   segmentIds: z.array(z.string().uuid()).min(1),
 });
 
+// ─────────────────────────────────────────────────────────────
+// Stays (hotels)
+// ─────────────────────────────────────────────────────────────
+
+export const CreateStaySchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    startDate: dateString,
+    endDate: dateString,
+    color: hexColor.optional(),
+    lat: latVal.nullable().optional(),
+    lng: lngVal.nullable().optional(),
+    locationLabel: z.string().max(300).nullable().optional(),
+  })
+  .refine((s) => s.startDate <= s.endDate, {
+    message: 'startDate must be on or before endDate',
+    path: ['endDate'],
+  });
+
+export const UpdateStaySchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    startDate: dateString.optional(),
+    endDate: dateString.optional(),
+    color: hexColor.optional(),
+    lat: latVal.nullable().optional(),
+    lng: lngVal.nullable().optional(),
+    locationLabel: z.string().max(300).nullable().optional(),
+  })
+  .refine((s) => !s.startDate || !s.endDate || s.startDate <= s.endDate, {
+    message: 'startDate must be on or before endDate',
+    path: ['endDate'],
+  });
+
 export type TripOut = z.infer<typeof TripSchema>;
 export type TripSummaryOut = z.infer<typeof TripSummarySchema>;
 export type SegmentOut = z.infer<typeof SegmentSchema>;
+export type StayOut = z.infer<typeof StaySchema>;
 export type CreateTripInput = z.infer<typeof CreateTripSchema>;
 export type UpdateTripInput = z.infer<typeof UpdateTripSchema>;
 export type CreateSegmentInput = z.infer<typeof CreateSegmentSchema>;
 export type UpdateSegmentInput = z.infer<typeof UpdateSegmentSchema>;
 export type ReorderSegmentsInput = z.infer<typeof ReorderSegmentsSchema>;
+export type CreateStayInput = z.infer<typeof CreateStaySchema>;
+export type UpdateStayInput = z.infer<typeof UpdateStaySchema>;

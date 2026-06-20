@@ -29,7 +29,9 @@ import {
 import {
   ActivityPiece,
   activityPieces,
+  layoutSpans,
   resolveColumns,
+  Span,
 } from '../../core/schedule-layout';
 import {
   formatMinutes,
@@ -128,24 +130,70 @@ interface DragState {
         </div>
       } @else {
         <div class="grid-scroll">
-          <div class="grid" [style.gridTemplateColumns]="gridTemplate()">
-            <!-- Gutter header: a timezone abbreviation per scale -->
-            <div class="corner">
-              @for (z of zoneScales(); track z.tz) {
-                <div class="corner-tz" [class.primary]="z.tz === displayTz()">
-                  {{ tzAbbrev(columnDates()[0], z.tz) }}
+          <div class="cal">
+            <!-- Sticky top: day headers + location / hotel bands -->
+            <div class="cal-top">
+              <div class="cal-row headers" [style.gridTemplateColumns]="gridTemplate()">
+                <div class="corner">
+                  @for (z of zoneScales(); track z.tz) {
+                    <div class="corner-tz" [class.primary]="z.tz === displayTz()">
+                      {{ tzAbbrev(columnDates()[0], z.tz) }}
+                    </div>
+                  }
+                </div>
+                @for (col of columns(); track col.date) {
+                  <div class="col-head" [style.borderTopColor]="col.color || 'transparent'">
+                    <div class="col-city">{{ col.city || '—' }}</div>
+                    <div class="col-date">{{ headerDate(col.date) }}</div>
+                  </div>
+                }
+              </div>
+
+              <!-- Locations band -->
+              @if (locationLayout().spans.length) {
+                <div
+                  class="cal-row band"
+                  [style.gridTemplateColumns]="gridTemplate()"
+                  [style.gridTemplateRows]="bandRows(locationLayout().laneCount)"
+                >
+                  <div class="band-label">Places</div>
+                  @for (sp of locationLayout().spans; track sp.item.id) {
+                    <div
+                      class="span-bar"
+                      [style.gridColumn]="spanCols(sp)"
+                      [style.gridRow]="sp.lane + 1"
+                      [style.background]="sp.item.color || 'var(--brand)'"
+                    >
+                      {{ sp.item.city }}
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Hotels band -->
+              @if (stayLayout().spans.length) {
+                <div
+                  class="cal-row band"
+                  [style.gridTemplateColumns]="gridTemplate()"
+                  [style.gridTemplateRows]="bandRows(stayLayout().laneCount)"
+                >
+                  <div class="band-label">Hotels</div>
+                  @for (sp of stayLayout().spans; track sp.item.id) {
+                    <div
+                      class="span-bar hotel"
+                      [style.gridColumn]="spanCols(sp)"
+                      [style.gridRow]="sp.lane + 1"
+                      [style.background]="sp.item.color || '#334155'"
+                    >
+                      <i class="pi pi-home"></i> {{ sp.item.name }}
+                    </div>
+                  }
                 </div>
               }
             </div>
-            <!-- Column headers -->
-            @for (col of columns(); track col.date) {
-              <div class="col-head" [style.borderTopColor]="col.color || 'transparent'">
-                <div class="col-city">{{ col.city || '—' }}</div>
-                <div class="col-date">{{ headerDate(col.date) }}</div>
-                <div class="col-tz muted">{{ tzAbbrev(col.date, col.tz) }}</div>
-              </div>
-            }
 
+            <!-- Hours: gutter scales + day bodies -->
+            <div class="cal-row hours" [style.gridTemplateColumns]="gridTemplate()">
             <!-- Gutter: one time scale per relevant timezone, side by side -->
             <div class="gutter" [style.height.px]="dayHeight">
               @for (z of zoneScales(); track z.tz) {
@@ -199,6 +247,7 @@ interface DragState {
                 }
               </div>
             }
+            </div>
           </div>
         </div>
       }
@@ -320,8 +369,47 @@ interface DragState {
     .toolbar .spacer { flex: 1; }
     .back { width: 34px; height: 34px; border: none; border-radius: 9px; background: var(--bg-subtle); cursor: pointer; }
     .grid-scroll { flex: 1; overflow: auto; }
-    .grid { display: grid; position: relative; }
-    .corner { position: sticky; left: 0; top: 0; z-index: 5; display: flex; background: var(--bg-surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .cal { width: max-content; }
+    .cal-top { position: sticky; top: 0; z-index: 6; }
+    .cal-row { display: grid; }
+    .band {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      column-gap: 0;
+      row-gap: 3px;
+      padding-bottom: 3px;
+    }
+    .band-label {
+      grid-column: 1;
+      grid-row: 1 / -1;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .span-bar {
+      margin: 0 2px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      align-self: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .span-bar.hotel i { font-size: 10px; margin-right: 2px; }
+    .corner { position: sticky; left: 0; z-index: 5; display: flex; background: var(--bg-surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
     .corner-tz {
       width: ${SCALE_WIDTH}px; flex-shrink: 0;
       display: flex; align-items: flex-end; justify-content: center;
@@ -424,10 +512,30 @@ export class ScheduleComponent implements OnInit {
   readonly columns = computed(() => {
     const t = this.trip();
     if (!t) return [];
-    return resolveColumns(t.segments, t.homeTimezone);
+    // Hotels extend the day range too, so a hotel night outside a location
+    // still gets a column.
+    return resolveColumns(t.segments, t.homeTimezone, t.stays);
   });
 
   readonly columnDates = computed(() => this.columns().map((c) => c.date));
+
+  /** Location bars spanning the day columns, lane-stacked for overlaps. */
+  readonly locationLayout = computed(() =>
+    layoutSpans(this.trip()?.segments ?? [], this.columnDates())
+  );
+
+  /** Hotel bars spanning the day columns, lane-stacked for overlaps. */
+  readonly stayLayout = computed(() =>
+    layoutSpans(this.trip()?.stays ?? [], this.columnDates())
+  );
+
+  spanCols(sp: Span<unknown>): string {
+    return `${sp.startCol + 2} / ${sp.endCol + 3}`;
+  }
+
+  bandRows(laneCount: number): string {
+    return `repeat(${laneCount}, 22px)`;
+  }
 
   /**
    * Timezone scales shown in the gutter, side by side: the display zone (the

@@ -29,7 +29,6 @@ export interface Segment {
   tripId: string;
   city: string;
   country?: string | null;
-  hotelName?: string | null;
   timezone: string;
   startDate: string;
   endDate: string;
@@ -40,6 +39,31 @@ export interface Segment {
   position: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Stay {
+  id: string;
+  tripId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  color?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  locationLabel?: string | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StayRequest {
+  name: string;
+  startDate: string;
+  endDate: string;
+  color?: string;
+  lat?: number | null;
+  lng?: number | null;
+  locationLabel?: string | null;
 }
 
 export interface LatLng {
@@ -57,6 +81,7 @@ export interface Trip {
   createdBy?: PublicUser | null;
   members: TripMember[];
   segments: Segment[];
+  stays: Stay[];
   createdAt: string;
   updatedAt: string;
 }
@@ -93,7 +118,6 @@ export interface UpdateTripRequest {
 export interface SegmentRequest {
   city: string;
   country?: string;
-  hotelName?: string;
   timezone: string;
   startDate: string;
   endDate: string;

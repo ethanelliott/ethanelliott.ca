@@ -15,6 +15,8 @@ import {
   PublicUser,
   Segment,
   SegmentRequest,
+  Stay,
+  StayRequest,
   Tag,
   TagRequest,
   Trip,
@@ -98,6 +100,28 @@ export class ApiService {
     return this.http.put<Segment[]>(
       `${this.base}/trips/${tripId}/segments/reorder`,
       { segmentIds }
+    );
+  }
+
+  // ── Stays (hotels) ──
+  createStay(tripId: string, body: StayRequest): Observable<Stay> {
+    return this.http.post<Stay>(`${this.base}/trips/${tripId}/stays`, body);
+  }
+
+  updateStay(
+    tripId: string,
+    stayId: string,
+    body: Partial<StayRequest>
+  ): Observable<Stay> {
+    return this.http.put<Stay>(
+      `${this.base}/trips/${tripId}/stays/${stayId}`,
+      body
+    );
+  }
+
+  deleteStay(tripId: string, stayId: string): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/trips/${tripId}/stays/${stayId}`
     );
   }
 

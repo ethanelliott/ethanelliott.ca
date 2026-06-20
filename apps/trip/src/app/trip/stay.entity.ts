@@ -11,40 +11,30 @@ import { ENTITIES } from '../data-source';
 import { Trip } from './trip.entity';
 
 /**
- * A location/place you visit for a date range, in a given timezone. These
- * define the day columns of the schedule grid. Hotels are tracked separately
- * as Stays.
+ * A hotel / place you sleep, spanning a date range. Separate from a Location
+ * (Segment) — on a travel day you may change location but the hotel for the
+ * night is its own thing. Carries its own map pin.
  */
 @Entity()
-export class Segment {
+export class Stay {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => Trip, (t) => t.segments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Trip, { onDelete: 'CASCADE' })
   trip!: Trip;
 
   @Column('text')
-  city!: string;
+  name!: string;
 
-  @Column('text', { nullable: true })
-  country?: string;
-
-  // Local IANA timezone for this leg (e.g. 'Europe/Berlin').
-  @Column('text', { default: 'UTC' })
-  timezone!: string;
-
-  // Inclusive date range, stored as calendar dates (YYYY-MM-DD).
   @Column('date')
   startDate!: string;
 
   @Column('date')
   endDate!: string;
 
-  // Header colour for the schedule grid.
   @Column('text', { nullable: true })
-  color?: string;
+  color?: string | null;
 
-  // Optional hotel/stay pin location for the map.
   @Column('double precision', { nullable: true })
   lat?: number | null;
 
@@ -54,7 +44,6 @@ export class Segment {
   @Column('text', { nullable: true })
   locationLabel?: string | null;
 
-  // Ordering of segments within the trip.
   @Column('integer', { default: 0 })
   position!: number;
 
@@ -65,4 +54,4 @@ export class Segment {
   updatedAt!: Date;
 }
 
-provide(ENTITIES, Segment);
+provide(ENTITIES, Stay);
