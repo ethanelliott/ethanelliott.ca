@@ -116,8 +116,8 @@ import { UpdateService } from '../core/update.service';
     .shell {
       height: 100vh;
       height: 100dvh;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
     }
 
@@ -271,7 +271,6 @@ import { UpdateService } from '../core/update.service';
     .menu-item.danger { color: #e8643c; }
 
     .app-content {
-      flex: 1;
       min-height: 0;
       display: flex;
       flex-direction: column;

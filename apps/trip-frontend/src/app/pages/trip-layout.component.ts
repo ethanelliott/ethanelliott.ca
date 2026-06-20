@@ -26,44 +26,43 @@ import { TripTabsComponent } from '../shared/trip-tabs.component';
     </div>
   `,
   styles: `
+    /* Fill the parent grid row (.app-content), then lay out our own rows. */
     :host {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
       flex: 1;
       min-height: 0;
     }
+    /* Mobile: content scrolls (1fr), bottom nav pinned (auto). */
     .trip-shell {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
       min-height: 0;
     }
     .rail {
       display: none;
     }
     .trip-main {
-      flex: 1;
       min-width: 0;
       min-height: 0;
       overflow: auto;
     }
     .bottom-bar {
-      flex-shrink: 0;
       background: var(--bg-surface);
       border-top: 1px solid var(--border);
       padding-bottom: var(--safe-bottom);
     }
 
+    /* Desktop: rail column (auto) + content column (1fr), single row. */
     @media (min-width: 768px) {
       .trip-shell {
-        flex-direction: row;
+        grid-template-rows: minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
       }
       .rail {
         display: flex;
         flex-direction: column;
-        flex-shrink: 0;
         width: 66px;
-        height: 100%;
         padding: 8px 6px;
         background: var(--bg-surface);
         border-right: 1px solid var(--border);
