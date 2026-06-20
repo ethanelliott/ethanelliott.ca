@@ -3,9 +3,9 @@ import { RouterOutlet } from '@angular/router';
 import { TripTabsComponent } from '../shared/trip-tabs.component';
 
 /**
- * Shell for a trip and its sub-pages: a persistent vertical nav rail on the
- * left (Overview / Schedule / Map / Budget / Packing) plus the routed view.
- * The rail replaces the per-page back buttons.
+ * Shell for a trip and its sub-pages. Trip navigation lives in a left rail on
+ * desktop and a bottom tab bar on mobile (Overview / Schedule / Map / Budget /
+ * Packing). App-level nav (home, account) stays in the global header.
  */
 @Component({
   selector: 'app-trip-layout',
@@ -15,58 +15,56 @@ import { TripTabsComponent } from '../shared/trip-tabs.component';
   template: `
     <div class="trip-shell">
       <nav class="rail">
-        <app-trip-tabs [tripId]="id()" [vertical]="true" />
+        <app-trip-tabs [tripId]="id()" variant="rail" />
       </nav>
+
       <main class="trip-main">
         <router-outlet />
       </main>
+
+      <app-trip-tabs class="bottom-bar" [tripId]="id()" variant="bottom" />
     </div>
   `,
   styles: `
     .trip-shell {
       display: flex;
-      align-items: flex-start;
-      min-height: calc(100dvh - var(--header-height));
+      flex-direction: column;
+      height: calc(100dvh - var(--header-height));
     }
     .rail {
-      position: sticky;
-      top: var(--header-height);
-      flex-shrink: 0;
-      width: 66px;
-      height: calc(100dvh - var(--header-height));
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 8px 6px;
-      background: var(--bg-surface);
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      scrollbar-width: none;
-      z-index: 10;
-    }
-    .rail::-webkit-scrollbar {
-      width: 0;
-    }
-    .rail-back {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      padding: 9px 4px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-    .rail-back i {
-      font-size: 17px;
-    }
-    .rail-back:hover {
-      background: var(--bg-subtle);
+      display: none;
     }
     .trip-main {
       flex: 1;
       min-width: 0;
+      min-height: 0;
+      overflow: auto;
+    }
+    .bottom-bar {
+      flex-shrink: 0;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      padding-bottom: var(--safe-bottom);
+    }
+
+    @media (min-width: 768px) {
+      .trip-shell {
+        flex-direction: row;
+      }
+      .rail {
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        width: 66px;
+        height: 100%;
+        padding: 8px 6px;
+        background: var(--bg-surface);
+        border-right: 1px solid var(--border);
+        overflow-y: auto;
+      }
+      .bottom-bar {
+        display: none;
+      }
     }
   `,
 })

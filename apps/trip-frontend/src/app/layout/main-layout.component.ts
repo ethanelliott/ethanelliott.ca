@@ -1,19 +1,19 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { ConnectivityService } from '../core/connectivity.service';
 import { UpdateService } from '../core/update.service';
 
-interface NavItem {
-  label: string;
-  icon: string;
-  link: string;
-}
-
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell">
@@ -25,19 +25,6 @@ interface NavItem {
           </a>
 
           <div class="header-actions">
-            <nav class="desktop-nav">
-              @for (item of nav; track item.link) {
-                <a
-                  [routerLink]="item.link"
-                  routerLinkActive="active"
-                  class="desktop-nav-link"
-                >
-                  <i [class]="'pi ' + item.icon"></i>
-                  {{ item.label }}
-                </a>
-              }
-            </nav>
-
             @if (update.updateReady()) {
               <button class="update-pill" (click)="update.reload()" title="A new version is ready">
                 <i class="pi pi-refresh"></i> Update
@@ -49,26 +36,39 @@ interface NavItem {
               [class.off]="!connectivity.online()"
               [title]="connectivity.online() ? 'Online' : 'Offline — editing paused'"
             ></span>
+
+            <button
+              class="avatar"
+              (click)="menuOpen.set(!menuOpen())"
+              [title]="profileName()"
+            >
+              {{ initial() }}
+            </button>
           </div>
         </div>
       </header>
 
+      @if (menuOpen()) {
+        <div class="menu-backdrop" (click)="menuOpen.set(false)"></div>
+        <div class="account-menu card">
+          <div class="account-head">
+            <div class="account-name">{{ profileName() }}</div>
+            @if (auth.profile()?.username; as u) {
+              <div class="account-username muted">{{ '@' + u }}</div>
+            }
+          </div>
+          <button class="menu-item" (click)="goProfile()">
+            <i class="pi pi-user"></i> Profile
+          </button>
+          <button class="menu-item danger" (click)="logout()">
+            <i class="pi pi-sign-out"></i> Log out
+          </button>
+        </div>
+      }
+
       <main class="app-content">
         <router-outlet />
       </main>
-
-      <nav class="bottom-nav">
-        @for (item of nav; track item.link) {
-          <a
-            [routerLink]="item.link"
-            routerLinkActive="active"
-            class="bottom-nav-link"
-          >
-            <i [class]="'pi ' + item.icon"></i>
-            <span>{{ item.label }}</span>
-          </a>
-        }
-      </nav>
     </div>
   `,
   styles: `
@@ -89,39 +89,6 @@ interface NavItem {
       box-shadow: var(--shadow-sm);
     }
 
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .net-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #34d399;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
-      flex-shrink: 0;
-    }
-    .net-dot.off {
-      background: #f59e0b;
-    }
-    .update-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      border: none;
-      cursor: pointer;
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
-      font-weight: 600;
-      font-size: 12px;
-      padding: 5px 11px;
-      border-radius: 999px;
-    }
-    .update-pill i {
-      font-size: 12px;
-    }
-
     .header-inner {
       max-width: var(--content-max-width);
       margin: 0 auto;
@@ -139,100 +106,123 @@ interface NavItem {
       color: #fff;
       font-weight: 700;
       font-size: 18px;
-
-      i {
-        font-size: 20px;
-      }
+      i { font-size: 20px; }
     }
 
-    .desktop-nav {
-      display: none;
-      gap: 4px;
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
-
-    .desktop-nav-link {
-      color: rgba(255, 255, 255, 0.85);
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 600;
+    .net-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+      flex-shrink: 0;
+    }
+    .net-dot.off { background: #f59e0b; }
+    .update-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-
-      &.active {
-        background: rgba(255, 255, 255, 0.18);
-        color: #fff;
-      }
+      gap: 5px;
+      border: none;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 5px 11px;
+      border-radius: 999px;
     }
+    .update-pill i { font-size: 12px; }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .menu-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 49;
+    }
+    .account-menu {
+      position: fixed;
+      top: calc(var(--header-height) + 6px);
+      right: 12px;
+      z-index: 50;
+      width: 220px;
+      padding: 6px;
+      overflow: hidden;
+    }
+    .account-head {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .account-name { font-weight: 700; }
+    .account-username { font-size: 12px; }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: left;
+    }
+    .menu-item:hover { background: var(--bg-subtle); }
+    .menu-item.danger { color: #e8643c; }
 
     .app-content {
       flex: 1;
-      padding-bottom: calc(
-        var(--bottom-nav-height) + var(--safe-bottom) + 16px
-      );
-    }
-
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 40;
-      height: calc(var(--bottom-nav-height) + var(--safe-bottom));
-      padding-bottom: var(--safe-bottom);
-      background: var(--bg-surface);
-      border-top: 1px solid var(--border);
-      display: flex;
-    }
-
-    .bottom-nav-link {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      color: var(--text-muted);
-      font-size: 11px;
-      font-weight: 600;
-
-      i {
-        font-size: 20px;
-      }
-
-      &.active {
-        color: var(--brand);
-      }
-    }
-
-    @media (min-width: 768px) {
-      .desktop-nav {
-        display: flex;
-      }
-      .bottom-nav {
-        display: none;
-      }
-      .app-content {
-        padding-bottom: 16px;
-      }
+      min-height: 0;
     }
   `,
 })
 export class MainLayoutComponent {
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
   readonly update = inject(UpdateService);
+  private readonly router = inject(Router);
 
-  readonly nav: NavItem[] = [
-    { label: 'Trips', icon: 'pi-map', link: '/trips' },
-    { label: 'Account', icon: 'pi-user', link: '/profile' },
-  ];
+  readonly menuOpen = signal(false);
+
+  readonly profileName = computed(
+    () => this.auth.profile()?.name || this.auth.profile()?.username || 'Account'
+  );
+  readonly initial = computed(() =>
+    (this.profileName().trim()[0] || '?').toUpperCase()
+  );
 
   constructor() {
-    // Warm the profile cache once the shell mounts.
     if (!this.auth.profile()) {
       void this.auth.loadProfile();
     }
+  }
+
+  goProfile(): void {
+    this.menuOpen.set(false);
+    void this.router.navigate(['/profile']);
+  }
+
+  async logout(): Promise<void> {
+    this.menuOpen.set(false);
+    await this.auth.logout();
   }
 }

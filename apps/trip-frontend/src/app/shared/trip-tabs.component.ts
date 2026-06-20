@@ -1,9 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  booleanAttribute,
-  input,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 interface TabDef {
@@ -13,9 +8,11 @@ interface TabDef {
   exact: boolean;
 }
 
+export type TripTabsVariant = 'rail' | 'bottom' | 'pills';
+
 /**
- * Shared tab bar for a trip and its sub-pages. Highlights the active view via
- * routerLinkActive so it reads as navigation, not a primary action button.
+ * Shared trip navigation. Rendered as a vertical rail (desktop) or a bottom
+ * tab bar (mobile); highlights the active view via routerLinkActive.
  */
 @Component({
   selector: 'app-trip-tabs',
@@ -23,7 +20,7 @@ interface TabDef {
   imports: [RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <nav class="trip-tabs" [class.vertical]="vertical()">
+    <nav class="trip-tabs" [class]="variant()">
       @for (tab of tabs; track tab.label) {
         <a
           class="tab"
@@ -41,19 +38,55 @@ interface TabDef {
     .trip-tabs {
       display: flex;
       gap: 4px;
+    }
+
+    /* Rail (desktop, vertical) */
+    .trip-tabs.rail {
+      flex-direction: column;
+    }
+    .trip-tabs.rail .tab {
+      flex-direction: column;
+      gap: 3px;
+      width: 100%;
+      padding: 9px 4px;
+      border-radius: 10px;
+      font-size: 10px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    .trip-tabs.rail .tab i { font-size: 17px; }
+    .trip-tabs.rail .tab.active { background: var(--brand); color: #fff; }
+    .trip-tabs.rail .tab:not(.active):hover { background: var(--bg-subtle); }
+
+    /* Bottom bar (mobile) */
+    .trip-tabs.bottom {
+      gap: 0;
+    }
+    .trip-tabs.bottom .tab {
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 7px 2px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .trip-tabs.bottom .tab i { font-size: 19px; }
+    .trip-tabs.bottom .tab.active { color: var(--brand); }
+
+    /* Pills (horizontal, scrollable) */
+    .trip-tabs.pills {
       padding: 6px 8px;
       overflow-x: auto;
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
-      -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
     }
-    .trip-tabs::-webkit-scrollbar {
-      height: 0;
-    }
-    .tab {
+    .trip-tabs.pills::-webkit-scrollbar { height: 0; }
+    .trip-tabs.pills .tab {
       flex-shrink: 0;
-      display: inline-flex;
       align-items: center;
       gap: 6px;
       padding: 8px 14px;
@@ -63,43 +96,12 @@ interface TabDef {
       color: var(--text-secondary);
       white-space: nowrap;
     }
-    .tab i {
-      font-size: 14px;
-    }
-    .tab.active {
-      background: var(--brand);
-      color: #fff;
-    }
-    .tab:not(.active):hover {
-      background: var(--bg-subtle);
-    }
-
-    /* Vertical rail variant */
-    .trip-tabs.vertical {
-      flex-direction: column;
-      gap: 4px;
-      padding: 0;
-      overflow: visible;
-      background: transparent;
-      border-bottom: none;
-    }
-    .trip-tabs.vertical .tab {
-      flex-direction: column;
-      gap: 3px;
-      width: 100%;
-      padding: 9px 4px;
-      border-radius: 10px;
-      font-size: 10px;
-      text-align: center;
-    }
-    .trip-tabs.vertical .tab i {
-      font-size: 17px;
-    }
+    .trip-tabs.pills .tab.active { background: var(--brand); color: #fff; }
   `,
 })
 export class TripTabsComponent {
   readonly tripId = input.required<string>();
-  readonly vertical = input(false, { transform: booleanAttribute });
+  readonly variant = input<TripTabsVariant>('pills');
 
   readonly tabs: TabDef[] = [
     { label: 'Overview', icon: 'pi-list', path: [], exact: true },

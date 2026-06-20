@@ -75,7 +75,7 @@ interface HotelPin {
     </div>
   `,
   styles: `
-    .map-page { display: flex; flex-direction: column; height: calc(100dvh - var(--header-height)); }
+    .map-page { display: flex; flex-direction: column; height: 100%; }
     .toolbar {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-surface);
