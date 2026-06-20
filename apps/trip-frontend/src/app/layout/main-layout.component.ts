@@ -115,7 +115,7 @@ import { UpdateService } from '../core/update.service';
   styles: `
     .shell {
       height: 100vh;
-      height: 100dvh;
+      height: 100svh;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
