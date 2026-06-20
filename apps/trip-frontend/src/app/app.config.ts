@@ -9,12 +9,15 @@ import {
   withComponentInputBinding,
   withRouterConfig,
 } from '@angular/router';
+import { provideServiceWorker } from '@angular/service-worker';
 import { providePrimeNG } from 'primeng/config';
 import { MessageService } from 'primeng/api';
 import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
+import { offlineGuardInterceptor } from './core/offline.interceptor';
+import { environment } from '../environments/environment';
 
 // Travel-themed indigo primary palette
 const TripPreset = definePreset(Aura, {
@@ -44,7 +47,9 @@ export const appConfig: ApplicationConfig = {
       // Child trip pages read the :id param from the parent layout route.
       withRouterConfig({ paramsInheritanceStrategy: 'always' })
     ),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(
+      withInterceptors([offlineGuardInterceptor, authInterceptor])
+    ),
     provideAnimationsAsync(),
     MessageService,
     providePrimeNG({
@@ -55,6 +60,10 @@ export const appConfig: ApplicationConfig = {
           cssLayer: false,
         },
       },
+    }),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: environment.production,
+      registrationStrategy: 'registerWhenStable:30000',
     }),
   ],
 };

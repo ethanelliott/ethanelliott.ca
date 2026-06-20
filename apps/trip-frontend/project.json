@@ -26,7 +26,8 @@
         "stylePreprocessorOptions": {
           "includePaths": ["apps/trip-frontend/src"]
         },
-        "scripts": []
+        "scripts": [],
+        "serviceWorker": "apps/trip-frontend/ngsw-config.json"
       },
       "configurations": {
         "production": {

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { ConnectivityService } from '../core/connectivity.service';
 
 interface NavItem {
   label: string;
@@ -37,6 +38,13 @@ interface NavItem {
         </div>
       </header>
 
+      @if (!connectivity.online()) {
+        <div class="offline-banner">
+          <i class="pi pi-wifi"></i>
+          Offline — viewing saved data. Editing is paused until you reconnect.
+        </div>
+      }
+
       <main class="app-content">
         <router-outlet />
       </main>
@@ -71,6 +79,21 @@ interface NavItem {
       background: var(--brand);
       color: #fff;
       box-shadow: var(--shadow-sm);
+    }
+
+    .offline-banner {
+      position: sticky;
+      top: var(--header-height);
+      z-index: 39;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #e8643c;
+      color: #fff;
     }
 
     .header-inner {
@@ -172,6 +195,7 @@ interface NavItem {
 })
 export class MainLayoutComponent {
   private readonly auth = inject(AuthService);
+  readonly connectivity = inject(ConnectivityService);
 
   readonly nav: NavItem[] = [
     { label: 'Trips', icon: 'pi-map', link: '/trips' },

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/icons/**",
+          "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+        ]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "trip-api",
+      "urls": [
+        "https://trip-api.elliott.haus/trips",
+        "https://trip-api.elliott.haus/trips/**",
+        "https://trip-api.elliott.haus/packing-templates",
+        "https://trip-api.elliott.haus/users/profile"
+      ],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 300,
+        "maxAge": "30d",
+        "timeout": "5s"
+      }
+    }
+  ],
+  "navigationUrls": ["/**", "!/**/*.*", "!/**/_*", "!/**/_*/**"]
+}
