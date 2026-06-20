@@ -19,7 +19,6 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
 import { LocationSearchComponent } from '../../shared/location-search.component';
-import { TripTabsComponent } from '../../shared/trip-tabs.component';
 import {
   Activity,
   CreateActivityRequest,
@@ -43,6 +42,8 @@ const HOUR_PX = 48;
 const PX_PER_MIN = HOUR_PX / 60;
 const COL_WIDTH = 150;
 const SNAP = 15; // minutes
+const SCALE_WIDTH = 48; // px per timezone scale in the gutter
+const DRAG_THRESHOLD = 5; // px before a press counts as a drag (vs a tap)
 
 interface RenderedPiece extends ActivityPiece {
   activity: Activity;
@@ -92,7 +93,6 @@ interface DragState {
     MultiSelect,
     ConfirmDialog,
     LocationSearchComponent,
-    TripTabsComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -100,10 +100,8 @@ interface DragState {
     <p-confirmdialog />
 
     <div class="sched">
-      <app-trip-tabs [tripId]="id()" />
       <!-- Toolbar -->
       <div class="toolbar">
-        <button class="back" (click)="back()"><i class="pi pi-arrow-left"></i></button>
         <div class="title">{{ trip()?.name }} · Schedule</div>
         <div class="spacer"></div>
         @if (displayTzOptions().length > 1) {
@@ -121,13 +119,6 @@ interface DragState {
         <p-button label="Tags" icon="pi pi-tag" severity="secondary" [outlined]="true" size="small" (onClick)="openTagManager()" />
       </div>
 
-      @if (!loading() && columns().length > 0) {
-        <div class="hint">
-          <i class="pi pi-info-circle"></i>
-          Tap any empty time slot to add an activity, or use <b>Add</b>. Drag to move, drag the bottom edge to resize.
-        </div>
-      }
-
       @if (loading()) {
         <div class="empty-state"><i class="pi pi-spin pi-spinner"></i></div>
       } @else if (columns().length === 0) {
@@ -138,8 +129,14 @@ interface DragState {
       } @else {
         <div class="grid-scroll">
           <div class="grid" [style.gridTemplateColumns]="gridTemplate()">
-            <!-- Gutter header -->
-            <div class="corner"></div>
+            <!-- Gutter header: a timezone abbreviation per scale -->
+            <div class="corner">
+              @for (z of zoneScales(); track z.tz) {
+                <div class="corner-tz" [class.primary]="z.tz === displayTz()">
+                  {{ tzAbbrev(columnDates()[0], z.tz) }}
+                </div>
+              }
+            </div>
             <!-- Column headers -->
             @for (col of columns(); track col.date) {
               <div class="col-head" [style.borderTopColor]="col.color || 'transparent'">
@@ -149,13 +146,14 @@ interface DragState {
               </div>
             }
 
-            <!-- Gutter hours -->
+            <!-- Gutter: one time scale per relevant timezone, side by side -->
             <div class="gutter" [style.height.px]="dayHeight">
-              @for (h of hours; track h) {
-                <div class="hour-label" [style.top.px]="h * HOUR_PX">
-                  <span class="disp">{{ pad(h) }}:00</span>
-                  @if (showHome()) {
-                    <span class="home muted">{{ homeLabel(h) }}</span>
+              @for (z of zoneScales(); track z.tz) {
+                <div class="scale" [class.primary]="z.tz === displayTz()">
+                  @for (h of hours; track h) {
+                    <div class="scale-label" [style.top.px]="h * HOUR_PX">
+                      {{ zoneLabel(z.tz, h) }}
+                    </div>
                   }
                 </div>
               }
@@ -176,7 +174,7 @@ interface DragState {
                     [style.top.px]="p.startMin * PX_PER_MIN"
                     [style.height.px]="(p.endMin - p.startMin) * PX_PER_MIN"
                     [style.background]="p.color"
-                    (click)="openEdit($event, p.activity)"
+                    (click)="$event.stopPropagation()"
                     (pointerdown)="startMove($event, p)"
                   >
                     <div class="event-title">{{ p.activity.title }}</div>
@@ -321,15 +319,17 @@ interface DragState {
     .toolbar .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .toolbar .spacer { flex: 1; }
     .back { width: 34px; height: 34px; border: none; border-radius: 9px; background: var(--bg-subtle); cursor: pointer; }
-    .hint {
-      display: flex; align-items: center; gap: 6px;
-      padding: 6px 14px; font-size: 12px; color: var(--text-secondary);
-      background: var(--brand-light); border-bottom: 1px solid var(--border);
-    }
-    .hint i { color: var(--brand); }
     .grid-scroll { flex: 1; overflow: auto; }
     .grid { display: grid; position: relative; }
-    .corner { position: sticky; left: 0; top: 0; z-index: 5; background: var(--bg-surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .corner { position: sticky; left: 0; top: 0; z-index: 5; display: flex; background: var(--bg-surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .corner-tz {
+      width: ${SCALE_WIDTH}px; flex-shrink: 0;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: 4px; font-size: 10px; font-weight: 700;
+      color: var(--text-muted); border-left: 1px solid var(--border);
+    }
+    .corner-tz:first-child { border-left: none; }
+    .corner-tz.primary { color: var(--brand); }
     .col-head {
       position: sticky; top: 0; z-index: 4;
       background: var(--bg-surface); border-bottom: 1px solid var(--border); border-left: 1px solid var(--border);
@@ -339,9 +339,12 @@ interface DragState {
     .col-city { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .col-date { font-size: 12px; }
     .col-tz { font-size: 11px; }
-    .gutter { position: sticky; left: 0; z-index: 3; background: var(--bg-surface); border-right: 1px solid var(--border); position: relative; }
-    .hour-label { position: absolute; right: 6px; display: flex; flex-direction: column; align-items: flex-end; transform: translateY(-1px); font-size: 11px; line-height: 1.1; }
-    .hour-label .home { font-size: 10px; }
+    .gutter { position: sticky; left: 0; z-index: 3; display: flex; background: var(--bg-surface); border-right: 1px solid var(--border); }
+    .scale { position: relative; width: ${SCALE_WIDTH}px; flex-shrink: 0; border-left: 1px solid var(--border); }
+    .scale:first-child { border-left: none; }
+    .scale.primary { background: var(--brand-light); }
+    .scale-label { position: absolute; right: 5px; transform: translateY(-1px); font-size: 10px; line-height: 1.1; color: var(--text-secondary); }
+    .scale.primary .scale-label { color: var(--brand-dark); font-weight: 600; }
     .col-body {
       position: relative; border-left: 1px solid var(--border);
       background-image:
@@ -426,9 +429,23 @@ export class ScheduleComponent implements OnInit {
 
   readonly columnDates = computed(() => this.columns().map((c) => c.date));
 
-  readonly showHome = computed(
-    () => this.trip()?.homeTimezone !== this.displayTz()
-  );
+  /**
+   * Timezone scales shown in the gutter, side by side: the display zone (the
+   * first non-home zone by default) first, then home, then any other distinct
+   * segment zones.
+   */
+  readonly zoneScales = computed<{ tz: string; home: boolean }[]>(() => {
+    const t = this.trip();
+    if (!t) return [];
+    const zones: string[] = [];
+    const add = (z: string | undefined) => {
+      if (z && !zones.includes(z)) zones.push(z);
+    };
+    add(this.displayTz());
+    add(t.homeTimezone);
+    for (const s of t.segments) add(s.timezone);
+    return zones.map((tz) => ({ tz, home: tz === t.homeTimezone }));
+  });
 
   readonly displayTzOptions = computed(() => {
     const t = this.trip();
@@ -482,7 +499,12 @@ export class ScheduleComponent implements OnInit {
     this.api.getTrip(tripId).subscribe({
       next: (trip) => {
         this.trip.set(trip);
-        this.displayTz.set(trip.homeTimezone);
+        // Anchor the grid on the first non-home (destination) timezone, with
+        // home shown alongside for comparison.
+        const firstAway = trip.segments
+          .map((s) => s.timezone)
+          .find((tz) => tz !== trip.homeTimezone);
+        this.displayTz.set(firstAway ?? trip.homeTimezone);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -536,16 +558,20 @@ export class ScheduleComponent implements OnInit {
     return formatMinutes(zonedParts(new Date(iso), this.displayTz()).minutes);
   }
 
-  homeLabel(hour: number): string {
-    const t = this.trip();
+  /** Wall-clock label for a timezone at a given display-zone hour row. */
+  zoneLabel(tz: string, hour: number): string {
     const dates = this.columnDates();
-    if (!t || dates.length === 0) return '';
+    if (dates.length === 0) return '';
     const instant = zonedTimeToUtc(dates[0], hour * 60, this.displayTz());
-    return formatMinutes(zonedParts(instant, t.homeTimezone).minutes);
+    return formatMinutes(zonedParts(instant, tz).minutes);
+  }
+
+  gutterWidth(): number {
+    return Math.max(64, this.zoneScales().length * SCALE_WIDTH);
   }
 
   gridTemplate(): string {
-    return `64px repeat(${this.columns().length}, ${COL_WIDTH}px)`;
+    return `${this.gutterWidth()}px repeat(${this.columns().length}, ${COL_WIDTH}px)`;
   }
 
   // ── Create via click ──
@@ -618,8 +644,12 @@ export class ScheduleComponent implements OnInit {
   private onDragMove(event: PointerEvent): void {
     const d = this.drag();
     if (!d) return;
-    const dyMin = this.snap((event.clientY - d.startY) / PX_PER_MIN);
-    const dCol = Math.round((event.clientX - d.startX) / COL_WIDTH);
+    const dxPx = event.clientX - d.startX;
+    const dyPx = event.clientY - d.startY;
+    // Ignore sub-threshold jitter so a tap stays a tap (opens the editor).
+    if (!d.moved && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD) return;
+    const dyMin = this.snap(dyPx / PX_PER_MIN);
+    const dCol = Math.round(dxPx / COL_WIDTH);
     const maxCol = this.columnDates().length - 1;
 
     if (d.kind === 'move') {
@@ -644,7 +674,10 @@ export class ScheduleComponent implements OnInit {
     const d = this.drag();
     if (!d) return;
     if (!d.moved) {
+      // A tap (no real drag) opens the activity editor.
+      const activity = this.activities().find((a) => a.id === d.activityId);
       this.drag.set(null);
+      if (activity) this.openActivityEditor(activity);
       return;
     }
 
@@ -745,9 +778,7 @@ export class ScheduleComponent implements OnInit {
     this.editorVisible.set(true);
   }
 
-  openEdit(event: MouseEvent, a: Activity): void {
-    event.stopPropagation();
-    if (this.drag()) return;
+  private openActivityEditor(a: Activity): void {
     const tz = this.displayTz();
     const s = zonedParts(new Date(a.startAt), tz);
     const e = zonedParts(new Date(a.endAt), tz);

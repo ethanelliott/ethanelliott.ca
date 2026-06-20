@@ -19,7 +19,6 @@ import { ApiService } from '../../core/api.service';
 import { Activity, Expense, Trip } from '../../core/models';
 import { formatDate, formatMoney } from '../../core/format';
 import { zonedParts } from '../../core/tz';
-import { TripTabsComponent } from '../../shared/trip-tabs.component';
 
 const TYPES = [
   'FLIGHT',
@@ -57,18 +56,14 @@ interface CashflowRow {
     InputText,
     Select,
     ConfirmDialog,
-    TripTabsComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-confirmdialog />
 
-    <app-trip-tabs [tripId]="id()" />
-
     <div class="page">
       <div class="head">
-        <button class="back" (click)="back()"><i class="pi pi-arrow-left"></i></button>
         <h1 class="title">{{ trip()?.name }} · Budget</h1>
         <div class="spacer"></div>
         <p-button label="Add" icon="pi pi-plus" size="small" (onClick)="openCreate()" />

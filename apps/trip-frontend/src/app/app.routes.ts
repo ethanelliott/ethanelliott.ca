@@ -29,35 +29,44 @@ export const appRoutes: Route[] = [
       {
         path: 'trips/:id',
         loadComponent: () =>
-          import('./pages/trip-detail/trip-detail.component').then(
-            (m) => m.TripDetailComponent
+          import('./pages/trip-layout.component').then(
+            (m) => m.TripLayoutComponent
           ),
-      },
-      {
-        path: 'trips/:id/schedule',
-        loadComponent: () =>
-          import('./pages/schedule/schedule.component').then(
-            (m) => m.ScheduleComponent
-          ),
-      },
-      {
-        path: 'trips/:id/map',
-        loadComponent: () =>
-          import('./pages/map/map.component').then((m) => m.MapComponent),
-      },
-      {
-        path: 'trips/:id/budget',
-        loadComponent: () =>
-          import('./pages/budget/budget.component').then(
-            (m) => m.BudgetComponent
-          ),
-      },
-      {
-        path: 'trips/:id/packing',
-        loadComponent: () =>
-          import('./pages/packing/packing.component').then(
-            (m) => m.PackingComponent
-          ),
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./pages/trip-detail/trip-detail.component').then(
+                (m) => m.TripDetailComponent
+              ),
+          },
+          {
+            path: 'schedule',
+            loadComponent: () =>
+              import('./pages/schedule/schedule.component').then(
+                (m) => m.ScheduleComponent
+              ),
+          },
+          {
+            path: 'map',
+            loadComponent: () =>
+              import('./pages/map/map.component').then((m) => m.MapComponent),
+          },
+          {
+            path: 'budget',
+            loadComponent: () =>
+              import('./pages/budget/budget.component').then(
+                (m) => m.BudgetComponent
+              ),
+          },
+          {
+            path: 'packing',
+            loadComponent: () =>
+              import('./pages/packing/packing.component').then(
+                (m) => m.PackingComponent
+              ),
+          },
+        ],
       },
       {
         path: 'profile',

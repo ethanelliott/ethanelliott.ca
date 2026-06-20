@@ -19,7 +19,6 @@ import * as L from 'leaflet';
 import { ApiService } from '../../core/api.service';
 import { Activity, Trip } from '../../core/models';
 import { resolveColumns } from '../../core/schedule-layout';
-import { TripTabsComponent } from '../../shared/trip-tabs.component';
 import { formatMinutes, zonedParts } from '../../core/tz';
 
 interface ActivityPin {
@@ -41,13 +40,11 @@ interface HotelPin {
 @Component({
   selector: 'app-map',
   standalone: true,
-  imports: [FormsModule, Select, TripTabsComponent],
+  imports: [FormsModule, Select],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="map-page">
-      <app-trip-tabs [tripId]="id()" />
       <div class="toolbar">
-        <button class="back" (click)="back()"><i class="pi pi-arrow-left"></i></button>
         <div class="title">{{ trip()?.name }} · Map</div>
         <div class="spacer"></div>
         <p-select

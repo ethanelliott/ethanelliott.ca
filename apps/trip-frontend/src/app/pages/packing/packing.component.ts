@@ -21,7 +21,6 @@ import {
   PackingList,
   PackingTemplateSummary,
 } from '../../core/models';
-import { TripTabsComponent } from '../../shared/trip-tabs.component';
 
 interface Group {
   id: string | null;
@@ -40,18 +39,14 @@ interface Group {
     InputText,
     Select,
     ConfirmDialog,
-    TripTabsComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-confirmdialog />
 
-    <app-trip-tabs [tripId]="id()" />
-
     <div class="page">
       <div class="head">
-        <button class="back" (click)="back()"><i class="pi pi-arrow-left"></i></button>
         <h1 class="title">{{ tripName() }} · Packing</h1>
         <div class="spacer"></div>
         <p-button icon="pi pi-box" label="Bags" size="small" severity="secondary" [outlined]="true" (onClick)="containerDialog.set(true)" />

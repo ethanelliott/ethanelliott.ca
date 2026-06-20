@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  booleanAttribute,
+  input,
+} from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 interface TabDef {
@@ -18,7 +23,7 @@ interface TabDef {
   imports: [RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <nav class="trip-tabs">
+    <nav class="trip-tabs" [class.vertical]="vertical()">
       @for (tab of tabs; track tab.label) {
         <a
           class="tab"
@@ -68,10 +73,33 @@ interface TabDef {
     .tab:not(.active):hover {
       background: var(--bg-subtle);
     }
+
+    /* Vertical rail variant */
+    .trip-tabs.vertical {
+      flex-direction: column;
+      gap: 4px;
+      padding: 0;
+      overflow: visible;
+      background: transparent;
+      border-bottom: none;
+    }
+    .trip-tabs.vertical .tab {
+      flex-direction: column;
+      gap: 3px;
+      width: 100%;
+      padding: 9px 4px;
+      border-radius: 10px;
+      font-size: 10px;
+      text-align: center;
+    }
+    .trip-tabs.vertical .tab i {
+      font-size: 17px;
+    }
   `,
 })
 export class TripTabsComponent {
   readonly tripId = input.required<string>();
+  readonly vertical = input(false, { transform: booleanAttribute });
 
   readonly tabs: TabDef[] = [
     { label: 'Overview', icon: 'pi-list', path: [], exact: true },
