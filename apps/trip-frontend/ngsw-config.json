@@ -43,6 +43,20 @@
         "maxAge": "30d",
         "timeout": "5s"
       }
+    },
+    {
+      "name": "osm-tiles",
+      "urls": [
+        "https://a.tile.openstreetmap.org/**",
+        "https://b.tile.openstreetmap.org/**",
+        "https://c.tile.openstreetmap.org/**",
+        "https://tile.openstreetmap.org/**"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 1500,
+        "maxAge": "60d"
+      }
     }
   ],
   "navigationUrls": ["/**", "!/**/*.*", "!/**/_*", "!/**/_*/**"]

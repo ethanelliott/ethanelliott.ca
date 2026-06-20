@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { ConnectivityService } from '../core/connectivity.service';
+import { UpdateService } from '../core/update.service';
 
 interface NavItem {
   label: string;
@@ -23,27 +24,34 @@ interface NavItem {
             <span>Trip</span>
           </a>
 
-          <nav class="desktop-nav">
-            @for (item of nav; track item.link) {
-              <a
-                [routerLink]="item.link"
-                routerLinkActive="active"
-                class="desktop-nav-link"
-              >
-                <i [class]="'pi ' + item.icon"></i>
-                {{ item.label }}
-              </a>
+          <div class="header-actions">
+            <nav class="desktop-nav">
+              @for (item of nav; track item.link) {
+                <a
+                  [routerLink]="item.link"
+                  routerLinkActive="active"
+                  class="desktop-nav-link"
+                >
+                  <i [class]="'pi ' + item.icon"></i>
+                  {{ item.label }}
+                </a>
+              }
+            </nav>
+
+            @if (update.updateReady()) {
+              <button class="update-pill" (click)="update.reload()" title="A new version is ready">
+                <i class="pi pi-refresh"></i> Update
+              </button>
             }
-          </nav>
+
+            <span
+              class="net-dot"
+              [class.off]="!connectivity.online()"
+              [title]="connectivity.online() ? 'Online' : 'Offline — editing paused'"
+            ></span>
+          </div>
         </div>
       </header>
-
-      @if (!connectivity.online()) {
-        <div class="offline-banner">
-          <i class="pi pi-wifi"></i>
-          Offline — viewing saved data. Editing is paused until you reconnect.
-        </div>
-      }
 
       <main class="app-content">
         <router-outlet />
@@ -81,19 +89,37 @@ interface NavItem {
       box-shadow: var(--shadow-sm);
     }
 
-    .offline-banner {
-      position: sticky;
-      top: var(--header-height);
-      z-index: 39;
+    .header-actions {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 6px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      background: #e8643c;
+      gap: 12px;
+    }
+    .net-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+      flex-shrink: 0;
+    }
+    .net-dot.off {
+      background: #f59e0b;
+    }
+    .update-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: none;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.2);
       color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 5px 11px;
+      border-radius: 999px;
+    }
+    .update-pill i {
+      font-size: 12px;
     }
 
     .header-inner {
@@ -196,6 +222,7 @@ interface NavItem {
 export class MainLayoutComponent {
   private readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
+  readonly update = inject(UpdateService);
 
   readonly nav: NavItem[] = [
     { label: 'Trips', icon: 'pi-map', link: '/trips' },

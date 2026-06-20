@@ -232,6 +232,9 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors',
+      // CORS so the service worker can cache tiles (non-opaque responses)
+      // for offline use.
+      crossOrigin: true,
     }).addTo(this.map);
     this.layer = L.layerGroup().addTo(this.map);
     this.mapReady.set(true);
