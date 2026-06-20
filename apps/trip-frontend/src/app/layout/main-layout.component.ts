@@ -25,12 +25,6 @@ import { UpdateService } from '../core/update.service';
           </a>
 
           <div class="header-actions">
-            @if (update.updateReady()) {
-              <button class="update-pill" (click)="update.reload()" title="A new version is ready">
-                <i class="pi pi-refresh"></i> Update
-              </button>
-            }
-
             <span
               class="net-dot"
               [class.off]="!connectivity.online()"
@@ -123,20 +117,6 @@ import { UpdateService } from '../core/update.service';
       flex-shrink: 0;
     }
     .net-dot.off { background: #f59e0b; }
-    .update-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      border: none;
-      cursor: pointer;
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
-      font-weight: 600;
-      font-size: 12px;
-      padding: 5px 11px;
-      border-radius: 999px;
-    }
-    .update-pill i { font-size: 12px; }
 
     .avatar {
       width: 34px;

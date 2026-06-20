@@ -55,16 +55,6 @@ import { AuthService } from '../../core/auth.service';
           Loading your profile…
         </div>
       }
-
-      <div class="logout-row">
-        <p-button
-          severity="secondary"
-          [text]="true"
-          (onClick)="logout()"
-          label="Log out"
-          icon="pi pi-sign-out"
-        />
-      </div>
     </div>
   `,
   styles: `
@@ -91,9 +81,6 @@ import { AuthService } from '../../core/auth.service';
       input {
         width: 100%;
       }
-    }
-    .logout-row {
-      margin-top: 18px;
     }
   `,
 })
@@ -136,9 +123,5 @@ export class ProfileComponent {
     } finally {
       this.saving.set(false);
     }
-  }
-
-  async logout(): Promise<void> {
-    await this.auth.logout();
   }
 }
