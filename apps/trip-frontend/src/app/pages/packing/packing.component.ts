@@ -21,6 +21,7 @@ import {
   PackingList,
   PackingTemplateSummary,
 } from '../../core/models';
+import { TripTabsComponent } from '../../shared/trip-tabs.component';
 
 interface Group {
   id: string | null;
@@ -32,11 +33,21 @@ interface Group {
 @Component({
   selector: 'app-packing',
   standalone: true,
-  imports: [FormsModule, Button, Dialog, InputText, Select, ConfirmDialog],
+  imports: [
+    FormsModule,
+    Button,
+    Dialog,
+    InputText,
+    Select,
+    ConfirmDialog,
+    TripTabsComponent,
+  ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-confirmdialog />
+
+    <app-trip-tabs [tripId]="id()" />
 
     <div class="page">
       <div class="head">

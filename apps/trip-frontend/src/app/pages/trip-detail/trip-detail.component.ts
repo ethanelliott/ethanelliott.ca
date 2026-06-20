@@ -19,6 +19,7 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { LocationSearchComponent } from '../../shared/location-search.component';
+import { TripTabsComponent } from '../../shared/trip-tabs.component';
 import { LatLng, Segment, SegmentRequest, Trip } from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
 import { formatDate, formatDateRange } from '../../core/format';
@@ -42,6 +43,7 @@ interface SegmentForm extends SegmentRequest {
     Textarea,
     ConfirmDialog,
     LocationSearchComponent,
+    TripTabsComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -77,36 +79,8 @@ interface SegmentForm extends SegmentRequest {
           }
         </div>
 
-        <!-- View navigation (horizontally scrollable on small screens) -->
-        <div class="trip-nav">
-          <p-button
-            label="Schedule"
-            icon="pi pi-calendar"
-            size="small"
-            (onClick)="openSchedule()"
-          />
-          <p-button
-            label="Map"
-            icon="pi pi-map"
-            size="small"
-            severity="secondary"
-            (onClick)="openMap()"
-          />
-          <p-button
-            label="Budget"
-            icon="pi pi-wallet"
-            size="small"
-            severity="secondary"
-            (onClick)="openBudget()"
-          />
-          <p-button
-            label="Packing"
-            icon="pi pi-briefcase"
-            size="small"
-            severity="secondary"
-            (onClick)="openPacking()"
-          />
-        </div>
+        <!-- View navigation -->
+        <app-trip-tabs [tripId]="id()" />
 
         @if (t.description) {
           <p class="desc">{{ t.description }}</p>

@@ -19,6 +19,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
 import { LocationSearchComponent } from '../../shared/location-search.component';
+import { TripTabsComponent } from '../../shared/trip-tabs.component';
 import {
   Activity,
   CreateActivityRequest,
@@ -91,6 +92,7 @@ interface DragState {
     MultiSelect,
     ConfirmDialog,
     LocationSearchComponent,
+    TripTabsComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,6 +100,7 @@ interface DragState {
     <p-confirmdialog />
 
     <div class="sched">
+      <app-trip-tabs [tripId]="id()" />
       <!-- Toolbar -->
       <div class="toolbar">
         <button class="back" (click)="back()"><i class="pi pi-arrow-left"></i></button>

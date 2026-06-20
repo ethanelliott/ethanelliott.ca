@@ -19,6 +19,7 @@ import { ApiService } from '../../core/api.service';
 import { Activity, Expense, Trip } from '../../core/models';
 import { formatDate, formatMoney } from '../../core/format';
 import { zonedParts } from '../../core/tz';
+import { TripTabsComponent } from '../../shared/trip-tabs.component';
 
 const TYPES = [
   'FLIGHT',
@@ -49,11 +50,21 @@ interface CashflowRow {
 @Component({
   selector: 'app-budget',
   standalone: true,
-  imports: [FormsModule, Button, Dialog, InputText, Select, ConfirmDialog],
+  imports: [
+    FormsModule,
+    Button,
+    Dialog,
+    InputText,
+    Select,
+    ConfirmDialog,
+    TripTabsComponent,
+  ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-confirmdialog />
+
+    <app-trip-tabs [tripId]="id()" />
 
     <div class="page">
       <div class="head">
