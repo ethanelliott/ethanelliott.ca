@@ -35,9 +35,18 @@ export type TripTabsVariant = 'rail' | 'bottom' | 'pills';
     </nav>
   `,
   styles: `
+    :host {
+      display: block;
+    }
     .trip-tabs {
       display: flex;
       gap: 4px;
+    }
+    .tab {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
     }
 
     /* Rail (desktop, vertical) */
@@ -65,8 +74,6 @@ export type TripTabsVariant = 'rail' | 'bottom' | 'pills';
     .trip-tabs.bottom .tab {
       flex: 1;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
       gap: 2px;
       padding: 7px 2px;
       font-size: 10px;
@@ -87,7 +94,6 @@ export type TripTabsVariant = 'rail' | 'bottom' | 'pills';
     .trip-tabs.pills::-webkit-scrollbar { height: 0; }
     .trip-tabs.pills .tab {
       flex-shrink: 0;
-      align-items: center;
       gap: 6px;
       padding: 8px 14px;
       border-radius: 999px;
