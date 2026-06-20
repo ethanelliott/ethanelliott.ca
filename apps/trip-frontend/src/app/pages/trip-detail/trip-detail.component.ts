@@ -62,6 +62,24 @@ interface SegmentForm extends SegmentRequest {
             <p class="muted">{{ rangeLabel() }} · {{ t.baseCurrency }}</p>
           </div>
           <p-button
+            icon="pi pi-pencil"
+            severity="secondary"
+            [text]="true"
+            (onClick)="openEditTrip()"
+          />
+          @if (isOwner()) {
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              [text]="true"
+              (onClick)="confirmDeleteTrip()"
+            />
+          }
+        </div>
+
+        <!-- View navigation (horizontally scrollable on small screens) -->
+        <div class="trip-nav">
+          <p-button
             label="Schedule"
             icon="pi pi-calendar"
             size="small"
@@ -88,20 +106,6 @@ interface SegmentForm extends SegmentRequest {
             severity="secondary"
             (onClick)="openPacking()"
           />
-          <p-button
-            icon="pi pi-pencil"
-            severity="secondary"
-            [text]="true"
-            (onClick)="openEditTrip()"
-          />
-          @if (isOwner()) {
-            <p-button
-              icon="pi pi-trash"
-              severity="danger"
-              [text]="true"
-              (onClick)="confirmDeleteTrip()"
-            />
-          }
         </div>
 
         @if (t.description) {
@@ -356,6 +360,22 @@ interface SegmentForm extends SegmentRequest {
     }
     .head-text .muted {
       font-size: 13px;
+    }
+    .trip-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      // Let the buttons keep their size and scroll horizontally on phones.
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .trip-nav::-webkit-scrollbar {
+      height: 0;
+    }
+    .trip-nav ::ng-deep .p-button {
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .desc {
       color: var(--text-secondary);
