@@ -8,6 +8,7 @@ import {
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { ConnectivityService } from '../core/connectivity.service';
+import { ThemeService } from '../core/theme.service';
 import { UpdateService } from '../core/update.service';
 
 @Component({
@@ -51,6 +52,37 @@ import { UpdateService } from '../core/update.service';
               <div class="account-username muted">{{ '@' + u }}</div>
             }
           </div>
+
+          <div class="theme-row">
+            <span class="theme-label muted">Theme</span>
+            <div class="theme-switch">
+              <button
+                class="theme-opt"
+                [class.active]="theme.pref() === 'light'"
+                (click)="theme.setPref('light')"
+                title="Light"
+              >
+                <i class="pi pi-sun"></i>
+              </button>
+              <button
+                class="theme-opt"
+                [class.active]="theme.pref() === 'dark'"
+                (click)="theme.setPref('dark')"
+                title="Dark"
+              >
+                <i class="pi pi-moon"></i>
+              </button>
+              <button
+                class="theme-opt"
+                [class.active]="theme.pref() === 'system'"
+                (click)="theme.setPref('system')"
+                title="System"
+              >
+                <i class="pi pi-desktop"></i>
+              </button>
+            </div>
+          </div>
+
           <button class="menu-item" (click)="goProfile()">
             <i class="pi pi-user"></i> Profile
           </button>
@@ -151,6 +183,37 @@ import { UpdateService } from '../core/update.service';
     }
     .account-name { font-weight: 700; }
     .account-username { font-size: 12px; }
+    .theme-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+    }
+    .theme-label { font-size: 13px; font-weight: 600; }
+    .theme-switch {
+      display: flex;
+      gap: 2px;
+      background: var(--bg-subtle);
+      border-radius: 9px;
+      padding: 2px;
+    }
+    .theme-opt {
+      width: 30px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-opt.active {
+      background: var(--bg-surface);
+      color: var(--brand);
+      box-shadow: var(--shadow-sm);
+    }
     .menu-item {
       display: flex;
       align-items: center;
@@ -179,6 +242,7 @@ export class MainLayoutComponent {
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
   readonly update = inject(UpdateService);
+  readonly theme = inject(ThemeService);
   private readonly router = inject(Router);
 
   readonly menuOpen = signal(false);
