@@ -26,10 +26,14 @@ import { TripTabsComponent } from '../shared/trip-tabs.component';
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      height: 100%;
+    }
     .trip-shell {
       display: flex;
       flex-direction: column;
-      height: calc(100dvh - var(--header-height));
+      height: 100%;
     }
     .rail {
       display: none;

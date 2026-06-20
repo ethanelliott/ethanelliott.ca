@@ -99,15 +99,15 @@ import { UpdateService } from '../core/update.service';
   `,
   styles: `
     .shell {
-      min-height: 100vh;
-      min-height: 100dvh;
+      height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .app-header {
-      position: sticky;
-      top: 0;
+      flex-shrink: 0;
       z-index: 40;
       height: var(--header-height);
       background: var(--brand);
@@ -235,6 +235,7 @@ import { UpdateService } from '../core/update.service';
     .app-content {
       flex: 1;
       min-height: 0;
+      overflow-y: auto;
     }
   `,
 })
