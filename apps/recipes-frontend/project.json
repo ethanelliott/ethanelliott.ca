@@ -29,7 +29,8 @@
         "stylePreprocessorOptions": {
           "includePaths": ["apps/recipes-frontend/src"]
         },
-        "scripts": []
+        "scripts": [],
+        "serviceWorker": "apps/recipes-frontend/ngsw-config.json"
       },
       "configurations": {
         "production": {
