@@ -34,7 +34,7 @@ import {
   Span,
 } from '../../core/schedule-layout';
 import { contrastText } from '../../core/color';
-import { directionsUrl } from '../../core/maps';
+import { placeUrl } from '../../core/maps';
 import {
   formatMinutes,
   tzAbbreviation,
@@ -310,9 +310,9 @@ interface DragState {
           @if (form.locationLabel) {
             <small class="muted loc-label">📍 {{ form.locationLabel }}</small>
           }
-          @if (directionsForForm(); as url) {
+          @if (mapsForForm(); as url) {
             <a class="dir-link" [href]="url" target="_blank" rel="noopener">
-              <i class="pi pi-directions"></i> Directions in Google Maps
+              <i class="pi pi-map-marker"></i> View on Google Maps
             </a>
           }
         </div>
@@ -870,9 +870,9 @@ export class ScheduleComponent implements OnInit {
     this.form = { ...this.form, lat: null, lng: null, locationLabel: '' };
   }
 
-  /** One-click Google Maps directions to the activity's location. */
-  directionsForForm(): string | null {
-    return directionsUrl({
+  /** One-click Google Maps place link for the activity's location. */
+  mapsForForm(): string | null {
+    return placeUrl({
       lat: this.form.lat,
       lng: this.form.lng,
       query: this.form.locationLabel,

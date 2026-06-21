@@ -5,19 +5,19 @@ export interface MapPlace {
 }
 
 /**
- * Build a Google Maps directions URL to a place. Prefers exact coordinates,
- * falling back to a text query (a place label, or "City, Country"). Returns
- * null when there's nothing to point at. Opens directions (with the user's
- * current location as the origin) in the Google Maps app or web.
+ * Build a Google Maps URL that shows a place (drops a pin), letting the user
+ * decide what to do from there. Prefers exact coordinates, falling back to a
+ * text query (a place label, or "City, Country"). Returns null when there's
+ * nothing to point at. Opens in the Google Maps app or web.
  */
-export function directionsUrl(place: MapPlace): string | null {
+export function placeUrl(place: MapPlace): string | null {
   const { lat, lng, query } = place;
   if (lat != null && lng != null) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   }
   const q = query?.trim();
   if (q) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   }
   return null;
 }

@@ -31,7 +31,7 @@ import {
 } from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
 import { formatDate, formatDateRange, formatMoney } from '../../core/format';
-import { directionsUrl } from '../../core/maps';
+import { placeUrl } from '../../core/maps';
 
 interface SegmentForm extends SegmentRequest {
   id: string | null;
@@ -165,15 +165,15 @@ interface StayForm extends StayRequest {
                   </div>
                 </div>
                 <div class="segment-actions">
-                  @if (directionsForSegment(s); as url) {
+                  @if (mapsForSegment(s); as url) {
                     <a
                       class="icon-btn"
                       [href]="url"
                       target="_blank"
                       rel="noopener"
-                      title="Directions in Google Maps"
+                      title="View on Google Maps"
                     >
-                      <i class="pi pi-directions"></i>
+                      <i class="pi pi-map-marker"></i>
                     </a>
                   }
                   <button
@@ -234,15 +234,15 @@ interface StayForm extends StayRequest {
                   </div>
                 </div>
                 <div class="segment-actions">
-                  @if (directionsForStay(h); as url) {
+                  @if (mapsForStay(h); as url) {
                     <a
                       class="icon-btn"
                       [href]="url"
                       target="_blank"
                       rel="noopener"
-                      title="Directions in Google Maps"
+                      title="View on Google Maps"
                     >
-                      <i class="pi pi-directions"></i>
+                      <i class="pi pi-map-marker"></i>
                     </a>
                   }
                   <button class="icon-btn" (click)="openEditStay(h)">
@@ -986,17 +986,17 @@ export class TripDetailComponent implements OnInit {
     return (name?.trim()?.[0] || '?').toUpperCase();
   }
 
-  /** Google Maps directions to a location (coords, else label, else city). */
-  directionsForSegment(s: Segment): string | null {
-    return directionsUrl({
+  /** Google Maps place link for a location (coords, else label, else city). */
+  mapsForSegment(s: Segment): string | null {
+    return placeUrl({
       lat: s.lat,
       lng: s.lng,
       query: s.locationLabel || [s.city, s.country].filter(Boolean).join(', '),
     });
   }
 
-  directionsForStay(h: Stay): string | null {
-    return directionsUrl({ lat: h.lat, lng: h.lng, query: h.locationLabel || h.name });
+  mapsForStay(h: Stay): string | null {
+    return placeUrl({ lat: h.lat, lng: h.lng, query: h.locationLabel || h.name });
   }
 
   canRemove(role: string, memberUserId: string): boolean {

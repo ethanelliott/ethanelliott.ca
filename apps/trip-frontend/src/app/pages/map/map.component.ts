@@ -20,7 +20,7 @@ import { ApiService } from '../../core/api.service';
 import { Activity, Trip } from '../../core/models';
 import { resolveColumns } from '../../core/schedule-layout';
 import { formatMinutes, zonedParts } from '../../core/tz';
-import { directionsUrl } from '../../core/maps';
+import { placeUrl } from '../../core/maps';
 
 interface ActivityPin {
   lat: number;
@@ -335,11 +335,11 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** Popup HTML for a one-click Google Maps directions link. */
+  /** Popup HTML for a one-click Google Maps place link. */
   private dirLink(lat: number, lng: number): string {
-    const url = directionsUrl({ lat, lng });
+    const url = placeUrl({ lat, lng });
     return url
-      ? `<br/><a href="${url}" target="_blank" rel="noopener" class="popup-dir"><i class="pi pi-directions"></i> Directions</a>`
+      ? `<br/><a href="${url}" target="_blank" rel="noopener" class="popup-dir"><i class="pi pi-map-marker"></i> Google Maps</a>`
       : '';
   }
 
