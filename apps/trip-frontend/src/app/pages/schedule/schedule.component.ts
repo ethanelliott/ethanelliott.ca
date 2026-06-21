@@ -48,6 +48,8 @@ const COL_WIDTH = 150;
 const SNAP = 15; // minutes
 const SCALE_WIDTH = 48; // px per timezone scale in the gutter
 const DRAG_THRESHOLD = 5; // px before a press counts as a drag (vs a tap)
+const LONG_PRESS_MS = 280; // hold this long to start dragging/resizing
+const MOVE_CANCEL_PX = 10; // moving this far before the hold cancels it
 
 interface RenderedPiece extends ActivityPiece {
   activity: Activity;
@@ -82,6 +84,21 @@ interface DragState {
   curEndMin: number;
   curColIndex: number;
   moved: boolean;
+}
+
+/** A press in flight, before the long-press timer promotes it to a drag. */
+interface PendingPress {
+  kind: 'move' | 'resize';
+  activity: Activity;
+  origStartMin: number;
+  origColIndex: number;
+  duration: number;
+  startX: number;
+  startY: number;
+  pointerId: number;
+  target: HTMLElement;
+  move: (e: PointerEvent) => void;
+  up: (e: PointerEvent) => void;
 }
 
 @Component({
@@ -466,13 +483,25 @@ interface DragState {
     .event {
       position: absolute; left: 3px; right: 3px;
       border-radius: 6px; color: #fff; padding: 3px 6px;
-      font-size: 11px; overflow: hidden; cursor: grab;
-      box-shadow: var(--shadow-sm); touch-action: none;
+      font-size: 11px; overflow: hidden; cursor: pointer;
+      box-shadow: var(--shadow-sm); touch-action: none; user-select: none;
     }
-    .event.ghost { background: rgba(79,70,229,0.35); border: 1px dashed var(--brand); pointer-events: none; }
+    .event.ghost {
+      background: rgba(79,70,229,0.35); border: 1px dashed var(--brand);
+      pointer-events: none; box-shadow: 0 6px 18px rgba(16,24,40,0.28);
+    }
     .event-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .event-time { opacity: 0.9; font-size: 10px; }
-    .resize-handle { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
+    /* Bottom grip: hold here to resize (rest of the block holds to move). */
+    .resize-handle {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 14px;
+      cursor: ns-resize; display: flex; align-items: flex-end;
+      justify-content: center; padding-bottom: 2px;
+    }
+    .resize-handle::after {
+      content: ''; width: 22px; height: 3px; border-radius: 2px;
+      background: currentColor; opacity: 0.5;
+    }
     .form { display: flex; flex-direction: column; gap: 14px; }
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
@@ -609,6 +638,8 @@ export class ScheduleComponent implements OnInit {
 
   // ── Drag state ──
   readonly drag = signal<DragState | null>(null);
+  private pending: PendingPress | null = null;
+  private pressTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     this.load();
@@ -718,17 +749,16 @@ export class ScheduleComponent implements OnInit {
     return Math.round(min / SNAP) * SNAP;
   }
 
-  // ── Drag move / resize ──
+  // ── Press → tap (edit) or long-press (drag / resize) ──
+  // A quick tap opens the editor; holding for LONG_PRESS_MS arms a drag (on the
+  // body) or resize (on the bottom handle), so the whole block is the touch
+  // target and small handles aren't needed.
   startMove(event: PointerEvent, p: RenderedPiece): void {
-    event.stopPropagation();
-    const duration = this.activityDurationMin(p.activity);
-    this.beginDrag(event, 'move', p, duration);
+    this.beginPress(event, 'move', p);
   }
 
   startResize(event: PointerEvent, p: RenderedPiece): void {
-    event.stopPropagation();
-    const duration = this.activityDurationMin(p.activity);
-    this.beginDrag(event, 'resize', p, duration);
+    this.beginPress(event, 'resize', p);
   }
 
   private activityDurationMin(a: Activity): number {
@@ -737,39 +767,120 @@ export class ScheduleComponent implements OnInit {
     );
   }
 
-  private beginDrag(
+  private beginPress(
     event: PointerEvent,
     kind: 'move' | 'resize',
-    p: RenderedPiece,
-    duration: number
+    p: RenderedPiece
   ): void {
+    event.stopPropagation();
     const tz = this.displayTz();
     const s = zonedParts(new Date(p.activity.startAt), tz);
-    const startMin = s.minutes;
     const startColIndex = this.columnDates().indexOf(s.date);
+    const target = event.target as HTMLElement;
 
-    this.drag.set({
+    const move = (e: PointerEvent) => this.onPressMove(e);
+    const up = (e: PointerEvent) => this.onPressEnd(e);
+
+    this.pending = {
       kind,
-      activityId: p.activity.id,
+      activity: p.activity,
+      origStartMin: s.minutes,
+      origColIndex: startColIndex < 0 ? p.colIndex : startColIndex,
+      duration: this.activityDurationMin(p.activity),
       startX: event.clientX,
       startY: event.clientY,
-      origStartMin: startMin,
-      duration,
-      origColIndex: startColIndex < 0 ? p.colIndex : startColIndex,
-      curStartMin: startMin,
-      curEndMin: startMin + duration,
-      curColIndex: startColIndex < 0 ? p.colIndex : startColIndex,
-      moved: false,
-    });
-
-    const move = (e: PointerEvent) => this.onDragMove(e);
-    const up = (e: PointerEvent) => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      this.onDragEnd(e);
+      pointerId: event.pointerId,
+      target,
+      move,
+      up,
     };
+
+    try {
+      target.setPointerCapture?.(event.pointerId);
+    } catch {
+      // capture is best-effort; window listeners still track the pointer
+    }
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    this.pressTimer = setTimeout(() => this.armDrag(), LONG_PRESS_MS);
+  }
+
+  /** Long-press fired: promote the pending press into an active drag. */
+  private armDrag(): void {
+    const pend = this.pending;
+    if (!pend) return;
+    this.pressTimer = null;
+    this.drag.set({
+      kind: pend.kind,
+      activityId: pend.activity.id,
+      startX: pend.startX,
+      startY: pend.startY,
+      origStartMin: pend.origStartMin,
+      duration: pend.duration,
+      origColIndex: pend.origColIndex,
+      curStartMin: pend.origStartMin,
+      curEndMin: pend.origStartMin + pend.duration,
+      curColIndex: pend.origColIndex,
+      moved: false,
+    });
+    // Haptic nudge so touch users feel the drag engage.
+    try {
+      navigator.vibrate?.(12);
+    } catch {
+      // not supported — ignore
+    }
+  }
+
+  private onPressMove(event: PointerEvent): void {
+    const pend = this.pending;
+    if (!pend) return;
+    if (!this.drag()) {
+      // Long-press hasn't fired yet — a real move means scroll/abort intent.
+      const dx = event.clientX - pend.startX;
+      const dy = event.clientY - pend.startY;
+      if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) this.cancelPress();
+      return;
+    }
+    this.onDragMove(event);
+  }
+
+  private onPressEnd(_event: PointerEvent): void {
+    const pend = this.pending;
+    const d = this.drag();
+    this.teardownPress();
+    if (d) {
+      // Armed: commit if it actually moved, otherwise treat as a no-op.
+      if (d.moved) this.commitDrag(d);
+      else this.drag.set(null);
+      return;
+    }
+    // Released before arming and without scrolling away → a tap: edit.
+    if (pend) this.openActivityEditor(pend.activity);
+  }
+
+  private cancelPress(): void {
+    this.teardownPress();
+    this.drag.set(null);
+  }
+
+  private teardownPress(): void {
+    if (this.pressTimer != null) {
+      clearTimeout(this.pressTimer);
+      this.pressTimer = null;
+    }
+    const pend = this.pending;
+    if (pend) {
+      window.removeEventListener('pointermove', pend.move);
+      window.removeEventListener('pointerup', pend.up);
+      window.removeEventListener('pointercancel', pend.up);
+      try {
+        pend.target.releasePointerCapture?.(pend.pointerId);
+      } catch {
+        // capture may already be gone — ignore
+      }
+    }
+    this.pending = null;
   }
 
   private onDragMove(event: PointerEvent): void {
@@ -801,20 +912,9 @@ export class ScheduleComponent implements OnInit {
     }
   }
 
-  private onDragEnd(_event: PointerEvent): void {
-    const d = this.drag();
-    if (!d) return;
-    if (!d.moved) {
-      // A tap (no real drag) opens the activity editor.
-      const activity = this.activities().find((a) => a.id === d.activityId);
-      this.drag.set(null);
-      if (activity) this.openActivityEditor(activity);
-      return;
-    }
-
+  private commitDrag(d: DragState): void {
     const tz = this.displayTz();
-    const dates = this.columnDates();
-    const colDate = dates[d.curColIndex];
+    const colDate = this.columnDates()[d.curColIndex];
     // Drag keeps an activity within one day column, so both bounds map onto
     // the same column date; spanning is re-derived on reload.
     const startISO = zonedTimeToUtc(colDate, d.curStartMin, tz).toISOString();
