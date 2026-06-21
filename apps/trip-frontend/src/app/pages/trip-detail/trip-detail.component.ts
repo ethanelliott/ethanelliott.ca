@@ -19,9 +19,18 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { LocationSearchComponent } from '../../shared/location-search.component';
-import { LatLng, Segment, SegmentRequest, Stay, StayRequest, Trip } from '../../core/models';
+import {
+  Activity,
+  Expense,
+  LatLng,
+  Segment,
+  SegmentRequest,
+  Stay,
+  StayRequest,
+  Trip,
+} from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
-import { formatDate, formatDateRange } from '../../core/format';
+import { formatDate, formatDateRange, formatMoney } from '../../core/format';
 
 interface SegmentForm extends SegmentRequest {
   id: string | null;
@@ -59,30 +68,63 @@ interface StayForm extends StayRequest {
       @if (loading()) {
         <div class="empty-state"><i class="pi pi-spin pi-spinner"></i></div>
       } @else if (trip(); as t) {
-        <!-- Header -->
-        <div class="trip-head">
-          <div class="head-text">
-            <h1>{{ t.name }}</h1>
-            <p class="muted">{{ rangeLabel() }} · {{ t.baseCurrency }}</p>
+        <!-- Hero -->
+        <div class="hero card">
+          <div class="hero-top">
+            <div class="hero-text">
+              <h1>{{ t.name }}</h1>
+              <p class="hero-sub muted">{{ rangeLabel() }} · {{ t.baseCurrency }}</p>
+            </div>
+            <div class="hero-actions">
+              <p-button
+                icon="pi pi-pencil"
+                severity="secondary"
+                [text]="true"
+                (onClick)="openEditTrip()"
+              />
+              @if (isOwner()) {
+                <p-button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [text]="true"
+                  (onClick)="confirmDeleteTrip()"
+                />
+              }
+            </div>
           </div>
-          <p-button
-            icon="pi pi-pencil"
-            severity="secondary"
-            [text]="true"
-            (onClick)="openEditTrip()"
-          />
-          @if (isOwner()) {
-            <p-button
-              icon="pi pi-trash"
-              severity="danger"
-              [text]="true"
-              (onClick)="confirmDeleteTrip()"
-            />
+          @if (countdown(); as c) {
+            <div class="countdown" [class]="'cd-' + c.state">
+              <i class="pi" [class.pi-clock]="c.state !== 'during'" [class.pi-play-circle]="c.state === 'during'"></i>
+              {{ c.label }}
+            </div>
+          }
+          @if (t.description) {
+            <p class="desc">{{ t.description }}</p>
           }
         </div>
 
-        @if (t.description) {
-          <p class="desc">{{ t.description }}</p>
+        <!-- Stats -->
+        <div class="stats">
+          <div class="stat"><div class="stat-val">{{ dayCount() }}</div><div class="stat-lbl">Days</div></div>
+          <div class="stat"><div class="stat-val">{{ t.segments.length }}</div><div class="stat-lbl">Stops</div></div>
+          <div class="stat"><div class="stat-val">{{ t.stays.length }}</div><div class="stat-lbl">Hotels</div></div>
+          <div class="stat"><div class="stat-val">{{ activities().length }}</div><div class="stat-lbl">Activities</div></div>
+          <div class="stat"><div class="stat-val">{{ t.members.length }}</div><div class="stat-lbl">Travellers</div></div>
+          <div class="stat budget"><div class="stat-val">{{ budgetLabel() }}</div><div class="stat-lbl">Budget</div></div>
+        </div>
+
+        <!-- Up next -->
+        @if (nextActivity(); as a) {
+          <button class="upnext card" (click)="openSchedule()">
+            <div class="upnext-icon" [style.background]="a.color || 'var(--brand)'">
+              <i class="pi pi-arrow-right"></i>
+            </div>
+            <div class="upnext-text">
+              <div class="upnext-label muted">Up next</div>
+              <div class="upnext-title">{{ a.title }}</div>
+              <div class="upnext-when muted">{{ nextWhen() }}</div>
+            </div>
+          </button>
         }
 
         <!-- Locations -->
@@ -391,34 +433,113 @@ interface StayForm extends StayRequest {
     </p-dialog>
   `,
   styles: `
-    .trip-head {
+    /* ── Dashboard ── */
+    .hero {
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .hero-top {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
-      margin-bottom: 8px;
     }
-    .back {
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 10px;
-      background: var(--bg-subtle);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .head-text {
+    .hero-text {
       flex: 1;
       min-width: 0;
     }
-    .head-text h1 {
+    .hero-text h1 {
       font-size: 22px;
+      line-height: 1.2;
+    }
+    .hero-sub {
+      font-size: 13px;
+      margin-top: 2px;
+    }
+    .hero-actions {
+      display: flex;
+      flex-shrink: 0;
+    }
+    .countdown {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .countdown i { font-size: 12px; }
+    .cd-before { background: var(--brand-light); color: var(--brand); }
+    .cd-during { background: rgba(16, 185, 129, 0.16); color: #0f9d6b; }
+    .cd-after { background: var(--bg-subtle); color: var(--text-secondary); }
+    .hero .desc {
+      margin-top: 12px;
+      margin-bottom: 0;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 8px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-val {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .stat.budget .stat-val { font-size: 15px; }
+    .stat-lbl {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .upnext {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      text-align: left;
+      padding: 12px 14px;
+      cursor: pointer;
+      background: var(--bg-surface);
+      margin-bottom: 6px;
+    }
+    .upnext-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .upnext-text { min-width: 0; }
+    .upnext-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .upnext-title {
+      font-weight: 700;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .head-text .muted {
-      font-size: 13px;
-    }
+    .upnext-when { font-size: 12px; }
     .trip-nav {
       display: flex;
       gap: 8px;
@@ -616,6 +737,8 @@ export class TripDetailComponent implements OnInit {
   readonly id = input.required<string>();
 
   readonly trip = signal<Trip | null>(null);
+  readonly activities = signal<Activity[]>([]);
+  readonly expenses = signal<Expense[]>([]);
   readonly loading = signal(true);
 
   readonly tzOptions = timezoneOptions();
@@ -654,6 +777,80 @@ export class TripDetailComponent implements OnInit {
     );
     return formatDateRange(start, end);
   });
+
+  /** Earliest start / latest end across both locations and hotels. */
+  readonly tripBounds = computed<{ start: string; end: string } | null>(() => {
+    const t = this.trip();
+    if (!t) return null;
+    const dates: string[] = [];
+    for (const s of t.segments) dates.push(s.startDate, s.endDate);
+    for (const h of t.stays) dates.push(h.startDate, h.endDate);
+    if (dates.length === 0) return null;
+    dates.sort();
+    return { start: dates[0], end: dates[dates.length - 1] };
+  });
+
+  readonly dayCount = computed(() => {
+    const b = this.tripBounds();
+    return b ? this.dayDiff(b.start, b.end) + 1 : 0;
+  });
+
+  readonly countdown = computed<{ state: 'before' | 'during' | 'after'; label: string } | null>(() => {
+    const b = this.tripBounds();
+    if (!b) return null;
+    const today = this.todayStr();
+    if (today < b.start) {
+      const n = this.dayDiff(today, b.start);
+      return { state: 'before', label: n === 1 ? 'Starts tomorrow' : `Starts in ${n} days` };
+    }
+    if (today > b.end) return { state: 'after', label: 'Trip complete' };
+    return { state: 'during', label: `Day ${this.dayDiff(b.start, today) + 1} of ${this.dayCount()}` };
+  });
+
+  readonly budgetLabel = computed(() => {
+    const total = this.expenses().reduce((sum, e) => sum + e.amountCents, 0);
+    return formatMoney(total, this.trip()?.baseCurrency || 'CAD');
+  });
+
+  readonly nextActivity = computed<Activity | null>(() => {
+    const now = Date.now();
+    return (
+      [...this.activities()]
+        .filter((a) => new Date(a.startAt).getTime() >= now)
+        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())[0] ?? null
+    );
+  });
+
+  nextWhen(): string {
+    const a = this.nextActivity();
+    const t = this.trip();
+    if (!a || !t) return '';
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: t.homeTimezone,
+      }).format(new Date(a.startAt));
+    } catch {
+      return '';
+    }
+  }
+
+  /** Whole days from calendar date `a` to `b` (b - a), DST-safe via UTC. */
+  private dayDiff(a: string, b: string): number {
+    const [ay, am, ad] = a.split('-').map(Number);
+    const [by, bm, bd] = b.split('-').map(Number);
+    return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+  }
+
+  private todayStr(): string {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
 
   readonly myMembership = computed(() => {
     const me = this.auth.profile()?.id;
@@ -726,6 +923,15 @@ export class TripDetailComponent implements OnInit {
         this.trip.set(null);
         this.loading.set(false);
       },
+    });
+    // Dashboard stats — best-effort; failures just leave counts at zero.
+    this.api.getActivities(this.id()).subscribe({
+      next: (a) => this.activities.set(a),
+      error: () => undefined,
+    });
+    this.api.getExpenses(this.id()).subscribe({
+      next: (e) => this.expenses.set(e),
+      error: () => undefined,
     });
   }
 

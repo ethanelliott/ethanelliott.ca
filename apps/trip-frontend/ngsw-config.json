@@ -40,8 +40,20 @@
       "cacheConfig": {
         "strategy": "freshness",
         "maxSize": 300,
-        "maxAge": "30d",
-        "timeout": "5s"
+        "maxAge": "90d",
+        "timeout": "3s"
+      }
+    },
+    {
+      "name": "google-fonts",
+      "urls": [
+        "https://fonts.googleapis.com/**",
+        "https://fonts.gstatic.com/**"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 40,
+        "maxAge": "365d"
       }
     },
     {

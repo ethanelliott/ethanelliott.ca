@@ -144,7 +144,7 @@ interface DragState {
                 </div>
                 @for (col of columns(); track col.date) {
                   <div class="col-head" [style.borderTopColor]="col.color || 'transparent'">
-                    <div class="col-city">{{ col.city || '—' }}</div>
+                    <div class="col-weekday">{{ weekday(col.date) }}</div>
                     <div class="col-date">{{ headerDate(col.date) }}</div>
                   </div>
                 }
@@ -428,15 +428,15 @@ interface DragState {
       border-top: 3px solid transparent;
       padding: 6px 8px; text-align: center;
     }
-    .col-city { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .col-date { font-size: 12px; }
+    .col-weekday { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .col-date { font-size: 12px; color: var(--text-secondary); }
     .col-tz { font-size: 11px; }
     .gutter { position: sticky; left: 0; z-index: 3; display: flex; background: var(--bg-surface); border-right: 1px solid var(--border); }
     .scale { position: relative; width: ${SCALE_WIDTH}px; flex-shrink: 0; border-left: 1px solid var(--border); }
     .scale:first-child { border-left: none; }
-    .scale.primary { background: var(--brand-light); }
+    .scale.primary { background: var(--brand-light); box-shadow: inset 2px 0 0 var(--brand); }
     .scale-label { position: absolute; right: 5px; transform: translateY(-1px); font-size: 10px; line-height: 1.1; color: var(--text-secondary); }
-    .scale.primary .scale-label { color: var(--brand-dark); font-weight: 600; }
+    .scale.primary .scale-label { color: var(--text-primary); font-weight: 700; font-size: 11px; }
     .col-body {
       position: relative; border-left: 1px solid var(--border);
       background-image:
@@ -641,6 +641,16 @@ export class ScheduleComponent implements OnInit {
   headerDate(date: string): string {
     const [, m, d] = date.split('-');
     return `${m}/${d}`;
+  }
+
+  /** Full weekday name for a YYYY-MM-DD calendar date (e.g. "Monday"). */
+  weekday(date: string): string {
+    const [y, m, d] = date.split('-').map(Number);
+    const names = [
+      'Sunday', 'Monday', 'Tuesday', 'Wednesday',
+      'Thursday', 'Friday', 'Saturday',
+    ];
+    return names[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
   }
 
   private colColor(a: Activity): string | null {

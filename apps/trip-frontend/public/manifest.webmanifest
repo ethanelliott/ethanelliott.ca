@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Trip",
   "short_name": "Trip",
   "description": "Plan trips: schedule, map, budget and packing — works offline.",
@@ -8,6 +9,16 @@
   "orientation": "portrait",
   "background_color": "#f5f6f8",
   "theme_color": "#4f46e5",
+  "categories": ["travel", "productivity"],
+  "launch_handler": { "client_mode": "navigate-existing" },
+  "shortcuts": [
+    {
+      "name": "My trips",
+      "short_name": "Trips",
+      "url": "/trips",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
