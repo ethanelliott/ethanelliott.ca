@@ -5,12 +5,14 @@ import {
 } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideServiceWorker } from '@angular/service-worker';
 import { providePrimeNG } from 'primeng/config';
 import { MessageService } from 'primeng/api';
 import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
+import { environment } from '../environments/environment';
 
 // Split-style green primary palette
 const SplitPreset = definePreset(Aura, {
@@ -46,6 +48,10 @@ export const appConfig: ApplicationConfig = {
           cssLayer: false,
         },
       },
+    }),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: environment.production,
+      registrationStrategy: 'registerWhenStable:30000',
     }),
   ],
 };

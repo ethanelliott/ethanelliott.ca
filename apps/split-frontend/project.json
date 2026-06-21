@@ -26,7 +26,8 @@
         "stylePreprocessorOptions": {
           "includePaths": ["apps/split-frontend/src"]
         },
-        "scripts": []
+        "scripts": [],
+        "serviceWorker": "apps/split-frontend/ngsw-config.json"
       },
       "configurations": {
         "production": {

@@ -10,6 +10,7 @@ import { InputText } from 'primeng/inputtext';
 import { Avatar } from 'primeng/avatar';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../core/auth.service';
+import { UpdateService } from '../../core/update.service';
 
 @Component({
   selector: 'app-profile',
@@ -52,6 +53,20 @@ import { AuthService } from '../../core/auth.service';
           <i class="pi pi-key"></i>
           <span>Signed in with a passkey on this device.</span>
         </div>
+      </div>
+
+      <h2 class="section-title">App</h2>
+      <div class="card info-card">
+        <button class="update-row" (click)="checkUpdates()">
+          <i class="pi pi-sync" [class.spin]="update.checking()"></i>
+          <span>
+            @if (update.updateReady()) {
+              Update ready — tap to apply
+            } @else {
+              {{ update.checking() ? 'Checking…' : checkLabel() }}
+            }
+          </span>
+        </button>
       </div>
 
       <div class="logout-wrap">
@@ -123,6 +138,31 @@ import { AuthService } from '../../core/auth.service';
         color: var(--brand);
       }
     }
+    .update-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: left;
+      i {
+        color: var(--brand);
+      }
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .spin {
+      animation: spin 0.9s linear infinite;
+    }
     .logout-wrap {
       margin-top: 24px;
     }
@@ -133,11 +173,13 @@ import { AuthService } from '../../core/auth.service';
 })
 export class ProfileComponent {
   readonly auth = inject(AuthService);
+  readonly update = inject(UpdateService);
   private readonly messages = inject(MessageService);
 
   name = '';
   email = '';
   readonly saving = signal(false);
+  readonly checkLabel = signal('Check for updates');
 
   constructor() {
     const apply = () => {
@@ -156,6 +198,18 @@ export class ProfileComponent {
 
   initial(): string {
     return (this.auth.profile()?.name?.charAt(0) || '?').toUpperCase();
+  }
+
+  async checkUpdates(): Promise<void> {
+    if (this.update.updateReady()) {
+      await this.update.apply();
+      return;
+    }
+    const found = await this.update.check();
+    if (!found) {
+      this.checkLabel.set('Up to date');
+      setTimeout(() => this.checkLabel.set('Check for updates'), 2500);
+    }
   }
 
   save(): void {

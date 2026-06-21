@@ -5,6 +5,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { UpdateService } from '../core/update.service';
 
 interface NavItem {
   label: string;
@@ -26,18 +27,30 @@ interface NavItem {
             <span>Split</span>
           </a>
 
-          <nav class="desktop-nav">
-            @for (item of nav; track item.link) {
-              <a
-                [routerLink]="item.link"
-                routerLinkActive="active"
-                class="desktop-nav-link"
+          <div class="header-right">
+            @if (update.updateReady()) {
+              <button
+                class="update-pill"
+                (click)="update.apply()"
+                title="Apply the new version"
               >
-                <i [class]="'pi ' + item.icon"></i>
-                {{ item.label }}
-              </a>
+                <i class="pi pi-sync"></i> Update
+              </button>
             }
-          </nav>
+
+            <nav class="desktop-nav">
+              @for (item of nav; track item.link) {
+                <a
+                  [routerLink]="item.link"
+                  routerLinkActive="active"
+                  class="desktop-nav-link"
+                >
+                  <i [class]="'pi ' + item.icon"></i>
+                  {{ item.label }}
+                </a>
+              }
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -99,6 +112,31 @@ interface NavItem {
 
       i {
         font-size: 20px;
+      }
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .update-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--brand);
+      font-weight: 700;
+      font-size: 13px;
+      box-shadow: var(--shadow-sm);
+
+      i {
+        font-size: 13px;
       }
     }
 
@@ -181,6 +219,7 @@ interface NavItem {
 })
 export class MainLayoutComponent {
   private readonly auth = inject(AuthService);
+  readonly update = inject(UpdateService);
 
   readonly nav: NavItem[] = [
     { label: 'Groups', icon: 'pi-users', link: '/groups' },

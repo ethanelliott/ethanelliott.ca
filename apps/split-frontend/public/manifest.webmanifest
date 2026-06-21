@@ -1,0 +1,42 @@
+{
+  "id": "/",
+  "name": "Split",
+  "short_name": "Split",
+  "description": "Split shared expenses with your groups — track who owes what.",
+  "start_url": ".",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6f8",
+  "theme_color": "#1b9e77",
+  "categories": ["finance", "productivity"],
+  "launch_handler": { "client_mode": "navigate-existing" },
+  "shortcuts": [
+    {
+      "name": "Groups",
+      "short_name": "Groups",
+      "url": "/groups",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
