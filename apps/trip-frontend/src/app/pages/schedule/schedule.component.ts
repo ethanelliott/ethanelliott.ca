@@ -34,6 +34,7 @@ import {
   Span,
 } from '../../core/schedule-layout';
 import { contrastText } from '../../core/color';
+import { directionsUrl } from '../../core/maps';
 import {
   formatMinutes,
   tzAbbreviation,
@@ -309,6 +310,11 @@ interface DragState {
           @if (form.locationLabel) {
             <small class="muted loc-label">📍 {{ form.locationLabel }}</small>
           }
+          @if (directionsForForm(); as url) {
+            <a class="dir-link" [href]="url" target="_blank" rel="noopener">
+              <i class="pi pi-directions"></i> Directions in Google Maps
+            </a>
+          }
         </div>
         <div class="field">
           <label>Tags</label>
@@ -471,6 +477,8 @@ interface DragState {
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
     .field input, .field textarea { width: 100%; }
+    .dir-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--brand); }
+    .dir-link i { font-size: 13px; }
     .field-row { display: flex; gap: 12px; }
     .field-row .field { flex: 1; }
     .dt { display: flex; gap: 6px; }
@@ -860,6 +868,15 @@ export class ScheduleComponent implements OnInit {
 
   onLocationCleared(): void {
     this.form = { ...this.form, lat: null, lng: null, locationLabel: '' };
+  }
+
+  /** One-click Google Maps directions to the activity's location. */
+  directionsForForm(): string | null {
+    return directionsUrl({
+      lat: this.form.lat,
+      lng: this.form.lng,
+      query: this.form.locationLabel,
+    });
   }
 
   /** Open the create dialog from the toolbar button (no click position). */

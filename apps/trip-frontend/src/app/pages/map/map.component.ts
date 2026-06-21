@@ -20,6 +20,7 @@ import { ApiService } from '../../core/api.service';
 import { Activity, Trip } from '../../core/models';
 import { resolveColumns } from '../../core/schedule-layout';
 import { formatMinutes, zonedParts } from '../../core/tz';
+import { directionsUrl } from '../../core/maps';
 
 interface ActivityPin {
   lat: number;
@@ -89,6 +90,11 @@ interface HotelPin {
     .hint { max-width: 320px; padding: 20px; text-align: center; pointer-events: auto; }
     .hint i { font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 10px; }
     :host ::ng-deep .day-select { min-width: 170px; }
+    :host ::ng-deep .popup-dir {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 6px; font-weight: 600; color: var(--brand);
+    }
+    :host ::ng-deep .popup-dir i { font-size: 12px; }
     :host ::ng-deep .trip-pin {
       display: flex; align-items: center; justify-content: center;
       width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
@@ -274,7 +280,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
         iconAnchor: [11, 11],
       });
       L.marker([loc.lat, loc.lng], { icon })
-        .bindPopup(`<strong>${this.escape(loc.label)}</strong>`)
+        .bindPopup(`<strong>${this.escape(loc.label)}</strong>${this.dirLink(loc.lat, loc.lng)}`)
         .addTo(this.layer);
     }
 
@@ -286,7 +292,9 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
         iconAnchor: [12, 12],
       });
       L.marker([h.lat, h.lng], { icon })
-        .bindPopup(`<strong>${this.escape(h.label)}</strong><br/>${this.escape(h.city)}`)
+        .bindPopup(
+          `<strong>${this.escape(h.label)}</strong><br/>${this.escape(h.city)}${this.dirLink(h.lat, h.lng)}`
+        )
         .addTo(this.layer);
     }
 
@@ -300,7 +308,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       L.marker([a.lat, a.lng], { icon })
         .bindPopup(
-          `<strong>${a.order}. ${this.escape(a.title)}</strong><br/>${this.escape(a.time)}`
+          `<strong>${a.order}. ${this.escape(a.title)}</strong><br/>${this.escape(a.time)}${this.dirLink(a.lat, a.lng)}`
         )
         .addTo(this.layer);
     }
@@ -325,6 +333,14 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
     } else if (allPoints.length > 1) {
       this.map.fitBounds(L.latLngBounds(allPoints), { padding: [40, 40] });
     }
+  }
+
+  /** Popup HTML for a one-click Google Maps directions link. */
+  private dirLink(lat: number, lng: number): string {
+    const url = directionsUrl({ lat, lng });
+    return url
+      ? `<br/><a href="${url}" target="_blank" rel="noopener" class="popup-dir"><i class="pi pi-directions"></i> Directions</a>`
+      : '';
   }
 
   private escape(s: string): string {

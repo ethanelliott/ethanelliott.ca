@@ -31,6 +31,7 @@ import {
 } from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
 import { formatDate, formatDateRange, formatMoney } from '../../core/format';
+import { directionsUrl } from '../../core/maps';
 
 interface SegmentForm extends SegmentRequest {
   id: string | null;
@@ -164,6 +165,17 @@ interface StayForm extends StayRequest {
                   </div>
                 </div>
                 <div class="segment-actions">
+                  @if (directionsForSegment(s); as url) {
+                    <a
+                      class="icon-btn"
+                      [href]="url"
+                      target="_blank"
+                      rel="noopener"
+                      title="Directions in Google Maps"
+                    >
+                      <i class="pi pi-directions"></i>
+                    </a>
+                  }
                   <button
                     class="icon-btn"
                     [disabled]="i === 0"
@@ -222,6 +234,17 @@ interface StayForm extends StayRequest {
                   </div>
                 </div>
                 <div class="segment-actions">
+                  @if (directionsForStay(h); as url) {
+                    <a
+                      class="icon-btn"
+                      [href]="url"
+                      target="_blank"
+                      rel="noopener"
+                      title="Directions in Google Maps"
+                    >
+                      <i class="pi pi-directions"></i>
+                    </a>
+                  }
                   <button class="icon-btn" (click)="openEditStay(h)">
                     <i class="pi pi-pencil"></i>
                   </button>
@@ -615,6 +638,10 @@ interface StayForm extends StayRequest {
       border-radius: 8px;
       cursor: pointer;
       color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
     }
     .icon-btn:hover:not(:disabled) {
       background: var(--bg-subtle);
@@ -957,6 +984,19 @@ export class TripDetailComponent implements OnInit {
 
   initial(name: string): string {
     return (name?.trim()?.[0] || '?').toUpperCase();
+  }
+
+  /** Google Maps directions to a location (coords, else label, else city). */
+  directionsForSegment(s: Segment): string | null {
+    return directionsUrl({
+      lat: s.lat,
+      lng: s.lng,
+      query: s.locationLabel || [s.city, s.country].filter(Boolean).join(', '),
+    });
+  }
+
+  directionsForStay(h: Stay): string | null {
+    return directionsUrl({ lat: h.lat, lng: h.lng, query: h.locationLabel || h.name });
   }
 
   canRemove(role: string, memberUserId: string): boolean {
