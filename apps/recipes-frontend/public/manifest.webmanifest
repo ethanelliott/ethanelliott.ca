@@ -1,0 +1,54 @@
+{
+  "id": "/",
+  "name": "Recipe Book",
+  "short_name": "Recipes",
+  "description": "Your personal recipe book — browse, cook and shop, even offline.",
+  "start_url": ".",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#09090b",
+  "theme_color": "#f97316",
+  "categories": ["food", "lifestyle", "productivity"],
+  "launch_handler": { "client_mode": "navigate-existing" },
+  "shortcuts": [
+    {
+      "name": "All recipes",
+      "short_name": "Recipes",
+      "url": "/recipes",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Random recipe",
+      "short_name": "Random",
+      "url": "/random",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Grocery list",
+      "short_name": "Grocery",
+      "url": "/grocery-list",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

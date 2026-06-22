@@ -4,11 +4,11 @@ import {
   signal,
   inject,
 } from '@angular/core';
-import { Router, RouterModule, NavigationEnd } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { DrawerModule } from 'primeng/drawer';
 import { ButtonModule } from 'primeng/button';
-import { filter } from 'rxjs/operators';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { UpdateService } from '../services/update.service';
+import { ConnectivityService } from '../services/connectivity.service';
 
 interface NavItem {
   label: string;
@@ -34,6 +34,18 @@ interface NavItem {
         <i class="pi pi-book"></i>
         Recipe Book
       </span>
+      <span class="mobile-header-spacer"></span>
+      @if (!connectivity.online()) {
+        <span class="offline-badge" title="You're offline — viewing saved recipes">
+          <i class="pi pi-cloud"></i>
+        </span>
+      }
+      @if (update.updateReady()) {
+        <button class="update-pill" (click)="update.apply()" title="Apply the new version">
+          <i class="pi pi-sync"></i>
+          Update
+        </button>
+      }
     </div>
 
     <!-- Mobile Drawer -->
@@ -76,6 +88,24 @@ interface NavItem {
         </a>
         }
       </nav>
+      <div class="sidebar-footer">
+        @if (!connectivity.online()) {
+          <div class="footer-offline">
+            <i class="pi pi-cloud"></i>
+            <span>Offline — viewing saved recipes</span>
+          </div>
+        }
+        <button class="footer-update" (click)="onUpdateClick()">
+          <i class="pi pi-sync" [class.spin]="update.checking()"></i>
+          <span>
+            @if (update.updateReady()) {
+              Update ready — tap to apply
+            } @else {
+              {{ update.checking() ? 'Checking…' : checkLabel() }}
+            }
+          </span>
+        </button>
+      </div>
     </p-drawer>
 
     <!-- Desktop Sidebar -->
@@ -105,6 +135,24 @@ interface NavItem {
         </a>
         }
       </nav>
+      <div class="sidebar-footer">
+        @if (!connectivity.online()) {
+          <div class="footer-offline">
+            <i class="pi pi-cloud"></i>
+            <span>Offline — viewing saved recipes</span>
+          </div>
+        }
+        <button class="footer-update" (click)="onUpdateClick()">
+          <i class="pi pi-sync" [class.spin]="update.checking()"></i>
+          <span>
+            @if (update.updateReady()) {
+              Update ready — tap to apply
+            } @else {
+              {{ update.checking() ? 'Checking…' : checkLabel() }}
+            }
+          </span>
+        </button>
+      </div>
     </aside>
 
     <!-- Main Content -->
@@ -143,6 +191,90 @@ interface NavItem {
       font-size: 1.1rem;
       font-weight: 600;
       color: var(--p-primary-color);
+    }
+
+    .mobile-header-spacer {
+      flex: 1;
+    }
+
+    .offline-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      color: var(--p-text-muted-color);
+      background: var(--p-surface-800);
+    }
+
+    .update-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--p-primary-color);
+      color: var(--p-primary-contrast-color);
+      font-weight: 700;
+      font-size: 0.8rem;
+
+      i {
+        font-size: 0.8rem;
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .spin {
+      animation: spin 0.9s linear infinite;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .footer-offline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--p-text-muted-color);
+      background: var(--p-surface-800);
+    }
+
+    .footer-update {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--p-text-muted-color);
+      text-align: left;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: var(--p-surface-800);
+        color: var(--p-text-color);
+      }
     }
 
     .desktop-sidebar {
@@ -237,12 +369,19 @@ interface NavItem {
     :host ::ng-deep .sidebar-drawer {
       .p-drawer-content {
         padding: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
       }
     }
   `,
 })
 export class LayoutComponent {
+  readonly update = inject(UpdateService);
+  readonly connectivity = inject(ConnectivityService);
+
   drawerVisible = signal(false);
+  readonly checkLabel = signal('Check for updates');
 
   mainNav: NavItem[] = [
     { label: 'Recipes', icon: 'pi-book', route: '/recipes' },
@@ -254,4 +393,16 @@ export class LayoutComponent {
     { label: 'Categories', icon: 'pi-th-large', route: '/categories' },
     { label: 'Tags', icon: 'pi-tags', route: '/tags' },
   ];
+
+  async onUpdateClick(): Promise<void> {
+    if (this.update.updateReady()) {
+      await this.update.apply();
+      return;
+    }
+    const found = await this.update.check();
+    if (!found) {
+      this.checkLabel.set('Up to date');
+      setTimeout(() => this.checkLabel.set('Check for updates'), 2500);
+    }
+  }
 }

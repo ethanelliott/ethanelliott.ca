@@ -5,10 +5,12 @@ import {
 } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter } from '@angular/router';
+import { provideServiceWorker } from '@angular/service-worker';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { appRoutes } from './app.routes';
+import { environment } from '../environments/environment';
 
 const RecipeTheme = definePreset(Aura, {
   semantic: {
@@ -41,6 +43,10 @@ export const appConfig: ApplicationConfig = {
           darkModeSelector: '.dark-mode',
         },
       },
+    }),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: environment.production,
+      registrationStrategy: 'registerWhenStable:30000',
     }),
   ],
 };
