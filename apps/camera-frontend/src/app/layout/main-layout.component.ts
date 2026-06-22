@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterModule, RouterLink, RouterLinkActive } from '@angular/router';
 import { Toolbar } from 'primeng/toolbar';
 import { ButtonDirective } from 'primeng/button';
+import { UpdateService } from '../services/update.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -23,6 +24,17 @@ import { ButtonDirective } from 'primeng/button';
         </ng-template>
         <ng-template #end>
           <nav class="nav-links">
+            @if (update.updateReady()) {
+              <button
+                type="button"
+                class="update-pill"
+                (click)="update.apply()"
+                title="Apply the new version"
+              >
+                <i class="pi pi-sync"></i>
+                Update
+              </button>
+            }
             <a
               pButton
               [text]="true"
@@ -98,6 +110,7 @@ import { ButtonDirective } from 'primeng/button';
 
     .nav-links {
       display: flex;
+      align-items: center;
       gap: 4px;
 
       a {
@@ -120,6 +133,25 @@ import { ButtonDirective } from 'primeng/button';
       }
     }
 
+    .update-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      margin-right: 4px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--accent-blue);
+      color: #fff;
+      font-weight: 600;
+      font-size: 13px;
+
+      i {
+        font-size: 14px;
+      }
+    }
+
     .content {
       flex: 1;
       overflow-y: auto;
@@ -127,4 +159,6 @@ import { ButtonDirective } from 'primeng/button';
     }
   `,
 })
-export class MainLayoutComponent {}
+export class MainLayoutComponent {
+  readonly update = inject(UpdateService);
+}
