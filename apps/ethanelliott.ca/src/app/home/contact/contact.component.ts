@@ -32,8 +32,6 @@ import { RevealDirective } from '../reveal.directive';
 
       <footer class="foot">
         <span>© {{ year }} Ethan Elliott</span>
-        <span class="dot">·</span>
-        <span>Built with Angular</span>
       </footer>
     </section>
   `,
