@@ -3,18 +3,60 @@
   justify-content: center;
   align-items: center;
   font-size: 8rem;
-  color: white;
+  line-height: 1;
+  color: var(--text, white);
+  text-shadow: 0 0 40px var(--accent-glow, transparent);
 
   .bracket {
     font-weight: 100;
+    color: var(--accent, currentColor);
+    animation: bracket-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .bracket.left {
+    animation-delay: 0.05s;
+  }
+
+  .bracket.right {
+    animation-delay: 0.05s;
   }
 
   .e {
     margin-top: 1rem;
+    animation: e-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: 0.2s;
 
     &.backwards {
       transform: rotateY(180deg);
       margin-right: -0.5rem;
     }
+  }
+}
+
+@keyframes bracket-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes e-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-wrapper .bracket,
+  .logo-wrapper .e {
+    animation: none;
   }
 }

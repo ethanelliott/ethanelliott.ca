@@ -1,0 +1,108 @@
+.hero {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6rem 1.5rem 4rem;
+  position: relative;
+}
+
+ee-logo {
+  margin-bottom: 2rem;
+}
+
+.name {
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+
+.role {
+  margin-top: 0.75rem;
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  font-weight: 400;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.45s both;
+}
+
+.tagline {
+  margin-top: 1.75rem;
+  max-width: 32rem;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  color: var(--text-dim);
+  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
+}
+
+.cue {
+  position: absolute;
+  bottom: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  animation: fade-in 1s ease 1.1s both;
+}
+
+.cue:hover {
+  color: var(--accent-soft);
+}
+
+.cue-arrow {
+  width: 1px;
+  height: 2.5rem;
+  background: linear-gradient(var(--text-faint), transparent);
+  animation: cue-drop 1.8s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cue-drop {
+  0%,
+  100% {
+    transform: scaleY(0.6);
+    transform-origin: top;
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .name,
+  .role,
+  .tagline,
+  .cue,
+  .cue-arrow {
+    animation: none;
+  }
+}

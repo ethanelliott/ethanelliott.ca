@@ -1,0 +1,105 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  overflow: hidden;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    160deg,
+    var(--bg-0) 0%,
+    var(--bg-1) 55%,
+    var(--bg-2) 100%
+  );
+}
+
+.aurora {
+  position: absolute;
+  inset: -20%;
+  filter: blur(70px);
+}
+
+.blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  opacity: 0.5;
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+
+.blob-1 {
+  width: 50vw;
+  height: 50vw;
+  top: 0;
+  left: 5%;
+  background: radial-gradient(circle, hsl(205, 100%, 50%), transparent 65%);
+  animation: drift-1 22s ease-in-out infinite;
+}
+
+.blob-2 {
+  width: 45vw;
+  height: 45vw;
+  bottom: 0;
+  right: 0;
+  background: radial-gradient(circle, hsl(225, 100%, 55%), transparent 65%);
+  animation: drift-2 28s ease-in-out infinite;
+}
+
+.blob-3 {
+  width: 38vw;
+  height: 38vw;
+  top: 35%;
+  left: 45%;
+  background: radial-gradient(circle, hsl(190, 100%, 55%), transparent 65%);
+  opacity: 0.32;
+  animation: drift-3 25s ease-in-out infinite;
+}
+
+/* Subtle film grain to kill banding on the gradient */
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes drift-1 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(8vw, 10vh) scale(1.15);
+  }
+}
+
+@keyframes drift-2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1.1);
+  }
+  50% {
+    transform: translate(-10vw, -8vh) scale(0.9);
+  }
+}
+
+@keyframes drift-3 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(0.95);
+  }
+  50% {
+    transform: translate(-6vw, 6vh) scale(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob {
+    animation: none;
+  }
+}
