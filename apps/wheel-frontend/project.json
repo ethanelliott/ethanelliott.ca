@@ -26,7 +26,8 @@
         "stylePreprocessorOptions": {
           "includePaths": ["apps/wheel-frontend/src"]
         },
-        "scripts": []
+        "scripts": [],
+        "serviceWorker": "apps/wheel-frontend/ngsw-config.json"
       },
       "configurations": {
         "production": {
