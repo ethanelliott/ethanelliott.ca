@@ -78,3 +78,114 @@ h6 {
   font-family: 'Montserrat', sans-serif;
   font-optical-sizing: auto;
 }
+
+/* ---- Design tokens ---- */
+:root {
+  --bg-0: hsl(0, 100%, 2%);
+  --bg-1: hsl(224, 87%, 6%);
+  --bg-2: hsl(209, 100%, 16%);
+
+  --accent: hsl(205, 100%, 62%);
+  --accent-soft: hsl(205, 100%, 72%);
+  --accent-glow: hsla(205, 100%, 62%, 0.35);
+
+  --text: hsl(210, 30%, 96%);
+  --text-dim: hsla(210, 25%, 90%, 0.62);
+  --text-faint: hsla(210, 25%, 90%, 0.4);
+
+  --surface: hsla(213, 60%, 60%, 0.06);
+  --surface-hover: hsla(213, 60%, 65%, 0.1);
+  --border: hsla(210, 60%, 80%, 0.12);
+  --border-strong: hsla(210, 60%, 80%, 0.24);
+
+  --max-width: 1080px;
+  --section-pad: clamp(4rem, 10vh, 8rem);
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--text);
+}
+
+::selection {
+  background: var(--accent-glow);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Slim, themed scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ---- Scroll reveal (driven by RevealDirective) ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ---- Shared section layout ---- */
+.section {
+  width: 100%;
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding: var(--section-pad) clamp(1.25rem, 5vw, 2.5rem);
+  scroll-margin-top: 5rem;
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.section-label::before {
+  content: '';
+  width: 1.75rem;
+  height: 1px;
+  background: var(--accent);
+}
+
+.section-title {
+  margin-top: 1rem;
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
