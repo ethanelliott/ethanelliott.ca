@@ -26,7 +26,8 @@
         "stylePreprocessorOptions": {
           "includePaths": ["apps/camera-frontend/src"]
         },
-        "scripts": []
+        "scripts": [],
+        "serviceWorker": "apps/camera-frontend/ngsw-config.json"
       },
       "configurations": {
         "production": {

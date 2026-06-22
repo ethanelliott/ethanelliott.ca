@@ -4,6 +4,7 @@ import { NotificationSettingsComponent } from '../../components/notification-set
 import { AnalysisSettingsComponent } from '../../components/analysis-settings/analysis-settings.component';
 import { StorageStatusComponent } from '../../components/storage-status/storage-status.component';
 import { RecordingSettingsComponent } from '../../components/recording-settings/recording-settings.component';
+import { UpdateSettingsComponent } from '../../components/update-settings/update-settings.component';
 
 @Component({
   selector: 'app-settings',
@@ -14,6 +15,7 @@ import { RecordingSettingsComponent } from '../../components/recording-settings/
     AnalysisSettingsComponent,
     StorageStatusComponent,
     RecordingSettingsComponent,
+    UpdateSettingsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -24,6 +26,7 @@ import { RecordingSettingsComponent } from '../../components/recording-settings/
       <app-analysis-settings />
       <app-notification-settings />
       <app-detection-settings />
+      <app-update-settings />
     </div>
   `,
   styles: `
