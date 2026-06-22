@@ -21,15 +21,14 @@ import { RevealDirective } from '../reveal.directive';
           and details that make software feel effortless to use.
         </p>
         <p>
-          Outside of my day job I run a small fleet of self-hosted apps — a
-          personal platform of tools I've designed, built, and deployed myself.
-          It's where I get to experiment with new ideas and keep my skills
-          sharp across the entire stack.
+          I'm always building — experimenting with new ideas and tools to keep
+          my skills sharp across the entire stack, from polished frontends to
+          the infrastructure that runs them.
         </p>
         <ul class="facts">
-          <li><strong>10+</strong><span>apps built &amp; self-hosted</span></li>
           <li><strong>Full-stack</strong><span>frontend to DevOps</span></li>
-          <li><strong>TypeScript</strong><span>end to end</span></li>
+          <li><strong>End-to-end</strong><span>idea to deployment</span></li>
+          <li><strong>TypeScript</strong><span>top to bottom</span></li>
         </ul>
       </div>
     </section>

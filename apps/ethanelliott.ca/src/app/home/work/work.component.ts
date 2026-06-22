@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RevealDirective } from '../reveal.directive';
 
-interface Project {
+interface Capability {
   name: string;
   blurb: string;
   tags: string[];
@@ -14,21 +14,21 @@ interface Project {
   template: `
     <section class="section work" id="work">
       <div eeReveal>
-        <span class="section-label">Selected Work</span>
-        <h2 class="section-title">Things I've built and run myself.</h2>
+        <span class="section-label">What I Do</span>
+        <h2 class="section-title">From first pixel to production.</h2>
         <p class="lead">
-          A slice of my personal platform — apps I designed, developed, and
-          deployed across the full stack.
+          I work across the whole stack — designing the interface, building the
+          services behind it, and shipping the result.
         </p>
       </div>
 
       <div class="grid">
-        @for (project of projects; track project.name) {
+        @for (item of capabilities; track item.name) {
           <article class="card" eeReveal>
-            <h3>{{ project.name }}</h3>
-            <p>{{ project.blurb }}</p>
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.blurb }}</p>
             <ul class="tags">
-              @for (tag of project.tags; track tag) {
+              @for (tag of item.tags; track tag) {
                 <li>{{ tag }}</li>
               }
             </ul>
@@ -40,42 +40,42 @@ interface Project {
   styleUrl: './work.component.scss',
 })
 export class WorkComponent {
-  readonly projects: Project[] = [
+  readonly capabilities: Capability[] = [
     {
-      name: 'Finances',
+      name: 'Web Applications',
       blurb:
-        'A personal finance tracker for accounts, budgets, and spending insights — so the money story is always clear.',
-      tags: ['Angular', 'NestJS', 'Charts'],
+        'Fast, responsive interfaces built with Angular and modern web standards — the kind that feel effortless to use.',
+      tags: ['Angular', 'TypeScript', 'SCSS'],
     },
     {
-      name: 'Recipe Book',
+      name: 'APIs & Backends',
       blurb:
-        'A clean home for recipes: save, scale, and cook from a collection that is actually yours.',
-      tags: ['Angular', 'API', 'UX'],
+        'Well-structured, reliable services that power the frontend and scale cleanly as ideas grow.',
+      tags: ['Node.js', 'NestJS', 'REST'],
     },
     {
-      name: 'Split',
+      name: 'UI / UX Design',
       blurb:
-        'Group expense splitting that figures out who owes who and settles up the easy way.',
-      tags: ['Angular', 'NestJS'],
+        'Clean, considered, accessible interfaces — details that make software feel polished and intentional.',
+      tags: ['Design', 'Accessibility'],
     },
     {
-      name: 'AI Chat',
+      name: 'Real-Time Systems',
       blurb:
-        'A self-hosted chat interface wired into my own AI gateway for fast, private conversations.',
-      tags: ['Angular', 'LLMs', 'Streaming'],
+        'Live dashboards and streaming experiences driven by websockets and real-time data.',
+      tags: ['WebSockets', 'Realtime'],
     },
     {
-      name: 'Camera Dashboard',
+      name: 'DevOps & Hosting',
       blurb:
-        'A live dashboard for monitoring home camera feeds at a glance, from anywhere.',
-      tags: ['Angular', 'Realtime', 'Video'],
+        'End-to-end deployment with Docker and CI/CD — comfortable owning the whole pipeline.',
+      tags: ['Docker', 'CI/CD', 'Self-hosting'],
     },
     {
-      name: 'Sensors',
+      name: 'Performance',
       blurb:
-        'Real-time environmental monitoring — CO₂, temperature, and humidity streamed from Aranet devices.',
-      tags: ['IoT', 'Realtime', 'Node.js'],
+        'Lean bundles, quick loads, and the small optimizations that make an app feel instant.',
+      tags: ['Optimization', 'Tooling'],
     },
   ];
 }
