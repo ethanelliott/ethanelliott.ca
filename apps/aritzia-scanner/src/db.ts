@@ -235,6 +235,12 @@ const COLUMN_MIGRATIONS: Array<[table: string, column: string, type: string]> =
     ['variants', 'swatch', 'TEXT'],
     ['variants', 'ref_color', 'TEXT'],
     ['variants', 'thumbnail_id', 'TEXT'],
+    // Per-scan change counts, populated at scan completion (and lazily
+    // backfilled for older scans) to drive the changelog without recomputing.
+    ['scans', 'new_products', 'INTEGER'],
+    ['scans', 'new_colors', 'INTEGER'],
+    ['scans', 'restocks', 'INTEGER'],
+    ['scans', 'price_drops', 'INTEGER'],
   ];
 
 const INDEXES: string[] = [

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('partials/head') %>
+  </head>
+  <body>
+    <%- include('partials/nav') %>
+
+    <h1><%= title %></h1>
+
+    <% if (entries && entries.length > 0) { %>
+    <p class="results-count"><%= totalCount.toLocaleString() %> scan<%= totalCount === 1 ? '' : 's' %> with changes</p>
+
+    <div class="changelog-list">
+      <% entries.forEach(entry => { %>
+      <a href="/changelog/<%= entry.id %>" class="changelog-entry">
+        <div class="changelog-entry-head">
+          <span class="changelog-when"><%= entry.when %></span>
+          <span class="changelog-on"><%= entry.on %></span>
+        </div>
+        <div class="changelog-badges">
+          <% if (entry.newProducts > 0) { %>
+          <span class="changelog-badge">🆕 <%= entry.newProducts %> new</span>
+          <% } %>
+          <% if (entry.newColors > 0) { %>
+          <span class="changelog-badge">🎨 <%= entry.newColors %> color<%= entry.newColors === 1 ? '' : 's' %></span>
+          <% } %>
+          <% if (entry.restocks > 0) { %>
+          <span class="changelog-badge">📦 <%= entry.restocks %> restock<%= entry.restocks === 1 ? '' : 's' %></span>
+          <% } %>
+          <% if (entry.priceDrops > 0) { %>
+          <span class="changelog-badge">💸 <%= entry.priceDrops %> price drop<%= entry.priceDrops === 1 ? '' : 's' %></span>
+          <% } %>
+        </div>
+      </a>
+      <% }); %>
+    </div>
+    <% } else { %>
+    <%- include('partials/empty_state', { message: 'No recorded changes yet. Check back after the next scan!', icon: '📜' }) %>
+    <% } %>
+
+    <%- include('partials/pagination', {
+      page,
+      totalPages,
+      baseUrl: '/changelog',
+      query: {},
+    }) %>
+  </body>
+</html>

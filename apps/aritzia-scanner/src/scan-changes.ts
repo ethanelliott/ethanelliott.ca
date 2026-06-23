@@ -1,5 +1,5 @@
 import sqlite3 from 'sqlite3';
-import { allPromise } from './db';
+import { allPromise, runPromise } from './db';
 
 // Everything that changed in a single scan, derived entirely from the existing
 // added_at / last_seen_at / restocks / prices data — no extra bookkeeping
@@ -95,6 +95,66 @@ export async function getScanChanges(
     );
 
   return { newProducts, newColors, restocks, priceDrops };
+}
+
+export type ScanCounts = {
+  newProducts: number;
+  newColors: number;
+  restocks: number;
+  priceDrops: number;
+};
+
+export function countChanges(changes: ScanChanges): ScanCounts {
+  return {
+    newProducts: changes.newProducts.length,
+    newColors: changes.newColors.length,
+    restocks: changes.restocks.length,
+    priceDrops: changes.priceDrops.length,
+  };
+}
+
+/**
+ * Persist a scan's change counts onto its scans row. These are immutable once
+ * the scan completes (added_at / restock timestamps / historical prices never
+ * change), so storing them lets the changelog list render without recomputing.
+ */
+export async function storeScanCounts(
+  db: sqlite3.Database,
+  scrapeTime: string,
+  changes: ScanChanges
+): Promise<void> {
+  const c = countChanges(changes);
+  await runPromise.call(
+    db,
+    `UPDATE scans SET new_products = ?, new_colors = ?, restocks = ?, price_drops = ?
+     WHERE scrape_time = ?`,
+    [c.newProducts, c.newColors, c.restocks, c.priceDrops, scrapeTime]
+  );
+}
+
+/**
+ * Fill in change counts for completed scans that don't have them yet (e.g.
+ * scans that predate this feature). Bounded and ordered newest-first so the
+ * recent, browsable history fills quickly; runs in the background at startup.
+ */
+export async function backfillScanChanges(
+  db: sqlite3.Database,
+  limit = 500
+): Promise<void> {
+  const pending = await allPromise.call(
+    db,
+    `SELECT scrape_time FROM scans
+     WHERE completed_at IS NOT NULL AND new_products IS NULL
+     ORDER BY scrape_time DESC LIMIT ?`,
+    [limit]
+  );
+  if (pending.length === 0) return;
+  console.log(`Backfilling change counts for ${pending.length} scan(s)...`);
+  for (const row of pending) {
+    const changes = await getScanChanges(db, row.scrape_time);
+    await storeScanCounts(db, row.scrape_time, changes);
+  }
+  console.log('Scan change-count backfill complete.');
 }
 
 export type ScanSummary = {

@@ -106,6 +106,12 @@ export function fromNow(timestamp: string | null | undefined): string {
   return timestamp ? dayjs.utc(timestamp).fromNow() : '';
 }
 
+export function formatDateTime(timestamp: string | null | undefined): string {
+  return timestamp
+    ? dayjs.utc(timestamp).format('MMM D, YYYY · HH:mm [UTC]')
+    : '';
+}
+
 const NAMED_ENTITIES: Record<string, string> = {
   '&amp;': '&',
   '&lt;': '<',

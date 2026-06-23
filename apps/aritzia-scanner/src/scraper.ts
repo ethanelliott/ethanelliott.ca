@@ -15,7 +15,11 @@ import {
 } from './db';
 import { invalidatePageContext } from './page-data';
 import { createProgressBar } from './utils';
-import { buildScanSummary, getScanChanges } from './scan-changes';
+import {
+  buildScanSummary,
+  getScanChanges,
+  storeScanCounts,
+} from './scan-changes';
 import { sendNtfy } from './notify';
 import storeData from './stores.json';
 
@@ -758,12 +762,13 @@ async function runUpdate() {
 
   console.log(`New Image IDs Tracked: ${newImageCount}`);
 
-  // --- Step 5: Notify (ntfy) ---
-  // Summarize what this scan changed and push a low-priority notification.
-  // No-op when NTFY_URL isn't configured. Notification failures must never
-  // fail the scan, so this is fully guarded.
+  // --- Step 5: Record changes & notify (ntfy) ---
+  // Summarize what this scan changed, persist the counts for the changelog,
+  // and push a low-priority notification. No-op when NTFY_URL isn't configured.
+  // None of this may fail the scan, so it's fully guarded.
   try {
     const changes = await getScanChanges(DB, scrapeTime);
+    await storeScanCounts(DB, scrapeTime, changes);
     const summary = buildScanSummary(changes);
     if (summary) {
       console.log(`\n--- Step 5: Notifying (${summary.total} changes) ---`);

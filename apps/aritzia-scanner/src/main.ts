@@ -6,6 +6,7 @@ import 'ejs'; // Force inclusion in generated package.json
 import { closeDB, getDB, setupDatabase } from './db';
 import { fmtPrice, getPageContext } from './page-data';
 import { closeBrowser, updateDatabase } from './scraper';
+import { backfillScanChanges } from './scan-changes';
 import aiRoutes from './ai-routes';
 import apiRoutes from './routes/api';
 import webRoutes from './routes/web';
@@ -18,6 +19,12 @@ const PORT = process.env.PORT || 3000;
 async function main() {
   const db = getDB();
   await setupDatabase(db);
+
+  // Backfill changelog counts for older scans in the background so startup
+  // isn't blocked. New scans populate their own counts on completion.
+  backfillScanChanges(db).catch((error) =>
+    console.error('Scan change-count backfill failed:', error)
+  );
 
   // Initial update in background
   updateDatabase()

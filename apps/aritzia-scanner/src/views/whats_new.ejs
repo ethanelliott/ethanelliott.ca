@@ -6,8 +6,13 @@
   <body>
     <%- include('partials/nav') %>
 
+    <% if (typeof backHref !== 'undefined' && backHref) { %>
+    <p class="results-count"><a href="<%= backHref %>">&larr; Back to changelog</a></p>
+    <% } %>
     <h1><%= title %></h1>
-    <p class="results-count">Changes from the latest scan (<%= lastScanFormatted %>)</p>
+    <% if (typeof subtitle !== 'undefined' && subtitle) { %>
+    <p class="results-count"><%= subtitle %></p>
+    <% } %>
 
     <%
       const sections = [

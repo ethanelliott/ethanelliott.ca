@@ -3,6 +3,7 @@ import { allPromise, getDB, getPromise } from '../db';
 import {
   decodeEntities,
   fmtPrice,
+  formatDateTime,
   fromNow,
   getPageContext,
   parseJsonArr,
@@ -96,6 +97,51 @@ function variantCard(
     review_count: v.review_count,
     sizes: opts.sizes ?? null,
   };
+}
+
+// Turn a ScanChanges result into the four card lists rendered by the
+// whats_new view. Shared by /whats-new (latest scan) and /changelog/:id
+// (a specific historical scan).
+function buildChangeCards(changes: {
+  newProducts: any[];
+  newColors: any[];
+  restocks: any[];
+  priceDrops: any[];
+}) {
+  const newProductCards: Card[] = changes.newProducts.map((p: any) => ({
+    href: `/product/${p.id}`,
+    name: p.display_name || p.name,
+    thumbnail_id: p.thumbnail_id,
+    price: p.price,
+    pricePrefix: 'From ',
+    rating: p.rating,
+    review_count: p.review_count,
+    discontinued: !!p.isDiscontinued,
+  }));
+
+  const newColorCards: Card[] = changes.newColors.map((v: any) => ({
+    href: `/product/${v.product_id}/variant/${v.color_id}`,
+    name: v.display_name || v.name,
+    thumbnail_id: v.thumbnail_id,
+    price: v.price,
+    list_price: v.list_price,
+    subtext: v.color,
+    rating: v.rating,
+    review_count: v.review_count,
+  }));
+
+  const restockCards = changes.restocks.map((r: any) =>
+    variantCard(r, { sizes: parseJsonArr(r.available_sizes) })
+  );
+
+  const priceDropCards = changes.priceDrops.map((d: any) =>
+    variantCard(d, {
+      meta: `Was ${fmtPrice(d.old_price)}`,
+      sizes: parseJsonArr(d.available_sizes),
+    })
+  );
+
+  return { newProductCards, newColorCards, restockCards, priceDropCards };
 }
 
 function renderError(
@@ -499,64 +545,102 @@ router.get('/whats-new', async (req, res) => {
   const db = getDB();
   const { lastScanTime, stats } = await getPageContext(db);
 
-  if (!lastScanTime) {
-    res.render('whats_new', {
-      title: "What's New",
-      lastScanFormatted: stats.lastScanFormatted,
-      newProductCards: [],
-      newColorCards: [],
-      restockCards: [],
-      priceDropCards: [],
-      stats,
-    });
-    return;
-  }
+  const emptyCards = {
+    newProductCards: [],
+    newColorCards: [],
+    restockCards: [],
+    priceDropCards: [],
+  };
 
-  const { newProducts, newColors, restocks, priceDrops } = await getScanChanges(
-    db,
-    lastScanTime
-  );
-
-  const newProductCards: Card[] = newProducts.map((p: any) => ({
-    href: `/product/${p.id}`,
-    name: p.display_name || p.name,
-    thumbnail_id: p.thumbnail_id,
-    price: p.price,
-    pricePrefix: 'From ',
-    rating: p.rating,
-    review_count: p.review_count,
-    discontinued: !!p.isDiscontinued,
-  }));
-
-  const newColorCards: Card[] = newColors.map((v: any) => ({
-    href: `/product/${v.product_id}/variant/${v.color_id}`,
-    name: v.display_name || v.name,
-    thumbnail_id: v.thumbnail_id,
-    price: v.price,
-    list_price: v.list_price,
-    subtext: v.color,
-    rating: v.rating,
-    review_count: v.review_count,
-  }));
-
-  const restockCards = restocks.map((r: any) =>
-    variantCard(r, { sizes: parseJsonArr(r.available_sizes) })
-  );
-
-  const priceDropCards = priceDrops.map((d: any) =>
-    variantCard(d, {
-      meta: `Was ${fmtPrice(d.old_price)}`,
-      sizes: parseJsonArr(d.available_sizes),
-    })
-  );
+  const cards = lastScanTime
+    ? buildChangeCards(await getScanChanges(db, lastScanTime))
+    : emptyCards;
 
   res.render('whats_new', {
     title: "What's New",
-    lastScanFormatted: stats.lastScanFormatted,
-    newProductCards,
-    newColorCards,
-    restockCards,
-    priceDropCards,
+    subtitle: `Changes from the latest scan (${stats.lastScanFormatted})`,
+    backHref: null,
+    ...cards,
+    stats,
+  });
+});
+
+// Changelog — history of scans that changed something. Counts come from the
+// scans table (populated at scan completion / backfilled), so the list is
+// cheap; each entry links to a per-scan detail view.
+router.get('/changelog', async (req, res) => {
+  const db = getDB();
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const { stats } = await getPageContext(db);
+
+  const changedFilter = `WHERE completed_at IS NOT NULL
+     AND (COALESCE(new_products,0) + COALESCE(new_colors,0)
+        + COALESCE(restocks,0) + COALESCE(price_drops,0)) > 0`;
+
+  const countResult = await getPromise.call(
+    db,
+    `SELECT COUNT(*) as total FROM scans ${changedFilter}`
+  );
+  const totalCount = countResult?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+
+  const scans = await allPromise.call(
+    db,
+    `SELECT id, scrape_time, new_products, new_colors, restocks, price_drops
+     FROM scans ${changedFilter}
+     ORDER BY scrape_time DESC
+     LIMIT ? OFFSET ?`,
+    [PER_PAGE, (safePage - 1) * PER_PAGE]
+  );
+
+  const entries = scans.map((s: any) => ({
+    id: s.id,
+    when: fromNow(s.scrape_time),
+    on: formatDateTime(s.scrape_time),
+    newProducts: s.new_products || 0,
+    newColors: s.new_colors || 0,
+    restocks: s.restocks || 0,
+    priceDrops: s.price_drops || 0,
+    total:
+      (s.new_products || 0) +
+      (s.new_colors || 0) +
+      (s.restocks || 0) +
+      (s.price_drops || 0),
+  }));
+
+  res.render('changelog', {
+    title: 'Changelog',
+    entries,
+    stats,
+    page: safePage,
+    totalPages,
+    totalCount,
+  });
+});
+
+router.get('/changelog/:id', async (req, res) => {
+  const db = getDB();
+  const { stats } = await getPageContext(db);
+
+  const scan = await getPromise.call(
+    db,
+    `SELECT * FROM scans WHERE id = ? AND completed_at IS NOT NULL`,
+    [req.params.id]
+  );
+
+  if (!scan) {
+    renderError(res, stats, 404, 'Scan not found.');
+    return;
+  }
+
+  const cards = buildChangeCards(await getScanChanges(db, scan.scrape_time));
+
+  res.render('whats_new', {
+    title: `Scan · ${formatDateTime(scan.scrape_time)}`,
+    subtitle: `What changed in this scan (${fromNow(scan.scrape_time)})`,
+    backHref: '/changelog',
+    ...cards,
     stats,
   });
 });
