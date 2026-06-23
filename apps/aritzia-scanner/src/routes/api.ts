@@ -194,6 +194,44 @@ router.get('/api/search', async (req, res) => {
   res.json(results);
 });
 
+// Products added since a given scan time, for the "New to Me" page. The client
+// tracks the last scan it acknowledged in localStorage and asks for everything
+// newer. Returns lightweight card data, newest first.
+router.get('/api/new-products', async (req, res) => {
+  const since = (req.query.since as string) || '';
+  const db = getDB();
+  const { lastScanTime } = await getPageContext(db);
+
+  const products = await allPromise.call(
+    db,
+    `SELECT p.id, p.name, p.display_name, p.slug, p.rating, p.review_count, p.added_at,
+            (SELECT thumbnail_id FROM variants WHERE product_id = p.id AND thumbnail_id IS NOT NULL LIMIT 1) as thumbnail_id,
+            COALESCE(MIN(CASE WHEN v.last_seen_at >= ? THEN v.price END), MIN(v.price)) as price,
+            CASE WHEN MAX(v.last_seen_at) >= ? THEN 0 ELSE 1 END as isDiscontinued
+     FROM products p
+     LEFT JOIN variants v ON v.product_id = p.id
+     WHERE p.added_at > ?
+     GROUP BY p.id
+     ORDER BY p.added_at DESC, p.review_count DESC
+     LIMIT 500`,
+    [lastScanTime, lastScanTime, since]
+  );
+
+  res.json(products);
+});
+
+// Count of products added since a given scan time, for the nav badge.
+router.get('/api/new-count', async (req, res) => {
+  const since = (req.query.since as string) || '';
+  const db = getDB();
+  const row = await getPromise.call(
+    db,
+    `SELECT COUNT(*) as count FROM products WHERE added_at > ?`,
+    [since]
+  );
+  res.json({ count: row?.count || 0 });
+});
+
 // Fetch variants by IDs (for the favorites page)
 router.get('/api/variants', async (req, res) => {
   const ids = ((req.query.ids as string) || '').split(',').filter(Boolean);

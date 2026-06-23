@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { allPromise, getDB, getPromise } from '../db';
 import {
   decodeEntities,
+  fmtPrice,
   fromNow,
   getPageContext,
   parseJsonArr,
@@ -9,6 +10,7 @@ import {
   SIZES,
   Stats,
 } from '../page-data';
+import { getScanChanges } from '../scan-changes';
 
 const router = Router();
 
@@ -488,6 +490,83 @@ router.get('/discontinued', async (req, res) => {
     totalPages,
     totalCount,
   });
+});
+
+// What's New — everything that changed in the most recent completed scan.
+// Objective and shared across visitors (contrast with /new-to-me, which is
+// per-device). Resets each scan.
+router.get('/whats-new', async (req, res) => {
+  const db = getDB();
+  const { lastScanTime, stats } = await getPageContext(db);
+
+  if (!lastScanTime) {
+    res.render('whats_new', {
+      title: "What's New",
+      lastScanFormatted: stats.lastScanFormatted,
+      newProductCards: [],
+      newColorCards: [],
+      restockCards: [],
+      priceDropCards: [],
+      stats,
+    });
+    return;
+  }
+
+  const { newProducts, newColors, restocks, priceDrops } = await getScanChanges(
+    db,
+    lastScanTime
+  );
+
+  const newProductCards: Card[] = newProducts.map((p: any) => ({
+    href: `/product/${p.id}`,
+    name: p.display_name || p.name,
+    thumbnail_id: p.thumbnail_id,
+    price: p.price,
+    pricePrefix: 'From ',
+    rating: p.rating,
+    review_count: p.review_count,
+    discontinued: !!p.isDiscontinued,
+  }));
+
+  const newColorCards: Card[] = newColors.map((v: any) => ({
+    href: `/product/${v.product_id}/variant/${v.color_id}`,
+    name: v.display_name || v.name,
+    thumbnail_id: v.thumbnail_id,
+    price: v.price,
+    list_price: v.list_price,
+    subtext: v.color,
+    rating: v.rating,
+    review_count: v.review_count,
+  }));
+
+  const restockCards = restocks.map((r: any) =>
+    variantCard(r, { sizes: parseJsonArr(r.available_sizes) })
+  );
+
+  const priceDropCards = priceDrops.map((d: any) =>
+    variantCard(d, {
+      meta: `Was ${fmtPrice(d.old_price)}`,
+      sizes: parseJsonArr(d.available_sizes),
+    })
+  );
+
+  res.render('whats_new', {
+    title: "What's New",
+    lastScanFormatted: stats.lastScanFormatted,
+    newProductCards,
+    newColorCards,
+    restockCards,
+    priceDropCards,
+    stats,
+  });
+});
+
+// New to Me — products added since the last scan this browser acknowledged.
+// The high-water mark lives in localStorage (like favorites), so the page is
+// rendered as a shell that public/app.js fills in via /api/new-products.
+router.get('/new-to-me', async (req, res) => {
+  const { stats } = await getPageContext(getDB());
+  res.render('new_to_me', { title: 'New to Me', stats });
 });
 
 // ==================== PRODUCT & VARIANT DETAIL ====================
