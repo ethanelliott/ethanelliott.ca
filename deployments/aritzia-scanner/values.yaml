@@ -27,6 +27,9 @@ env:
   DB_PATH: '/data/aritzia_stock.sqlite'
   MAX_CONCURRENT_DOWNLOADS: '5'
   DEBUG_LOGGING: 'true'
+  NTFY_URL: 'http://ntfy.elliott-haus.svc.cluster.local'
+  NTFY_TOPIC: 'aritzia-scanner'
+  PUBLIC_BASE_URL: 'https://aritzia.elliott.haus'
 
 storage:
   size: 20Gi

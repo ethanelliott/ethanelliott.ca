@@ -15,7 +15,12 @@ import {
 } from './db';
 import { invalidatePageContext } from './page-data';
 import { createProgressBar } from './utils';
+import { buildScanSummary, getScanChanges } from './scan-changes';
+import { sendNtfy } from './notify';
 import storeData from './stores.json';
+
+const PUBLIC_BASE_URL =
+  process.env.PUBLIC_BASE_URL || 'https://aritzia.elliott.haus';
 
 const ALGOLIA_APP_ID = 'SONLJM8OH6';
 const ALGOLIA_API_KEY = '1455bca7c6c33e746a0f38beb28422e6';
@@ -752,4 +757,26 @@ async function runUpdate() {
   console.log(`New Variants Added: ${newVariantCount}`);
 
   console.log(`New Image IDs Tracked: ${newImageCount}`);
+
+  // --- Step 5: Notify (ntfy) ---
+  // Summarize what this scan changed and push a low-priority notification.
+  // No-op when NTFY_URL isn't configured. Notification failures must never
+  // fail the scan, so this is fully guarded.
+  try {
+    const changes = await getScanChanges(DB, scrapeTime);
+    const summary = buildScanSummary(changes);
+    if (summary) {
+      console.log(`\n--- Step 5: Notifying (${summary.total} changes) ---`);
+      await sendNtfy(summary.body, {
+        title: summary.title,
+        priority: 'min',
+        tags: ['jacket'],
+        click: `${PUBLIC_BASE_URL}/whats-new`,
+      });
+    } else {
+      console.log('\n--- Step 5: No changes this scan, skipping notification ---');
+    }
+  } catch (error) {
+    console.error('Failed to build/send scan notification:', error);
+  }
 }

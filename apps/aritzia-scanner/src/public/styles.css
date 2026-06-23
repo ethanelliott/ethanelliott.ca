@@ -1691,3 +1691,31 @@ select {
     flex-wrap: wrap;
   }
 }
+
+/* ==================== What's New / New to Me ==================== */
+
+.nav-new-link {
+  color: var(--ai-accent) !important;
+}
+
+.whats-new-section {
+  margin-bottom: 2.5rem;
+}
+
+.whats-new-section h2 {
+  margin-bottom: 1rem;
+}
+
+.new-to-me-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.muted-note {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 1.5rem;
+}
