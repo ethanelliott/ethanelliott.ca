@@ -302,14 +302,14 @@ router.get('/products', async (req, res) => {
     `SELECT p.id, p.name, p.display_name, p.slug, p.brand, p.rating, p.review_count,
             (SELECT thumbnail_id FROM variants WHERE product_id = p.id AND thumbnail_id IS NOT NULL LIMIT 1) as thumbnail_id,
             CASE WHEN MAX(v.last_seen_at) >= ? THEN 0 ELSE 1 END as isDiscontinued,
-            MIN(v.price) as min_price
+            COALESCE(MIN(CASE WHEN v.last_seen_at >= ? THEN v.price END), MIN(v.price)) as min_price
      FROM products p
      LEFT JOIN variants v ON p.id = v.product_id
      ${whereClauses}
      GROUP BY p.id
      ORDER BY isDiscontinued ASC, ${PRODUCT_SORTS[sortBy]}
      LIMIT ? OFFSET ?`,
-    [lastScanTime, ...params, PER_PAGE, (safePage - 1) * PER_PAGE]
+    [lastScanTime, lastScanTime, ...params, PER_PAGE, (safePage - 1) * PER_PAGE]
   );
 
   const cards: Card[] = products.map((p: any) => ({
@@ -778,7 +778,10 @@ router.get('/colors/:color', async (req, res) => {
             (SELECT v2.color_id FROM variants v2
              WHERE v2.product_id = p.id AND v2.color = ?
              LIMIT 1) as variant_color_id,
-            (SELECT MIN(v2.price) FROM variants v2
+            (SELECT COALESCE(
+               MIN(CASE WHEN v2.last_seen_at >= ? THEN v2.price END),
+               MIN(v2.price)
+             ) FROM variants v2
              WHERE v2.product_id = p.id AND v2.color = ?) as price,
             CASE WHEN MAX(v3.last_seen_at) >= ? THEN 0 ELSE 1 END as isDiscontinued
      FROM products p
@@ -787,7 +790,7 @@ router.get('/colors/:color', async (req, res) => {
      WHERE v.color = ?
      GROUP BY p.id
      ORDER BY isDiscontinued ASC, p.review_count DESC, p.name`,
-    [color, color, color, lastScanTime, color]
+    [color, color, lastScanTime, color, lastScanTime, color]
   );
 
   const cards: Card[] = products.map((p: any) => ({
@@ -872,13 +875,13 @@ router.get('/categories/:category', async (req, res) => {
     `SELECT p.id, p.name, p.display_name, p.slug, p.brand, p.rating, p.review_count,
             (SELECT thumbnail_id FROM variants WHERE product_id = p.id AND thumbnail_id IS NOT NULL LIMIT 1) as thumbnail_id,
             CASE WHEN MAX(v.last_seen_at) >= ? THEN 0 ELSE 1 END as isDiscontinued,
-            MIN(v.price) as price
+            COALESCE(MIN(CASE WHEN v.last_seen_at >= ? THEN v.price END), MIN(v.price)) as price
      FROM products p
      LEFT JOIN variants v ON p.id = v.product_id
      WHERE p.category LIKE ?
      GROUP BY p.id
      ORDER BY isDiscontinued ASC, ${orderBy}`,
-    [lastScanTime, `%${category}%`]
+    [lastScanTime, lastScanTime, `%${category}%`]
   );
 
   const cards: Card[] = products.map((p: any) => ({

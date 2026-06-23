@@ -113,12 +113,21 @@ router.get(
         return;
       }
 
-      // Fetch variant price range
+      // Fetch variant price range. Restrict to active (non-discontinued)
+      // variants so the "current price" reflects what's actually available —
+      // discontinued variants are usually marked down before being dropped and
+      // would otherwise drag the range below the buyable price. Falls back to
+      // all variants when a product is fully discontinued.
+      const lastScanTime = await getLastScanTime(db);
       const priceInfo = await getPromise.call(
         db,
-        `SELECT MIN(price) as min_price, MAX(price) as max_price, MIN(list_price) as min_list, MAX(list_price) as max_list
+        `SELECT
+           COALESCE(MIN(CASE WHEN last_seen_at >= ? THEN price END), MIN(price)) as min_price,
+           COALESCE(MAX(CASE WHEN last_seen_at >= ? THEN price END), MAX(price)) as max_price,
+           COALESCE(MIN(CASE WHEN last_seen_at >= ? THEN list_price END), MIN(list_price)) as min_list,
+           COALESCE(MAX(CASE WHEN last_seen_at >= ? THEN list_price END), MAX(list_price)) as max_list
        FROM variants WHERE product_id = ?`,
-        [productId]
+        [lastScanTime, lastScanTime, lastScanTime, lastScanTime, productId]
       );
 
       // Fetch price history for trend analysis
