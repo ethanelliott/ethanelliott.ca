@@ -23,6 +23,7 @@ import {
   Activity,
   CreateActivityRequest,
   LatLng,
+  LegendCategory,
   Tag,
   Trip,
 } from '../../core/models';
@@ -61,6 +62,7 @@ interface EditorForm {
   title: string;
   notes: string;
   segmentId: string | null;
+  legendCategoryId: string | null;
   color: string;
   tagIds: string[];
   startDate: string;
@@ -137,6 +139,7 @@ interface PendingPress {
           />
         }
         <p-button label="Add" icon="pi pi-plus" size="small" (onClick)="openCreateDefault()" />
+        <p-button label="Legend" icon="pi pi-palette" severity="secondary" [outlined]="true" size="small" (onClick)="openLegendManager()" />
         <p-button label="Tags" icon="pi pi-tag" severity="secondary" [outlined]="true" size="small" (onClick)="openTagManager()" />
       </div>
 
@@ -298,24 +301,48 @@ interface PendingPress {
             <div class="dt"><input type="date" [(ngModel)]="form.endDate" /><input type="time" [(ngModel)]="form.endTime" /></div>
           </div>
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label>City / stay</label>
+        <div class="field">
+          <label>City / stay</label>
+          <p-select
+            [options]="segmentOptions()"
+            [(ngModel)]="form.segmentId"
+            optionLabel="label"
+            optionValue="value"
+            [showClear]="true"
+            placeholder="None"
+            appendTo="body"
+            styleClass="w-full"
+          />
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <div class="cat-row">
             <p-select
-              [options]="segmentOptions()"
-              [(ngModel)]="form.segmentId"
-              optionLabel="label"
-              optionValue="value"
+              [options]="legend()"
+              [(ngModel)]="form.legendCategoryId"
+              optionLabel="name"
+              optionValue="id"
               [showClear]="true"
-              placeholder="None"
+              placeholder="Custom colour"
               appendTo="body"
               styleClass="w-full"
-            />
+            >
+              <ng-template #selectedItem let-cat>
+                <span class="cat-opt"><span class="tag-dot" [style.background]="cat.color"></span>{{ cat.name }}</span>
+              </ng-template>
+              <ng-template let-cat #item>
+                <span class="cat-opt"><span class="tag-dot" [style.background]="cat.color"></span>{{ cat.name }}</span>
+              </ng-template>
+            </p-select>
+            @if (!form.legendCategoryId) {
+              <input type="color" [(ngModel)]="form.color" title="Custom colour" />
+            }
+            <button class="link-btn" type="button" (click)="openLegendManager()">Manage</button>
           </div>
-          <div class="field swatch-field">
-            <label>Colour</label>
-            <input type="color" [(ngModel)]="form.color" />
-          </div>
+          <small class="muted">
+            Pick a legend category to colour this item, or leave it on “Custom
+            colour” to choose a one-off colour.
+          </small>
         </div>
         <div class="field">
           <label>Location</label>
@@ -359,6 +386,41 @@ interface PendingPress {
       </ng-template>
     </p-dialog>
 
+    <!-- Legend manager -->
+    <p-dialog
+      [(visible)]="legendManagerVisible"
+      [modal]="true"
+      [draggable]="false"
+      header="Legend"
+      [style]="{ width: '380px' }"
+    >
+      <p class="muted dialog-hint">
+        A legend pairs a colour with a label (e.g. “Restaurants” in purple).
+        Assign a category to a schedule item and it takes on that colour.
+      </p>
+      <div class="tag-list">
+        @for (c of legend(); track c.id) {
+          <div class="tag-row">
+            <input
+              type="color"
+              [ngModel]="c.color"
+              (ngModelChange)="recolorCategory(c, $event)"
+              title="Change colour"
+            />
+            <span class="tag-name">{{ c.name }}</span>
+            <button class="icon-btn danger" (click)="deleteLegendCategory(c)"><i class="pi pi-trash"></i></button>
+          </div>
+        } @empty {
+          <p class="muted">No categories yet.</p>
+        }
+      </div>
+      <div class="add-tag">
+        <input type="color" [(ngModel)]="newCategoryColor" />
+        <input pInputText placeholder="New category" [(ngModel)]="newCategoryName" (keyup.enter)="addLegendCategory()" />
+        <p-button icon="pi pi-plus" (onClick)="addLegendCategory()" />
+      </div>
+    </p-dialog>
+
     <!-- Tag manager -->
     <p-dialog
       [(visible)]="tagManagerVisible"
@@ -367,10 +429,14 @@ interface PendingPress {
       header="Tags"
       [style]="{ width: '380px' }"
     >
+      <p class="muted dialog-hint">
+        Tags are plain text labels for filtering and notes. Colour comes from
+        the legend, not from tags.
+      </p>
       <div class="tag-list">
         @for (t of tags(); track t.id) {
           <div class="tag-row">
-            <span class="tag-dot" [style.background]="t.color"></span>
+            <i class="pi pi-tag tag-icon"></i>
             <span class="tag-name">{{ t.name }}</span>
             <button class="icon-btn danger" (click)="deleteTag(t)"><i class="pi pi-trash"></i></button>
           </div>
@@ -379,7 +445,6 @@ interface PendingPress {
         }
       </div>
       <div class="add-tag">
-        <input type="color" [(ngModel)]="newTagColor" />
         <input pInputText placeholder="New tag" [(ngModel)]="newTagName" (keyup.enter)="addTag()" />
         <p-button icon="pi pi-plus" (onClick)="addTag()" />
       </div>
@@ -512,11 +577,17 @@ interface PendingPress {
     .field-row .field { flex: 1; }
     .dt { display: flex; gap: 6px; }
     .dt input { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; }
-    .swatch-field { flex: 0 0 64px; }
-    .swatch-field input[type='color'] { width: 100%; height: 40px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
+    .cat-row { display: flex; align-items: center; gap: 8px; }
+    .cat-row .w-full { flex: 1; min-width: 0; }
+    .cat-row input[type='color'] { width: 40px; height: 40px; flex: 0 0 40px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
+    .cat-opt { display: inline-flex; align-items: center; gap: 8px; }
+    .link-btn { border: none; background: none; color: var(--brand); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; padding: 0 2px; }
+    .dialog-hint { margin: 0 0 12px; font-size: 12px; line-height: 1.4; }
     .tag-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .tag-row { display: flex; align-items: center; gap: 8px; }
-    .tag-dot { width: 14px; height: 14px; border-radius: 50%; }
+    .tag-row input[type='color'] { width: 28px; height: 28px; flex: 0 0 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
+    .tag-dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; }
+    .tag-icon { color: var(--text-muted); }
     .tag-name { flex: 1; }
     .add-tag { display: flex; gap: 8px; align-items: center; }
     .add-tag input[pInputText] { flex: 1; }
@@ -544,6 +615,7 @@ export class ScheduleComponent implements OnInit {
   readonly trip = signal<Trip | null>(null);
   readonly activities = signal<Activity[]>([]);
   readonly tags = signal<Tag[]>([]);
+  readonly legend = signal<LegendCategory[]>([]);
   readonly loading = signal(true);
 
   readonly displayTz = signal<string>('UTC');
@@ -619,7 +691,8 @@ export class ScheduleComponent implements OnInit {
     const tz = this.displayTz();
     const byCol: RenderedPiece[][] = dates.map(() => []);
     for (const a of this.activities()) {
-      const color = a.color || a.tags[0]?.color || this.colColor(a) || '#4f46e5';
+      const color =
+        a.legendCategory?.color || a.color || this.colColor(a) || '#4f46e5';
       for (const p of activityPieces(a.startAt, a.endAt, dates, tz)) {
         byCol[p.colIndex].push({ ...p, activity: a, color });
       }
@@ -634,7 +707,10 @@ export class ScheduleComponent implements OnInit {
 
   readonly tagManagerVisible = signal(false);
   newTagName = '';
-  newTagColor = '#4f46e5';
+
+  readonly legendManagerVisible = signal(false);
+  newCategoryName = '';
+  newCategoryColor = '#4f46e5';
 
   // ── Drag state ──
   readonly drag = signal<DragState | null>(null);
@@ -662,6 +738,7 @@ export class ScheduleComponent implements OnInit {
       error: () => this.loading.set(false),
     });
     this.api.getTags(tripId).subscribe((t) => this.tags.set(t));
+    this.api.getLegend(tripId).subscribe((l) => this.legend.set(l));
     this.api.getActivities(tripId).subscribe((a) => this.activities.set(a));
   }
 
@@ -945,6 +1022,7 @@ export class ScheduleComponent implements OnInit {
       title: '',
       notes: '',
       segmentId: null,
+      legendCategoryId: null,
       color: '#4f46e5',
       tagIds: [],
       startDate: '',
@@ -1027,7 +1105,8 @@ export class ScheduleComponent implements OnInit {
       title: a.title,
       notes: a.notes ?? '',
       segmentId: a.segmentId,
-      color: a.color || a.tags[0]?.color || '#4f46e5',
+      legendCategoryId: a.legendCategory?.id ?? null,
+      color: a.color || '#4f46e5',
       tagIds: a.tags.map((t) => t.id),
       startDate: s.date,
       startTime: formatMinutes(s.minutes),
@@ -1058,7 +1137,10 @@ export class ScheduleComponent implements OnInit {
       title: f.title.trim(),
       notes: f.notes.trim() || undefined,
       segmentId: f.segmentId,
-      color: f.color || undefined,
+      legendCategoryId: f.legendCategoryId,
+      // The legend drives the colour when a category is chosen; the custom
+      // colour only applies to uncategorised one-offs.
+      color: f.legendCategoryId ? null : f.color || undefined,
       tagIds: f.tagIds,
       startAt: startISO,
       endAt: endISO,
@@ -1117,7 +1199,7 @@ export class ScheduleComponent implements OnInit {
   addTag(): void {
     const name = this.newTagName.trim();
     if (!name) return;
-    this.api.createTag(this.id(), { name, color: this.newTagColor }).subscribe({
+    this.api.createTag(this.id(), { name }).subscribe({
       next: (tag) => {
         this.tags.set([...this.tags(), tag].sort((a, b) => a.name.localeCompare(b.name)));
         this.newTagName = '';
@@ -1130,6 +1212,53 @@ export class ScheduleComponent implements OnInit {
     this.api.deleteTag(this.id(), tag.id).subscribe({
       next: () => {
         this.tags.set(this.tags().filter((t) => t.id !== tag.id));
+        this.reloadActivities();
+      },
+      error: (e) => this.error(e),
+    });
+  }
+
+  // ── Legend ──
+  openLegendManager(): void {
+    this.legendManagerVisible.set(true);
+  }
+
+  addLegendCategory(): void {
+    const name = this.newCategoryName.trim();
+    if (!name) return;
+    this.api
+      .createLegendCategory(this.id(), { name, color: this.newCategoryColor })
+      .subscribe({
+        next: (cat) => {
+          this.legend.set(
+            [...this.legend(), cat].sort((a, b) => a.name.localeCompare(b.name))
+          );
+          this.newCategoryName = '';
+        },
+        error: (e) => this.error(e),
+      });
+  }
+
+  /** Recolour a category from the manager; recolours every item using it. */
+  recolorCategory(category: LegendCategory, color: string): void {
+    if (!color || color === category.color) return;
+    this.api
+      .updateLegendCategory(this.id(), category.id, { color })
+      .subscribe({
+        next: (updated) => {
+          this.legend.set(
+            this.legend().map((c) => (c.id === updated.id ? updated : c))
+          );
+          this.reloadActivities();
+        },
+        error: (e) => this.error(e),
+      });
+  }
+
+  deleteLegendCategory(category: LegendCategory): void {
+    this.api.deleteLegendCategory(this.id(), category.id).subscribe({
+      next: () => {
+        this.legend.set(this.legend().filter((c) => c.id !== category.id));
         this.reloadActivities();
       },
       error: (e) => this.error(e),

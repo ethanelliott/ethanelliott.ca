@@ -7,6 +7,7 @@ import { Trip } from '../trip/trip.entity';
 import { TripsService } from '../trip/trips.service';
 import { Activity } from './activity.entity';
 import { toActivityDto } from './mappers';
+import { LegendService } from './legend.service';
 import { TagsService } from './tags.service';
 import { CreateActivityInput, UpdateActivityInput } from './activity.types';
 
@@ -17,6 +18,7 @@ export class ActivitiesService {
     inject(Database).repositoryFor(Segment);
   private readonly _tripsService = inject(TripsService);
   private readonly _tagsService = inject(TagsService);
+  private readonly _legendService = inject(LegendService);
 
   /** Validate that a segment (if given) belongs to the trip. */
   private async resolveSegment(
@@ -36,7 +38,7 @@ export class ActivitiesService {
   private loadOne(tripId: string, activityId: string) {
     return this._activityRepository.findOne({
       where: { id: activityId, trip: { id: tripId } },
-      relations: { tags: true, segment: true },
+      relations: { tags: true, segment: true, legendCategory: true },
     });
   }
 
@@ -54,7 +56,7 @@ export class ActivitiesService {
 
     const activities = await this._activityRepository.find({
       where,
-      relations: { tags: true, segment: true },
+      relations: { tags: true, segment: true, legendCategory: true },
       order: { startAt: 'ASC' },
     });
     return activities.map((a) => toActivityDto(a, tripId));
@@ -63,6 +65,10 @@ export class ActivitiesService {
   async create(tripId: string, userId: string, input: CreateActivityInput) {
     await this._tripsService.assertMember(tripId, userId);
     const segment = await this.resolveSegment(tripId, input.segmentId);
+    const legendCategory = await this._legendService.resolveForTrip(
+      tripId,
+      input.legendCategoryId
+    );
     const tags = await this._tagsService.resolveForTrip(
       tripId,
       input.tagIds ?? []
@@ -72,6 +78,7 @@ export class ActivitiesService {
       this._activityRepository.create({
         trip: { id: tripId } as Trip,
         segment,
+        legendCategory,
         title: input.title,
         notes: input.notes,
         startAt: new Date(input.startAt),
@@ -120,6 +127,12 @@ export class ActivitiesService {
       activity.locationLabel = input.locationLabel;
     if (input.segmentId !== undefined) {
       activity.segment = await this.resolveSegment(tripId, input.segmentId);
+    }
+    if (input.legendCategoryId !== undefined) {
+      activity.legendCategory = await this._legendService.resolveForTrip(
+        tripId,
+        input.legendCategoryId
+      );
     }
     if (input.tagIds !== undefined) {
       activity.tags = await this._tagsService.resolveForTrip(

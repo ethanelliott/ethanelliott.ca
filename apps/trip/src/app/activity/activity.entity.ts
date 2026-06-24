@@ -13,6 +13,7 @@ import {
 import { ENTITIES } from '../data-source';
 import { Segment } from '../trip/segment.entity';
 import { Trip } from '../trip/trip.entity';
+import { LegendCategory } from './legend.entity';
 import { Tag } from './tag.entity';
 
 /**
@@ -45,7 +46,12 @@ export class Activity {
   @Column('timestamptz')
   endAt!: Date;
 
-  // Optional explicit colour; falls back to the first tag's colour client-side.
+  // The legend category drives this activity's colour. Optional: an activity
+  // with no category falls back to its custom `color` (or a default).
+  @ManyToOne(() => LegendCategory, { onDelete: 'SET NULL', nullable: true })
+  legendCategory?: LegendCategory | null;
+
+  // Optional custom colour, used only when no legend category is assigned.
   @Column('text', { nullable: true })
   color?: string | null;
 

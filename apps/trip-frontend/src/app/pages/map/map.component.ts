@@ -173,7 +173,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
         order: i + 1,
         title: a.title,
         time: `${mm}/${dd} ${formatMinutes(s.minutes)}`,
-        color: a.color || a.tags[0]?.color || '#4f46e5',
+        color: a.legendCategory?.color || a.color || '#4f46e5',
       };
     });
   });

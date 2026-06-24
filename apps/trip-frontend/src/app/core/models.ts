@@ -130,12 +130,24 @@ export interface SegmentRequest {
 export interface Tag {
   id: string;
   name: string;
-  color: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface TagRequest {
+  name: string;
+}
+
+/** A named colour in a trip's legend (e.g. "Restaurants" → purple). */
+export interface LegendCategory {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LegendCategoryRequest {
   name: string;
   color: string;
 }
@@ -149,6 +161,7 @@ export interface Activity {
   startAt: string;
   endAt: string;
   color?: string | null;
+  legendCategory?: LegendCategory | null;
   lat?: number | null;
   lng?: number | null;
   locationLabel?: string | null;
@@ -163,7 +176,8 @@ export interface CreateActivityRequest {
   segmentId?: string | null;
   startAt: string;
   endAt: string;
-  color?: string;
+  color?: string | null;
+  legendCategoryId?: string | null;
   lat?: number | null;
   lng?: number | null;
   locationLabel?: string | null;
