@@ -41,7 +41,6 @@ export class TagsService {
       this._tagRepository.create({
         trip: { id: tripId } as Trip,
         name: input.name,
-        color: input.color,
       })
     );
     return toTagDto(tag);

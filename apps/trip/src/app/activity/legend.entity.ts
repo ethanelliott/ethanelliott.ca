@@ -12,12 +12,13 @@ import { ENTITIES } from '../data-source';
 import { Trip } from '../trip/trip.entity';
 
 /**
- * A free-form, per-trip text label. Activities reference tags for labelling
- * and (later) filtering. Colour lives on the legend, not on tags.
+ * A per-trip legend category: a named colour (e.g. "Restaurants" → purple).
+ * Activities pick a single legend category, which drives the colour they show
+ * on the schedule. Distinct from tags, which are free-form text-only labels.
  */
 @Entity()
 @Index(['trip', 'name'], { unique: true })
-export class Tag {
+export class LegendCategory {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -27,6 +28,9 @@ export class Tag {
   @Column('text')
   name!: string;
 
+  @Column('text', { default: '#4f46e5' })
+  color!: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 
@@ -34,4 +38,4 @@ export class Tag {
   updatedAt!: Date;
 }
 
-provide(ENTITIES, Tag);
+provide(ENTITIES, LegendCategory);

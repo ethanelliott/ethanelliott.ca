@@ -1,14 +1,24 @@
 import { Activity } from './activity.entity';
+import { LegendCategory } from './legend.entity';
 import { Tag } from './tag.entity';
-import { ActivityOut, TagOut } from './activity.types';
+import { ActivityOut, LegendCategoryOut, TagOut } from './activity.types';
 
 export function toTagDto(tag: Tag): TagOut {
   return {
     id: tag.id,
     name: tag.name,
-    color: tag.color,
     createdAt: tag.createdAt,
     updatedAt: tag.updatedAt,
+  };
+}
+
+export function toLegendCategoryDto(category: LegendCategory): LegendCategoryOut {
+  return {
+    id: category.id,
+    name: category.name,
+    color: category.color,
+    createdAt: category.createdAt,
+    updatedAt: category.updatedAt,
   };
 }
 
@@ -22,6 +32,9 @@ export function toActivityDto(activity: Activity, tripId: string): ActivityOut {
     startAt: activity.startAt,
     endAt: activity.endAt,
     color: activity.color ?? null,
+    legendCategory: activity.legendCategory
+      ? toLegendCategoryDto(activity.legendCategory)
+      : null,
     lat: activity.lat ?? null,
     lng: activity.lng ?? null,
     locationLabel: activity.locationLabel ?? null,

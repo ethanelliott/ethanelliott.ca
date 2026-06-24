@@ -8,6 +8,8 @@ import {
   CreateExpenseRequest,
   CreateTripRequest,
   Expense,
+  LegendCategory,
+  LegendCategoryRequest,
   PackingContainer,
   PackingItem,
   PackingList,
@@ -145,6 +147,43 @@ export class ApiService {
   deleteTag(tripId: string, tagId: string): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(
       `${this.base}/trips/${tripId}/tags/${tagId}`
+    );
+  }
+
+  // ── Legend categories ──
+  getLegend(tripId: string): Observable<LegendCategory[]> {
+    return this.http.get<LegendCategory[]>(
+      `${this.base}/trips/${tripId}/legend`
+    );
+  }
+
+  createLegendCategory(
+    tripId: string,
+    body: LegendCategoryRequest
+  ): Observable<LegendCategory> {
+    return this.http.post<LegendCategory>(
+      `${this.base}/trips/${tripId}/legend`,
+      body
+    );
+  }
+
+  updateLegendCategory(
+    tripId: string,
+    categoryId: string,
+    body: Partial<LegendCategoryRequest>
+  ): Observable<LegendCategory> {
+    return this.http.put<LegendCategory>(
+      `${this.base}/trips/${tripId}/legend/${categoryId}`,
+      body
+    );
+  }
+
+  deleteLegendCategory(
+    tripId: string,
+    categoryId: string
+  ): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/trips/${tripId}/legend/${categoryId}`
     );
   }
 
