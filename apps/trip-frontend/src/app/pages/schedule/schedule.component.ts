@@ -291,7 +291,7 @@ interface PendingPress {
           <label>Title</label>
           <input pInputText [(ngModel)]="form.title" />
         </div>
-        <div class="field-row">
+        <div class="field-row dt-row">
           <div class="field">
             <label>Start</label>
             <div class="dt"><input type="date" [(ngModel)]="form.startDate" /><input type="time" [(ngModel)]="form.startTime" /></div>
@@ -574,9 +574,12 @@ interface PendingPress {
     .dir-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--brand); }
     .dir-link i { font-size: 13px; }
     .field-row { display: flex; gap: 12px; }
-    .field-row .field { flex: 1; }
+    .field-row .field { flex: 1; min-width: 0; }
+    /* Stack Start/End so each date+time pair gets the full dialog width
+       instead of overflowing the right edge. */
+    .dt-row { flex-direction: column; }
     .dt { display: flex; gap: 6px; }
-    .dt input { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; }
+    .dt input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; }
     .cat-row { display: flex; align-items: center; gap: 8px; }
     .cat-row .w-full { flex: 1; min-width: 0; }
     .cat-row input[type='color'] { width: 40px; height: 40px; flex: 0 0 40px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
