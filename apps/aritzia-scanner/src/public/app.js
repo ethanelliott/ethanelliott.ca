@@ -48,36 +48,6 @@ function applyFavoriteState(btn, favorited) {
   btn.title = favorited ? 'Remove from favorites' : 'Add to favorites';
 }
 
-/* ==================== "New to Me" tracking ==================== */
-
-// High-water mark: the scan time this browser has acknowledged. Products added
-// after it are "new to me". Baselined to the latest scan on first ever load so
-// you start caught up rather than seeing the whole catalog.
-const SEEN_KEY = 'aritzia_seen_until';
-
-function getSeenUntil() {
-  return localStorage.getItem(SEEN_KEY) || '';
-}
-
-function setSeenUntil(ts) {
-  if (ts) localStorage.setItem(SEEN_KEY, ts);
-}
-
-async function updateNewCount() {
-  const badge = document.getElementById('new-count');
-  if (!badge) return;
-  try {
-    const resp = await fetch(
-      '/api/new-count?since=' + encodeURIComponent(getSeenUntil())
-    );
-    const data = await resp.json();
-    const count = data && data.count ? data.count : 0;
-    badge.textContent = count > 0 ? String(count) : '';
-  } catch {
-    /* badge is best-effort */
-  }
-}
-
 function escapeHtml(text) {
   if (text === null || text === undefined) return '';
   return String(text)
@@ -283,13 +253,6 @@ document.addEventListener('click', function (e) {
 document.addEventListener('DOMContentLoaded', function () {
   updateFavCount();
   updateThemeToggleIcon();
-
-  // Pin the "new to me" baseline the first time the app is opened, then keep
-  // the nav badge in sync.
-  if (!getSeenUntil() && window.ARITZIA_LAST_SCAN) {
-    setSeenUntil(window.ARITZIA_LAST_SCAN);
-  }
-  updateNewCount();
 
   // Sync server-rendered favorite buttons with localStorage
   const favs = getFavorites();

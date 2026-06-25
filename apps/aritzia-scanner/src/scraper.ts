@@ -772,11 +772,21 @@ async function runUpdate() {
     const summary = buildScanSummary(changes);
     if (summary) {
       console.log(`\n--- Step 5: Notifying (${summary.total} changes) ---`);
+      // Deep-link the notification to this scan's changelog entry.
+      const scanRow = await allPromise.call(
+        DB,
+        `SELECT id FROM scans WHERE scrape_time = ?`,
+        [scrapeTime]
+      );
+      const scanId = scanRow[0]?.id;
+      const click = scanId
+        ? `${PUBLIC_BASE_URL}/changelog/${scanId}`
+        : `${PUBLIC_BASE_URL}/changelog`;
       await sendNtfy(summary.body, {
         title: summary.title,
         priority: 'min',
         tags: ['jacket'],
-        click: `${PUBLIC_BASE_URL}/whats-new`,
+        click,
       });
     } else {
       console.log('\n--- Step 5: No changes this scan, skipping notification ---');

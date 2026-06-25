@@ -12,6 +12,10 @@ export type ScanChanges = {
   newColors: any[];
   restocks: any[];
   priceDrops: any[];
+  // Raw variant-row counts behind the de-duplicated lists above, so summaries
+  // can distinguish e.g. "2 new colors" from the "10 variants" they span.
+  newProductVariants: number;
+  newColorVariants: number;
 };
 
 export async function getScanChanges(
@@ -94,7 +98,39 @@ export async function getScanChanges(
         b.old_price - b.new_price - (a.old_price - a.new_price)
     );
 
-  return { newProducts, newColors, restocks, priceDrops };
+  // Raw variant-row counts for this scan, split by whether the parent product
+  // is itself new. These span colors/lengths, so they're usually larger than
+  // the de-duplicated product/color counts above.
+  const newProductVariantsRow = await getCount(
+    db,
+    `SELECT COUNT(*) as c FROM variants v JOIN products p ON p.id = v.product_id
+     WHERE v.added_at = ? AND p.added_at = ?`,
+    [scrapeTime, scrapeTime]
+  );
+  const newColorVariantsRow = await getCount(
+    db,
+    `SELECT COUNT(*) as c FROM variants v JOIN products p ON p.id = v.product_id
+     WHERE v.added_at = ? AND p.added_at < ?`,
+    [scrapeTime, scrapeTime]
+  );
+
+  return {
+    newProducts,
+    newColors,
+    restocks,
+    priceDrops,
+    newProductVariants: newProductVariantsRow,
+    newColorVariants: newColorVariantsRow,
+  };
+}
+
+async function getCount(
+  db: sqlite3.Database,
+  sql: string,
+  params: any[]
+): Promise<number> {
+  const rows = await allPromise.call(db, sql, params);
+  return rows[0]?.c || 0;
 }
 
 export type ScanCounts = {
@@ -163,12 +199,28 @@ export type ScanSummary = {
   body: string;
 };
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+// "(N variants)" only when the raw variant count differs from the de-duplicated
+// headline count, so we don't print "2 new colors (2 variants)".
+const variantsNote = (variants: number, headline: number) =>
+  variants > headline ? ` — ${plural(variants, 'variant')}` : '';
+
 /**
  * Build a compact ntfy message from a set of scan changes. Returns null when
- * nothing changed so the caller can skip notifying.
+ * nothing changed so the caller can skip notifying. Counts are de-duplicated
+ * (products / colors) with the underlying variant counts called out separately,
+ * so a scan that adds 10 variants spanning only 2 new colors reads clearly.
  */
 export function buildScanSummary(changes: ScanChanges): ScanSummary | null {
-  const { newProducts, newColors, restocks, priceDrops } = changes;
+  const {
+    newProducts,
+    newColors,
+    restocks,
+    priceDrops,
+    newProductVariants,
+    newColorVariants,
+  } = changes;
   const total =
     newProducts.length + newColors.length + restocks.length + priceDrops.length;
   if (total === 0) return null;
@@ -180,32 +232,45 @@ export function buildScanSummary(changes: ScanChanges): ScanSummary | null {
       .slice(0, 3)
       .map((p: any) => p.display_name || p.name)
       .join(', ');
-    const more = newProducts.length > 3 ? ` +${newProducts.length - 3} more` : '';
+    const more =
+      newProducts.length > 3 ? ` +${newProducts.length - 3} more` : '';
     lines.push(
-      `🆕 ${newProducts.length} new product${
-        newProducts.length === 1 ? '' : 's'
-      }: ${names}${more}`
+      `🆕 ${plural(newProducts.length, 'new product')}${variantsNote(
+        newProductVariants,
+        newProducts.length
+      )}: ${names}${more}`
     );
   }
   if (newColors.length > 0) {
     lines.push(
-      `🎨 ${newColors.length} new color${newColors.length === 1 ? '' : 's'}`
+      `🎨 ${plural(newColors.length, 'new color')} on existing styles${variantsNote(
+        newColorVariants,
+        newColors.length
+      )}`
     );
   }
   if (restocks.length > 0) {
-    lines.push(
-      `📦 ${restocks.length} restock${restocks.length === 1 ? '' : 's'}`
-    );
+    const products = new Set(restocks.map((r: any) => r.product_id)).size;
+    const across =
+      products > 1 && products < restocks.length
+        ? ` across ${plural(products, 'product')}`
+        : '';
+    lines.push(`📦 ${plural(restocks.length, 'restock')}${across}`);
   }
   if (priceDrops.length > 0) {
-    lines.push(
-      `💸 ${priceDrops.length} price drop${priceDrops.length === 1 ? '' : 's'}`
-    );
+    const biggest = priceDrops.reduce((max: number, d: any) => {
+      const pct =
+        d.old_price > 0 ? (d.old_price - d.new_price) / d.old_price : 0;
+      return Math.max(max, pct);
+    }, 0);
+    const biggestNote =
+      biggest > 0 ? `, biggest ${Math.round(biggest * 100)}% off` : '';
+    lines.push(`💸 ${plural(priceDrops.length, 'price drop')}${biggestNote}`);
   }
 
   return {
     total,
-    title: `Aritzia: ${total} update${total === 1 ? '' : 's'} this scan`,
+    title: `Aritzia: ${plural(total, 'update')} this scan`,
     body: lines.join('\n'),
   };
 }

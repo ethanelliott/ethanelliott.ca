@@ -100,8 +100,7 @@ function variantCard(
 }
 
 // Turn a ScanChanges result into the four card lists rendered by the
-// whats_new view. Shared by /whats-new (latest scan) and /changelog/:id
-// (a specific historical scan).
+// scan_detail view for a /changelog/:id entry.
 function buildChangeCards(changes: {
   newProducts: any[];
   newColors: any[];
@@ -538,33 +537,6 @@ router.get('/discontinued', async (req, res) => {
   });
 });
 
-// What's New — everything that changed in the most recent completed scan.
-// Objective and shared across visitors (contrast with /new-to-me, which is
-// per-device). Resets each scan.
-router.get('/whats-new', async (req, res) => {
-  const db = getDB();
-  const { lastScanTime, stats } = await getPageContext(db);
-
-  const emptyCards = {
-    newProductCards: [],
-    newColorCards: [],
-    restockCards: [],
-    priceDropCards: [],
-  };
-
-  const cards = lastScanTime
-    ? buildChangeCards(await getScanChanges(db, lastScanTime))
-    : emptyCards;
-
-  res.render('whats_new', {
-    title: "What's New",
-    subtitle: `Changes from the latest scan (${stats.lastScanFormatted})`,
-    backHref: null,
-    ...cards,
-    stats,
-  });
-});
-
 // Changelog — history of scans that changed something. Counts come from the
 // scans table (populated at scan completion / backfilled), so the list is
 // cheap; each entry links to a per-scan detail view.
@@ -636,21 +608,13 @@ router.get('/changelog/:id', async (req, res) => {
 
   const cards = buildChangeCards(await getScanChanges(db, scan.scrape_time));
 
-  res.render('whats_new', {
+  res.render('scan_detail', {
     title: `Scan · ${formatDateTime(scan.scrape_time)}`,
     subtitle: `What changed in this scan (${fromNow(scan.scrape_time)})`,
     backHref: '/changelog',
     ...cards,
     stats,
   });
-});
-
-// New to Me — products added since the last scan this browser acknowledged.
-// The high-water mark lives in localStorage (like favorites), so the page is
-// rendered as a shell that public/app.js fills in via /api/new-products.
-router.get('/new-to-me', async (req, res) => {
-  const { stats } = await getPageContext(getDB());
-  res.render('new_to_me', { title: 'New to Me', stats });
 });
 
 // ==================== PRODUCT & VARIANT DETAIL ====================

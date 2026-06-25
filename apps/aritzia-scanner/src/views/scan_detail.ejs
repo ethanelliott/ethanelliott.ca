@@ -25,11 +25,11 @@
     %>
 
     <% if (totalChanges === 0) { %>
-    <%- include('partials/empty_state', { message: 'Nothing changed in the last scan. Check back later!', icon: '✨' }) %>
+    <%- include('partials/empty_state', { message: 'No changes were recorded for this scan.', icon: '✨' }) %>
     <% } else { %>
       <% sections.forEach(section => { %>
         <% if (section.cards.length > 0) { %>
-        <section class="whats-new-section">
+        <section class="change-section">
           <h2><%= section.icon %> <%= section.title %> (<%= section.cards.length %>)</h2>
           <div class="product-grid">
             <% section.cards.forEach(card => { %>
