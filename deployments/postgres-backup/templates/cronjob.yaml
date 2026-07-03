@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "postgres-backup.fullname" . }}
+  labels:
+    {{- include "postgres-backup.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  {{- if .Values.timeZone }}
+  timeZone: {{ .Values.timeZone | quote }}
+  {{- end }}
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: {{ .Values.jobHistory.successful }}
+  failedJobsHistoryLimit: {{ .Values.jobHistory.failed }}
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            {{- include "postgres-backup.selectorLabels" . | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          {{- if .Values.nodeName }}
+          nodeName: {{ .Values.nodeName }}
+          {{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: backup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              env:
+                - name: PGHOST
+                  value: {{ .Values.postgres.host | quote }}
+                - name: PGPORT
+                  value: {{ .Values.postgres.port | quote }}
+                - name: PGUSER
+                  value: {{ .Values.postgres.username | quote }}
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.postgres.secretName }}
+                      key: {{ .Values.postgres.secretKey }}
+                - name: RETENTION
+                  value: {{ .Values.retention.count | quote }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  ts="$(date +%Y%m%d-%H%M%S)"
+                  out="/backups/pg_dumpall-${ts}.sql.gz"
+                  tmp="${out}.partial"
+                  echo "[backup] pg_dumpall -> ${out}"
+                  # Write to a .partial first, then atomically rename, so a
+                  # crashed run never leaves a truncated file that looks valid.
+                  pg_dumpall --clean --if-exists | gzip -9 > "${tmp}"
+                  mv "${tmp}" "${out}"
+                  echo "[backup] wrote ${out} ($(du -h "${out}" | cut -f1))"
+                  # Retention: keep only the newest ${RETENTION} dumps.
+                  cd /backups
+                  ls -1t pg_dumpall-*.sql.gz 2>/dev/null | tail -n +$((RETENTION + 1)) | while read -r old; do
+                    echo "[backup] pruning ${old}"
+                    rm -f "${old}"
+                  done
+                  echo "[backup] current backups:"
+                  ls -lh /backups/pg_dumpall-*.sql.gz
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: {{ include "postgres-backup.fullname" . }}

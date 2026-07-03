@@ -1,0 +1,9 @@
+apiVersion: v2
+name: postgres-backup
+description: Nightly logical backups (pg_dumpall) of the in-cluster PostgreSQL
+type: application
+
+version: 0.0.1
+appVersion: '17.5'
+
+dependencies: []

@@ -1,0 +1,47 @@
+image:
+  # Match the server version so pg_dumpall >= server. Same image as the postgres chart.
+  repository: postgres
+  tag: '17.5-alpine'
+  pullPolicy: IfNotPresent
+
+# In-cluster PostgreSQL connection details.
+postgres:
+  host: postgres          # headless service from the `postgres` chart
+  port: 5432
+  username: postgres      # superuser (needed for pg_dumpall + globals/roles)
+  # Reuse the secret created by the postgres chart.
+  secretName: postgres-secrets
+  secretKey: postgres-password
+
+# Nightly at 03:00 local time.
+schedule: '0 3 * * *'
+# CronJob timeZone (Kubernetes >= 1.27). Leave empty to use the cluster's UTC.
+timeZone: America/Toronto
+
+retention:
+  # How many nightly dumps to keep on disk (2 days of history).
+  count: 2
+
+storage:
+  size: 10Gi
+  storageClass: local-path
+
+# Pin the backup volume to an always-on node that is NOT the WSL/Postgres node,
+# so the only-copy problem is solved (backup lives on separate hardware).
+# Set to skynet's Kubernetes node name (from `kubectl get nodes`).
+nodeName: skynet
+# Alternatively, select by label instead of exact node name:
+nodeSelector: {}
+
+# Keep the pod lightweight; a logical dump of personal apps is small.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: '1'
+    memory: 512Mi
+
+jobHistory:
+  successful: 2
+  failed: 2
