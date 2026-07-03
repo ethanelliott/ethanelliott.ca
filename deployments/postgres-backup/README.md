@@ -9,8 +9,10 @@ Nightly logical backups of the in-cluster PostgreSQL (`postgres` chart).
 - `pg_dumpall` captures **every database plus global objects (roles/permissions)** in a
   single file — a full logical snapshot of the server.
 - Retention: keeps the newest **{{ retention.count }} = 2** dumps (2 days of history).
-- The PVC is pinned via `nodeName` to an **always-on node that is not the WSL/Postgres
-  node**, so the backup lives on separate hardware from the only live copy of the data.
+- The pod (and thus its local-path PVC) is pinned via `nodeSelector` to an **always-on
+  node that is not the WSL/Postgres node**, so the backup lives on separate hardware from
+  the only live copy of the data. (`nodeSelector`, not `nodeName` — local-path is
+  `WaitForFirstConsumer`, and `nodeName` bypasses the scheduler and deadlocks binding.)
 
 Files are named `pg_dumpall-YYYYmmdd-HHMMSS.sql.gz`. They are written to a `.partial`
 file first and atomically renamed, so an interrupted run never leaves a truncated file

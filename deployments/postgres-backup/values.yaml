@@ -28,10 +28,15 @@ storage:
 
 # Pin the backup volume to an always-on node that is NOT the WSL/Postgres node,
 # so the only-copy problem is solved (backup lives on separate hardware).
-# Set to skynet's Kubernetes node name (from `kubectl get nodes`).
-nodeName: skynet
-# Alternatively, select by label instead of exact node name:
-nodeSelector: {}
+#
+# Use nodeSelector, NOT nodeName: the local-path storageClass is
+# WaitForFirstConsumer, and nodeName bypasses the scheduler — which never sets
+# the "selected node" that triggers volume provisioning, deadlocking the PVC in
+# Pending. nodeSelector keeps the pod going through the scheduler so the volume
+# is provisioned on the chosen node.
+nodeName: ''
+nodeSelector:
+  kubernetes.io/hostname: skynet
 
 # Keep the pod lightweight; a logical dump of personal apps is small.
 resources:
