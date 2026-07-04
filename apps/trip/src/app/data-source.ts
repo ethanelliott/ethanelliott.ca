@@ -17,7 +17,10 @@ export class Database {
     username: process.env.DB_USER || 'trip',
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'trip',
-    synchronize: true,
+    // Schema auto-sync can drop/alter columns on entity changes. It stays on
+    // by default because this app has no migrations yet, but set
+    // DB_SYNCHRONIZE=false in production once the schema is stable.
+    synchronize: (process.env.DB_SYNCHRONIZE ?? 'true') === 'true',
     entities: this._entities,
   });
 
