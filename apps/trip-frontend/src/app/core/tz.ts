@@ -10,6 +10,30 @@ export interface ZonedParts {
   minutes: number;
 }
 
+// Intl.DateTimeFormat construction is ~100x the cost of format(); these
+// helpers run for every schedule block and hour label on every redraw, so
+// cache one formatter per timezone.
+const partsFormatters = new Map<string, Intl.DateTimeFormat>();
+const abbrevFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function partsFormatter(tz: string): Intl.DateTimeFormat {
+  let fmt = partsFormatters.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    partsFormatters.set(tz, fmt);
+  }
+  return fmt;
+}
+
 function partsOf(date: Date, tz: string): {
   year: number;
   month: number;
@@ -18,16 +42,7 @@ function partsOf(date: Date, tz: string): {
   minute: number;
   second: number;
 } {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+  const fmt = partsFormatter(tz);
   const p: Record<string, string> = {};
   for (const part of fmt.formatToParts(date)) p[part.type] = part.value;
   return {
@@ -87,11 +102,15 @@ export function zonedTimeToUtc(
 
 /** Short zone label like "CEST" / "EDT" for an instant. */
 export function tzAbbreviation(tz: string, date: Date): string {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    timeZoneName: 'short',
-    hour: '2-digit',
-  });
+  let fmt = abbrevFormatters.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'short',
+      hour: '2-digit',
+    });
+    abbrevFormatters.set(tz, fmt);
+  }
   const part = fmt.formatToParts(date).find((p) => p.type === 'timeZoneName');
   return part?.value ?? tz;
 }
