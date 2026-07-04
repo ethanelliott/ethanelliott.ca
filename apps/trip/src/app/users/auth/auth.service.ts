@@ -150,6 +150,11 @@ export class AuthService {
     const { credential } = verification.registrationInfo;
 
     const userCredential = new UserCredential();
+    // NOTE: credential.id is ALREADY a base64url string, so this re-encodes
+    // its ASCII bytes — the stored value is a double-encoded id, not the raw
+    // WebAuthn credential id. It works because authentication (below) applies
+    // the same transformation before looking rows up, but never "fix" one
+    // side without migrating the stored column or every passkey breaks.
     userCredential.credentialId = Buffer.from(credential.id).toString(
       'base64url'
     );
@@ -213,6 +218,8 @@ export class AuthService {
     expectedChallenge: string
   ): Promise<AuthTokens> {
     const rawCredentialId = authenticationResponse.id;
+    // Deliberately double-encodes to match what registration stored — see the
+    // note in completePasskeyRegistration before changing either side.
     const credentialId = Buffer.from(rawCredentialId).toString('base64url');
 
     const credential = await this._credentialRepository.findOneBy({
