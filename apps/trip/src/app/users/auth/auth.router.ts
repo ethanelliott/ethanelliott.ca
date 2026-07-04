@@ -32,6 +32,7 @@ export async function AuthRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/register',
     {
+      config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
       schema: {
         tags: ['Authentication'],
         description: 'Register a new user - passkeys mandatory for security!',
@@ -62,6 +63,7 @@ export async function AuthRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/register/complete',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Authentication'],
         description: 'Complete initial passkey registration for new users',
@@ -94,6 +96,7 @@ export async function AuthRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/login',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Authentication'],
         description: 'Start passkey authentication (passwordless login)',
@@ -116,6 +119,7 @@ export async function AuthRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/login/complete',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Authentication'],
         description: 'Complete passkey authentication',
@@ -149,6 +153,7 @@ export async function AuthRouter(fastify: FastifyInstance) {
   typedFastify.post(
     '/token/refresh',
     {
+      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
       schema: {
         tags: ['Authentication'],
         description: 'Refresh access token using refresh token',
