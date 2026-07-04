@@ -405,16 +405,23 @@ export class BudgetComponent implements OnInit {
     this.expenses.set(
       before.map((x) => (x.id === e.id ? { ...x, paid } : x))
     );
-    this.api.updateExpense(this.id(), e.id, { paid }).subscribe({
-      next: (updated) =>
-        this.expenses.set(
-          this.expenses().map((x) => (x.id === updated.id ? updated : x))
-        ),
-      error: (err) => {
-        this.expenses.set(before);
-        this.error(err);
-      },
-    });
+    this.api
+      .updateExpense(this.id(), e.id, { paid }, { queueOffline: true })
+      .subscribe({
+        // A null body means the write was queued offline — keep the
+        // optimistic state.
+        next: (updated) => {
+          if (updated) {
+            this.expenses.set(
+              this.expenses().map((x) => (x.id === updated.id ? updated : x))
+            );
+          }
+        },
+        error: (err) => {
+          this.expenses.set(before);
+          this.error(err);
+        },
+      });
   }
 
   save(): void {

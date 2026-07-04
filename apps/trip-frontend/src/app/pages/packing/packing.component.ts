@@ -326,13 +326,19 @@ export class PackingComponent implements OnInit {
         i.id === item.id ? { ...i, [stage]: value } : i
       ),
     });
-    this.api.updatePackingItem(this.id(), item.id, { [stage]: value }).subscribe({
-      next: (l) => this.list.set(l),
-      error: (e) => {
-        this.list.set(before);
-        this.error(e);
-      },
-    });
+    this.api
+      .updatePackingItem(this.id(), item.id, { [stage]: value }, { queueOffline: true })
+      .subscribe({
+        // A null body means the write was queued offline — keep the
+        // optimistic state.
+        next: (l) => {
+          if (l) this.list.set(l);
+        },
+        error: (e) => {
+          this.list.set(before);
+          this.error(e);
+        },
+      });
   }
 
   openEdit(item: PackingItem): void {
@@ -356,7 +362,7 @@ export class PackingComponent implements OnInit {
       })
       .subscribe({
         next: (l) => {
-          this.list.set(l);
+          if (l) this.list.set(l);
           this.editVisible.set(false);
         },
         error: (e) => this.error(e),

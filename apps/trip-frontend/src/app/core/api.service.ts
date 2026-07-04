@@ -1,7 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { QUEUE_IF_OFFLINE } from './offline-context';
 import {
   Activity,
   CreateActivityRequest,
@@ -234,15 +235,27 @@ export class ApiService {
     return this.http.post<Expense>(`${this.base}/trips/${tripId}/expenses`, body);
   }
 
+  /**
+   * With `queueOffline`, the write is stored and replayed when offline
+   * instead of failing; the response body is null in that case.
+   */
   updateExpense(
     tripId: string,
     expenseId: string,
-    body: UpdateExpenseRequest
-  ): Observable<Expense> {
-    return this.http.put<Expense>(
+    body: UpdateExpenseRequest,
+    opts?: { queueOffline?: boolean }
+  ): Observable<Expense | null> {
+    return this.http.put<Expense | null>(
       `${this.base}/trips/${tripId}/expenses/${expenseId}`,
-      body
+      body,
+      { context: this.offlineContext(opts) }
     );
+  }
+
+  private offlineContext(opts?: { queueOffline?: boolean }): HttpContext {
+    const context = new HttpContext();
+    if (opts?.queueOffline) context.set(QUEUE_IF_OFFLINE, true);
+    return context;
   }
 
   deleteExpense(
@@ -296,6 +309,10 @@ export class ApiService {
     );
   }
 
+  /**
+   * With `queueOffline`, the write is stored and replayed when offline
+   * instead of failing; the response body is null in that case.
+   */
   updatePackingItem(
     tripId: string,
     itemId: string,
@@ -304,11 +321,13 @@ export class ApiService {
         PackingItem,
         'name' | 'count' | 'containerId' | 'ready' | 'packed' | 'verify'
       >
-    >
-  ): Observable<PackingList> {
-    return this.http.put<PackingList>(
+    >,
+    opts?: { queueOffline?: boolean }
+  ): Observable<PackingList | null> {
+    return this.http.put<PackingList | null>(
       `${this.base}/trips/${tripId}/packing/items/${itemId}`,
-      body
+      body,
+      { context: this.offlineContext(opts) }
     );
   }
 
