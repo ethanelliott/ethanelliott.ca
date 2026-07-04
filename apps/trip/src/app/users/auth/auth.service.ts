@@ -204,6 +204,12 @@ export class AuthService {
       throw new HttpErrors.Unauthorized('User not found or inactive');
     }
 
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new HttpErrors.Unauthorized(
+        'Account temporarily locked after too many failed attempts. Try again later.'
+      );
+    }
+
     let verification: VerifiedAuthenticationResponse;
     try {
       verification = await verifyAuthenticationResponse({
@@ -382,10 +388,11 @@ export class AuthService {
   }
 
   private async _updateSuccessfulLogin(userId: string): Promise<void> {
+    // `null` (not `undefined`) so TypeORM actually clears the lock column.
     await this._userRepository.update(userId, {
       lastLoginAt: new Date(),
       failedLoginAttempts: 0,
-      lockedUntil: undefined,
+      lockedUntil: null as unknown as undefined,
     });
   }
 }
