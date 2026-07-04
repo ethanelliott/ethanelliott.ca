@@ -1,6 +1,7 @@
 import { inject } from '@ee/di';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { AuthService } from './auth.service';
+import { ChallengeService } from './challenge.service';
 import {
   LoginStartResponse,
   TokenRefreshResponse,
@@ -10,14 +11,13 @@ import {
 
 export class LoginService {
   private readonly _authService = inject(AuthService);
+  private readonly _challenges = inject(ChallengeService);
 
   async startLogin(username?: string): Promise<LoginStartResponse> {
     const authenticationOptions =
       await this._authService.startPasskeyAuthentication(username);
 
-    const sessionId = `auth_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 11)}`;
+    const sessionId = this._challenges.newSessionId('auth');
 
     return {
       success: true,

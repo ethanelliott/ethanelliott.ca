@@ -1,6 +1,7 @@
 import { inject } from '@ee/di';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import { AuthService } from './auth.service';
+import { ChallengeService } from './challenge.service';
 import { UsersService } from '../users.service';
 import { UserRegistration } from '../user';
 import {
@@ -11,6 +12,7 @@ import {
 export class RegistrationService {
   private readonly _authService = inject(AuthService);
   private readonly _usersService = inject(UsersService);
+  private readonly _challenges = inject(ChallengeService);
 
   async startRegistration(
     userData: UserRegistration
@@ -36,7 +38,7 @@ export class RegistrationService {
         options: registrationOptions.options,
         challenge: registrationOptions.challenge,
       },
-      sessionId: `reg_${user.id}_${Date.now()}`,
+      sessionId: this._challenges.newSessionId('reg'),
       message:
         '🔑 Account created! Complete passkey setup to secure your account.',
     };

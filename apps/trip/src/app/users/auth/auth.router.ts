@@ -16,29 +16,15 @@ import {
   TokenRefreshRequestSchema,
   TokenRefreshResponseSchema,
 } from './auth.types';
+import { ChallengeService } from './challenge.service';
 import { LoginService } from './login.service';
 import { RegistrationService } from './registration.service';
-
-// Challenge storage - in production, use Redis or similar
-const challengeStore = new Map<
-  string,
-  { challenge: string; userId?: string; expires: number }
->();
-
-// Clean up expired challenges every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of challengeStore.entries()) {
-    if (value.expires < now) {
-      challengeStore.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
 
 export async function AuthRouter(fastify: FastifyInstance) {
   const typedFastify = fastify.withTypeProvider<ZodTypeProvider>();
   const _loginService = inject(LoginService);
   const _registrationService = inject(RegistrationService);
+  const _challenges = inject(ChallengeService);
 
   /**
    * 📝 REGISTER USER
@@ -60,11 +46,11 @@ export async function AuthRouter(fastify: FastifyInstance) {
       const userData = request.body;
       const result = await _registrationService.startRegistration(userData);
 
-      challengeStore.set(result.sessionId, {
-        challenge: result.registrationOptions.challenge,
-        userId: result.user.id,
-        expires: Date.now() + 5 * 60 * 1000,
-      });
+      await _challenges.put(
+        result.sessionId,
+        result.registrationOptions.challenge,
+        result.user.id
+      );
 
       return reply.code(201).send(result);
     }
@@ -86,7 +72,7 @@ export async function AuthRouter(fastify: FastifyInstance) {
     async (request, reply) => {
       const { sessionId, credential } = request.body;
 
-      const challengeData = challengeStore.get(sessionId);
+      const challengeData = await _challenges.take(sessionId);
       if (!challengeData || !challengeData.userId) {
         throw fastify.httpErrors.badRequest('Invalid or expired session');
       }
@@ -98,7 +84,6 @@ export async function AuthRouter(fastify: FastifyInstance) {
         fastify
       );
 
-      challengeStore.delete(sessionId);
       return reply.send(result);
     }
   );
@@ -119,10 +104,7 @@ export async function AuthRouter(fastify: FastifyInstance) {
     async (request, reply) => {
       const result = await _loginService.startLogin(request.body?.username);
 
-      challengeStore.set(result.sessionId, {
-        challenge: result.options.challenge,
-        expires: Date.now() + 5 * 60 * 1000,
-      });
+      await _challenges.put(result.sessionId, result.options.challenge);
 
       return reply.send(result);
     }
@@ -144,7 +126,9 @@ export async function AuthRouter(fastify: FastifyInstance) {
     async (request, reply) => {
       const { sessionId, credential } = request.body;
 
-      const challengeData = challengeStore.get(sessionId);
+      // take() consumes the challenge, so each ceremony is single-use even
+      // when verification fails.
+      const challengeData = await _challenges.take(sessionId);
       if (!challengeData) {
         throw fastify.httpErrors.badRequest('Invalid or expired session');
       }
@@ -155,7 +139,6 @@ export async function AuthRouter(fastify: FastifyInstance) {
         fastify
       );
 
-      challengeStore.delete(sessionId);
       return reply.send(result);
     }
   );
