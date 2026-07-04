@@ -997,19 +997,22 @@ export class ScheduleComponent implements OnInit {
     const startISO = zonedTimeToUtc(colDate, d.curStartMin, tz).toISOString();
     const endISO = zonedTimeToUtc(colDate, d.curEndMin, tz).toISOString();
 
-    // Keep the drag visible until the request resolves to avoid a flash.
+    // Optimistic: move the block immediately, reconcile with the server
+    // response, and roll back if the update fails.
+    const before = this.activities();
+    const current = before.find((a) => a.id === d.activityId);
+    this.drag.set(null);
+    if (!current) return;
+    this.store.upsertActivity({ ...current, startAt: startISO, endAt: endISO });
     this.api
       .updateActivity(this.id(), d.activityId, {
         startAt: startISO,
         endAt: endISO,
       })
       .subscribe({
-        next: () => {
-          this.drag.set(null);
-          this.reloadActivities();
-        },
+        next: (updated) => this.store.upsertActivity(updated),
         error: (e) => {
-          this.drag.set(null);
+          this.activities.set(before);
           this.error(e);
         },
       });
@@ -1154,10 +1157,10 @@ export class ScheduleComponent implements OnInit {
       ? this.api.updateActivity(this.id(), f.id, body)
       : this.api.createActivity(this.id(), body);
     req.subscribe({
-      next: () => {
+      next: (saved) => {
         this.saving.set(false);
         this.editorVisible.set(false);
-        this.reloadActivities();
+        this.store.upsertActivity(saved);
       },
       error: (e) => {
         this.saving.set(false);
@@ -1178,7 +1181,7 @@ export class ScheduleComponent implements OnInit {
         this.api.deleteActivity(this.id(), id).subscribe({
           next: () => {
             this.editorVisible.set(false);
-            this.reloadActivities();
+            this.store.removeActivity(id);
           },
           error: (e) => this.error(e),
         });

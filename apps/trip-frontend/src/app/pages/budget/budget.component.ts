@@ -383,9 +383,22 @@ export class BudgetComponent implements OnInit {
 
   togglePaid(event: MouseEvent, e: Expense): void {
     event.stopPropagation();
-    this.api.updateExpense(this.id(), e.id, { paid: !e.paid }).subscribe({
-      next: () => this.reload(),
-      error: (err) => this.error(err),
+    const before = this.expenses();
+    const paid = !e.paid;
+    // Optimistic: flip immediately, reconcile with the response, roll back
+    // on error.
+    this.expenses.set(
+      before.map((x) => (x.id === e.id ? { ...x, paid } : x))
+    );
+    this.api.updateExpense(this.id(), e.id, { paid }).subscribe({
+      next: (updated) =>
+        this.expenses.set(
+          this.expenses().map((x) => (x.id === updated.id ? updated : x))
+        ),
+      error: (err) => {
+        this.expenses.set(before);
+        this.error(err);
+      },
     });
   }
 

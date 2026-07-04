@@ -304,9 +304,24 @@ export class PackingComponent implements OnInit {
   }
 
   toggle(item: PackingItem, stage: 'ready' | 'packed' | 'verify'): void {
-    this.api
-      .updatePackingItem(this.id(), item.id, { [stage]: !item[stage] })
-      .subscribe({ next: (l) => this.list.set(l), error: (e) => this.error(e) });
+    const before = this.list();
+    if (!before) return;
+    const value = !item[stage];
+    // Optimistic: flip the flag immediately, reconcile with the server
+    // response, roll back on error.
+    this.list.set({
+      ...before,
+      items: before.items.map((i) =>
+        i.id === item.id ? { ...i, [stage]: value } : i
+      ),
+    });
+    this.api.updatePackingItem(this.id(), item.id, { [stage]: value }).subscribe({
+      next: (l) => this.list.set(l),
+      error: (e) => {
+        this.list.set(before);
+        this.error(e);
+      },
+    });
   }
 
   openEdit(item: PackingItem): void {
