@@ -1,5 +1,5 @@
 import { inject } from '@ee/di';
-import { Like } from 'typeorm';
+import { ILike } from 'typeorm';
 import { Database } from '../data-source';
 import { AuthService } from './auth/auth.service';
 import { PublicUser, User } from './user';
@@ -51,8 +51,11 @@ export class UsersService {
     const q = query.trim();
     if (!q) return [];
 
+    // Escape LIKE wildcards so "%"/"_" in the query match literally.
+    const escaped = q.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const pattern = ILike(`%${escaped}%`);
     const users = await this._repository.find({
-      where: [{ username: Like(`%${q}%`) }, { name: Like(`%${q}%`) }],
+      where: [{ username: pattern }, { name: pattern }],
       take: 10,
     });
 
