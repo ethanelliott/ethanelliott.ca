@@ -1,22 +1,67 @@
 import {
+  HttpClient,
   HttpErrorResponse,
   HttpInterceptorFn,
+  HttpRequest,
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import {
-  BehaviorSubject,
+  Observable,
   catchError,
-  filter,
+  finalize,
+  map,
+  shareReplay,
   switchMap,
-  take,
   throwError,
 } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-let isRefreshing = false;
-const refreshTokenSubject = new BehaviorSubject<string | null>(null);
+/**
+ * The refresh currently in flight, shared by every request that hit a 401
+ * while it runs. It emits the new access token, or errors — so waiters never
+ * hang on a failed refresh (the old BehaviorSubject version deadlocked them).
+ */
+let refreshInFlight: Observable<string> | null = null;
+
+function refreshAccessToken(
+  http: HttpClient,
+  router: Router
+): Observable<string> {
+  if (refreshInFlight) return refreshInFlight;
+
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) {
+    localStorage.removeItem('accessToken');
+    void router.navigate(['/login']);
+    return throwError(() => new Error('Not signed in'));
+  }
+
+  refreshInFlight = http
+    .post<{ accessToken: string; refreshToken: string }>(
+      `${environment.apiUrl}/users/token/refresh`,
+      { refreshToken }
+    )
+    .pipe(
+      map((res) => {
+        localStorage.setItem('accessToken', res.accessToken);
+        localStorage.setItem('refreshToken', res.refreshToken);
+        return res.accessToken;
+      }),
+      catchError((refreshError) => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        void router.navigate(['/login']);
+        return throwError(() => refreshError);
+      }),
+      finalize(() => {
+        refreshInFlight = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: false })
+    );
+
+  return refreshInFlight;
+}
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
@@ -31,62 +76,22 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  const accessToken = localStorage.getItem('accessToken');
-  const authReq = accessToken
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${accessToken}` } })
-    : req;
+  const withToken = (r: HttpRequest<unknown>, token: string | null) =>
+    token
+      ? r.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+      : r;
 
-  return next(authReq).pipe(
+  return next(withToken(req, localStorage.getItem('accessToken'))).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status !== 401) {
         return throwError(() => error);
       }
-
-      if (isRefreshing) {
-        return refreshTokenSubject.pipe(
-          filter((token) => token !== null),
-          take(1),
-          switchMap((token) =>
-            next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }))
-          )
-        );
-      }
-
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) {
-        localStorage.removeItem('accessToken');
-        router.navigate(['/login']);
-        return throwError(() => error);
-      }
-
-      isRefreshing = true;
-      refreshTokenSubject.next(null);
-
-      return http
-        .post<{ accessToken: string; refreshToken: string }>(
-          `${environment.apiUrl}/users/token/refresh`,
-          { refreshToken }
-        )
-        .pipe(
-          switchMap((res) => {
-            isRefreshing = false;
-            localStorage.setItem('accessToken', res.accessToken);
-            localStorage.setItem('refreshToken', res.refreshToken);
-            refreshTokenSubject.next(res.accessToken);
-            return next(
-              req.clone({
-                setHeaders: { Authorization: `Bearer ${res.accessToken}` },
-              })
-            );
-          }),
-          catchError((refreshError) => {
-            isRefreshing = false;
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            router.navigate(['/login']);
-            return throwError(() => refreshError);
-          })
-        );
+      // Wait on the (possibly already running) refresh, then retry once with
+      // the new token. If the retry 401s again, that error propagates —
+      // no second refresh loop.
+      return refreshAccessToken(http, router).pipe(
+        switchMap((token) => next(withToken(req, token)))
+      );
     })
   );
 };
