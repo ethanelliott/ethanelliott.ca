@@ -157,9 +157,9 @@ interface PendingPress {
             <div class="cal-top">
               <div class="cal-row headers" [style.gridTemplateColumns]="gridTemplate()">
                 <div class="corner">
-                  @for (z of zoneScales(); track z.tz) {
+                  @for (z of zoneScaleRows(); track z.tz) {
                     <div class="corner-tz" [class.primary]="z.tz === displayTz()">
-                      {{ tzAbbrev(columnDates()[0], z.tz) }}
+                      {{ z.abbrev }}
                     </div>
                   }
                 </div>
@@ -220,11 +220,11 @@ interface PendingPress {
             <div class="cal-row hours" [style.gridTemplateColumns]="gridTemplate()">
             <!-- Gutter: one time scale per relevant timezone, side by side -->
             <div class="gutter" [style.height.px]="dayHeight">
-              @for (z of zoneScales(); track z.tz) {
+              @for (z of zoneScaleRows(); track z.tz) {
                 <div class="scale" [class.primary]="z.tz === displayTz()">
-                  @for (h of hours; track h) {
+                  @for (label of z.labels; track $index; let h = $index) {
                     <div class="scale-label" [style.top.px]="h * HOUR_PX">
-                      {{ zoneLabel(z.tz, h) }}
+                      {{ label }}
                     </div>
                   }
                 </div>
@@ -238,7 +238,7 @@ interface PendingPress {
                 [style.height.px]="dayHeight"
                 (click)="onBodyClick($event, ci)"
               >
-                @for (p of piecesFor(ci); track p.activity.id + '-' + p.startMin) {
+                @for (p of visiblePiecesByCol()[ci]; track p.activity.id + '-' + p.startMin) {
                   <div
                     class="event"
                     [class.start]="p.isStart"
@@ -777,12 +777,15 @@ export class ScheduleComponent implements OnInit {
     return col?.color ?? null;
   }
 
-  piecesFor(ci: number): RenderedPiece[] {
+  /** piecesByCol minus the activity currently being dragged. */
+  readonly visiblePiecesByCol = computed<RenderedPiece[][]>(() => {
     const dragging = this.drag();
-    const pieces = this.piecesByCol()[ci] ?? [];
-    if (dragging) return pieces.filter((p) => p.activity.id !== dragging.activityId);
-    return pieces;
-  }
+    const byCol = this.piecesByCol();
+    if (!dragging) return byCol;
+    return byCol.map((pieces) =>
+      pieces.filter((p) => p.activity.id !== dragging.activityId)
+    );
+  });
 
   ghostFor(ci: number): { top: number; height: number } | null {
     const d = this.drag();
@@ -805,13 +808,26 @@ export class ScheduleComponent implements OnInit {
     return formatMinutes(zonedParts(instant, tz).minutes);
   }
 
-  gutterWidth(): number {
-    return Math.max(64, this.zoneScales().length * SCALE_WIDTH);
-  }
+  readonly gutterWidth = computed(() =>
+    Math.max(64, this.zoneScales().length * SCALE_WIDTH)
+  );
 
-  gridTemplate(): string {
-    return `${this.gutterWidth()}px repeat(${this.columns().length}, ${COL_WIDTH}px)`;
-  }
+  readonly gridTemplate = computed(
+    () =>
+      `${this.gutterWidth()}px repeat(${this.columns().length}, ${COL_WIDTH}px)`
+  );
+
+  /** Gutter scales with abbreviation and per-hour labels precomputed, so the
+   *  template doesn't call timezone math per cell on every change-detection
+   *  pass. */
+  readonly zoneScaleRows = computed(() => {
+    const dates = this.columnDates();
+    return this.zoneScales().map((z) => ({
+      tz: z.tz,
+      abbrev: dates.length ? this.tzAbbrev(dates[0], z.tz) : z.tz,
+      labels: this.hours.map((h) => this.zoneLabel(z.tz, h)),
+    }));
+  });
 
   // ── Create via click ──
   onBodyClick(event: MouseEvent, ci: number): void {
