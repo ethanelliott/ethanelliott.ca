@@ -251,6 +251,18 @@ export class TripsService {
     }
 
     await this._memberRepository.delete({ id: membership.id });
-    return this.getById(tripId, userId);
+
+    // When leaving yourself you're no longer a member, so getById's
+    // membership check would 403 — build the response without it.
+    const trip = await this._tripRepository.findOne({ where: { id: tripId } });
+    if (!trip) {
+      throw new HttpErrors.NotFound('Trip not found');
+    }
+    const [members, segments, stays] = await Promise.all([
+      this.loadMembers(tripId),
+      this.loadSegments(tripId),
+      this.loadStays(tripId),
+    ]);
+    return toTripDto(trip, members, segments, stays);
   }
 }

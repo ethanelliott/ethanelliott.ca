@@ -1228,12 +1228,20 @@ export class ScheduleComponent implements OnInit {
   }
 
   deleteTag(tag: Tag): void {
-    this.api.deleteTag(this.id(), tag.id).subscribe({
-      next: () => {
-        this.tags.set(this.tags().filter((t) => t.id !== tag.id));
-        this.reloadActivities();
+    this.confirm.confirm({
+      header: 'Delete tag',
+      message: `Delete "${tag.name}"? It will be removed from every activity using it.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deleteTag(this.id(), tag.id).subscribe({
+          next: () => {
+            this.tags.set(this.tags().filter((t) => t.id !== tag.id));
+            this.reloadActivities();
+          },
+          error: (e) => this.error(e),
+        });
       },
-      error: (e) => this.error(e),
     });
   }
 
@@ -1275,12 +1283,20 @@ export class ScheduleComponent implements OnInit {
   }
 
   deleteLegendCategory(category: LegendCategory): void {
-    this.api.deleteLegendCategory(this.id(), category.id).subscribe({
-      next: () => {
-        this.legend.set(this.legend().filter((c) => c.id !== category.id));
-        this.reloadActivities();
+    this.confirm.confirm({
+      header: 'Delete category',
+      message: `Delete "${category.name}"? Activities using it fall back to their own colour.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deleteLegendCategory(this.id(), category.id).subscribe({
+          next: () => {
+            this.legend.set(this.legend().filter((c) => c.id !== category.id));
+            this.reloadActivities();
+          },
+          error: (e) => this.error(e),
+        });
       },
-      error: (e) => this.error(e),
     });
   }
 

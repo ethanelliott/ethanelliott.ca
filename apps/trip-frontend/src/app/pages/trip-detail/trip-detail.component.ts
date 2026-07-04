@@ -1258,9 +1258,27 @@ export class TripDetailComponent implements OnInit {
   }
 
   removeMember(userId: string): void {
-    this.api.removeMember(this.id(), userId).subscribe({
-      next: (trip) => this.trip.set(trip),
-      error: (e) => this.error(e),
+    const member = this.trip()?.members.find((m) => m.user.id === userId);
+    const self = userId === this.auth.profile()?.id;
+    this.confirm.confirm({
+      header: self ? 'Leave trip' : 'Remove traveller',
+      message: self
+        ? 'Leave this trip? You will lose access until someone re-adds you.'
+        : `Remove ${member?.user.name ?? 'this traveller'} from the trip?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.removeMember(this.id(), userId).subscribe({
+          next: (trip) => {
+            if (self) {
+              void this.router.navigate(['/trips']);
+            } else {
+              this.trip.set(trip);
+            }
+          },
+          error: (e) => this.error(e),
+        });
+      },
     });
   }
 

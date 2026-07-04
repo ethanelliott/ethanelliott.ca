@@ -353,9 +353,17 @@ export class PackingComponent implements OnInit {
   }
 
   removeItem(item: PackingItem): void {
-    this.api.deletePackingItem(this.id(), item.id).subscribe({
-      next: (l) => this.list.set(l),
-      error: (e) => this.error(e),
+    this.confirm.confirm({
+      header: 'Delete item',
+      message: `Remove "${item.name}" from the packing list?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deletePackingItem(this.id(), item.id).subscribe({
+          next: (l) => this.list.set(l),
+          error: (e) => this.error(e),
+        });
+      },
     });
   }
 
@@ -375,9 +383,18 @@ export class PackingComponent implements OnInit {
   }
 
   removeContainer(containerId: string): void {
-    this.api.deleteContainer(this.id(), containerId).subscribe({
-      next: (l) => this.list.set(l),
-      error: (e) => this.error(e),
+    const container = this.list()?.containers.find((c) => c.id === containerId);
+    this.confirm.confirm({
+      header: 'Delete bag',
+      message: `Delete "${container?.name ?? 'this bag'}"? Its items move back to Unsorted.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.api.deleteContainer(this.id(), containerId).subscribe({
+          next: (l) => this.list.set(l),
+          error: (e) => this.error(e),
+        });
+      },
     });
   }
 
