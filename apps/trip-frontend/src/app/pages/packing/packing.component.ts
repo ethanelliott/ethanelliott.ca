@@ -65,7 +65,7 @@ interface Group {
         <input pInputText placeholder="Add an item…" [(ngModel)]="newItem" (keyup.enter)="addItem()" />
         <input class="count" type="number" min="1" [(ngModel)]="newCount" />
         <p-select [options]="containerOptions()" [(ngModel)]="newContainerId" optionLabel="label" optionValue="value" placeholder="Bag" [showClear]="true" appendTo="body" styleClass="bag-select" />
-        <p-button icon="pi pi-plus" [loading]="adding()" (onClick)="addItem()" />
+        <p-button icon="pi pi-plus" [loading]="adding()" ariaLabel="Add item" (onClick)="addItem()" />
       </div>
 
       @if (loading()) {
@@ -90,12 +90,12 @@ interface Group {
                     {{ it.name }}
                   </div>
                   <div class="stages">
-                    <button class="stage" [class.on]="it.ready" (click)="toggle(it, 'ready')" title="Ready">R</button>
-                    <button class="stage" [class.on]="it.packed" [disabled]="!it.ready" (click)="toggle(it, 'packed')" title="Packed">P</button>
-                    <button class="stage" [class.on]="it.verify" [disabled]="!it.packed" (click)="toggle(it, 'verify')" title="Verify">V</button>
+                    <button class="stage" [class.on]="it.ready" (click)="toggle(it, 'ready')" title="Ready" [attr.aria-pressed]="it.ready" [attr.aria-label]="it.name + ': ready'">R</button>
+                    <button class="stage" [class.on]="it.packed" [disabled]="!it.ready" (click)="toggle(it, 'packed')" title="Packed" [attr.aria-pressed]="it.packed" [attr.aria-label]="it.name + ': packed'">P</button>
+                    <button class="stage" [class.on]="it.verify" [disabled]="!it.packed" (click)="toggle(it, 'verify')" title="Verified" [attr.aria-pressed]="it.verify" [attr.aria-label]="it.name + ': verified'">V</button>
                   </div>
-                  <button class="icon-btn" (click)="openEdit(it)"><i class="pi pi-pencil"></i></button>
-                  <button class="icon-btn danger" (click)="removeItem(it)"><i class="pi pi-trash"></i></button>
+                  <button class="icon-btn" (click)="openEdit(it)" title="Edit" [attr.aria-label]="'Edit ' + it.name"><i class="pi pi-pencil"></i></button>
+                  <button class="icon-btn danger" (click)="removeItem(it)" title="Delete" [attr.aria-label]="'Delete ' + it.name"><i class="pi pi-trash"></i></button>
                 </div>
               }
             </div>
@@ -126,14 +126,14 @@ interface Group {
       <div class="tag-list">
         @for (c of list()?.containers ?? []; track c.id) {
           <div class="tag-row"><span class="tag-dot" [style.background]="c.color"></span><span class="tag-name">{{ c.name }}</span>
-            <button class="icon-btn danger" (click)="removeContainer(c.id)"><i class="pi pi-trash"></i></button>
+            <button class="icon-btn danger" (click)="removeContainer(c.id)" title="Delete" [attr.aria-label]="'Delete ' + c.name"><i class="pi pi-trash"></i></button>
           </div>
         } @empty { <p class="muted">No containers yet.</p> }
       </div>
       <div class="add-tag">
         <input type="color" [(ngModel)]="newContainerColor" />
         <input pInputText placeholder="New bag (e.g. DAYPACK)" [(ngModel)]="newContainerName" (keyup.enter)="addContainer()" />
-        <p-button icon="pi pi-plus" (onClick)="addContainer()" />
+        <p-button icon="pi pi-plus" ariaLabel="Add bag" (onClick)="addContainer()" />
       </div>
     </p-dialog>
 
@@ -144,7 +144,7 @@ interface Group {
           <div class="tag-row">
             <span class="tag-name">{{ t.name }} <span class="muted">· {{ t.itemCount }} items</span></span>
             <p-button label="Apply" size="small" [text]="true" (onClick)="applyTemplate(t)" />
-            <button class="icon-btn danger" (click)="deleteTemplate(t)"><i class="pi pi-trash"></i></button>
+            <button class="icon-btn danger" (click)="deleteTemplate(t)" title="Delete" [attr.aria-label]="'Delete template ' + t.name"><i class="pi pi-trash"></i></button>
           </div>
         } @empty { <p class="muted">No saved templates.</p> }
       </div>

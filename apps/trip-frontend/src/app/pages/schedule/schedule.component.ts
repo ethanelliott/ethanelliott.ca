@@ -430,7 +430,7 @@ interface PendingPress {
               title="Change colour"
             />
             <span class="tag-name">{{ c.name }}</span>
-            <button class="icon-btn danger" (click)="deleteLegendCategory(c)"><i class="pi pi-trash"></i></button>
+            <button class="icon-btn danger" (click)="deleteLegendCategory(c)" title="Delete" [attr.aria-label]="'Delete category ' + c.name"><i class="pi pi-trash"></i></button>
           </div>
         } @empty {
           <p class="muted">No categories yet.</p>
@@ -439,7 +439,7 @@ interface PendingPress {
       <div class="add-tag">
         <input type="color" [(ngModel)]="newCategoryColor" />
         <input pInputText placeholder="New category" [(ngModel)]="newCategoryName" (keyup.enter)="addLegendCategory()" />
-        <p-button icon="pi pi-plus" (onClick)="addLegendCategory()" />
+        <p-button icon="pi pi-plus" ariaLabel="Add category" (onClick)="addLegendCategory()" />
       </div>
     </p-dialog>
 
@@ -460,7 +460,7 @@ interface PendingPress {
           <div class="tag-row">
             <i class="pi pi-tag tag-icon"></i>
             <span class="tag-name">{{ t.name }}</span>
-            <button class="icon-btn danger" (click)="deleteTag(t)"><i class="pi pi-trash"></i></button>
+            <button class="icon-btn danger" (click)="deleteTag(t)" title="Delete" [attr.aria-label]="'Delete tag ' + t.name"><i class="pi pi-trash"></i></button>
           </div>
         } @empty {
           <p class="muted">No tags yet.</p>
@@ -468,7 +468,7 @@ interface PendingPress {
       </div>
       <div class="add-tag">
         <input pInputText placeholder="New tag" [(ngModel)]="newTagName" (keyup.enter)="addTag()" />
-        <p-button icon="pi pi-plus" (onClick)="addTag()" />
+        <p-button icon="pi pi-plus" ariaLabel="Add tag" (onClick)="addTag()" />
       </div>
     </p-dialog>
   `,

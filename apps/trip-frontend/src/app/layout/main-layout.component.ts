@@ -42,6 +42,8 @@ import { UpdateService } from '../core/update.service';
               class="avatar"
               (click)="menuOpen.set(!menuOpen())"
               [title]="profileName()"
+              aria-label="Account menu"
+              [attr.aria-expanded]="menuOpen()"
             >
               {{ initial() }}
             </button>
@@ -67,6 +69,7 @@ import { UpdateService } from '../core/update.service';
                 [class.active]="theme.pref() === 'light'"
                 (click)="theme.setPref('light')"
                 title="Light"
+                aria-label="Light theme"
               >
                 <i class="pi pi-sun"></i>
               </button>
@@ -75,6 +78,7 @@ import { UpdateService } from '../core/update.service';
                 [class.active]="theme.pref() === 'dark'"
                 (click)="theme.setPref('dark')"
                 title="Dark"
+                aria-label="Dark theme"
               >
                 <i class="pi pi-moon"></i>
               </button>
@@ -83,6 +87,7 @@ import { UpdateService } from '../core/update.service';
                 [class.active]="theme.pref() === 'system'"
                 (click)="theme.setPref('system')"
                 title="System"
+                aria-label="System theme"
               >
                 <i class="pi pi-desktop"></i>
               </button>

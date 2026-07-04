@@ -81,6 +81,7 @@ interface StayForm extends StayRequest {
                 icon="pi pi-pencil"
                 severity="secondary"
                 [text]="true"
+                ariaLabel="Edit trip"
                 (onClick)="openEditTrip()"
               />
               @if (isOwner()) {
@@ -88,6 +89,7 @@ interface StayForm extends StayRequest {
                   icon="pi pi-trash"
                   severity="danger"
                   [text]="true"
+                  ariaLabel="Delete trip"
                   (onClick)="confirmDeleteTrip()"
                 />
               }
@@ -181,6 +183,7 @@ interface StayForm extends StayRequest {
                     [disabled]="i === 0"
                     (click)="move(i, -1)"
                     title="Move up"
+                    [attr.aria-label]="'Move ' + s.city + ' up'"
                   >
                     <i class="pi pi-chevron-up"></i>
                   </button>
@@ -189,13 +192,14 @@ interface StayForm extends StayRequest {
                     [disabled]="i === t.segments.length - 1"
                     (click)="move(i, 1)"
                     title="Move down"
+                    [attr.aria-label]="'Move ' + s.city + ' down'"
                   >
                     <i class="pi pi-chevron-down"></i>
                   </button>
-                  <button class="icon-btn" (click)="openEditSegment(s)">
+                  <button class="icon-btn" (click)="openEditSegment(s)" title="Edit" [attr.aria-label]="'Edit ' + s.city">
                     <i class="pi pi-pencil"></i>
                   </button>
-                  <button class="icon-btn danger" (click)="confirmDeleteSegment(s)">
+                  <button class="icon-btn danger" (click)="confirmDeleteSegment(s)" title="Delete" [attr.aria-label]="'Delete ' + s.city">
                     <i class="pi pi-trash"></i>
                   </button>
                 </div>
@@ -245,10 +249,10 @@ interface StayForm extends StayRequest {
                       <i class="pi pi-map-marker"></i>
                     </a>
                   }
-                  <button class="icon-btn" (click)="openEditStay(h)">
+                  <button class="icon-btn" (click)="openEditStay(h)" title="Edit" [attr.aria-label]="'Edit ' + h.name">
                     <i class="pi pi-pencil"></i>
                   </button>
-                  <button class="icon-btn danger" (click)="confirmDeleteStay(h)">
+                  <button class="icon-btn danger" (click)="confirmDeleteStay(h)" title="Delete" [attr.aria-label]="'Delete ' + h.name">
                     <i class="pi pi-trash"></i>
                   </button>
                 </div>
@@ -275,7 +279,7 @@ interface StayForm extends StayRequest {
                 <div class="member-username muted">{{ '@' + m.user.username }}</div>
               </div>
               @if (canRemove(m.role, m.user.id)) {
-                <button class="icon-btn danger" (click)="removeMember(m.user.id)">
+                <button class="icon-btn danger" (click)="removeMember(m.user.id)" title="Remove" [attr.aria-label]="'Remove ' + m.user.name">
                   <i class="pi pi-times"></i>
                 </button>
               }
@@ -293,6 +297,7 @@ interface StayForm extends StayRequest {
             <p-button
               icon="pi pi-user-plus"
               [loading]="addingMember()"
+              ariaLabel="Add traveller"
               (onClick)="addMember()"
             />
           </div>
