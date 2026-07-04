@@ -18,6 +18,7 @@ import { Textarea } from 'primeng/textarea';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
+import { TripStore } from '../../core/trip-store';
 import { LocationSearchComponent } from '../../shared/location-search.component';
 import {
   Activity,
@@ -25,7 +26,6 @@ import {
   LatLng,
   LegendCategory,
   Tag,
-  Trip,
 } from '../../core/models';
 import {
   ActivityPiece,
@@ -603,6 +603,7 @@ interface PendingPress {
 })
 export class ScheduleComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly store = inject(TripStore);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
   private readonly confirm = inject(ConfirmationService);
@@ -615,11 +616,11 @@ export class ScheduleComponent implements OnInit {
   readonly hours = Array.from({ length: 24 }, (_, i) => i);
   readonly contrastText = contrastText;
 
-  readonly trip = signal<Trip | null>(null);
-  readonly activities = signal<Activity[]>([]);
-  readonly tags = signal<Tag[]>([]);
-  readonly legend = signal<LegendCategory[]>([]);
-  readonly loading = signal(true);
+  readonly trip = this.store.trip;
+  readonly activities = this.store.activities;
+  readonly tags = this.store.tags;
+  readonly legend = this.store.legend;
+  readonly loading = computed(() => this.store.tripStatus() === 'loading');
 
   readonly displayTz = signal<string>('UTC');
 
@@ -725,28 +726,24 @@ export class ScheduleComponent implements OnInit {
   }
 
   private load(): void {
-    this.loading.set(true);
-    const tripId = this.id();
-    this.api.getTrip(tripId).subscribe({
-      next: (trip) => {
-        this.trip.set(trip);
-        // Anchor the grid on the first non-home (destination) timezone, with
-        // home shown alongside for comparison.
-        const firstAway = trip.segments
-          .map((s) => s.timezone)
-          .find((tz) => tz !== trip.homeTimezone);
-        this.displayTz.set(firstAway ?? trip.homeTimezone);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
+    this.store.setActive(this.id());
+    void this.store.loadTrip().then(() => {
+      const trip = this.trip();
+      if (!trip) return;
+      // Anchor the grid on the first non-home (destination) timezone, with
+      // home shown alongside for comparison.
+      const firstAway = trip.segments
+        .map((s) => s.timezone)
+        .find((tz) => tz !== trip.homeTimezone);
+      this.displayTz.set(firstAway ?? trip.homeTimezone);
     });
-    this.api.getTags(tripId).subscribe((t) => this.tags.set(t));
-    this.api.getLegend(tripId).subscribe((l) => this.legend.set(l));
-    this.api.getActivities(tripId).subscribe((a) => this.activities.set(a));
+    void this.store.loadTags();
+    void this.store.loadLegend();
+    void this.store.loadActivities();
   }
 
   private reloadActivities(): void {
-    this.api.getActivities(this.id()).subscribe((a) => this.activities.set(a));
+    void this.store.loadActivities(true);
   }
 
   back(): void {

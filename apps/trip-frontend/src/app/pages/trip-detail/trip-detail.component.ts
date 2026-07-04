@@ -18,6 +18,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
+import { TripStore } from '../../core/trip-store';
 import { LocationSearchComponent } from '../../shared/location-search.component';
 import {
   Activity,
@@ -27,7 +28,6 @@ import {
   SegmentRequest,
   Stay,
   StayRequest,
-  Trip,
 } from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
 import { formatDate, formatDateRange, formatMoney } from '../../core/format';
@@ -756,6 +756,7 @@ interface StayForm extends StayRequest {
 export class TripDetailComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
+  private readonly store = inject(TripStore);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
   private readonly confirm = inject(ConfirmationService);
@@ -763,10 +764,10 @@ export class TripDetailComponent implements OnInit {
   /** Route param, bound via withComponentInputBinding. */
   readonly id = input.required<string>();
 
-  readonly trip = signal<Trip | null>(null);
-  readonly activities = signal<Activity[]>([]);
-  readonly expenses = signal<Expense[]>([]);
-  readonly loading = signal(true);
+  readonly trip = this.store.trip;
+  readonly activities = this.store.activities;
+  readonly expenses = this.store.expenses;
+  readonly loading = computed(() => this.store.tripStatus() === 'loading');
 
   readonly tzOptions = timezoneOptions();
   readonly formatDate = formatDate;
@@ -939,27 +940,12 @@ export class TripDetailComponent implements OnInit {
     };
   }
 
-  private load(): void {
-    this.loading.set(true);
-    this.api.getTrip(this.id()).subscribe({
-      next: (trip) => {
-        this.trip.set(trip);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.trip.set(null);
-        this.loading.set(false);
-      },
-    });
+  private load(force = false): void {
+    this.store.setActive(this.id());
+    void this.store.loadTrip(force);
     // Dashboard stats — best-effort; failures just leave counts at zero.
-    this.api.getActivities(this.id()).subscribe({
-      next: (a) => this.activities.set(a),
-      error: () => undefined,
-    });
-    this.api.getExpenses(this.id()).subscribe({
-      next: (e) => this.expenses.set(e),
-      error: () => undefined,
-    });
+    void this.store.loadActivities(force);
+    void this.store.loadExpenses(force);
   }
 
   back(): void {
@@ -1119,7 +1105,7 @@ export class TripDetailComponent implements OnInit {
       next: () => {
         this.savingSegment.set(false);
         this.segmentVisible.set(false);
-        this.load();
+        void this.store.loadTrip(true);
       },
       error: (e) => {
         this.savingSegment.set(false);
@@ -1136,7 +1122,7 @@ export class TripDetailComponent implements OnInit {
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.api.deleteSegment(this.id(), s.id).subscribe({
-          next: () => this.load(),
+          next: () => void this.store.loadTrip(true),
           error: (e) => this.error(e),
         });
       },
@@ -1214,7 +1200,7 @@ export class TripDetailComponent implements OnInit {
       next: () => {
         this.savingStay.set(false);
         this.stayVisible.set(false);
-        this.load();
+        void this.store.loadTrip(true);
       },
       error: (e) => {
         this.savingStay.set(false);
@@ -1231,7 +1217,7 @@ export class TripDetailComponent implements OnInit {
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.api.deleteStay(this.id(), h.id).subscribe({
-          next: () => this.load(),
+          next: () => void this.store.loadTrip(true),
           error: (e) => this.error(e),
         });
       },

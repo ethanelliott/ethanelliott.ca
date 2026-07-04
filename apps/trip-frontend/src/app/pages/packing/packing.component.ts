@@ -16,11 +16,8 @@ import { Select } from 'primeng/select';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
-import {
-  PackingItem,
-  PackingList,
-  PackingTemplateSummary,
-} from '../../core/models';
+import { TripStore } from '../../core/trip-store';
+import { PackingItem, PackingTemplateSummary } from '../../core/models';
 
 interface Group {
   id: string | null;
@@ -201,15 +198,16 @@ interface Group {
 })
 export class PackingComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly store = inject(TripStore);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
   private readonly confirm = inject(ConfirmationService);
 
   readonly id = input.required<string>();
 
-  readonly list = signal<PackingList | null>(null);
+  readonly list = this.store.packing;
   readonly templates = signal<PackingTemplateSummary[]>([]);
-  readonly loading = signal(true);
+  readonly loading = computed(() => this.store.packingStatus() === 'loading');
   readonly adding = signal(false);
 
   newItem = '';
@@ -226,7 +224,7 @@ export class PackingComponent implements OnInit {
   readonly editVisible = signal(false);
   editForm = { id: '', name: '', count: 1, containerId: null as string | null };
 
-  readonly tripName = signal('');
+  readonly tripName = computed(() => this.store.trip()?.name ?? '');
 
   readonly containerOptions = computed(() =>
     (this.list()?.containers ?? []).map((c) => ({ label: c.name, value: c.id }))
@@ -267,15 +265,9 @@ export class PackingComponent implements OnInit {
   }
 
   private load(): void {
-    this.loading.set(true);
-    this.api.getPackingList(this.id()).subscribe({
-      next: (l) => {
-        this.list.set(l);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
-    this.api.getTrip(this.id()).subscribe((t) => this.tripName.set(t.name));
+    this.store.setActive(this.id());
+    void this.store.loadPacking();
+    void this.store.loadTrip();
   }
 
   pct(n: number): number {

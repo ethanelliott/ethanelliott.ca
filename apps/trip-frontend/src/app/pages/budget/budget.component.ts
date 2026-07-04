@@ -16,7 +16,8 @@ import { Select } from 'primeng/select';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
-import { Activity, Expense, Trip } from '../../core/models';
+import { TripStore } from '../../core/trip-store';
+import { Expense } from '../../core/models';
 import { formatDate, formatMoney } from '../../core/format';
 import { zonedParts } from '../../core/tz';
 
@@ -261,6 +262,7 @@ interface CashflowRow {
 })
 export class BudgetComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly store = inject(TripStore);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
   private readonly confirm = inject(ConfirmationService);
@@ -269,10 +271,14 @@ export class BudgetComponent implements OnInit {
   readonly types = TYPES;
   readonly formatDate = formatDate;
 
-  readonly trip = signal<Trip | null>(null);
-  readonly activities = signal<Activity[]>([]);
-  readonly expenses = signal<Expense[]>([]);
-  readonly loading = signal(true);
+  readonly trip = this.store.trip;
+  readonly activities = this.store.activities;
+  readonly expenses = this.store.expenses;
+  readonly loading = computed(
+    () =>
+      this.store.tripStatus() === 'loading' ||
+      this.store.expensesStatus() === 'loading'
+  );
   readonly view = signal<'items' | 'cashflow'>('items');
 
   readonly editorVisible = signal(false);
@@ -323,21 +329,14 @@ export class BudgetComponent implements OnInit {
   }
 
   private load(): void {
-    this.loading.set(true);
-    const tripId = this.id();
-    this.api.getTrip(tripId).subscribe({
-      next: (t) => {
-        this.trip.set(t);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
-    this.api.getActivities(tripId).subscribe((a) => this.activities.set(a));
-    this.api.getExpenses(tripId).subscribe((e) => this.expenses.set(e));
+    this.store.setActive(this.id());
+    void this.store.loadTrip();
+    void this.store.loadActivities();
+    void this.store.loadExpenses();
   }
 
   private reload(): void {
-    this.api.getExpenses(this.id()).subscribe((e) => this.expenses.set(e));
+    void this.store.loadExpenses(true);
   }
 
   money(cents: number): string {

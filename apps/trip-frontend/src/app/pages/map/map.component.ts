@@ -16,8 +16,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Select } from 'primeng/select';
 import * as L from 'leaflet';
-import { ApiService } from '../../core/api.service';
-import { Activity, Trip } from '../../core/models';
+import { TripStore } from '../../core/trip-store';
+import { Activity } from '../../core/models';
 import { resolveColumns } from '../../core/schedule-layout';
 import { formatMinutes, zonedParts } from '../../core/tz';
 import { placeUrl } from '../../core/maps';
@@ -116,15 +116,15 @@ interface HotelPin {
   `,
 })
 export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(TripStore);
   private readonly router = inject(Router);
 
   readonly id = input.required<string>();
   readonly mapEl = viewChild<ElementRef<HTMLDivElement>>('mapEl');
 
-  readonly trip = signal<Trip | null>(null);
-  readonly activities = signal<Activity[]>([]);
-  readonly loading = signal(true);
+  readonly trip = this.store.trip;
+  readonly activities = this.store.activities;
+  readonly loading = computed(() => this.store.tripStatus() === 'loading');
 
   /** Selected day filter: 'all' or a YYYY-MM-DD date. */
   readonly day = signal<string>('all');
@@ -251,15 +251,9 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private load(): void {
-    this.loading.set(true);
-    this.api.getTrip(this.id()).subscribe({
-      next: (t) => {
-        this.trip.set(t);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
-    this.api.getActivities(this.id()).subscribe((a) => this.activities.set(a));
+    this.store.setActive(this.id());
+    void this.store.loadTrip();
+    void this.store.loadActivities();
   }
 
   private draw(

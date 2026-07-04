@@ -1,5 +1,12 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { TripStore } from '../core/trip-store';
 import { TripTabsComponent } from '../shared/trip-tabs.component';
 
 /**
@@ -75,6 +82,14 @@ import { TripTabsComponent } from '../shared/trip-tabs.component';
   `,
 })
 export class TripLayoutComponent {
+  private readonly store = inject(TripStore);
+
   /** :id route param, bound via withComponentInputBinding. */
   readonly id = input.required<string>();
+
+  constructor() {
+    // Scope the shared trip cache to the routed trip (clears it when the
+    // param changes to a different trip).
+    effect(() => this.store.setActive(this.id()));
+  }
 }
