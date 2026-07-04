@@ -268,7 +268,7 @@ import { UpdateService } from '../core/update.service';
       text-align: left;
     }
     .menu-item:hover { background: var(--bg-subtle); }
-    .menu-item.danger { color: #e8643c; }
+    .menu-item.danger { color: var(--danger); }
 
     .app-content {
       min-height: 0;

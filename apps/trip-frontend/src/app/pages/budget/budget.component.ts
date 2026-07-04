@@ -227,8 +227,8 @@ interface CashflowRow {
     .stat { padding: 14px; }
     .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
     .stat-value { font-size: 20px; font-weight: 700; margin-top: 4px; }
-    .stat-value.paid { color: #1b9e77; }
-    .stat-value.owe { color: #e8643c; }
+    .stat-value.paid { color: var(--success); }
+    .stat-value.owe { color: var(--danger); }
     .view-switch { display: inline-flex; background: var(--bg-subtle); border-radius: 10px; padding: 3px; margin-bottom: 14px; }
     .view-switch button { border: none; background: transparent; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-secondary); }
     .view-switch button.active { background: var(--bg-surface); color: var(--brand); box-shadow: var(--shadow-sm); }
@@ -243,10 +243,10 @@ interface CashflowRow {
     .row-sub { font-size: 12px; }
     .row-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
     .amount { font-weight: 700; }
-    .amount.credit { color: #1b9e77; }
+    .amount.credit { color: var(--success); }
     .running { font-size: 12px; }
     .paid-toggle { border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-secondary); border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .paid-toggle.is-paid { background: #e7f6f1; color: #1b9e77; border-color: #b6e3d4; }
+    .paid-toggle.is-paid { background: var(--success-bg); color: var(--success); border-color: var(--success-border); }
     .paid-toggle.big { padding: 8px; border-radius: var(--radius-sm); }
     .form { display: flex; flex-direction: column; gap: 14px; }
     .field { display: flex; flex-direction: column; gap: 6px; }

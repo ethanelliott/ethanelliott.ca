@@ -596,7 +596,7 @@ interface PendingPress {
     .add-tag input[pInputText] { flex: 1; }
     .add-tag input[type='color'] { width: 38px; height: 38px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
     .icon-btn { width: 30px; height: 30px; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--text-secondary); }
-    .icon-btn.danger { color: #e8643c; }
+    .icon-btn.danger { color: var(--danger); }
     :host ::ng-deep .w-full { width: 100%; }
     :host ::ng-deep .tz-select { min-width: 150px; }
   `,

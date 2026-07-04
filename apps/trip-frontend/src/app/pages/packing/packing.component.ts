@@ -164,9 +164,9 @@ interface Group {
     .bar b { width: 28px; text-align: right; }
     .track { flex: 1; height: 8px; background: var(--bg-subtle); border-radius: 4px; overflow: hidden; }
     .fill { height: 100%; }
-    .fill.ready { background: #f0b429; }
-    .fill.packed { background: #4f46e5; }
-    .fill.verify { background: #1b9e77; }
+    .fill.ready { background: var(--warning); }
+    .fill.packed { background: var(--brand); }
+    .fill.verify { background: var(--success); }
     .add-row { display: flex; gap: 8px; padding: 10px; margin-bottom: 14px; align-items: center; }
     .add-row input[pInputText] { flex: 1; }
     .add-row .count { width: 60px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; }
@@ -181,7 +181,7 @@ interface Group {
     .stage.on { background: var(--brand); color: #fff; border-color: var(--brand); }
     .stage:disabled { opacity: 0.4; cursor: not-allowed; }
     .icon-btn { width: 30px; height: 30px; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--text-secondary); }
-    .icon-btn.danger { color: #e8643c; }
+    .icon-btn.danger { color: var(--danger); }
     .form { display: flex; flex-direction: column; gap: 14px; }
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }

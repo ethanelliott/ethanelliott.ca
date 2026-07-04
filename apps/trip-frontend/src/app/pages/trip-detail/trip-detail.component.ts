@@ -494,7 +494,7 @@ interface StayForm extends StayRequest {
     }
     .countdown i { font-size: 12px; }
     .cd-before { background: var(--brand-light); color: var(--brand); }
-    .cd-during { background: rgba(16, 185, 129, 0.16); color: #0f9d6b; }
+    .cd-during { background: var(--success-bg); color: var(--success); }
     .cd-after { background: var(--bg-subtle); color: var(--text-secondary); }
     .hero .desc {
       margin-top: 12px;
@@ -651,7 +651,7 @@ interface StayForm extends StayRequest {
       cursor: default;
     }
     .icon-btn.danger {
-      color: var(--owe, #e8643c);
+      color: var(--danger);
     }
     .members {
       padding: 8px;
