@@ -22,7 +22,6 @@ import { TripStore } from '../../core/trip-store';
 import { LocationSearchComponent } from '../../shared/location-search.component';
 import {
   Activity,
-  Expense,
   LatLng,
   Segment,
   SegmentRequest,

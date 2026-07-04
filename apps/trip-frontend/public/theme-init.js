@@ -9,5 +9,7 @@
       (p === 'system' &&
         window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (dark) document.documentElement.classList.add('dark-mode');
-  } catch (e) {}
+  } catch (e) {
+    // no storage access — fall back to the light theme
+  }
 })();

@@ -17,7 +17,6 @@ import { Router } from '@angular/router';
 import { Select } from 'primeng/select';
 import * as L from 'leaflet';
 import { TripStore } from '../../core/trip-store';
-import { Activity } from '../../core/models';
 import { resolveColumns } from '../../core/schedule-layout';
 import { formatMinutes, zonedParts } from '../../core/tz';
 import { placeUrl } from '../../core/maps';
