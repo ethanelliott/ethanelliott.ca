@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/trip-frontend
-  tag: s-7f330b2
+  tag: s-98d3035
   pullPolicy: Always
 
 service:
