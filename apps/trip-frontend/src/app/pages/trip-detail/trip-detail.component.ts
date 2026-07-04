@@ -311,7 +311,7 @@ interface StayForm extends StayRequest {
       [modal]="true"
       [draggable]="false"
       header="Edit trip"
-      [style]="{ width: '460px' }"
+      [style]="{ width: 'min(460px, 92vw)' }"
     >
       <div class="form">
         <div class="field">
@@ -351,7 +351,7 @@ interface StayForm extends StayRequest {
       [modal]="true"
       [draggable]="false"
       [header]="segmentForm.id ? 'Edit location' : 'Add location'"
-      [style]="{ width: '460px' }"
+      [style]="{ width: 'min(460px, 92vw)' }"
     >
       <div class="form">
         <div class="field">
@@ -414,7 +414,7 @@ interface StayForm extends StayRequest {
       [modal]="true"
       [draggable]="false"
       [header]="stayForm.id ? 'Edit hotel' : 'Add hotel'"
-      [style]="{ width: '460px' }"
+      [style]="{ width: 'min(460px, 92vw)' }"
     >
       <div class="form">
         <div class="field-row">

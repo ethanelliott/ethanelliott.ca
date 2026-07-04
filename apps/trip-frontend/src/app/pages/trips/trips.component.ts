@@ -65,7 +65,7 @@ import { formatDateRange } from '../../core/format';
       [modal]="true"
       [draggable]="false"
       header="New trip"
-      [style]="{ width: '460px' }"
+      [style]="{ width: 'min(460px, 92vw)' }"
     >
       <div class="form">
         <div class="field">

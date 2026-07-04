@@ -284,7 +284,7 @@ interface PendingPress {
       [modal]="true"
       [draggable]="false"
       [header]="form.id ? 'Edit activity' : 'New activity'"
-      [style]="{ width: '480px' }"
+      [style]="{ width: 'min(480px, 92vw)' }"
     >
       <div class="form">
         <div class="field">
@@ -392,7 +392,7 @@ interface PendingPress {
       [modal]="true"
       [draggable]="false"
       header="Legend"
-      [style]="{ width: '380px' }"
+      [style]="{ width: 'min(380px, 92vw)' }"
     >
       <p class="muted dialog-hint">
         A legend pairs a colour with a label (e.g. “Restaurants” in purple).
@@ -427,7 +427,7 @@ interface PendingPress {
       [modal]="true"
       [draggable]="false"
       header="Tags"
-      [style]="{ width: '380px' }"
+      [style]="{ width: 'min(380px, 92vw)' }"
     >
       <p class="muted dialog-hint">
         Tags are plain text labels for filtering and notes. Colour comes from

@@ -102,7 +102,7 @@ interface Group {
     </div>
 
     <!-- Item edit -->
-    <p-dialog [(visible)]="editVisible" [modal]="true" [draggable]="false" header="Edit item" [style]="{ width: '420px' }">
+    <p-dialog [(visible)]="editVisible" [modal]="true" [draggable]="false" header="Edit item" [style]="{ width: 'min(420px, 92vw)' }">
       <div class="form">
         <div class="field"><label>Name</label><input pInputText [(ngModel)]="editForm.name" /></div>
         <div class="field-row">
@@ -119,7 +119,7 @@ interface Group {
     </p-dialog>
 
     <!-- Container manager -->
-    <p-dialog [(visible)]="containerDialog" [modal]="true" [draggable]="false" header="Bags & containers" [style]="{ width: '400px' }">
+    <p-dialog [(visible)]="containerDialog" [modal]="true" [draggable]="false" header="Bags & containers" [style]="{ width: 'min(400px, 92vw)' }">
       <div class="tag-list">
         @for (c of list()?.containers ?? []; track c.id) {
           <div class="tag-row"><span class="tag-dot" [style.background]="c.color"></span><span class="tag-name">{{ c.name }}</span>
@@ -135,7 +135,7 @@ interface Group {
     </p-dialog>
 
     <!-- Templates -->
-    <p-dialog [(visible)]="templateDialog" [modal]="true" [draggable]="false" header="Packing templates" [style]="{ width: '440px' }">
+    <p-dialog [(visible)]="templateDialog" [modal]="true" [draggable]="false" header="Packing templates" [style]="{ width: 'min(440px, 92vw)' }">
       <div class="tag-list">
         @for (t of templates(); track t.id) {
           <div class="tag-row">
