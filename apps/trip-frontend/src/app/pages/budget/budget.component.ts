@@ -98,6 +98,12 @@ interface CashflowRow {
 
       @if (loading()) {
         <div class="empty-state"><i class="pi pi-spin pi-spinner"></i></div>
+      } @else if (loadFailed()) {
+        <div class="empty-state card">
+          <i class="pi pi-exclamation-triangle"></i>
+          <p class="muted">Couldn't load the budget. Check your connection and try again.</p>
+          <p-button label="Retry" icon="pi pi-refresh" size="small" severity="secondary" [outlined]="true" (onClick)="retry()" />
+        </div>
       } @else if (expenses().length === 0) {
         <div class="empty-state card">
           <i class="pi pi-wallet"></i>
@@ -279,6 +285,11 @@ export class BudgetComponent implements OnInit {
       this.store.tripStatus() === 'loading' ||
       this.store.expensesStatus() === 'loading'
   );
+  readonly loadFailed = computed(
+    () =>
+      this.store.tripStatus() === 'error' ||
+      this.store.expensesStatus() === 'error'
+  );
   readonly view = signal<'items' | 'cashflow'>('items');
 
   readonly editorVisible = signal(false);
@@ -345,6 +356,10 @@ export class BudgetComponent implements OnInit {
 
   perPerson(cents: number): number {
     return Math.round(cents / this.memberCount());
+  }
+
+  retry(): void {
+    this.load();
   }
 
   back(): void {

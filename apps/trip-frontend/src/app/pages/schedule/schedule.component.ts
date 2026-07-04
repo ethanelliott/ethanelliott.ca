@@ -145,6 +145,12 @@ interface PendingPress {
 
       @if (loading()) {
         <div class="empty-state"><i class="pi pi-spin pi-spinner"></i></div>
+      } @else if (loadFailed()) {
+        <div class="empty-state card">
+          <i class="pi pi-exclamation-triangle"></i>
+          <p class="muted">Couldn't load this trip. Check your connection and try again.</p>
+          <p-button label="Retry" icon="pi pi-refresh" size="small" severity="secondary" [outlined]="true" (onClick)="retry()" />
+        </div>
       } @else if (columns().length === 0) {
         <div class="empty-state card">
           <i class="pi pi-calendar"></i>
@@ -621,6 +627,7 @@ export class ScheduleComponent implements OnInit {
   readonly tags = this.store.tags;
   readonly legend = this.store.legend;
   readonly loading = computed(() => this.store.tripStatus() === 'loading');
+  readonly loadFailed = computed(() => this.store.tripStatus() === 'error');
 
   readonly displayTz = signal<string>('UTC');
 
@@ -744,6 +751,10 @@ export class ScheduleComponent implements OnInit {
 
   private reloadActivities(): void {
     void this.store.loadActivities(true);
+  }
+
+  retry(): void {
+    this.load();
   }
 
   back(): void {

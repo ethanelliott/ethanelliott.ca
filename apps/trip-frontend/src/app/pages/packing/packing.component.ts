@@ -70,6 +70,12 @@ interface Group {
 
       @if (loading()) {
         <div class="empty-state"><i class="pi pi-spin pi-spinner"></i></div>
+      } @else if (loadFailed()) {
+        <div class="empty-state card">
+          <i class="pi pi-exclamation-triangle"></i>
+          <p class="muted">Couldn't load the packing list. Check your connection and try again.</p>
+          <p-button label="Retry" icon="pi pi-refresh" size="small" severity="secondary" [outlined]="true" (onClick)="retry()" />
+        </div>
       } @else if (counts().total === 0) {
         <div class="empty-state card"><i class="pi pi-briefcase"></i><p class="muted">Nothing packed yet. Add items, or apply a template.</p></div>
       } @else {
@@ -208,6 +214,7 @@ export class PackingComponent implements OnInit {
   readonly list = this.store.packing;
   readonly templates = signal<PackingTemplateSummary[]>([]);
   readonly loading = computed(() => this.store.packingStatus() === 'loading');
+  readonly loadFailed = computed(() => this.store.packingStatus() === 'error');
   readonly adding = signal(false);
 
   newItem = '';
@@ -273,6 +280,10 @@ export class PackingComponent implements OnInit {
   pct(n: number): number {
     const total = this.counts().total;
     return total ? (n / total) * 100 : 0;
+  }
+
+  retry(): void {
+    this.load();
   }
 
   back(): void {

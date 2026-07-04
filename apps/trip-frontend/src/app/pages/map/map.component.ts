@@ -61,7 +61,14 @@ interface HotelPin {
 
       <div class="map-wrap">
         <div #mapEl class="map"></div>
-        @if (!loading() && pinCount() === 0) {
+        @if (loadFailed()) {
+          <div class="overlay">
+            <div class="card hint">
+              <i class="pi pi-exclamation-triangle"></i>
+              <p class="muted">Couldn't load this trip. Check your connection and try again.</p>
+            </div>
+          </div>
+        } @else if (!loading() && pinCount() === 0) {
           <div class="overlay">
             <div class="card hint">
               <i class="pi pi-map-marker"></i>
@@ -125,6 +132,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly trip = this.store.trip;
   readonly activities = this.store.activities;
   readonly loading = computed(() => this.store.tripStatus() === 'loading');
+  readonly loadFailed = computed(() => this.store.tripStatus() === 'error');
 
   /** Selected day filter: 'all' or a YYYY-MM-DD date. */
   readonly day = signal<string>('all');
