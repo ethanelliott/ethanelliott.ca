@@ -1,5 +1,6 @@
 import { inject } from '@ee/di';
 import HttpErrors from 'http-errors';
+import { In } from 'typeorm';
 import { Database } from '../data-source';
 import { User } from '../users/user';
 import { UsersService } from '../users/users.service';
@@ -42,11 +43,17 @@ export class TripsService {
     tripId: string,
     userId: string
   ): Promise<TripMember> {
-    await this.assertMember(tripId, userId);
+    const trip = await this._tripRepository.findOne({ where: { id: tripId } });
+    if (!trip) {
+      throw new HttpErrors.NotFound('Trip not found');
+    }
     const membership = await this._memberRepository.findOne({
       where: { trip: { id: tripId }, user: { id: userId } },
     });
-    if (!membership || membership.role !== 'owner') {
+    if (!membership) {
+      throw new HttpErrors.Forbidden('You are not a member of this trip');
+    }
+    if (membership.role !== 'owner') {
       throw new HttpErrors.Forbidden('Only the trip owner can do that');
     }
     return membership;
@@ -78,16 +85,41 @@ export class TripsService {
       where: { user: { id: userId } },
       relations: { trip: true },
     });
+    if (memberships.length === 0) return [];
+
+    // Batch-load members and segments for every trip at once instead of
+    // issuing per-trip queries in a loop.
+    const tripIds = memberships.map((m) => m.trip.id);
+    const [allMembers, allSegments] = await Promise.all([
+      this._memberRepository.find({
+        where: { trip: { id: In(tripIds) } },
+        relations: { trip: true },
+        order: { joinedAt: 'ASC' },
+      }),
+      this._segmentRepository.find({
+        where: { trip: { id: In(tripIds) } },
+        relations: { trip: true },
+        order: { position: 'ASC', startDate: 'ASC' },
+      }),
+    ]);
+
+    const groupByTrip = <T extends { trip: Trip }>(rows: T[]) => {
+      const map = new Map<string, T[]>();
+      for (const row of rows) {
+        const group = map.get(row.trip.id);
+        if (group) group.push(row);
+        else map.set(row.trip.id, [row]);
+      }
+      return map;
+    };
+    const membersByTrip = groupByTrip(allMembers);
+    const segmentsByTrip = groupByTrip(allSegments);
 
     const summaries: TripSummaryOut[] = [];
     for (const membership of memberships) {
-      const trip = await this._tripRepository.findOne({
-        where: { id: membership.trip.id },
-      });
-      if (!trip) continue;
-
-      const members = await this.loadMembers(trip.id);
-      const segments = await this.loadSegments(trip.id);
+      const trip = membership.trip;
+      const members = membersByTrip.get(trip.id) ?? [];
+      const segments = segmentsByTrip.get(trip.id) ?? [];
 
       const startDate = segments.length
         ? segments.reduce((min, s) => (s.startDate < min ? s.startDate : min), segments[0].startDate)
