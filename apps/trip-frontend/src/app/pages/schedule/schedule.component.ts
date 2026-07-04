@@ -110,6 +110,8 @@ interface PendingPress {
   target: HTMLElement;
   move: (e: PointerEvent) => void;
   up: (e: PointerEvent) => void;
+  cancel: (e: PointerEvent) => void;
+  block: (e: TouchEvent) => void;
 }
 
 @Component({
@@ -579,7 +581,8 @@ interface PendingPress {
       position: absolute; left: 3px; right: 3px;
       border-radius: 6px; color: #fff; padding: 3px 6px;
       font-size: 11px; overflow: hidden; cursor: pointer;
-      box-shadow: var(--shadow-sm); touch-action: none; user-select: none;
+      box-shadow: var(--shadow-sm); touch-action: manipulation; user-select: none;
+      -webkit-user-select: none;
     }
     .event.ghost {
       background: rgba(79,70,229,0.35); border: 1px dashed var(--brand);
@@ -945,6 +948,17 @@ export class ScheduleComponent implements OnInit {
 
     const move = (e: PointerEvent) => this.onPressMove(e);
     const up = (e: PointerEvent) => this.onPressEnd(e);
+    // If the browser takes the gesture over for scrolling, abort the press
+    // (never treat it as a tap).
+    const cancel = () => this.cancelPress();
+    // Events allow native panning (touch-action: manipulation) so a swipe
+    // that starts on a block still scrolls the grid. Once the long-press has
+    // armed a drag, though, further finger movement must drag the block, not
+    // scroll — so block touchmove from then on. Must be non-passive for
+    // preventDefault to work on iOS.
+    const block = (e: TouchEvent) => {
+      if (this.drag()) e.preventDefault();
+    };
 
     this.pending = {
       kind,
@@ -958,6 +972,8 @@ export class ScheduleComponent implements OnInit {
       target,
       move,
       up,
+      cancel,
+      block,
     };
 
     try {
@@ -967,7 +983,8 @@ export class ScheduleComponent implements OnInit {
     }
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
+    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('touchmove', block, { passive: false });
     this.pressTimer = setTimeout(() => this.armDrag(), LONG_PRESS_MS);
   }
 
@@ -1038,7 +1055,8 @@ export class ScheduleComponent implements OnInit {
     if (pend) {
       window.removeEventListener('pointermove', pend.move);
       window.removeEventListener('pointerup', pend.up);
-      window.removeEventListener('pointercancel', pend.up);
+      window.removeEventListener('pointercancel', pend.cancel);
+      window.removeEventListener('touchmove', pend.block);
       try {
         pend.target.releasePointerCapture?.(pend.pointerId);
       } catch {
