@@ -1,11 +1,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  ElementRef,
   OnInit,
   computed,
+  effect,
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -42,6 +46,11 @@ import {
   zonedParts,
   zonedTimeToUtc,
 } from '../../core/tz';
+
+const WEEKDAY_FORMAT = new Intl.DateTimeFormat('en-US', {
+  weekday: 'long',
+  timeZone: 'UTC',
+});
 
 const HOUR_PX = 48;
 const PX_PER_MIN = HOUR_PX / 60;
@@ -157,7 +166,7 @@ interface PendingPress {
           <p class="muted">Add stops with dates to your trip to lay out the schedule.</p>
         </div>
       } @else {
-        <div class="grid-scroll">
+        <div class="grid-scroll" #gridScroll>
           <div class="cal">
             <!-- Sticky top: day headers + location / hotel bands -->
             <div class="cal-top">
@@ -266,6 +275,13 @@ interface PendingPress {
                       <div class="resize-handle" (pointerdown)="startResize($event, p)"></div>
                     }
                   </div>
+                }
+
+                <!-- Current time indicator -->
+                @if (nowMarker(); as nm) {
+                  @if (nm.col === ci) {
+                    <div class="now-line" [style.top.px]="nm.top"></div>
+                  }
                 }
 
                 <!-- Drag ghost -->
@@ -551,6 +567,14 @@ interface PendingPress {
         );
       cursor: copy;
     }
+    .now-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: var(--danger); z-index: 2; pointer-events: none;
+    }
+    .now-line::before {
+      content: ''; position: absolute; left: 0; top: -3px;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
+    }
     .event {
       position: absolute; left: 3px; right: 3px;
       border-radius: 6px; color: #fff; padding: 3px 6px;
@@ -728,6 +752,47 @@ export class ScheduleComponent implements OnInit {
   private pending: PendingPress | null = null;
   private pressTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private readonly gridScroll =
+    viewChild<ElementRef<HTMLDivElement>>('gridScroll');
+
+  /** Ticks once a minute to keep the now-line moving. */
+  private readonly now = signal(new Date());
+  private didAutoScroll = false;
+
+  /** Position of the current-time line, if today is on the grid. */
+  readonly nowMarker = computed<{ col: number; top: number } | null>(() => {
+    const parts = zonedParts(this.now(), this.displayTz());
+    const col = this.columnDates().indexOf(parts.date);
+    if (col < 0) return null;
+    return { col, top: parts.minutes * PX_PER_MIN };
+  });
+
+  constructor() {
+    const timer = setInterval(() => this.now.set(new Date()), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+
+    // Once the grid has rendered, jump to today's column and the first
+    // activity of the day (8:00 when the day is empty) instead of opening
+    // scrolled to midnight.
+    effect(() => {
+      const el = this.gridScroll()?.nativeElement;
+      const dates = this.columnDates();
+      const status = this.store.activitiesStatus();
+      if (!el || dates.length === 0 || this.didAutoScroll) return;
+      if (status !== 'loaded' && status !== 'error') return;
+      this.didAutoScroll = true;
+
+      const today = zonedParts(new Date(), this.displayTz());
+      const col = Math.max(0, dates.indexOf(today.date));
+      const pieces = this.piecesByCol()[col] ?? [];
+      const firstMin = pieces.length
+        ? Math.min(...pieces.map((p) => p.startMin))
+        : 8 * 60;
+      el.scrollLeft = col * COL_WIDTH;
+      el.scrollTop = Math.max(0, firstMin * PX_PER_MIN - 40);
+    });
+  }
+
   ngOnInit(): void {
     this.load();
   }
@@ -773,11 +838,7 @@ export class ScheduleComponent implements OnInit {
   /** Full weekday name for a YYYY-MM-DD calendar date (e.g. "Monday"). */
   weekday(date: string): string {
     const [y, m, d] = date.split('-').map(Number);
-    const names = [
-      'Sunday', 'Monday', 'Tuesday', 'Wednesday',
-      'Thursday', 'Friday', 'Saturday',
-    ];
-    return names[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    return WEEKDAY_FORMAT.format(new Date(Date.UTC(y, m - 1, d)));
   }
 
   private colColor(a: Activity): string | null {
