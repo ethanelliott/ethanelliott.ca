@@ -15,19 +15,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Trip" />
-    <script>
-      // Apply the saved theme before first paint to avoid a flash.
-      (function () {
-        try {
-          var p = localStorage.getItem('theme-pref') || 'system';
-          var dark =
-            p === 'dark' ||
-            (p === 'system' &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches);
-          if (dark) document.documentElement.classList.add('dark-mode');
-        } catch (e) {}
-      })();
-    </script>
+    <!-- Applies the saved theme before first paint; external so the CSP can
+         stay strict (script-src 'self'). -->
+    <script src="theme-init.js"></script>
   </head>
   <body>
     <app-root></app-root>
