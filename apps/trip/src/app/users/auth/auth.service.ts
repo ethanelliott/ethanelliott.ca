@@ -14,6 +14,7 @@ import {
 } from '@simplewebauthn/server';
 import { randomBytes } from 'crypto';
 import HttpErrors from 'http-errors';
+import { LessThan } from 'typeorm';
 import { Database } from '../../data-source';
 import { RefreshToken, User, UserCredential, UserRegistration } from '../user';
 
@@ -57,6 +58,31 @@ export class AuthService {
   private readonly RP_ID = process.env['RP_ID'] || 'localhost';
   private readonly ORIGIN = process.env['ORIGIN'] || 'http://localhost:4200';
   private readonly REFRESH_TOKEN_EXPIRY = 30; // days
+
+  constructor() {
+    // Every login/refresh inserts a refresh-token row and revoked/expired
+    // rows were never removed, so the table grew forever. Sweep daily.
+    const timer = setInterval(() => {
+      void this.deleteStaleRefreshTokens();
+    }, 24 * 60 * 60 * 1000);
+    timer.unref?.();
+    // First sweep shortly after startup, once the DB connection is up.
+    const initial = setTimeout(() => {
+      void this.deleteStaleRefreshTokens();
+    }, 60 * 1000);
+    initial.unref?.();
+  }
+
+  private async deleteStaleRefreshTokens(): Promise<void> {
+    try {
+      await this._refreshTokenRepository.delete({
+        expiresAt: LessThan(new Date()),
+      });
+      await this._refreshTokenRepository.delete({ revoked: true });
+    } catch {
+      // best-effort; retried on the next sweep
+    }
+  }
 
   /**
    * 🚀 PASSKEY REGISTRATION
