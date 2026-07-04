@@ -26,9 +26,18 @@ export class ConnectivityService {
         this.navOnline.set(false);
         this.backendUp.set(false);
       });
+      // Don't burn battery pinging from a backgrounded tab; re-check as soon
+      // as the app is visible again.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void this.ping();
+      });
     }
     void this.ping();
-    setInterval(() => void this.ping(), 30_000);
+    setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void this.ping();
+      }
+    }, 30_000);
   }
 
   isOnline(): boolean {
