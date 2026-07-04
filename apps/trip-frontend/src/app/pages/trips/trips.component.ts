@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -16,6 +17,21 @@ import { ApiService } from '../../core/api.service';
 import { TripSummary } from '../../core/models';
 import { timezoneOptions } from '../../core/timezones';
 import { formatDateRange } from '../../core/format';
+
+function todayStr(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Whole days from calendar date `a` to `b` (b - a), DST-safe via UTC. */
+function dayDiff(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number);
+  const [by, bm, bd] = b.split('-').map(Number);
+  return Math.round(
+    (Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000
+  );
+}
 
 @Component({
   selector: 'app-trips',
@@ -42,21 +58,45 @@ import { formatDateRange } from '../../core/format';
           <p class="muted">Create your first trip to start planning.</p>
         </div>
       } @else {
-        <div class="trip-grid">
-          @for (trip of trips(); track trip.id) {
-            <button class="trip-card card" (click)="open(trip.id)">
-              <div class="trip-name">{{ trip.name }}</div>
-              <div class="trip-dates muted">
-                {{ formatDateRange(trip.startDate, trip.endDate) }}
-              </div>
-              <div class="trip-meta">
-                <span><i class="pi pi-users"></i> {{ trip.memberCount }}</span>
-                <span><i class="pi pi-map-marker"></i> {{ trip.segmentCount }}</span>
-                <span class="currency">{{ trip.baseCurrency }}</span>
-              </div>
-            </button>
-          }
-        </div>
+        @if (upcoming().length > 0) {
+          <div class="section-title">Upcoming</div>
+          <div class="trip-grid">
+            @for (trip of upcoming(); track trip.id) {
+              <button class="trip-card card" (click)="open(trip.id)">
+                @if (chip(trip); as c) {
+                  <span class="chip" [class]="'chip-' + c.state">{{ c.label }}</span>
+                }
+                <div class="trip-name">{{ trip.name }}</div>
+                <div class="trip-dates muted">
+                  {{ formatDateRange(trip.startDate, trip.endDate) }}
+                </div>
+                <div class="trip-meta">
+                  <span><i class="pi pi-users"></i> {{ trip.memberCount }}</span>
+                  <span><i class="pi pi-map-marker"></i> {{ trip.segmentCount }}</span>
+                  <span class="currency">{{ trip.baseCurrency }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        }
+        @if (past().length > 0) {
+          <div class="section-title">Past</div>
+          <div class="trip-grid past">
+            @for (trip of past(); track trip.id) {
+              <button class="trip-card card" (click)="open(trip.id)">
+                <div class="trip-name">{{ trip.name }}</div>
+                <div class="trip-dates muted">
+                  {{ formatDateRange(trip.startDate, trip.endDate) }}
+                </div>
+                <div class="trip-meta">
+                  <span><i class="pi pi-users"></i> {{ trip.memberCount }}</span>
+                  <span><i class="pi pi-map-marker"></i> {{ trip.segmentCount }}</span>
+                  <span class="currency">{{ trip.baseCurrency }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        }
       }
     </div>
 
@@ -137,6 +177,24 @@ import { formatDateRange } from '../../core/format';
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 12px;
     }
+    .trip-grid + .section-title,
+    .section-title + .trip-grid {
+      margin-top: 8px;
+    }
+    .trip-grid.past .trip-card {
+      opacity: 0.72;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .chip-before { background: var(--brand-light); color: var(--brand); }
+    .chip-during { background: var(--success-bg); color: var(--success); }
     .trip-card {
       text-align: left;
       padding: 16px;
@@ -207,6 +265,35 @@ export class TripsComponent {
 
   readonly tzOptions = timezoneOptions();
   readonly formatDateRange = formatDateRange;
+
+  private readonly today = todayStr();
+
+  /** Trips that haven't ended yet (or have no dates), soonest first. */
+  readonly upcoming = computed(() =>
+    this.trips()
+      .filter((t) => !t.endDate || t.endDate >= this.today)
+      .sort((a, b) =>
+        (a.startDate ?? '9999-99-99').localeCompare(b.startDate ?? '9999-99-99')
+      )
+  );
+
+  /** Finished trips, most recent first. */
+  readonly past = computed(() =>
+    this.trips()
+      .filter((t) => !!t.endDate && t.endDate < this.today)
+      .sort((a, b) => b.endDate!.localeCompare(a.endDate!))
+  );
+
+  /** Countdown chip for an upcoming/in-progress trip. */
+  chip(t: TripSummary): { state: 'before' | 'during'; label: string } | null {
+    if (!t.startDate || !t.endDate) return null;
+    if (this.today < t.startDate) {
+      const n = dayDiff(this.today, t.startDate);
+      return { state: 'before', label: n === 1 ? 'Tomorrow' : `In ${n} days` };
+    }
+    if (this.today > t.endDate) return null;
+    return { state: 'during', label: `Day ${dayDiff(t.startDate, this.today) + 1}` };
+  }
 
   form = this.blankForm();
 
