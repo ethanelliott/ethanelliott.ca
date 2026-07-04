@@ -85,11 +85,18 @@ a {
 }
 
 // Prevent iOS Safari from zooming into focused inputs (it zooms when the
-// effective font size is below 16px).
+// effective font size is below 16px). Covers both PrimeNG inputs and the
+// native date/time/number/text inputs used inside dialogs.
 @media (max-width: 767px) {
   .p-inputtext,
   .p-select-label,
-  .p-inputnumber-input {
+  .p-inputnumber-input,
+  input[type='date'],
+  input[type='time'],
+  input[type='number'],
+  input[type='text'],
+  select,
+  textarea {
     font-size: 16px;
   }
 }
