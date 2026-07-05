@@ -83,17 +83,18 @@ interface EditorForm {
   locationLabel: string;
 }
 
+// Drag positions are absolute grid minutes (columnIndex * 1440 + minutes),
+// so an activity spanning several day columns keeps its full extent while
+// being moved or resized.
 interface DragState {
   kind: 'move' | 'resize';
   activityId: string;
   startX: number;
   startY: number;
-  origStartMin: number;
-  duration: number;
-  origColIndex: number;
-  curStartMin: number;
-  curEndMin: number;
-  curColIndex: number;
+  origStartAbs: number;
+  origEndAbs: number;
+  curStartAbs: number;
+  curEndAbs: number;
   moved: boolean;
 }
 
@@ -101,9 +102,8 @@ interface DragState {
 interface PendingPress {
   kind: 'move' | 'resize';
   activity: Activity;
-  origStartMin: number;
-  origColIndex: number;
-  duration: number;
+  origStartAbs: number;
+  origEndAbs: number;
   startX: number;
   startY: number;
   pointerId: number;
@@ -169,7 +169,7 @@ interface PendingPress {
           <p class="muted">Add stops with dates to your trip to lay out the schedule.</p>
         </div>
       } @else {
-        <div class="grid-scroll" #gridScroll>
+        <div class="grid-scroll" #gridScroll [class.drag-lock]="drag() !== null">
           <div class="cal">
             <!-- Sticky top: day headers + location / hotel bands -->
             <div class="cal-top">
@@ -486,6 +486,11 @@ interface PendingPress {
     .toolbar .spacer { flex: 1; }
     .back { width: 34px; height: 34px; border: none; border-radius: 9px; background: var(--bg-subtle); cursor: pointer; }
     .grid-scroll { flex: 1; overflow: auto; }
+    /* While a drag is armed the container stops being scrollable, which
+       takes effect mid-gesture — browsers latch the scroll-vs-app decision
+       at the first touchmove, so preventDefault alone can't reclaim the
+       gesture once panning was allowed. */
+    .grid-scroll.drag-lock { overflow: hidden; touch-action: none; }
     .cal { width: max-content; }
     .cal-top { position: sticky; top: 0; z-index: 6; }
     .cal-row { display: grid; }
@@ -865,10 +870,16 @@ export class ScheduleComponent implements OnInit {
 
   ghostFor(ci: number): { top: number; height: number } | null {
     const d = this.drag();
-    if (!d || d.curColIndex !== ci) return null;
+    if (!d) return null;
+    // Slice of the dragged range that falls into this day column, so
+    // multi-day ghosts render across every column they cover.
+    const dayStart = ci * 1440;
+    const from = Math.max(d.curStartAbs, dayStart);
+    const to = Math.min(d.curEndAbs, dayStart + 1440);
+    if (to <= from) return null;
     return {
-      top: d.curStartMin * PX_PER_MIN,
-      height: (d.curEndMin - d.curStartMin) * PX_PER_MIN,
+      top: (from - dayStart) * PX_PER_MIN,
+      height: (to - from) * PX_PER_MIN,
     };
   }
 
@@ -943,8 +954,23 @@ export class ScheduleComponent implements OnInit {
   ): void {
     event.stopPropagation();
     const tz = this.displayTz();
+    const dates = this.columnDates();
     const s = zonedParts(new Date(p.activity.startAt), tz);
-    const startColIndex = this.columnDates().indexOf(s.date);
+    const e = zonedParts(new Date(p.activity.endAt), tz);
+    const startCol = dates.indexOf(s.date);
+    const endCol = dates.indexOf(e.date);
+    // Anchor on the activity's real bounds; fall back to the pressed piece
+    // when a bound lies off the grid.
+    const origStartAbs =
+      startCol >= 0
+        ? startCol * 1440 + s.minutes
+        : p.colIndex * 1440 + p.startMin;
+    const origEndAbs = Math.max(
+      origStartAbs + SNAP,
+      endCol >= 0
+        ? endCol * 1440 + e.minutes
+        : origStartAbs + this.activityDurationMin(p.activity)
+    );
     const target = event.target as HTMLElement;
 
     const move = (e: PointerEvent) => this.onPressMove(e);
@@ -968,9 +994,8 @@ export class ScheduleComponent implements OnInit {
     this.pending = {
       kind,
       activity: p.activity,
-      origStartMin: s.minutes,
-      origColIndex: startColIndex < 0 ? p.colIndex : startColIndex,
-      duration: this.activityDurationMin(p.activity),
+      origStartAbs,
+      origEndAbs,
       startX: event.clientX,
       startY: event.clientY,
       pointerId: event.pointerId,
@@ -1005,12 +1030,10 @@ export class ScheduleComponent implements OnInit {
       activityId: pend.activity.id,
       startX: pend.startX,
       startY: pend.startY,
-      origStartMin: pend.origStartMin,
-      duration: pend.duration,
-      origColIndex: pend.origColIndex,
-      curStartMin: pend.origStartMin,
-      curEndMin: pend.origStartMin + pend.duration,
-      curColIndex: pend.origColIndex,
+      origStartAbs: pend.origStartAbs,
+      origEndAbs: pend.origEndAbs,
+      curStartAbs: pend.origStartAbs,
+      curEndAbs: pend.origEndAbs,
       moved: false,
     });
     // Haptic nudge so touch users feel the drag engage.
@@ -1083,33 +1106,49 @@ export class ScheduleComponent implements OnInit {
     if (!d.moved && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD) return;
     const dyMin = this.snap(dyPx / PX_PER_MIN);
     const dCol = Math.round(dxPx / COL_WIDTH);
-    const maxCol = this.columnDates().length - 1;
+    const delta = dCol * 1440 + dyMin;
+    const maxAbs = this.columnDates().length * 1440;
 
     if (d.kind === 'move') {
-      let start = d.origStartMin + dyMin;
-      start = Math.max(0, Math.min(1440 - d.duration, start));
-      const col = Math.max(0, Math.min(maxCol, d.origColIndex + dCol));
+      const duration = d.origEndAbs - d.origStartAbs;
+      let start = d.origStartAbs + delta;
+      // The start must stay on the grid; the end may run past it (multi-day
+      // events keep their full length).
+      start = Math.max(0, Math.min(maxAbs - SNAP, start));
       this.drag.set({
         ...d,
-        curStartMin: start,
-        curEndMin: start + d.duration,
-        curColIndex: col,
+        curStartAbs: start,
+        curEndAbs: start + duration,
         moved: true,
       });
     } else {
-      let end = d.origStartMin + d.duration + dyMin;
-      end = Math.max(d.origStartMin + SNAP, Math.min(1440, end));
-      this.drag.set({ ...d, curEndMin: end, moved: true });
+      let end = d.origEndAbs + delta;
+      end = Math.max(d.origStartAbs + SNAP, Math.min(maxAbs, end));
+      this.drag.set({ ...d, curEndAbs: end, moved: true });
     }
   }
 
+  /** UTC instant for an absolute grid minute (handles day-boundary rollover). */
+  private absToInstant(abs: number): Date {
+    const dates = this.columnDates();
+    const col = Math.max(
+      0,
+      Math.min(dates.length - 1, Math.floor((abs - 1) / 1440))
+    );
+    // Minutes may exceed 1440 near/past the grid edge; zonedTimeToUtc rolls
+    // them into the following day(s).
+    return zonedTimeToUtc(dates[col], abs - col * 1440, this.displayTz());
+  }
+
   private commitDrag(d: DragState): void {
-    const tz = this.displayTz();
-    const colDate = this.columnDates()[d.curColIndex];
-    // Drag keeps an activity within one day column, so both bounds map onto
-    // the same column date; spanning is re-derived on reload.
-    const startISO = zonedTimeToUtc(colDate, d.curStartMin, tz).toISOString();
-    const endISO = zonedTimeToUtc(colDate, d.curEndMin, tz).toISOString();
+    const startISO = this.absToInstant(d.curStartAbs).toISOString();
+    const endISO = this.absToInstant(d.curEndAbs).toISOString();
+    // Resizing only changes the end; the start keeps its exact original
+    // instant instead of being re-derived from grid coordinates.
+    const body =
+      d.kind === 'move'
+        ? { startAt: startISO, endAt: endISO }
+        : { endAt: endISO };
 
     // Optimistic: move the block immediately, reconcile with the server
     // response, and roll back if the update fails.
@@ -1117,19 +1156,14 @@ export class ScheduleComponent implements OnInit {
     const current = before.find((a) => a.id === d.activityId);
     this.drag.set(null);
     if (!current) return;
-    this.store.upsertActivity({ ...current, startAt: startISO, endAt: endISO });
-    this.api
-      .updateActivity(this.id(), d.activityId, {
-        startAt: startISO,
-        endAt: endISO,
-      })
-      .subscribe({
-        next: (updated) => this.store.upsertActivity(updated),
-        error: (e) => {
-          this.activities.set(before);
-          this.error(e);
-        },
-      });
+    this.store.upsertActivity({ ...current, ...body });
+    this.api.updateActivity(this.id(), d.activityId, body).subscribe({
+      next: (updated) => this.store.upsertActivity(updated),
+      error: (e) => {
+        this.activities.set(before);
+        this.error(e);
+      },
+    });
   }
 
   // ── Editor ──
