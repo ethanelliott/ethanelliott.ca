@@ -112,6 +112,7 @@ interface PendingPress {
   up: (e: PointerEvent) => void;
   cancel: (e: PointerEvent) => void;
   block: (e: TouchEvent) => void;
+  context: (e: Event) => void;
 }
 
 @Component({
@@ -582,7 +583,7 @@ interface PendingPress {
       border-radius: 6px; color: #fff; padding: 3px 6px;
       font-size: 11px; overflow: hidden; cursor: pointer;
       box-shadow: var(--shadow-sm); touch-action: manipulation; user-select: none;
-      -webkit-user-select: none;
+      -webkit-user-select: none; -webkit-touch-callout: none;
     }
     .event.ghost {
       background: rgba(79,70,229,0.35); border: 1px dashed var(--brand);
@@ -959,6 +960,10 @@ export class ScheduleComponent implements OnInit {
     const block = (e: TouchEvent) => {
       if (this.drag()) e.preventDefault();
     };
+    // The browser's own long-press gestures (Android context menu, iOS
+    // callout) fire pointercancel mid-hold and would abort the press.
+    // touch-action:none used to suppress them implicitly; now we must.
+    const context = (e: Event) => e.preventDefault();
 
     this.pending = {
       kind,
@@ -974,6 +979,7 @@ export class ScheduleComponent implements OnInit {
       up,
       cancel,
       block,
+      context,
     };
 
     try {
@@ -985,6 +991,7 @@ export class ScheduleComponent implements OnInit {
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
     window.addEventListener('touchmove', block, { passive: false });
+    window.addEventListener('contextmenu', context);
     this.pressTimer = setTimeout(() => this.armDrag(), LONG_PRESS_MS);
   }
 
@@ -1057,6 +1064,7 @@ export class ScheduleComponent implements OnInit {
       window.removeEventListener('pointerup', pend.up);
       window.removeEventListener('pointercancel', pend.cancel);
       window.removeEventListener('touchmove', pend.block);
+      window.removeEventListener('contextmenu', pend.context);
       try {
         pend.target.releasePointerCapture?.(pend.pointerId);
       } catch {
