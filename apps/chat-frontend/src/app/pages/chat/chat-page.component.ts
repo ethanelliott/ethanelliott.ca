@@ -88,6 +88,7 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         [isStreaming]="conversationService.isStreaming()"
         [statusText]="statusText()"
         (suggestionSelected)="onSuggestionSelected($event)"
+        (regenerateRequested)="onRegenerate()"
       />
       <app-chat-input
         #chatInput
@@ -362,7 +363,26 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     };
     this.conversationService.addMessage(convoId, userMessage, userDisplay);
 
-    // Prepare assistant display message
+    this.beginAssistantStream(convoId);
+  }
+
+  /**
+   * Re-run the last user message. Drops the trailing assistant reply and
+   * streams a fresh one.
+   */
+  onRegenerate(): void {
+    if (this.conversationService.isStreaming()) return;
+    const convoId = this.conversationService.activeConversationId();
+    if (!convoId) return;
+    if (!this.conversationService.prepareRegenerate(convoId)) return;
+    this.beginAssistantStream(convoId);
+  }
+
+  /**
+   * Add an empty assistant display message and stream the model's reply into
+   * it, using the conversation's current message history.
+   */
+  private beginAssistantStream(convoId: string): void {
     const assistantDisplay: DisplayMessage = {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -384,9 +404,15 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     if (systemPrompt) {
       messagesToSend.push({ role: 'system', content: systemPrompt });
     }
-    const currentConvo = this.conversationService.activeConversation();
+    const currentConvo = this.conversationService
+      .conversations()
+      .find((c) => c.id === convoId);
     if (currentConvo) {
-      messagesToSend.push(...currentConvo.messages);
+      // Strip system messages already stored in history (the done event
+      // echoes them back) so the prompt doesn't accumulate once per turn
+      messagesToSend.push(
+        ...currentConvo.messages.filter((m) => m.role !== 'system')
+      );
     }
 
     const config = {
@@ -396,10 +422,10 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
     this.streamSub = this.chatApi.streamChat(messagesToSend, config).subscribe({
       next: (event: StreamEvent) => {
-        this.handleStreamEvent(convoId!, event);
+        this.handleStreamEvent(convoId, event);
       },
       complete: () => {
-        this.finalizeStream(convoId!);
+        this.finalizeStream(convoId);
       },
       error: (error) => {
         console.error('Stream error:', error);
@@ -410,10 +436,10 @@ export class ChatPageComponent implements OnInit, OnDestroy {
           life: 5000,
         });
         this.conversationService.updateLastAssistantMessage(
-          convoId!,
+          convoId,
           '\n\n*Error: Failed to get response. Please try again.*'
         );
-        this.finalizeStream(convoId!);
+        this.finalizeStream(convoId);
       },
     });
   }
@@ -423,6 +449,8 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     this.streamSub = null;
     const convoId = this.conversationService.activeConversationId();
     if (convoId) {
+      // Keep the partial reply in the model's context for the next turn
+      this.conversationService.commitPartialAssistant(convoId);
       this.finalizeStream(convoId);
     }
   }

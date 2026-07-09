@@ -169,6 +169,7 @@ export interface OrchestratorConfig {
   subAgents: SubAgentDefinition[];
   routerModel?: string; // Model for fast tool/agent selection
   maxDelegations?: number;
+  temperature?: number;
 }
 
 export interface DelegationResult {

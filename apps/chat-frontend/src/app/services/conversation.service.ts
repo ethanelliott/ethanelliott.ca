@@ -264,6 +264,72 @@ export class ConversationService {
     );
   }
 
+  /**
+   * Commit the partially streamed assistant reply into the API message
+   * history. Used when generation is stopped early — without this the model
+   * would never see its own partial answer on the next turn.
+   */
+  commitPartialAssistant(conversationId: string): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+        const lastDisplay = c.displayMessages[c.displayMessages.length - 1];
+        const lastMessage = c.messages[c.messages.length - 1];
+        if (
+          !lastDisplay ||
+          lastDisplay.role !== 'assistant' ||
+          !lastDisplay.content ||
+          lastMessage?.role !== 'user'
+        ) {
+          return c;
+        }
+        return {
+          ...c,
+          messages: [
+            ...c.messages,
+            { role: 'assistant' as const, content: lastDisplay.content },
+          ],
+          updatedAt: Date.now(),
+        };
+      })
+    );
+  }
+
+  /**
+   * Drop the trailing assistant turn (display + API messages) so the last
+   * user message can be re-sent. Returns true when there is a user message
+   * to regenerate from.
+   */
+  prepareRegenerate(conversationId: string): boolean {
+    let canRegenerate = false;
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+
+        const messages = [...c.messages];
+        while (
+          messages.length &&
+          messages[messages.length - 1].role !== 'user'
+        ) {
+          messages.pop();
+        }
+        if (!messages.some((m) => m.role === 'user')) return c;
+
+        const displayMessages = [...c.displayMessages];
+        while (
+          displayMessages.length &&
+          displayMessages[displayMessages.length - 1].role === 'assistant'
+        ) {
+          displayMessages.pop();
+        }
+
+        canRegenerate = true;
+        return { ...c, messages, displayMessages, updatedAt: Date.now() };
+      })
+    );
+    return canRegenerate;
+  }
+
   setMessagesFromDone(conversationId: string, messages: ChatMessage[]): void {
     this.conversations.update((convos) =>
       convos.map((c) => {

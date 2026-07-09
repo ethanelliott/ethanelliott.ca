@@ -38,6 +38,8 @@ import { ButtonModule } from 'primeng/button';
         <app-message-bubble
           [message]="msg"
           [isStreaming]="last && isStreaming()"
+          [isLast]="last"
+          (regenerate)="regenerateRequested.emit()"
         />
         } @if (statusText()) {
         <div class="status-indicator">
@@ -53,7 +55,7 @@ import { ButtonModule } from 'primeng/button';
         severity="secondary"
         size="small"
         class="scroll-to-bottom"
-        (click)="scrollToBottom()"
+        (click)="scrollToBottom('smooth')"
       />
       }
     </div>
@@ -67,11 +69,13 @@ import { ButtonModule } from 'primeng/button';
       position: relative;
     }
 
+    /* No CSS smooth scrolling: per-token scrollTop updates during streaming
+       fight the animation and cause jank. Smooth behaviour is applied
+       programmatically only for the scroll-to-bottom button. */
     .message-list-container {
       flex: 1;
       overflow-y: auto;
       padding: 16px;
-      scroll-behavior: smooth;
     }
 
     .messages-wrapper {
@@ -154,6 +158,7 @@ export class MessageListComponent implements AfterViewInit {
   readonly isStreaming = input(false);
   readonly statusText = input('');
   readonly suggestionSelected = output<string>();
+  readonly regenerateRequested = output<void>();
 
   showScrollButton = signal(false);
   private readonly scrollContainer =
@@ -190,10 +195,10 @@ export class MessageListComponent implements AfterViewInit {
     this.showScrollButton.set(!isNearBottom && this.messages().length > 0);
   }
 
-  scrollToBottom(): void {
+  scrollToBottom(behavior: ScrollBehavior = 'auto'): void {
     const el = this.scrollContainer()?.nativeElement;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    el.scrollTo({ top: el.scrollHeight, behavior });
     this.autoScroll = true;
     this.showScrollButton.set(false);
   }
