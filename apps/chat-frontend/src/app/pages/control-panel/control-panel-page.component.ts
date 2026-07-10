@@ -7,6 +7,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { SlicePipe } from '@angular/common';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
@@ -18,9 +19,10 @@ import {
   GatewayModelInfo,
   GatewayToolInfo,
   GatewayHealthInfo,
+  GatewayServiceInfo,
 } from '../../models/types';
 
-type PanelTab = 'overview' | 'orchestrator' | 'agents' | 'tools';
+type PanelTab = 'overview' | 'orchestrator' | 'agents' | 'tools' | 'servers';
 
 interface AgentForm {
   model: string;
@@ -35,6 +37,7 @@ interface AgentForm {
   standalone: true,
   imports: [
     FormsModule,
+    SlicePipe,
     InputTextModule,
     TextareaModule,
     SelectModule,
@@ -149,6 +152,11 @@ interface AgentForm {
             <div class="stat-label">Models available</div>
             <div class="stat-value">{{ models().length }}</div>
             <i class="pi pi-box stat-icon"></i>
+          </div>
+          <div class="stat-tile clickable" (click)="activeTab.set('servers')">
+            <div class="stat-label">External servers</div>
+            <div class="stat-value">{{ services().length }}</div>
+            <i class="pi pi-server stat-icon"></i>
           </div>
         </div>
 
@@ -509,6 +517,131 @@ interface AgentForm {
           <div class="empty-panel subtle">
             <i class="pi pi-search"></i>
             <span>No tools match your search</span>
+          </div>
+          }
+        </div>
+        }
+
+        <!-- ═══ SERVERS ═══ -->
+        @if (activeTab() === 'servers') {
+        <div class="editor-card register-card">
+          <div class="editor-header">
+            <div class="editor-title">
+              <i class="pi pi-plus-circle"></i>
+              <span>Connect a server</span>
+            </div>
+          </div>
+          <div class="register-form">
+            <div class="register-fields">
+              <input
+                pInputText
+                [(ngModel)]="newServerName"
+                placeholder="name (e.g. github)"
+                class="register-input name"
+              />
+              <input
+                pInputText
+                [(ngModel)]="newServerUrl"
+                placeholder="URL (e.g. http://host:3000/mcp)"
+                class="register-input url"
+              />
+              <p-select
+                [options]="protocolOptions"
+                [(ngModel)]="newServerProtocol"
+                optionLabel="label"
+                optionValue="value"
+                [style]="{ minWidth: '150px' }"
+                size="small"
+              />
+              <button
+                class="save-btn"
+                [disabled]="!newServerName.trim() || !newServerUrl.trim() || registering()"
+                (click)="registerServer()"
+              >
+                @if (registering()) {
+                <i class="pi pi-spin pi-spinner"></i>
+                } @else {
+                <i class="pi pi-link"></i>
+                }
+                Connect
+              </button>
+            </div>
+            <span class="register-hint"
+              >Auto-detect tries the Model Context Protocol first, then falls
+              back to the simple HTTP protocol (<code
+                >GET /mcp/tools</code
+              >). Tools are namespaced as
+              <code>name__tool</code>.</span
+            >
+          </div>
+        </div>
+
+        <div class="server-list">
+          @for (server of services(); track server.name) {
+          <div class="server-card" [class.errored]="server.status === 'error'">
+            <div class="server-head">
+              <div class="server-title-row">
+                <span
+                  class="status-dot"
+                  [class.ok]="server.status === 'connected'"
+                  [class.bad]="server.status === 'error'"
+                ></span>
+                <span class="server-name">{{ server.name }}</span>
+                <span class="badge" [class.mcp]="server.protocol === 'mcp'">
+                  {{ server.protocol === 'mcp' ? 'MCP' : 'HTTP' }}
+                </span>
+                @if (server.serverInfo) {
+                <span class="server-info">{{ server.serverInfo }}</span>
+                }
+              </div>
+              <div class="server-actions">
+                <button
+                  class="save-btn secondary"
+                  [disabled]="syncing() === server.name"
+                  (click)="syncServer(server.name)"
+                >
+                  <i
+                    class="pi"
+                    [class.pi-sync]="syncing() !== server.name"
+                    [class.pi-spin]="syncing() === server.name"
+                    [class.pi-spinner]="syncing() === server.name"
+                  ></i>
+                  Sync
+                </button>
+                <button
+                  class="danger-btn"
+                  (click)="removeServer(server.name)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="server-meta">
+              <span class="mono">{{ server.url }}</span>
+              @if (server.lastSync) {
+              <span>· synced {{ server.lastSync | slice : 11 : 19 }}</span>
+              }
+            </div>
+            @if (server.error) {
+            <div class="server-error">
+              <i class="pi pi-exclamation-triangle"></i>
+              {{ server.error }}
+            </div>
+            } @if (server.tools.length) {
+            <div class="tool-chips">
+              @for (tool of server.tools; track tool) {
+              <span class="tool-chip">{{ tool }}</span>
+              }
+            </div>
+            }
+          </div>
+          } @empty {
+          <div class="empty-panel subtle">
+            <i class="pi pi-server"></i>
+            <span
+              >No external servers connected. Point the form above at any MCP
+              server to add its tools to your agents.</span
+            >
           </div>
           }
         </div>
@@ -1267,6 +1400,144 @@ interface AgentForm {
       font-style: italic;
     }
 
+    /* ─── Servers tab ─── */
+    .register-card {
+      margin-bottom: 16px;
+    }
+
+    .register-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 12px;
+    }
+
+    .register-fields {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .register-input {
+      font-size: 0.82rem !important;
+      background: var(--p-surface-950) !important;
+      border-color: var(--p-surface-700) !important;
+      border-radius: 9px !important;
+
+      &.name { max-width: 160px; }
+      &.url { flex: 1; min-width: 220px; }
+    }
+
+    .register-hint {
+      font-size: 0.72rem;
+      color: var(--p-text-muted-color);
+      line-height: 1.5;
+
+      code {
+        font-family: var(--chat-font-mono);
+        font-size: 0.66rem;
+        background: var(--p-surface-800);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+    }
+
+    .server-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .server-card {
+      background: color-mix(in srgb, var(--p-surface-900) 70%, transparent);
+      border: 1px solid var(--p-surface-800);
+      border-radius: var(--chat-radius-md);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      &.errored {
+        border-color: color-mix(in srgb, #ef4444 35%, transparent);
+      }
+    }
+
+    .server-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .server-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--p-text-muted-color);
+      flex-shrink: 0;
+
+      &.ok { background: #34d399; box-shadow: 0 0 6px #34d39988; }
+      &.bad { background: #f87171; box-shadow: 0 0 6px #f8717188; }
+    }
+
+    .server-name {
+      font-family: var(--chat-font-mono);
+      font-size: 0.88rem;
+      font-weight: 650;
+      color: var(--p-text-color);
+    }
+
+    .badge.mcp {
+      color: var(--chat-accent);
+      border-color: color-mix(in srgb, var(--p-primary-500) 45%, transparent);
+    }
+
+    .server-info {
+      font-size: 0.72rem;
+      color: var(--p-text-muted-color);
+    }
+
+    .server-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .server-meta {
+      display: flex;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: var(--p-text-muted-color);
+      flex-wrap: wrap;
+
+      .mono {
+        font-family: var(--chat-font-mono);
+        word-break: break-all;
+      }
+    }
+
+    .server-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.76rem;
+      color: #fca5a5;
+      background: color-mix(in srgb, #ef4444 8%, transparent);
+      border-radius: 8px;
+      padding: 8px 10px;
+
+      i { font-size: 0.75rem; margin-top: 1px; }
+    }
+
     /* ─── Responsive ─── */
     @media (max-width: 820px) {
       .control-panel {
@@ -1320,6 +1591,7 @@ export class ControlPanelPageComponent implements OnInit {
     { id: 'orchestrator', label: 'Orchestrator', icon: 'pi-sitemap' },
     { id: 'agents', label: 'Agents', icon: 'pi-users' },
     { id: 'tools', label: 'Tools', icon: 'pi-wrench' },
+    { id: 'servers', label: 'Servers', icon: 'pi-server' },
   ];
 
   readonly activeTab = signal<PanelTab>('overview');
@@ -1336,6 +1608,19 @@ export class ControlPanelPageComponent implements OnInit {
   // Tools tab state
   readonly toolSearch = signal('');
   readonly toolCategoryFilter = signal<string | null>(null);
+
+  // Servers tab state
+  readonly services = signal<GatewayServiceInfo[]>([]);
+  readonly registering = signal(false);
+  readonly syncing = signal<string | null>(null);
+  newServerName = '';
+  newServerUrl = '';
+  newServerProtocol: 'auto' | 'mcp' | 'http' = 'auto';
+  readonly protocolOptions = [
+    { label: 'Auto-detect', value: 'auto' },
+    { label: 'MCP', value: 'mcp' },
+    { label: 'Simple HTTP', value: 'http' },
+  ];
 
   // Form state for orchestrator
   readonly orchModel = signal('');
@@ -1456,6 +1741,104 @@ export class ControlPanelPageComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+
+    this.gateway.getServices().subscribe({
+      next: (res) => this.services.set(res.services),
+      error: () => {}, // Non-critical
+    });
+  }
+
+  registerServer(): void {
+    const name = this.newServerName.trim().toLowerCase();
+    const url = this.newServerUrl.trim();
+    if (!name || !url) return;
+
+    this.registering.set(true);
+    this.gateway
+      .registerService({
+        name,
+        url,
+        protocol:
+          this.newServerProtocol === 'auto' ? undefined : this.newServerProtocol,
+      })
+      .subscribe({
+        next: (res) => {
+          this.registering.set(false);
+          this.newServerName = '';
+          this.newServerUrl = '';
+          this.newServerProtocol = 'auto';
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Connected',
+            detail: `"${name}" connected with ${res.service.toolCount} tools (${res.service.protocol})`,
+            life: 4000,
+          });
+          this.loadConfig();
+        },
+        error: (err) => {
+          this.registering.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Connection failed',
+            detail: err?.error?.error || 'Could not connect to the server',
+            life: 6000,
+          });
+          // The registration may be kept in error state — refresh the list
+          this.gateway.getServices().subscribe({
+            next: (res) => this.services.set(res.services),
+          });
+        },
+      });
+  }
+
+  syncServer(name: string): void {
+    this.syncing.set(name);
+    this.gateway.syncService(name).subscribe({
+      next: (res) => {
+        this.syncing.set(null);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Synced',
+          detail: res.message,
+          life: 3000,
+        });
+        this.loadConfig();
+      },
+      error: (err) => {
+        this.syncing.set(null);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Sync failed',
+          detail: err?.error?.error || 'Could not sync tools',
+          life: 5000,
+        });
+        this.gateway.getServices().subscribe({
+          next: (res) => this.services.set(res.services),
+        });
+      },
+    });
+  }
+
+  removeServer(name: string): void {
+    this.gateway.unregisterService(name).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Removed',
+          detail: `Server "${name}" and its tools were removed`,
+          life: 3000,
+        });
+        this.loadConfig();
+      },
+      error: () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: `Failed to remove "${name}"`,
+          life: 4000,
+        });
+      },
     });
   }
 

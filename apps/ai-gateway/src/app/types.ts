@@ -216,20 +216,34 @@ export interface StreamChunk {
  * Service Registry Types
  */
 
+/**
+ * External tool service transport:
+ * - 'mcp': real Model Context Protocol over Streamable HTTP (JSON-RPC)
+ * - 'http': this gateway's simple REST protocol
+ *   (GET /mcp/tools + POST /mcp/tools/:name/execute)
+ */
+export type ServiceProtocol = 'mcp' | 'http';
+
 export interface MCPService {
   name: string;
   url: string;
+  protocol: ServiceProtocol;
   description?: string;
   status: 'connected' | 'disconnected' | 'error';
-  tools: string[]; // Tool names registered from this service
+  tools: string[]; // Namespaced tool names registered from this service
+  serverInfo?: string; // MCP server name/version from the handshake
   lastSync?: string;
   error?: string;
 }
 
 export interface MCPServiceRegistration {
   name: string;
-  url: string; // Base URL of the service (will append /mcp/tools, /mcp/tools/:name/execute)
+  url: string; // MCP endpoint URL, or base URL for the simple HTTP protocol
   description?: string;
+  /** Omit to auto-detect (tries MCP first, then the simple HTTP protocol) */
+  protocol?: ServiceProtocol;
+  /** Extra headers sent to the server (e.g. Authorization) */
+  headers?: Record<string, string>;
 }
 
 export interface MCPEndpointToolsResponse {

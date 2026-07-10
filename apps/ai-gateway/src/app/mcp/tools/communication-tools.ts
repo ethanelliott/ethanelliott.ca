@@ -143,191 +143,6 @@ const getNotificationsHistory = createTool(
   }
 );
 
-/** ─── draft_email ───────────────────────────────────────────────── */
-
-const draftEmail = createTool(
-  {
-    name: 'draft_email',
-    description:
-      'Compose a professional or casual email from bullet-point intent. Returns both a formal and casual draft.',
-    category: 'communication',
-    tags: ['email', 'draft', 'writing'],
-    parameters: {
-      type: 'object',
-      properties: {
-        intent: {
-          type: 'string',
-          description:
-            'What the email is about (bullet points or prose). E.g. "Decline meeting on Friday; suggest Tuesday instead; keep it friendly"',
-        },
-        recipient_name: {
-          type: 'string',
-          description: 'Recipient first name (optional)',
-        },
-        sender_name: { type: 'string', description: 'Your name (optional)' },
-        subject_hint: {
-          type: 'string',
-          description: 'Optional subject line hint',
-        },
-        tone: {
-          type: 'string',
-          enum: ['formal', 'casual', 'both'],
-          description: 'Desired tone (default: both)',
-        },
-      },
-      required: ['intent'],
-    },
-  },
-  async (params) => {
-    // This tool returns a structured template. The LLM calling this tool composes the actual text.
-    const intent = params.intent as string;
-    const recipient = (params.recipient_name as string) || 'there';
-    const sender = (params.sender_name as string) || '';
-    const subject =
-      (params.subject_hint as string) || '[Subject based on intent]';
-    const tone = (params.tone as string) || 'both';
-
-    const formal = [
-      `Subject: ${subject}`,
-      '',
-      `Dear ${recipient},`,
-      '',
-      `[Formal draft based on intent: "${intent}"]`,
-      '',
-      'I hope this message finds you well.',
-      '',
-      `[Main body covering: ${intent}]`,
-      '',
-      `Best regards,`,
-      sender || '[Your Name]',
-    ].join('\n');
-
-    const casual = [
-      `Subject: ${subject}`,
-      '',
-      `Hey ${recipient},`,
-      '',
-      `[Casual draft based on intent: "${intent}"]`,
-      '',
-      `[Main body covering: ${intent}]`,
-      '',
-      `Cheers,`,
-      sender || '[Your Name]',
-    ].join('\n');
-
-    return {
-      success: true,
-      data: {
-        note: 'Use these templates as a starting point. The AI will fill in the body based on your intent.',
-        intent,
-        suggestions: {
-          subjectLine: subject,
-          formal: tone !== 'casual' ? formal : undefined,
-          casual: tone !== 'formal' ? casual : undefined,
-        },
-      },
-    };
-  }
-);
-
-/** ─── draft_message ──────────────────────────────────────────────── */
-
-const draftMessage = createTool(
-  {
-    name: 'draft_message',
-    description:
-      'Compose a short text or chat message from intent bullet points. Returns formal and casual variants.',
-    category: 'communication',
-    tags: ['message', 'sms', 'chat', 'draft'],
-    parameters: {
-      type: 'object',
-      properties: {
-        intent: {
-          type: 'string',
-          description:
-            'What the message needs to say (brief description or bullets)',
-        },
-        tone: {
-          type: 'string',
-          enum: ['formal', 'casual', 'both'],
-          description: 'Desired tone (default: both)',
-        },
-        max_chars: {
-          type: 'number',
-          description: 'Target character limit (e.g. 160 for SMS)',
-        },
-      },
-      required: ['intent'],
-    },
-  },
-  async (params) => {
-    const intent = params.intent as string;
-    const tone = (params.tone as string) || 'both';
-    const maxChars = params.max_chars as number | undefined;
-
-    return {
-      success: true,
-      data: {
-        intent,
-        maxChars,
-        templateDrafts: {
-          formal:
-            tone !== 'casual'
-              ? `[Formal message draft (max ${
-                  maxChars ?? 'unlimited'
-                } chars): "${intent}"]`
-              : undefined,
-          casual:
-            tone !== 'formal'
-              ? `[Casual message draft (max ${
-                  maxChars ?? 'unlimited'
-                } chars): "${intent}"]`
-              : undefined,
-        },
-        note: 'Use these as direction for composing the final message content.',
-      },
-    };
-  }
-);
-
-/** ─── summarize_email_thread ──────────────────────────────────────── */
-
-const summarizeEmailThread = createTool(
-  {
-    name: 'summarize_email_thread',
-    description:
-      'Summarize a pasted email thread, extract key decisions and action items.',
-    category: 'communication',
-    tags: ['email', 'summary', 'thread'],
-    parameters: {
-      type: 'object',
-      properties: {
-        thread_text: {
-          type: 'string',
-          description: 'The full email thread (paste raw text)',
-        },
-      },
-      required: ['thread_text'],
-    },
-  },
-  async (params) => {
-    const text = params.thread_text as string;
-    const wordCount = text.split(/\s+/).length;
-
-    // Return the text structured for the LLM to summarize in its reply
-    return {
-      success: true,
-      data: {
-        wordCount,
-        threadPreview:
-          text.substring(0, 500) + (text.length > 500 ? '...' : ''),
-        instruction:
-          'Thread text captured. Please summarize: (1) key topic, (2) decisions made, (3) open action items, (4) suggested next action.',
-      },
-    };
-  }
-);
-
 /** ─── create_meeting_invite_text ──────────────────────────────────── */
 
 const createMeetingInviteText = createTool(
@@ -364,7 +179,7 @@ const createMeetingInviteText = createTool(
       d
         .toISOString()
         .replace(/[-:]/g, '')
-        .replace(/\.\d{3}/, '') + 'Z';
+        .replace(/\.\d{3}Z$/, 'Z');
 
     const lines = [
       'BEGIN:VCALENDAR',
@@ -423,16 +238,10 @@ const createMeetingInviteText = createTool(
 const registry = getToolRegistry();
 registry.register(sendNotification);
 registry.register(getNotificationsHistory);
-registry.register(draftEmail);
-registry.register(draftMessage);
-registry.register(summarizeEmailThread);
 registry.register(createMeetingInviteText);
 
 export {
   sendNotification,
   getNotificationsHistory,
-  draftEmail,
-  draftMessage,
-  summarizeEmailThread,
   createMeetingInviteText,
 };

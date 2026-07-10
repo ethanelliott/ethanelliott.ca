@@ -525,48 +525,6 @@ export const defaultOrchestratorConfig: OrchestratorConfig = {
   model: 'gemma4:e2b', // Best for complex reasoning and correct tool calling
   subAgents: [
     {
-      name: 'utility-assistant',
-      description:
-        'Handles general utilities like time, calculations, web requests, user questions, and sensitive actions requiring approval',
-      capabilities: [
-        'Get current time',
-        'Perform calculations',
-        'Fetch data from URLs',
-        'Ask the user questions for clarification or preferences',
-        'Execute sensitive actions (requires user approval)',
-      ],
-      agent: {
-        name: 'utility-assistant',
-        description: 'General utility assistant',
-        systemPrompt: `You are an assistant that MUST use tools to answer questions.
-
-Available tools:
-- get_current_time: Use this for ANY time-related question
-- calculate: Use this for ANY math calculation. ALWAYS use numeric values, not variable names.
-- http_request: Use this to fetch data from URLs
-- ask_user: Use this to ask the user one or more questions. Supports multiple questions in a single call (wizard-style). Provide multiple-choice options when possible.
-- sensitive_action: Use this for actions requiring approval
-
-ALWAYS use the appropriate tool. NEVER answer without using a tool first.
-When using calculate, break down complex problems into the correct mathematical expression with actual numbers.
-When using ask_user, provide a questions array. Each question should have a clear question text and 2-6 helpful options when applicable. You can ask multiple questions at once.
-
-Examples:
-- "What time is it?" → use get_current_time
-- "Calculate 5+5" → use calculate with expression="5+5"
-- "4 apples at $2 with 10% discount" → use calculate with expression="(4 * 2) * 0.9"
-- User says "plan a trip" but you need to know where → use ask_user with questions array containing destination, budget, and duration questions`,
-        model: 'gemma4:e2b',
-        tools: [
-          'get_current_time',
-          'calculate',
-          'http_request',
-          'ask_user',
-          'sensitive_action',
-        ],
-      },
-    },
-    {
       name: 'temporal-agent',
       description:
         'Handles date/time operations, timezone conversions, calendar events, and scheduling',
@@ -663,32 +621,27 @@ Synthesise information from multiple sources when possible. Cite sources in your
     },
     {
       name: 'productivity-agent',
-      description: 'Manages tasks, notes, focus sessions, and habit tracking',
+      description:
+        'Manages tasks on the kanban board and gives daily task overviews',
       capabilities: [
         'Create and manage tasks in the kanban board',
-        'Take and retrieve notes',
-        'Start/end focus (Pomodoro) sessions',
-        'Track habits and streaks',
+        'Update task status and priority',
         'Daily task overview',
+        'Ask the user clarifying questions',
       ],
       agent: {
         name: 'productivity-agent',
-        description: 'Task, note, focus, and habit specialist',
-        systemPrompt: `You are a productivity assistant. Help users stay organised and focused.
-When creating tasks, ask for a title and priority if not provided. Keep notes concise.
-Encourage healthy habits and celebrate streaks.`,
+        description: 'Task management specialist',
+        systemPrompt: `You are a productivity assistant backed by the user's real kanban board.
+Use tools for all task operations — never invent task state.
+If a request is ambiguous (e.g. which task to update, what priority), use ask_user to clarify with multiple-choice options.`,
         model: 'gemma4:e2b',
         tools: [
           'create_task',
           'list_tasks',
           'update_task',
           'get_todays_tasks',
-          'create_note',
-          'list_notes',
-          'start_focus_block',
-          'end_focus_block',
-          'get_habit_streak',
-          'check_habit',
+          'ask_user',
         ],
       },
     },
@@ -724,30 +677,22 @@ Never give investment advice. Present numbers clearly with currency symbols and 
     {
       name: 'health-agent',
       description:
-        'Tracks nutrition, hydration, sleep, exercise, and integrates with WHOOP wearable data',
+        'Provides nutrition lookups, BMI calculations, and WHOOP wearable data (recovery, sleep, strain, workouts)',
       capabilities: [
         'Nutrition lookup (calories, macros)',
-        'Water intake tracking',
-        'Sleep logging and summaries',
-        'Exercise logging and BMI',
-        'WHOOP recovery, strain, and workout data',
-        'Wellness nudge notifications',
+        'BMI calculation',
+        'WHOOP recovery, sleep, strain, and workout data',
+        'Morning readiness briefs',
       ],
       agent: {
         name: 'health-agent',
         description: 'Health, fitness, and wellness specialist',
-        systemPrompt: `You are a health and wellness assistant. Use tools to log activities and retrieve data.
+        systemPrompt: `You are a health and wellness assistant. Use tools to retrieve real data — WHOOP for recovery/sleep/strain, Open Food Facts for nutrition.
 Always remind users that you are not a medical professional. Provide evidence-based, supportive guidance.`,
         model: 'gemma4:e2b',
         tools: [
           'lookup_nutrition',
-          'log_water',
-          'get_water_status',
-          'log_sleep',
-          'get_sleep_summary',
-          'log_exercise',
           'calculate_bmi',
-          'send_wellness_nudge',
           'whoop_get_recovery',
           'whoop_get_sleep',
           'whoop_get_day_strain',
@@ -759,46 +704,42 @@ Always remind users that you are not a medical professional. Provide evidence-ba
     {
       name: 'communication-agent',
       description:
-        'Sends push notifications, drafts messages and emails, and creates meeting invites',
+        'Sends push notifications and creates calendar meeting invites',
       capabilities: [
         'Send push notifications via ntfy',
         'Notification history',
-        'Draft emails and messages',
-        'Summarise email threads',
-        'Create meeting invite text',
+        'Create iCal meeting invites',
+        'Ask the user clarifying questions',
       ],
       agent: {
         name: 'communication-agent',
-        description: 'Notifications, messaging, and communication specialist',
-        systemPrompt: `You are a communication assistant. Help users draft clear messages and stay informed.
-When drafting emails or messages, ask for the recipient and purpose if not provided. Keep tone professional unless asked otherwise.`,
+        description: 'Notifications and meeting invite specialist',
+        systemPrompt: `You are a communication assistant. Use send_notification to push messages to the user's devices and create_meeting_invite_text for calendar invites.
+Draft any email or message text yourself — you are the writer. Use ask_user when you need the recipient, time, or other missing details.`,
         model: 'gemma4:e2b',
         tools: [
           'send_notification',
           'get_notifications_history',
-          'draft_email',
-          'draft_message',
-          'summarize_email_thread',
           'create_meeting_invite_text',
+          'ask_user',
         ],
       },
     },
     {
       name: 'food-agent',
       description:
-        'Searches recipes, suggests meals from ingredients, scales recipes, and provides cooking guidance',
+        'Searches the recipe collection, suggests meals from ingredients, and scales recipes',
       capabilities: [
-        'Search and retrieve recipes',
+        'Search and retrieve recipes from the recipes app',
         'Suggest recipes from available ingredients',
         'Scale recipe servings',
-        'Ingredient substitution lookup',
-        'Cooking technique explanations',
-        'Wine pairing recommendations',
+        'Ask the user clarifying questions',
       ],
       agent: {
         name: 'food-agent',
-        description: 'Recipe, cooking, and food specialist',
-        systemPrompt: `You are a culinary assistant. Use tools to find and adapt recipes.
+        description: 'Recipe and cooking specialist',
+        systemPrompt: `You are a culinary assistant backed by the user's recipe collection. Use tools to find and adapt recipes.
+Answer cooking technique, substitution, and pairing questions from your own knowledge — no tool needed.
 Be enthusiastic about food! Offer alternatives for dietary restrictions when relevant.`,
         model: 'gemma4:e2b',
         tools: [
@@ -806,9 +747,7 @@ Be enthusiastic about food! Offer alternatives for dietary restrictions when rel
           'get_recipe',
           'suggest_recipe_from_ingredients',
           'scale_recipe',
-          'lookup_ingredient_substitution',
-          'get_cooking_technique',
-          'get_wine_pairing',
+          'ask_user',
         ],
       },
     },

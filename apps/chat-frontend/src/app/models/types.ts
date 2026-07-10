@@ -163,6 +163,19 @@ export interface GatewayModelInfo {
   quantization?: string;
 }
 
+export interface GatewayServiceInfo {
+  name: string;
+  url: string;
+  protocol: 'mcp' | 'http';
+  description?: string;
+  status: 'connected' | 'disconnected' | 'error';
+  toolCount: number;
+  tools: string[];
+  serverInfo?: string;
+  lastSync?: string;
+  error?: string;
+}
+
 export interface GatewayHealthInfo {
   status: 'healthy' | 'degraded';
   ollama: 'connected' | 'disconnected';

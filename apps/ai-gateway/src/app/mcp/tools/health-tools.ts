@@ -4,40 +4,6 @@ import { createTool, getToolRegistry } from '../tool-registry';
 
 const WHOOP_TOKEN = process.env['WHOOP_ACCESS_TOKEN'];
 const WHOOP_BASE = 'https://api.prod.whoop.com/developer';
-const NTFY_URL = process.env['NTFY_URL'];
-const NTFY_TOPIC = process.env['NTFY_TOPIC'] || 'ai-gateway';
-
-/** ─── in-memory health logs ────────────────────────────────────── */
-
-interface WaterLog {
-  date: string;
-  totalMl: number;
-  targetMl: number;
-  entries: { time: string; ml: number }[];
-}
-
-interface SleepLog {
-  date: string;
-  hoursSlept: number;
-  quality: string;
-  notes?: string;
-}
-
-interface ExerciseLog {
-  date: string;
-  type: string;
-  durationMinutes: number;
-  notes?: string;
-}
-
-const waterLogs: Map<string, WaterLog> = new Map();
-const sleepLogs: SleepLog[] = [];
-const exerciseLogs: ExerciseLog[] = [];
-const WATER_TARGET_ML = 2500;
-
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
-}
 
 /** ─── Whoop helpers ─────────────────────────────────────────────── */
 
@@ -139,197 +105,6 @@ const lookupNutrition = createTool(
   }
 );
 
-/** ─── log_water ─────────────────────────────────────────────────── */
-
-const logWater = createTool(
-  {
-    name: 'log_water',
-    description: 'Log a water intake entry for today.',
-    category: 'health',
-    tags: ['water', 'hydration'],
-    parameters: {
-      type: 'object',
-      properties: {
-        amount_ml: {
-          type: 'number',
-          description: 'Amount of water in millilitres (e.g. 250 for a cup)',
-        },
-      },
-      required: ['amount_ml'],
-    },
-  },
-  async (params) => {
-    const ml = params.amount_ml as number;
-    const today = todayStr();
-
-    if (!waterLogs.has(today)) {
-      waterLogs.set(today, {
-        date: today,
-        totalMl: 0,
-        targetMl: WATER_TARGET_ML,
-        entries: [],
-      });
-    }
-    const log = waterLogs.get(today)!;
-    log.entries.push({ time: new Date().toISOString(), ml });
-    log.totalMl += ml;
-
-    return {
-      success: true,
-      data: {
-        logged: `${ml} ml`,
-        totalToday: `${log.totalMl} ml`,
-        target: `${WATER_TARGET_ML} ml`,
-        remaining: `${Math.max(0, WATER_TARGET_ML - log.totalMl)} ml`,
-        percentage: `${Math.min(
-          100,
-          Math.round((log.totalMl / WATER_TARGET_ML) * 100)
-        )}%`,
-      },
-    };
-  }
-);
-
-/** ─── get_water_status ──────────────────────────────────────────── */
-
-const getWaterStatus = createTool(
-  {
-    name: 'get_water_status',
-    description: "Get today's water intake status vs daily target.",
-    category: 'health',
-    tags: ['water', 'hydration'],
-    parameters: { type: 'object', properties: {} },
-  },
-  async () => {
-    const today = todayStr();
-    const log = waterLogs.get(today) || {
-      date: today,
-      totalMl: 0,
-      targetMl: WATER_TARGET_ML,
-      entries: [],
-    };
-    return {
-      success: true,
-      data: {
-        date: today,
-        totalMl: log.totalMl,
-        targetMl: WATER_TARGET_ML,
-        remaining: Math.max(0, WATER_TARGET_ML - log.totalMl),
-        percentage: Math.min(
-          100,
-          Math.round((log.totalMl / WATER_TARGET_ML) * 100)
-        ),
-        entries: log.entries.length,
-      },
-    };
-  }
-);
-
-/** ─── log_sleep ──────────────────────────────────────────────────── */
-
-const logSleep = createTool(
-  {
-    name: 'log_sleep',
-    description: 'Manually log sleep (fallback when Whoop is not available).',
-    category: 'health',
-    tags: ['sleep', 'rest'],
-    parameters: {
-      type: 'object',
-      properties: {
-        hours_slept: { type: 'number', description: 'Hours slept' },
-        quality: {
-          type: 'string',
-          enum: ['poor', 'fair', 'good', 'great'],
-          description: 'Subjective sleep quality',
-        },
-        date: { type: 'string', description: 'Date (default: today)' },
-        notes: { type: 'string', description: 'Optional notes' },
-      },
-      required: ['hours_slept'],
-    },
-  },
-  async (params) => {
-    const entry: SleepLog = {
-      date: (params.date as string) || todayStr(),
-      hoursSlept: params.hours_slept as number,
-      quality: (params.quality as string) || 'not rated',
-      notes: params.notes as string | undefined,
-    };
-    sleepLogs.unshift(entry);
-    return { success: true, data: entry };
-  }
-);
-
-/** ─── get_sleep_summary ─────────────────────────────────────────── */
-
-const getSleepSummary = createTool(
-  {
-    name: 'get_sleep_summary',
-    description: '7-day sleep quality summary from manual logs.',
-    category: 'health',
-    tags: ['sleep', 'summary'],
-    parameters: { type: 'object', properties: {} },
-  },
-  async () => {
-    const recent = sleepLogs.slice(0, 7);
-    if (recent.length === 0) {
-      return {
-        success: true,
-        data: {
-          message: 'No sleep logs yet. Use log_sleep to start tracking.',
-        },
-      };
-    }
-    const avg = recent.reduce((s, e) => s + e.hoursSlept, 0) / recent.length;
-    return {
-      success: true,
-      data: {
-        nights: recent.length,
-        averageHours: avg.toFixed(1),
-        entries: recent,
-      },
-    };
-  }
-);
-
-/** ─── log_exercise ──────────────────────────────────────────────── */
-
-const logExercise = createTool(
-  {
-    name: 'log_exercise',
-    description: 'Manually log an exercise session.',
-    category: 'health',
-    tags: ['exercise', 'workout'],
-    parameters: {
-      type: 'object',
-      properties: {
-        type: {
-          type: 'string',
-          description:
-            'Exercise type (e.g. "running", "cycling", "weightlifting")',
-        },
-        duration_minutes: {
-          type: 'number',
-          description: 'Duration in minutes',
-        },
-        date: { type: 'string', description: 'Date (default: today)' },
-        notes: { type: 'string', description: 'Optional notes' },
-      },
-      required: ['type', 'duration_minutes'],
-    },
-  },
-  async (params) => {
-    const entry: ExerciseLog = {
-      date: (params.date as string) || todayStr(),
-      type: params.type as string,
-      durationMinutes: params.duration_minutes as number,
-      notes: params.notes as string | undefined,
-    };
-    exerciseLogs.unshift(entry);
-    return { success: true, data: entry };
-  }
-);
-
 /** ─── calculate_bmi ─────────────────────────────────────────────── */
 
 const calculateBmi = createTool(
@@ -373,93 +148,6 @@ const calculateBmi = createTool(
         note: 'BMI is a general screening tool, not a diagnostic measure.',
       },
     };
-  }
-);
-
-/** ─── send_wellness_nudge ───────────────────────────────────────── */
-
-const sendWellnessNudge = createTool(
-  {
-    name: 'send_wellness_nudge',
-    description:
-      'Send a wellness push notification via ntfy (requires NTFY_URL env var).',
-    category: 'health',
-    tags: ['nudge', 'notification', 'wellness'],
-    parameters: {
-      type: 'object',
-      properties: {
-        type: {
-          type: 'string',
-          enum: ['water', 'stretch', 'move', 'breathe', 'custom'],
-          description: 'Nudge type',
-        },
-        custom_message: {
-          type: 'string',
-          description: 'Custom message (used when type is "custom")',
-        },
-      },
-      required: ['type'],
-    },
-  },
-  async (params) => {
-    if (!NTFY_URL) {
-      return {
-        success: false,
-        error: 'NTFY_URL not configured. Set it to enable push notifications.',
-      };
-    }
-
-    const messages: Record<
-      string,
-      { title: string; body: string; tags: string }
-    > = {
-      water: {
-        title: 'Hydration Reminder 💧',
-        body: 'Time to drink some water!',
-        tags: 'droplet',
-      },
-      stretch: {
-        title: 'Stretch Break 🧘',
-        body: 'Take 2 minutes to stretch.',
-        tags: 'person_doing_cartwheel',
-      },
-      move: {
-        title: 'Time to Move! 🚶',
-        body: "You've been sitting too long. Take a short walk.",
-        tags: 'walking',
-      },
-      breathe: {
-        title: 'Breathe 🌬️',
-        body: 'Try a 4-7-8 breathing cycle to calm your nervous system.',
-        tags: 'wind_face',
-      },
-      custom: {
-        title: 'Wellness Nudge',
-        body: (params.custom_message as string) || 'Take care of yourself!',
-        tags: 'heart',
-      },
-    };
-
-    const nudge = messages[params.type as string] || messages['custom'];
-
-    try {
-      await fetch(`${NTFY_URL}/${NTFY_TOPIC}`, {
-        method: 'POST',
-        headers: {
-          Title: nudge.title,
-          Tags: nudge.tags,
-          Priority: '2',
-        },
-        body: nudge.body,
-        signal: AbortSignal.timeout(5000),
-      });
-      return { success: true, data: { sent: nudge } };
-    } catch (err) {
-      return {
-        success: false,
-        error: `Ntfy push failed: ${err instanceof Error ? err.message : err}`,
-      };
-    }
   }
 );
 
@@ -735,13 +423,7 @@ const whoopGetReadinessBrief = createTool(
 // Register all health tools
 const registry = getToolRegistry();
 registry.register(lookupNutrition);
-registry.register(logWater);
-registry.register(getWaterStatus);
-registry.register(logSleep);
-registry.register(getSleepSummary);
-registry.register(logExercise);
 registry.register(calculateBmi);
-registry.register(sendWellnessNudge);
 registry.register(whoopGetRecovery);
 registry.register(whoopGetSleep);
 registry.register(whoopGetDayStrain);
@@ -750,13 +432,7 @@ registry.register(whoopGetReadinessBrief);
 
 export {
   lookupNutrition,
-  logWater,
-  getWaterStatus,
-  logSleep,
-  getSleepSummary,
-  logExercise,
   calculateBmi,
-  sendWellnessNudge,
   whoopGetRecovery,
   whoopGetSleep,
   whoopGetDayStrain,

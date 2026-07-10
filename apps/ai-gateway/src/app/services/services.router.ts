@@ -4,9 +4,20 @@ import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { getServiceRegistry } from '../mcp/service-registry';
 
 const ServiceRegistrationSchema = z.object({
-  name: z.string().min(1).max(50),
+  name: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(
+      /^[a-z0-9][a-z0-9-]*$/,
+      'Name must be lowercase alphanumeric with dashes (used to namespace tool names)'
+    ),
   url: z.string().url(),
   description: z.string().optional(),
+  // 'mcp' = real MCP server (Streamable HTTP endpoint), 'http' = simple REST
+  // protocol. Omit to auto-detect (MCP is tried first).
+  protocol: z.enum(['mcp', 'http']).optional(),
+  headers: z.record(z.string()).optional(),
 });
 
 export const ServicesRouter: FastifyPluginAsync = async (
@@ -27,10 +38,12 @@ export const ServicesRouter: FastifyPluginAsync = async (
       services: services.map((s) => ({
         name: s.name,
         url: s.url,
+        protocol: s.protocol,
         description: s.description,
         status: s.status,
         toolCount: s.tools.length,
         tools: s.tools,
+        serverInfo: s.serverInfo,
         lastSync: s.lastSync,
         error: s.error,
       })),
@@ -49,11 +62,17 @@ export const ServicesRouter: FastifyPluginAsync = async (
       },
     },
     async (request, reply) => {
-      const { name, url, description } = request.body;
+      const { name, url, description, protocol, headers } = request.body;
       const registry = getServiceRegistry();
 
       try {
-        const service = await registry.register({ name, url, description });
+        const service = await registry.register({
+          name,
+          url,
+          description,
+          protocol,
+          headers,
+        });
 
         return {
           success: true,
@@ -61,9 +80,11 @@ export const ServicesRouter: FastifyPluginAsync = async (
           service: {
             name: service.name,
             url: service.url,
+            protocol: service.protocol,
             status: service.status,
             toolCount: service.tools.length,
             tools: service.tools,
+            serverInfo: service.serverInfo,
           },
         };
       } catch (error) {
@@ -112,9 +133,11 @@ export const ServicesRouter: FastifyPluginAsync = async (
       return {
         name: service.name,
         url: service.url,
+        protocol: service.protocol,
         description: service.description,
         status: service.status,
         tools: service.tools,
+        serverInfo: service.serverInfo,
         lastSync: service.lastSync,
         error: service.error,
       };

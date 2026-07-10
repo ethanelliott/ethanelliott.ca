@@ -345,6 +345,42 @@ export const ChatRouter: FastifyPluginAsync = async (
         ),
       };
 
+      // Expose tools from connected external services (MCP servers and
+      // simple HTTP services) through a dynamic connector agent
+      const { getServiceRegistry } = await import('../mcp/service-registry');
+      const externalTools = getServiceRegistry()
+        .getExternalToolNames()
+        .filter((t) => enabledTools.includes(t));
+      if (externalTools.length > 0) {
+        const serviceNames = getServiceRegistry()
+          .getAll()
+          .filter((s) => s.status === 'connected')
+          .map((s) => s.name);
+        orchestratorConfig = {
+          ...orchestratorConfig,
+          subAgents: [
+            ...orchestratorConfig.subAgents,
+            {
+              name: 'connector-agent',
+              description: `Uses tools from connected external servers: ${serviceNames.join(
+                ', '
+              )}. Delegate here for anything those servers can do.`,
+              capabilities: externalTools,
+              agent: {
+                name: 'connector-agent',
+                description: 'External tool server specialist',
+                systemPrompt: `You are an assistant that operates tools provided by external servers connected to this gateway.
+Tool names are prefixed with the server they come from (e.g. "github__create_issue" comes from the "github" server).
+Always use the tools to fulfil the task — never fabricate results. Report tool errors honestly.`,
+                model: config?.model || orchestratorConfig.model,
+                temperature: config?.temperature,
+                tools: externalTools,
+              },
+            },
+          ],
+        };
+      }
+
       const orchestrator = createOrchestrator(orchestratorConfig);
 
       // Inject conversation history from messages (skip last user message)
