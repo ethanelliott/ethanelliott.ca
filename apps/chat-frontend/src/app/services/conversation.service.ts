@@ -55,6 +55,12 @@ export class ConversationService {
     }
   }
 
+  togglePin(id: string): void {
+    this.conversations.update((convos) =>
+      convos.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
+    );
+  }
+
   renameConversation(id: string, title: string): void {
     this.conversations.update((convos) =>
       convos.map((c) =>
@@ -328,6 +334,55 @@ export class ConversationService {
       })
     );
     return canRegenerate;
+  }
+
+  /**
+   * Remove a user display message (found by id) and everything after it, in
+   * both display and API histories, so the message can be edited and re-sent.
+   * Returns true when the truncation happened.
+   */
+  truncateFromUserMessage(
+    conversationId: string,
+    displayMessageId: string
+  ): boolean {
+    let truncated = false;
+    this.conversations.update((convos) =>
+      convos.map((c) => {
+        if (c.id !== conversationId) return c;
+
+        const displayIndex = c.displayMessages.findIndex(
+          (m) => m.id === displayMessageId && m.role === 'user'
+        );
+        if (displayIndex < 0) return c;
+
+        // The nth user display message corresponds to the nth user message
+        // in the API history (assistant/tool messages interleave freely)
+        const userOrdinal = c.displayMessages
+          .slice(0, displayIndex + 1)
+          .filter((m) => m.role === 'user').length;
+
+        let seen = 0;
+        let messageIndex = c.messages.length;
+        for (let i = 0; i < c.messages.length; i++) {
+          if (c.messages[i].role === 'user') {
+            seen++;
+            if (seen === userOrdinal) {
+              messageIndex = i;
+              break;
+            }
+          }
+        }
+
+        truncated = true;
+        return {
+          ...c,
+          messages: c.messages.slice(0, messageIndex),
+          displayMessages: c.displayMessages.slice(0, displayIndex),
+          updatedAt: Date.now(),
+        };
+      })
+    );
+    return truncated;
   }
 
   setMessagesFromDone(conversationId: string, messages: ChatMessage[]): void {

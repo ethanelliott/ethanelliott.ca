@@ -7,6 +7,7 @@ export interface Conversation {
   displayMessages: DisplayMessage[];
   config?: ChatConfig;
   artifacts?: Artifact[];
+  pinned?: boolean;
 }
 
 /**
