@@ -1,6 +1,28 @@
 @use 'primeicons/primeicons.css';
 @use 'highlight.js/styles/github-dark.css';
 
+// ---------------------------------------------------------------------------
+// Design tokens
+// ---------------------------------------------------------------------------
+:root {
+  --chat-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code',
+    monospace;
+  --chat-accent: var(--p-primary-400);
+  --chat-accent-strong: var(--p-primary-500);
+  --chat-gradient: linear-gradient(
+    135deg,
+    var(--p-primary-400) 0%,
+    #818cf8 50%,
+    #22d3ee 100%
+  );
+  --chat-glow: 0 0 24px
+    color-mix(in srgb, var(--p-primary-500) 25%, transparent);
+  --chat-radius-lg: 20px;
+  --chat-radius-md: 12px;
+  --chat-radius-sm: 8px;
+  --chat-content-width: 800px;
+}
+
 p-inputnumber,
 p-inputtext,
 p-multiselect,
@@ -30,6 +52,76 @@ body {
   color-scheme: dark;
 }
 
+code,
+pre,
+kbd {
+  font-family: var(--chat-font-mono);
+}
+
+// ---------------------------------------------------------------------------
+// Shared animations
+// ---------------------------------------------------------------------------
+@keyframes chat-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chat-shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+@keyframes chat-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  95% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes chat-pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+}
+
+// Animated shimmer text used by streaming status lines
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--p-text-muted-color) 20%,
+    var(--p-text-color) 40%,
+    var(--p-text-muted-color) 60%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: chat-shimmer 2.2s linear infinite;
+}
+
 // Font size preference
 html[data-font-size='small'] {
   font-size: 13px;
@@ -51,8 +143,8 @@ html:not(.dark-mode) {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -60,16 +152,16 @@ html:not(.dark-mode) {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--p-surface-500);
-  border-radius: 4px;
+  background: var(--p-surface-600);
+  border-radius: 3px;
 
   &:hover {
-    background: var(--p-surface-400);
+    background: var(--p-surface-500);
   }
 }
 
 ::selection {
-  background: rgba(59, 130, 246, 0.3);
+  background: color-mix(in srgb, var(--p-primary-500) 35%, transparent);
   color: white;
 }
 

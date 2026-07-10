@@ -10,24 +10,34 @@ import {
   AfterViewInit,
 } from '@angular/core';
 import { DisplayMessage } from '../../models/types';
-import { MessageBubbleComponent } from './message-bubble.component';
+import {
+  MessageBubbleComponent,
+  EditMessageEvent,
+} from './message-bubble.component';
 import { SuggestionChipsComponent } from './suggestion-chips.component';
-import { ButtonModule } from 'primeng/button';
+
+export interface LiveGenerationStats {
+  tokens: number;
+  tokensPerSecond: number;
+  elapsedMs: number;
+}
 
 @Component({
   selector: 'app-message-list',
   standalone: true,
-  imports: [MessageBubbleComponent, SuggestionChipsComponent, ButtonModule],
+  imports: [MessageBubbleComponent, SuggestionChipsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="message-list-container" #scrollContainer (scroll)="onScroll()">
       @if (messages().length === 0) {
       <div class="empty-state">
-        <div class="empty-icon">
+        <div class="empty-mark">
           <i class="pi pi-sparkles"></i>
         </div>
-        <h2>How can I help you today?</h2>
-        <p>Start a conversation by typing a message below.</p>
+        <h1 class="greeting">{{ greeting }}</h1>
+        <p class="greeting-sub">
+          Your models, your machine. What are we doing today?
+        </p>
         <app-suggestion-chips
           (selectSuggestion)="suggestionSelected.emit($event)"
         />
@@ -39,24 +49,31 @@ import { ButtonModule } from 'primeng/button';
           [message]="msg"
           [isStreaming]="last && isStreaming()"
           [isLast]="last"
+          [canEdit]="!isStreaming()"
           (regenerate)="regenerateRequested.emit()"
+          (editSubmit)="editSubmitted.emit($event)"
         />
-        } @if (statusText()) {
+        } @if (isStreaming() || statusText()) {
         <div class="status-indicator">
-          <i class="pi pi-spin pi-spinner"></i>
-          <span>{{ statusText() }}</span>
+          <span class="status-dot"></span>
+          <span class="shimmer-text">{{ statusText() || 'Generating…' }}</span>
+          @if (liveStats(); as stats) { @if (stats.tokens > 0) {
+          <span class="live-stats">
+            <span class="live-stat"
+              >{{ stats.tokensPerSecond.toFixed(1) }} tok/s</span
+            >
+            <span class="live-stat">{{ stats.tokens }} tokens</span>
+            <span class="live-stat">{{ formatElapsed(stats.elapsedMs) }}</span>
+          </span>
+          } }
         </div>
         }
       </div>
       } @if (showScrollButton()) {
-      <p-button
-        icon="pi pi-arrow-down"
-        [rounded]="true"
-        severity="secondary"
-        size="small"
-        class="scroll-to-bottom"
-        (click)="scrollToBottom('smooth')"
-      />
+      <button class="scroll-to-bottom" (click)="scrollToBottom('smooth')">
+        <i class="pi pi-arrow-down"></i>
+        <span>Latest</span>
+      </button>
       }
     </div>
   `,
@@ -75,12 +92,14 @@ import { ButtonModule } from 'primeng/button';
     .message-list-container {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 20px 16px 8px;
     }
 
     .messages-wrapper {
       display: flex;
       flex-direction: column;
+      max-width: var(--chat-content-width);
+      margin: 0 auto;
     }
 
     .empty-state {
@@ -88,67 +107,121 @@ import { ButtonModule } from 'primeng/button';
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100%;
+      min-height: 100%;
       text-align: center;
       color: var(--p-text-muted-color);
       padding: 32px;
+      animation: chat-fade-up 0.35s ease both;
 
-      .empty-icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: color-mix(in srgb, var(--p-primary-color) 15%, transparent);
+      .empty-mark {
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        background: var(--chat-gradient);
+        box-shadow: var(--chat-glow);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
 
         i {
-          font-size: 1.8rem;
-          color: var(--p-primary-color);
+          font-size: 1.5rem;
+          color: white;
         }
       }
 
-      h2 {
-        font-size: 1.3rem;
-        font-weight: 600;
-        color: var(--p-text-color);
-        margin: 0 0 8px;
+      .greeting {
+        font-size: 1.8rem;
+        font-weight: 750;
+        letter-spacing: -0.03em;
+        margin: 0 0 6px;
+        background: var(--chat-gradient);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
 
-      p {
-        font-size: 0.9rem;
+      .greeting-sub {
+        font-size: 0.92rem;
         margin: 0;
-        max-width: 400px;
+        max-width: 420px;
       }
     }
 
     .status-indicator {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
+      gap: 10px;
+      padding: 10px 0;
       font-size: 0.8rem;
       color: var(--p-text-muted-color);
+    }
 
-      i {
-        font-size: 0.85rem;
-        color: var(--p-primary-color);
-      }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--chat-gradient);
+      animation: chat-pulse-dot 1.2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .live-stats {
+      display: inline-flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .live-stat {
+      font-family: var(--chat-font-mono);
+      font-size: 0.66rem;
+      color: var(--p-text-muted-color);
+      border: 1px solid var(--p-surface-800);
+      border-radius: 999px;
+      padding: 2px 8px;
+      white-space: nowrap;
     }
 
     .scroll-to-bottom {
       position: absolute;
-      bottom: 12px;
+      bottom: 14px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 10;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--p-surface-700);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--p-surface-900) 90%, transparent);
+      backdrop-filter: blur(8px);
+      color: var(--p-text-color);
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.15s ease, transform 0.1s ease;
+
+      i { font-size: 0.7rem; }
+
+      &:hover {
+        border-color: var(--chat-accent);
+      }
+
+      &:active {
+        transform: translateX(-50%) scale(0.96);
+      }
     }
 
     @media (max-width: 768px) {
       .message-list-container {
         padding: 12px;
+      }
+
+      .empty-state .greeting {
+        font-size: 1.4rem;
       }
     }
   `,
@@ -157,8 +230,12 @@ export class MessageListComponent implements AfterViewInit {
   readonly messages = input<DisplayMessage[]>([]);
   readonly isStreaming = input(false);
   readonly statusText = input('');
+  readonly liveStats = input<LiveGenerationStats | null>(null);
   readonly suggestionSelected = output<string>();
   readonly regenerateRequested = output<void>();
+  readonly editSubmitted = output<EditMessageEvent>();
+
+  readonly greeting = this.computeGreeting();
 
   showScrollButton = signal(false);
   private readonly scrollContainer =
@@ -201,5 +278,17 @@ export class MessageListComponent implements AfterViewInit {
     el.scrollTo({ top: el.scrollHeight, behavior });
     this.autoScroll = true;
     this.showScrollButton.set(false);
+  }
+
+  formatElapsed(ms: number): string {
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  private computeGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 5) return 'Burning the midnight oil?';
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
   }
 }

@@ -10,6 +10,7 @@ import {
   HostListener,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { ConversationService } from '../../services/conversation.service';
@@ -25,12 +26,14 @@ import {
   FileAttachment,
   Artifact,
 } from '../../models/types';
-import { MessageListComponent } from './message-list.component';
+import {
+  MessageListComponent,
+  LiveGenerationStats,
+} from './message-list.component';
+import { EditMessageEvent } from './message-bubble.component';
 import { ChatInputComponent, SendMessageEvent } from './chat-input.component';
 import { ModelSelectorComponent } from './model-selector.component';
 import { ArtifactCanvasComponent } from './artifact-canvas.component';
-import { ButtonModule } from 'primeng/button';
-import { TooltipModule } from 'primeng/tooltip';
 import {
   ApprovalDialogComponent,
   ApprovalRequest,
@@ -48,14 +51,13 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   selector: 'app-chat-page',
   standalone: true,
   imports: [
+    FormsModule,
     MessageListComponent,
     ChatInputComponent,
     ModelSelectorComponent,
     ApprovalDialogComponent,
     QuestionnaireDialogComponent,
     ArtifactCanvasComponent,
-    ButtonModule,
-    TooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -69,26 +71,56 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     >
       <div class="chat-header">
         <div class="header-left">
-          @if (artifacts().length && !canvas.isOpen()) {
-          <p-button
-            icon="pi pi-palette"
-            label="Canvas"
-            [text]="true"
-            severity="secondary"
-            size="small"
-            pTooltip="Show artifact canvas"
-            (click)="canvas.open()"
+          @if (activeTitle() !== null) { @if (isEditingTitle()) {
+          <input
+            class="title-input"
+            [(ngModel)]="titleDraft"
+            (keydown.enter)="saveTitle()"
+            (keydown.escape)="cancelTitleEdit($event)"
+            (blur)="saveTitle()"
+            #titleInput
           />
-          }
+          } @else {
+          <button
+            class="header-title"
+            (click)="startTitleEdit()"
+            title="Rename conversation"
+          >
+            {{ activeTitle() }}
+            <i class="pi pi-pencil"></i>
+          </button>
+          } }
         </div>
-        <app-model-selector />
+        <div class="header-right">
+          @if (artifacts().length && !canvas.isOpen()) {
+          <button
+            class="header-btn"
+            title="Show artifact canvas"
+            (click)="canvas.open()"
+          >
+            <i class="pi pi-palette"></i>
+            <span>Canvas</span>
+          </button>
+          } @if (displayMessages().length) {
+          <button
+            class="header-btn"
+            title="Export conversation as Markdown"
+            (click)="exportConversation()"
+          >
+            <i class="pi pi-download"></i>
+          </button>
+          }
+          <app-model-selector />
+        </div>
       </div>
       <app-message-list
         [messages]="displayMessages()"
         [isStreaming]="conversationService.isStreaming()"
         [statusText]="statusText()"
+        [liveStats]="liveStats()"
         (suggestionSelected)="onSuggestionSelected($event)"
         (regenerateRequested)="onRegenerate()"
+        (editSubmitted)="onEditSubmitted($event)"
       />
       <app-chat-input
         #chatInput
@@ -148,6 +180,13 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       min-width: 0;
       overflow: hidden;
       position: relative;
+      background:
+        radial-gradient(
+          ellipse 60% 40% at 50% -10%,
+          color-mix(in srgb, var(--p-primary-500) 7%, transparent),
+          transparent
+        ),
+        var(--p-surface-950);
     }
 
     .canvas-pane {
@@ -163,7 +202,8 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       justify-content: space-between;
       gap: 8px;
       padding: 8px 16px;
-      border-bottom: 1px solid var(--p-surface-800);
+      border-bottom: 1px solid
+        color-mix(in srgb, var(--p-surface-800) 70%, transparent);
       flex-shrink: 0;
     }
 
@@ -171,6 +211,84 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       display: flex;
       align-items: center;
       min-height: 32px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--p-text-color);
+      cursor: pointer;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      i {
+        font-size: 0.62rem;
+        color: var(--p-text-muted-color);
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+
+      &:hover {
+        background: var(--p-surface-800);
+
+        i { opacity: 1; }
+      }
+    }
+
+    .title-input {
+      background: var(--p-surface-900);
+      border: 1px solid var(--chat-accent);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--p-text-color);
+      outline: none;
+      min-width: 240px;
+    }
+
+    .header-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: 1px solid var(--p-surface-800);
+      border-radius: 9px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: var(--p-text-muted-color);
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+
+      i { font-size: 0.8rem; }
+
+      &:hover {
+        color: var(--p-text-color);
+        border-color: var(--p-surface-600);
+      }
     }
 
     @media (max-width: 900px) {
@@ -225,15 +343,25 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   readonly pendingApproval = signal<ApprovalRequest | null>(null);
   readonly pendingQuestion = signal<QuestionnaireRequest | null>(null);
   readonly isDragOver = signal(false);
+  readonly liveStats = signal<LiveGenerationStats | null>(null);
+  readonly isEditingTitle = signal(false);
+  titleDraft = '';
   private readonly chatInput = viewChild<ChatInputComponent>('chatInput');
 
   private streamSub: Subscription | null = null;
   private routeSub: Subscription | null = null;
   private dragCounter = 0;
+  private streamStartTime = 0;
+  private liveTokenCount = 0;
 
   readonly displayMessages = computed(() => {
     const convo = this.conversationService.activeConversation();
     return convo?.displayMessages ?? [];
+  });
+
+  readonly activeTitle = computed<string | null>(() => {
+    const convo = this.conversationService.activeConversation();
+    return convo?.title ?? null;
   });
 
   readonly artifacts = computed<Artifact[]>(() => {
@@ -269,6 +397,87 @@ export class ChatPageComponent implements OnInit, OnDestroy {
 
   onSuggestionSelected(text: string): void {
     this.onSendMessage({ text, attachments: [] });
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.conversationService.isStreaming()) {
+      this.onStopGeneration();
+    }
+  }
+
+  startTitleEdit(): void {
+    this.titleDraft = this.activeTitle() ?? '';
+    this.isEditingTitle.set(true);
+    setTimeout(() => {
+      document.querySelector<HTMLInputElement>('.title-input')?.select();
+    });
+  }
+
+  saveTitle(): void {
+    if (!this.isEditingTitle()) return;
+    this.isEditingTitle.set(false);
+    const convoId = this.conversationService.activeConversationId();
+    const title = this.titleDraft.trim();
+    if (convoId && title && title !== this.activeTitle()) {
+      this.conversationService.renameConversation(convoId, title);
+    }
+  }
+
+  cancelTitleEdit(event: Event): void {
+    event.stopPropagation();
+    this.isEditingTitle.set(false);
+  }
+
+  /** Download the active conversation as a Markdown file. */
+  exportConversation(): void {
+    const convo = this.conversationService.activeConversation();
+    if (!convo) return;
+
+    const lines: string[] = [
+      `# ${convo.title}`,
+      '',
+      `_Exported ${new Date().toLocaleString()}_`,
+      '',
+    ];
+    for (const msg of convo.displayMessages) {
+      lines.push(msg.role === 'user' ? '## You' : '## Assistant');
+      lines.push('');
+      if (msg.toolCalls?.length) {
+        for (const tc of msg.toolCalls) {
+          lines.push(`> 🔧 \`${tc.name}\` (${tc.status})`);
+        }
+        lines.push('');
+      }
+      lines.push(msg.content || '_(no content)_');
+      lines.push('');
+    }
+
+    const blob = new Blob([lines.join('\n')], {
+      type: 'text/markdown;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${convo.title.replace(/[^\w\s-]/g, '').trim() || 'conversation'}.md`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Edit-and-resend: truncate the conversation at the edited user message. */
+  onEditSubmitted(event: EditMessageEvent): void {
+    if (this.conversationService.isStreaming()) return;
+    const convoId = this.conversationService.activeConversationId();
+    if (!convoId) return;
+    if (
+      !this.conversationService.truncateFromUserMessage(
+        convoId,
+        event.messageId
+      )
+    ) {
+      return;
+    }
+    this.onSendMessage({ text: event.content, attachments: [] });
   }
 
   onDragOver(event: DragEvent): void {
@@ -394,6 +603,9 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     // Start streaming
     this.conversationService.isStreaming.set(true);
     this.statusText.set('');
+    this.streamStartTime = Date.now();
+    this.liveTokenCount = 0;
+    this.liveStats.set(null);
 
     // Cancel any previous stream
     this.streamSub?.unsubscribe();
@@ -507,6 +719,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         const role = (event.data['role'] as string) || 'assistant';
         const agentName = event.data['agentName'] as string | undefined;
         if (token) {
+          this.trackLiveToken();
           // Tokens from sub-agents go into delegation thinking
           if (role === 'agent' && agentName) {
             this.conversationService.appendDelegationThinking(
@@ -594,6 +807,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
         const thinkRole = (event.data['role'] as string) || 'assistant';
         const thinkAgentName = event.data['agentName'] as string | undefined;
         if (thinkToken) {
+          this.trackLiveToken();
           if (thinkRole === 'agent' && thinkAgentName) {
             this.conversationService.appendDelegationThinking(
               convoId,
@@ -840,9 +1054,22 @@ export class ChatPageComponent implements OnInit, OnDestroy {
     this.canvas.open(artifact.id);
   }
 
+  /** Update the live tok/s readout shown in the status line while streaming. */
+  private trackLiveToken(): void {
+    this.liveTokenCount++;
+    const elapsedMs = Date.now() - this.streamStartTime;
+    this.liveStats.set({
+      tokens: this.liveTokenCount,
+      tokensPerSecond:
+        elapsedMs > 0 ? (this.liveTokenCount / elapsedMs) * 1000 : 0,
+      elapsedMs,
+    });
+  }
+
   private finalizeStream(convoId: string): void {
     this.conversationService.isStreaming.set(false);
     this.statusText.set('');
+    this.liveStats.set(null);
     this.cacheRenderedHtml(convoId);
   }
 

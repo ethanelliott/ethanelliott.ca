@@ -9,8 +9,6 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TextareaModule } from 'primeng/textarea';
-import { ButtonModule } from 'primeng/button';
-import { TooltipModule } from 'primeng/tooltip';
 import { FileAttachment } from '../../models/types';
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -67,72 +65,85 @@ export interface SendMessageEvent {
 @Component({
   selector: 'app-chat-input',
   standalone: true,
-  imports: [FormsModule, TextareaModule, ButtonModule, TooltipModule],
+  imports: [FormsModule, TextareaModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="chat-input-container">
-      @if (attachments().length) {
-      <div class="attachments-preview">
-        @for (att of attachments(); track att.name) {
-        <div class="attachment-chip" [class.image]="isImage(att)">
-          @if (att.previewUrl) {
-          <img [src]="att.previewUrl" [alt]="att.name" class="preview-thumb" />
-          } @else {
-          <i class="pi pi-file"></i>
+      <div class="composer">
+        @if (attachments().length) {
+        <div class="attachments-preview">
+          @for (att of attachments(); track att.name) {
+          <div class="attachment-chip" [class.image]="isImage(att)">
+            @if (att.previewUrl) {
+            <img
+              [src]="att.previewUrl"
+              [alt]="att.name"
+              class="preview-thumb"
+            />
+            } @else {
+            <i class="pi pi-file"></i>
+            }
+            <span class="att-name">{{ att.name }}</span>
+            <button class="remove-btn" (click)="removeAttachment(att.name)">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
           }
-          <span class="att-name">{{ att.name }}</span>
-          <button class="remove-btn" (click)="removeAttachment(att.name)">
-            <i class="pi pi-times"></i>
-          </button>
         </div>
         }
+        <div class="input-row">
+          <button
+            class="icon-btn"
+            title="Attach file"
+            (click)="fileInput.click()"
+          >
+            <i class="pi pi-paperclip"></i>
+          </button>
+          <input
+            #fileInput
+            type="file"
+            [accept]="acceptTypes"
+            multiple
+            hidden
+            (change)="onFilesSelected($event)"
+          />
+          <textarea
+            pTextarea
+            [(ngModel)]="messageText"
+            [autoResize]="true"
+            [rows]="1"
+            placeholder="Message your model…"
+            class="chat-textarea"
+            (keydown)="onKeydown($event)"
+            (paste)="onPaste($event)"
+            #textareaEl
+          ></textarea>
+          @if (isStreaming()) {
+          <button
+            class="send-btn stop"
+            title="Stop generating (Esc)"
+            (click)="stopGeneration.emit()"
+          >
+            <i class="pi pi-stop-circle"></i>
+          </button>
+          } @else {
+          <button
+            class="send-btn"
+            [disabled]="!canSend()"
+            title="Send message"
+            (click)="send()"
+          >
+            <i class="pi pi-arrow-up"></i>
+          </button>
+          }
+        </div>
       </div>
-      }
-      <div class="input-row">
-        <p-button
-          icon="pi pi-paperclip"
-          [rounded]="true"
-          [text]="true"
-          severity="secondary"
-          pTooltip="Attach file"
-          (click)="fileInput.click()"
-          size="small"
-        />
-        <input
-          #fileInput
-          type="file"
-          [accept]="acceptTypes"
-          multiple
-          hidden
-          (change)="onFilesSelected($event)"
-        />
-        <textarea
-          pTextarea
-          [(ngModel)]="messageText"
-          [autoResize]="true"
-          [rows]="1"
-          placeholder="Send a message..."
-          class="chat-textarea"
-          (keydown)="onKeydown($event)"
-          (paste)="onPaste($event)"
-          #textareaEl
-        ></textarea>
-        @if (isStreaming()) {
-        <p-button
-          icon="pi pi-stop"
-          [rounded]="true"
-          severity="danger"
-          pTooltip="Stop generating"
-          (click)="stopGeneration.emit()"
-        />
-        } @else {
-        <p-button
-          icon="pi pi-send"
-          [rounded]="true"
-          [disabled]="!canSend()"
-          pTooltip="Send message"
-          (click)="send()"
-        />
+      <div class="composer-hints">
+        <span class="hint"><kbd>↵</kbd> send · <kbd>⇧↵</kbd> newline</span>
+        @if (messageText.trim()) {
+        <span class="hint token-estimate"
+          >~{{ estimatedTokens() }} tokens</span
+        >
         }
       </div>
     </div>
@@ -145,18 +156,55 @@ export interface SendMessageEvent {
     }
 
     .chat-input-container {
-      padding: 12px 16px 16px;
-      background: var(--p-surface-950);
-      border-top: 1px solid var(--p-surface-700);
+      padding: 4px 16px 8px;
+      background: transparent;
+    }
+
+    .composer {
+      max-width: var(--chat-content-width);
+      margin: 0 auto;
+      background: color-mix(in srgb, var(--p-surface-900) 88%, transparent);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--p-surface-700);
+      border-radius: var(--chat-radius-lg);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+      &:focus-within {
+        border-color: color-mix(in srgb, var(--p-primary-400) 60%, transparent);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), var(--chat-glow);
+      }
+    }
+
+    .composer-hints {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: var(--chat-content-width);
+      margin: 6px auto 0;
+      padding: 0 8px;
+      font-size: 0.66rem;
+      color: var(--p-text-muted-color);
+
+      kbd {
+        font-family: var(--chat-font-mono);
+        font-size: 0.6rem;
+        background: var(--p-surface-800);
+        border: 1px solid var(--p-surface-700);
+        border-radius: 4px;
+        padding: 1px 4px;
+      }
+    }
+
+    .token-estimate {
+      font-family: var(--chat-font-mono);
     }
 
     .attachments-preview {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      max-width: 800px;
-      margin: 0 auto 8px;
-      padding: 0 4px;
+      padding: 10px 12px 0;
     }
 
     .attachment-chip {
@@ -214,17 +262,63 @@ export interface SendMessageEvent {
     .input-row {
       display: flex;
       align-items: flex-end;
-      gap: 4px;
-      max-width: 800px;
-      margin: 0 auto;
-      background: var(--p-surface-800);
-      border: 1px solid var(--p-surface-600);
-      border-radius: 16px;
-      padding: 8px 8px 8px 4px;
-      transition: border-color 0.2s ease;
+      gap: 6px;
+      padding: 8px 10px;
+    }
 
-      &:focus-within {
-        border-color: var(--p-primary-color);
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 10px;
+      background: none;
+      color: var(--p-text-muted-color);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: color 0.15s ease, background 0.15s ease;
+
+      i { font-size: 0.9rem; }
+
+      &:hover {
+        color: var(--p-text-color);
+        background: var(--p-surface-800);
+      }
+    }
+
+    .send-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 10px;
+      background: var(--chat-gradient);
+      color: white;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+
+      i { font-size: 0.9rem; }
+
+      &:hover:not(:disabled) {
+        filter: brightness(1.12);
+      }
+
+      &:active:not(:disabled) {
+        transform: scale(0.94);
+      }
+
+      &:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
+      &.stop {
+        background: color-mix(in srgb, #ef4444 80%, var(--p-surface-900));
       }
     }
 
@@ -262,12 +356,11 @@ export interface SendMessageEvent {
 
     @media (max-width: 768px) {
       .chat-input-container {
-        padding: 8px 12px 12px;
+        padding: 4px 10px 10px;
       }
 
-      .input-row {
-        border-radius: 12px;
-        padding: 6px 6px 6px 4px;
+      .composer-hints {
+        display: none;
       }
     }
   `,
@@ -287,6 +380,11 @@ export class ChatInputComponent {
 
   canSend(): boolean {
     return !!(this.messageText.trim() || this.attachments().length);
+  }
+
+  /** Rough token estimate (≈4 chars/token) shown in the composer hints. */
+  estimatedTokens(): number {
+    return Math.max(1, Math.ceil(this.messageText.length / 4));
   }
 
   isImage(att: FileAttachment): boolean {
