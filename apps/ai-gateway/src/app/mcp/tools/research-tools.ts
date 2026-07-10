@@ -4,6 +4,66 @@ import { createTool, getToolRegistry } from '../tool-registry';
 
 const LIBRE_TRANSLATE_URL = process.env['LIBRE_TRANSLATE_URL'];
 
+/**
+ * Scrape DuckDuckGo's HTML endpoint for real web results (the Instant Answer
+ * API returns nothing for most queries).
+ */
+async function ddgHtmlSearch(
+  query: string,
+  maxResults: number
+): Promise<{ title: string; url: string; snippet: string }[]> {
+  try {
+    const resp = await fetch(
+      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+      {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AI-Gateway/1.0)' },
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+    if (!resp.ok) return [];
+    const html = await resp.text();
+
+    const results: { title: string; url: string; snippet: string }[] = [];
+    const linkRegex =
+      /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+    const snippetRegex =
+      /<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+
+    const decode = (text: string) =>
+      text
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#x?\d+;/g, ' ')
+        .trim();
+
+    const snippets: string[] = [];
+    let sm;
+    while ((sm = snippetRegex.exec(html)) !== null) {
+      snippets.push(decode(sm[1]));
+    }
+
+    let m;
+    while ((m = linkRegex.exec(html)) !== null && results.length < maxResults) {
+      let url = m[1];
+      // DDG wraps result URLs in a redirect: //duckduckgo.com/l/?uddg=<url>
+      const uddg = url.match(/uddg=([^&]+)/);
+      if (uddg) url = decodeURIComponent(uddg[1]);
+      results.push({
+        title: decode(m[2]),
+        url,
+        snippet: snippets[results.length] ?? '',
+      });
+    }
+
+    return results;
+  } catch {
+    return [];
+  }
+}
+
 /** ─── web_search ──────────────────────────────────────────────── */
 
 const webSearch = createTool(
@@ -84,6 +144,14 @@ const webSearch = createTool(
           url: '',
           snippet: data.Answer,
         });
+      }
+
+      // The Instant Answer API only covers encyclopedic queries — for most
+      // real searches it returns nothing. Fall back to scraping the DDG HTML
+      // endpoint, which returns actual web results.
+      if (results.length === 0) {
+        const htmlResults = await ddgHtmlSearch(query, maxResults);
+        results.push(...htmlResults);
       }
 
       return {

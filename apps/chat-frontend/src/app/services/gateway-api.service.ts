@@ -9,6 +9,7 @@ import {
   GatewayModelInfo,
   GatewayToolInfo,
   GatewayHealthInfo,
+  GatewayServiceInfo,
 } from '../models/types';
 
 @Injectable({ providedIn: 'root' })
@@ -90,5 +91,51 @@ export class GatewayApiService {
       `${this.baseUrl}/config/reset`,
       {}
     );
+  }
+
+  /** List external tool servers (MCP + simple HTTP) */
+  getServices(): Observable<{
+    count: number;
+    services: GatewayServiceInfo[];
+  }> {
+    return this.http.get<{ count: number; services: GatewayServiceInfo[] }>(
+      `${this.baseUrl}/services`
+    );
+  }
+
+  /** Register an external tool server. Omit protocol to auto-detect. */
+  registerService(registration: {
+    name: string;
+    url: string;
+    description?: string;
+    protocol?: 'mcp' | 'http';
+    headers?: Record<string, string>;
+  }): Observable<{ success: boolean; service: GatewayServiceInfo }> {
+    return this.http.post<{ success: boolean; service: GatewayServiceInfo }>(
+      `${this.baseUrl}/services`,
+      registration
+    );
+  }
+
+  /** Remove an external tool server and its tools */
+  unregisterService(
+    name: string
+  ): Observable<{ success: boolean; message: string }> {
+    return this.http.delete<{ success: boolean; message: string }>(
+      `${this.baseUrl}/services/${encodeURIComponent(name)}`
+    );
+  }
+
+  /** Re-sync tools from an external server */
+  syncService(name: string): Observable<{
+    success: boolean;
+    message: string;
+    tools: string[];
+  }> {
+    return this.http.post<{
+      success: boolean;
+      message: string;
+      tools: string[];
+    }>(`${this.baseUrl}/services/${encodeURIComponent(name)}/sync`, {});
   }
 }

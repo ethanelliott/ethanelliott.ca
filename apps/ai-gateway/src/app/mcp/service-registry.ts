@@ -4,41 +4,64 @@ import {
   MCPTool,
   MCPToolWithExecutor,
   MCPToolResult,
+  ServiceProtocol,
 } from '../types';
 import { getToolRegistry, createTool } from './tool-registry';
+import { MCPClient, MCPRemoteTool } from './mcp-client';
 
 /**
  * Service Registry
  *
- * Manages external MCP-compatible services that expose tools via /mcp endpoints.
+ * Manages external tool servers connected to the gateway. Two protocols are
+ * supported:
  *
- * Expected service endpoints:
- * - GET  /mcp/tools              - List available tools
- * - POST /mcp/tools/:name/execute - Execute a tool
+ * - 'mcp'  — real Model Context Protocol servers (Streamable HTTP transport).
+ *            Point at the server's MCP endpoint (e.g. https://host/mcp).
+ * - 'http' — the gateway's simple REST protocol:
+ *              GET  /mcp/tools               → { tools: MCPTool[] }
+ *              POST /mcp/tools/:name/execute → result
+ *
+ * When no protocol is specified at registration, MCP is tried first and the
+ * simple protocol is used as a fallback.
+ *
+ * Tools from external services are registered under a namespaced name
+ * (`<service>__<tool>`) so they can never collide with built-ins or with
+ * tools from other services.
  */
+
+function namespacedName(service: string, tool: string): string {
+  return `${service}__${tool}`;
+}
 
 class ServiceRegistry {
   private services: Map<string, MCPService> = new Map();
+  private mcpClients: Map<string, MCPClient> = new Map();
+  private headersByService: Map<string, Record<string, string>> = new Map();
   private syncInterval: NodeJS.Timeout | null = null;
 
   /**
-   * Register a new MCP service
+   * Register a new external service (auto-detects protocol when omitted)
    */
   async register(registration: MCPServiceRegistration): Promise<MCPService> {
-    const { name, url, description } = registration;
+    const { name, url, description, headers } = registration;
 
     // Normalize URL (remove trailing slash)
     const normalizedUrl = url.replace(/\/$/, '');
 
-    // Check if already registered
     if (this.services.has(name)) {
       throw new Error(`Service "${name}" is already registered`);
     }
 
-    // Create service entry
+    if (headers) this.headersByService.set(name, headers);
+
+    const protocol =
+      registration.protocol ??
+      (await this.detectProtocol(normalizedUrl, headers || {}));
+
     const service: MCPService = {
       name,
       url: normalizedUrl,
+      protocol,
       description,
       status: 'disconnected',
       tools: [],
@@ -46,10 +69,47 @@ class ServiceRegistry {
 
     this.services.set(name, service);
 
-    // Try to sync tools from the service
-    await this.syncService(name);
+    try {
+      await this.syncService(name);
+    } catch (error) {
+      // Keep the registration so the user can see the error and retry sync,
+      // but surface the failure to the caller
+      throw error;
+    }
 
     return this.services.get(name)!;
+  }
+
+  /**
+   * Probe a URL to figure out which protocol it speaks.
+   * MCP is tried first (initialize handshake), then the simple HTTP protocol.
+   */
+  private async detectProtocol(
+    url: string,
+    headers: Record<string, string>
+  ): Promise<ServiceProtocol> {
+    const client = new MCPClient(url, headers);
+    try {
+      await client.initialize();
+      return 'mcp';
+    } catch {
+      // Not an MCP endpoint — check the simple protocol
+    }
+
+    try {
+      const response = await fetch(`${url}/mcp/tools`, {
+        headers: { Accept: 'application/json', ...headers },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (response.ok) return 'http';
+    } catch {
+      // fall through
+    }
+
+    throw new Error(
+      'Could not detect protocol: URL is neither an MCP endpoint (JSON-RPC initialize failed) ' +
+        'nor a simple HTTP tool service (GET /mcp/tools failed)'
+    );
   }
 
   /**
@@ -59,19 +119,20 @@ class ServiceRegistry {
     const service = this.services.get(name);
     if (!service) return false;
 
-    // Remove all tools registered by this service
     const toolRegistry = getToolRegistry();
     for (const toolName of service.tools) {
       toolRegistry.unregister(toolName);
     }
 
     this.services.delete(name);
+    this.mcpClients.delete(name);
+    this.headersByService.delete(name);
     console.log(`[ServiceRegistry] Unregistered service: ${name}`);
     return true;
   }
 
   /**
-   * Sync tools from a service's /mcp/tools endpoint
+   * Sync tools from a service (protocol-aware)
    */
   async syncService(name: string): Promise<void> {
     const service = this.services.get(name);
@@ -79,52 +140,23 @@ class ServiceRegistry {
       throw new Error(`Service "${name}" not found`);
     }
 
-    console.log(`[ServiceRegistry] Syncing tools from service: ${name}`);
+    console.log(
+      `[ServiceRegistry] Syncing tools from ${service.protocol} service: ${name}`
+    );
 
     try {
-      // Fetch tools from the service
-      const response = await fetch(`${service.url}/mcp/tools`, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10000),
-      });
+      const registered =
+        service.protocol === 'mcp'
+          ? await this.syncMcpService(service)
+          : await this.syncHttpService(service);
 
-      if (!response.ok) {
-        throw new Error(
-          `Service returned ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      const tools: MCPTool[] = data.tools || data;
-
-      if (!Array.isArray(tools)) {
-        throw new Error('Invalid response: expected tools array');
-      }
-
-      // Remove old tools from this service
-      const toolRegistry = getToolRegistry();
-      for (const oldToolName of service.tools) {
-        toolRegistry.unregister(oldToolName);
-      }
-
-      // Register new tools
-      const registeredTools: string[] = [];
-      for (const tool of tools) {
-        const toolWithExecutor = this.createServiceTool(service, tool);
-        toolRegistry.register(toolWithExecutor);
-        registeredTools.push(tool.name);
-      }
-
-      // Update service status
-      service.tools = registeredTools;
+      service.tools = registered;
       service.status = 'connected';
       service.lastSync = new Date().toISOString();
       service.error = undefined;
 
       console.log(
-        `[ServiceRegistry] Synced ${
-          registeredTools.length
-        } tools from ${name}: ${registeredTools.join(', ')}`
+        `[ServiceRegistry] Synced ${registered.length} tools from ${name}: ${registered.join(', ')}`
       );
     } catch (error) {
       service.status = 'error';
@@ -137,19 +169,137 @@ class ServiceRegistry {
     }
   }
 
-  /**
-   * Create a tool that proxies to the service's execute endpoint
-   */
-  private createServiceTool(
+  /** Sync a real MCP server via the MCP client */
+  private async syncMcpService(service: MCPService): Promise<string[]> {
+    const client = this.getMcpClient(service);
+    client.reset(); // fresh handshake picks up server restarts
+
+    const serverInfo = await client.initialize();
+    if (serverInfo.serverName) {
+      service.serverInfo = [serverInfo.serverName, serverInfo.version]
+        .filter(Boolean)
+        .join(' ');
+    }
+
+    const remoteTools = await client.listTools();
+
+    // Replace previously registered tools
+    const toolRegistry = getToolRegistry();
+    for (const oldToolName of service.tools) {
+      toolRegistry.unregister(oldToolName);
+    }
+
+    const registered: string[] = [];
+    for (const tool of remoteTools) {
+      const toolWithExecutor = this.createMcpTool(service, tool);
+      toolRegistry.register(toolWithExecutor);
+      registered.push(toolWithExecutor.name);
+    }
+    return registered;
+  }
+
+  /** Sync a simple-protocol service via GET /mcp/tools */
+  private async syncHttpService(service: MCPService): Promise<string[]> {
+    const headers = this.headersByService.get(service.name) || {};
+    const response = await fetch(`${service.url}/mcp/tools`, {
+      headers: { Accept: 'application/json', ...headers },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Service returned ${response.status}: ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    const tools: MCPTool[] = data.tools || data;
+
+    if (!Array.isArray(tools)) {
+      throw new Error('Invalid response: expected tools array');
+    }
+
+    const toolRegistry = getToolRegistry();
+    for (const oldToolName of service.tools) {
+      toolRegistry.unregister(oldToolName);
+    }
+
+    const registered: string[] = [];
+    for (const tool of tools) {
+      const toolWithExecutor = this.createHttpTool(service, tool);
+      toolRegistry.register(toolWithExecutor);
+      registered.push(toolWithExecutor.name);
+    }
+    return registered;
+  }
+
+  private getMcpClient(service: MCPService): MCPClient {
+    let client = this.mcpClients.get(service.name);
+    if (!client) {
+      client = new MCPClient(
+        service.url,
+        this.headersByService.get(service.name) || {}
+      );
+      this.mcpClients.set(service.name, client);
+    }
+    return client;
+  }
+
+  /** Wrap a remote MCP tool as a locally-registered executor */
+  private createMcpTool(
     service: MCPService,
-    tool: MCPTool
+    tool: MCPRemoteTool
   ): MCPToolWithExecutor {
     return createTool(
       {
-        name: tool.name,
+        name: namespacedName(service.name, tool.name),
+        description: tool.description || `${tool.name} (via ${service.name})`,
+        category: service.name,
+        tags: [`mcp:${service.name}`, 'external'],
+        parameters: tool.inputSchema || { type: 'object', properties: {} },
+      },
+      async (params: Record<string, unknown>): Promise<MCPToolResult> => {
+        const startTime = Date.now();
+        try {
+          const client = this.getMcpClient(service);
+          const result = await client.callTool(tool.name, params);
+          return {
+            success: !result.isError,
+            data: result.data,
+            error: result.isError ? result.text || 'Tool failed' : undefined,
+            metadata: {
+              executionTimeMs: Date.now() - startTime,
+              service: service.name,
+              protocol: 'mcp',
+            },
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            metadata: {
+              executionTimeMs: Date.now() - startTime,
+              service: service.name,
+              protocol: 'mcp',
+            },
+          };
+        }
+      }
+    );
+  }
+
+  /** Wrap a simple-protocol tool as a locally-registered executor */
+  private createHttpTool(
+    service: MCPService,
+    tool: MCPTool
+  ): MCPToolWithExecutor {
+    const headers = this.headersByService.get(service.name) || {};
+    return createTool(
+      {
+        name: namespacedName(service.name, tool.name),
         description: tool.description,
         category: tool.category || service.name,
-        tags: [...(tool.tags || []), `service:${service.name}`],
+        tags: [...(tool.tags || []), `service:${service.name}`, 'external'],
         parameters: tool.parameters,
       },
       async (params: Record<string, unknown>): Promise<MCPToolResult> => {
@@ -163,6 +313,7 @@ class ServiceRegistry {
               headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
+                ...headers,
               },
               body: JSON.stringify(params),
               signal: AbortSignal.timeout(30000),
@@ -228,6 +379,19 @@ class ServiceRegistry {
   }
 
   /**
+   * All namespaced tool names contributed by connected external services
+   */
+  getExternalToolNames(): string[] {
+    const names: string[] = [];
+    for (const service of this.services.values()) {
+      if (service.status === 'connected') {
+        names.push(...service.tools);
+      }
+    }
+    return names;
+  }
+
+  /**
    * Sync all services
    */
   async syncAll(): Promise<void> {
@@ -248,6 +412,7 @@ class ServiceRegistry {
     }
 
     this.syncInterval = setInterval(() => {
+      if (this.services.size === 0) return;
       console.log('[ServiceRegistry] Running periodic sync...');
       this.syncAll();
     }, intervalMinutes * 60 * 1000);
@@ -268,7 +433,7 @@ class ServiceRegistry {
   }
 
   /**
-   * Check health of a service
+   * Check health of a service (protocol-aware)
    */
   async checkHealth(
     name: string
@@ -281,11 +446,20 @@ class ServiceRegistry {
     const startTime = Date.now();
 
     try {
+      if (service.protocol === 'mcp') {
+        // A fresh client handshake is the most honest health signal
+        const probe = new MCPClient(
+          service.url,
+          this.headersByService.get(name) || {}
+        );
+        await probe.initialize();
+        return { healthy: true, latencyMs: Date.now() - startTime };
+      }
+
       const response = await fetch(`${service.url}/mcp/tools`, {
         method: 'HEAD',
         signal: AbortSignal.timeout(5000),
       });
-
       return {
         healthy: response.ok,
         latencyMs: Date.now() - startTime,
