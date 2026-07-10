@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   input,
+  output,
   inject,
   computed,
   signal,
@@ -154,6 +155,33 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
           class="message-text markdown-content"
           [innerHTML]="renderedContent()"
         ></div>
+        }
+
+        <!-- Actions row (hover-revealed) -->
+        @if (message().content && !isStreaming()) {
+        <div class="message-actions">
+          <button
+            class="action-btn"
+            (click)="copyMessage()"
+            [title]="copied() ? 'Copied!' : 'Copy message'"
+          >
+            <i
+              class="pi"
+              [class.pi-copy]="!copied()"
+              [class.pi-check]="copied()"
+              [class.copied]="copied()"
+            ></i>
+          </button>
+          @if (isLast()) {
+          <button
+            class="action-btn"
+            (click)="regenerate.emit()"
+            title="Regenerate response"
+          >
+            <i class="pi pi-refresh"></i>
+          </button>
+          }
+        </div>
         }
 
         <!-- Stats bar (hover-revealed) -->
@@ -424,6 +452,45 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
       }
     }
 
+    /* Message actions (copy / regenerate) */
+    .message-actions {
+      display: flex;
+      gap: 2px;
+      margin-top: 6px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .bubble:hover .message-actions {
+      opacity: 1;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--p-text-muted-color);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: color 0.15s ease, background 0.15s ease;
+
+      &:hover {
+        color: var(--p-text-color);
+        background: var(--p-surface-700);
+      }
+
+      i {
+        font-size: 0.8rem;
+
+        &.copied {
+          color: #22c55e;
+        }
+      }
+    }
+
     /* Message stats bar */
     .message-stats {
       display: flex;
@@ -662,10 +729,14 @@ import { ToolCallChipComponent } from './tool-call-chip.component';
 export class MessageBubbleComponent {
   readonly message = input.required<DisplayMessage>();
   readonly isStreaming = input(false);
+  readonly isLast = input(false);
+  readonly regenerate = output<void>();
 
   private readonly markdown = inject(MarkdownService);
 
   thinkingExpanded = signal(false);
+  readonly copied = signal(false);
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
   private expandedDelegations = signal<Set<string>>(new Set());
 
   readonly isThinkingVisible = computed(() => {
@@ -685,6 +756,16 @@ export class MessageBubbleComponent {
     if (msg.renderedHtml) return msg.renderedHtml;
     return this.markdown.render(msg.content);
   });
+
+  copyMessage(): void {
+    const content = this.message().content;
+    if (!content || !navigator.clipboard) return;
+    navigator.clipboard.writeText(content).then(() => {
+      this.copied.set(true);
+      if (this.copiedTimer) clearTimeout(this.copiedTimer);
+      this.copiedTimer = setTimeout(() => this.copied.set(false), 2000);
+    });
+  }
 
   toggleDelegation(agentName: string): void {
     this.expandedDelegations.update((set) => {

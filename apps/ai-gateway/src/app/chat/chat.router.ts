@@ -308,6 +308,9 @@ export const ChatRouter: FastifyPluginAsync = async (
       if (config?.model) {
         orchestratorConfig.model = config.model;
       }
+      if (config?.temperature !== undefined) {
+        orchestratorConfig.temperature = config.temperature;
+      }
 
       // Filter tools based on config
       const { getToolRegistry } = await import('../mcp');
@@ -324,7 +327,8 @@ export const ChatRouter: FastifyPluginAsync = async (
         );
       }
 
-      // Update sub-agent tools based on filtered list
+      // Update sub-agent tools based on filtered list, and propagate the
+      // session temperature so sub-agents honour it too
       orchestratorConfig = {
         ...orchestratorConfig,
         subAgents: orchestratorConfig.subAgents.map(
@@ -332,6 +336,7 @@ export const ChatRouter: FastifyPluginAsync = async (
             ...sa,
             agent: {
               ...sa.agent,
+              temperature: config?.temperature ?? sa.agent.temperature,
               tools: sa.agent.tools?.filter((t: string) =>
                 enabledTools.includes(t)
               ),
@@ -381,23 +386,47 @@ export const ChatRouter: FastifyPluginAsync = async (
         return;
       }
 
+      // Abort the whole pipeline (LLM calls, delegations) when the client
+      // disconnects — e.g. the user hit "stop" or closed the tab
+      const abortController = new AbortController();
+      reply.raw.on('close', () => {
+        if (!reply.raw.writableEnded) {
+          abortController.abort();
+        }
+      });
+
       // Create stream emitter
       const emitter = new StreamEmitter();
+
+      const writeLine = (line: string) => {
+        if (!reply.raw.destroyed && !reply.raw.writableEnded) {
+          reply.raw.write(line + '\n');
+        }
+      };
+
+      // Send events to client as NDJSON (one JSON object per line)
+      const unsubscribe = emitter.on((event) => {
+        writeLine(
+          JSON.stringify({
+            event: event.type,
+            timestamp: event.timestamp,
+            data: event.data,
+          })
+        );
+      });
 
       // Send session info first
       emitter.status(
         `Session started with ${enabledTools.length} tools enabled`
       );
 
-      // Send events to client as NDJSON (one JSON object per line)
-      const unsubscribe = emitter.on((event) => {
-        const line = JSON.stringify({
-          event: event.type,
-          timestamp: event.timestamp,
-          data: event.data,
-        });
-        reply.raw.write(line + '\n');
-      });
+      // Keep-alive ping so idle-timeout proxies don't kill the connection
+      // during long tool executions or model loads
+      const heartbeat = setInterval(() => {
+        writeLine(
+          JSON.stringify({ event: 'ping', timestamp: Date.now(), data: {} })
+        );
+      }, 15000);
 
       try {
         // Run the orchestrator with streaming
@@ -406,7 +435,8 @@ export const ChatRouter: FastifyPluginAsync = async (
         const result = await orchestrator.run(
           lastMessage.content,
           emitter,
-          userImages
+          userImages,
+          abortController.signal
         );
 
         // Build the response messages in Ollama's native format
@@ -463,10 +493,19 @@ export const ChatRouter: FastifyPluginAsync = async (
           stats: result.stats,
         });
       } catch (error) {
-        emitter.error(error instanceof Error ? error.message : 'Unknown error');
+        // A client disconnect aborts the run — nobody is listening, so don't
+        // report it as an error
+        if (!abortController.signal.aborted) {
+          emitter.error(
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+        }
       } finally {
+        clearInterval(heartbeat);
         unsubscribe();
-        reply.raw.end();
+        if (!reply.raw.destroyed && !reply.raw.writableEnded) {
+          reply.raw.end();
+        }
       }
     }
   );

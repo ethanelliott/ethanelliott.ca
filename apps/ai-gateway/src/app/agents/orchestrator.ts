@@ -71,7 +71,8 @@ export class OrchestratorAgent {
       type: 'function';
       function: { name: string; description: string; parameters: any };
     }[],
-    emitter: StreamEmitter
+    emitter: StreamEmitter,
+    signal?: AbortSignal
   ): Promise<OllamaChatResponse> {
     const ollama = getOllamaClient();
     let content = '';
@@ -83,11 +84,15 @@ export class OrchestratorAgent {
     let thinkingEnd: number | undefined;
     let thinkingTokenCount = 0;
 
-    for await (const chunk of ollama.chatStream({
-      model: this.config.model || 'functiongemma',
-      messages,
-      tools,
-    })) {
+    for await (const chunk of ollama.chatStream(
+      {
+        model: this.config.model || 'functiongemma',
+        messages,
+        tools,
+        options: { temperature: this.config.temperature },
+      },
+      { signal }
+    )) {
       lastChunk = chunk;
 
       // Ollama surfaces thinking in a dedicated field
@@ -164,11 +169,13 @@ export class OrchestratorAgent {
    * @param query The user's question or request
    * @param emitter Optional stream emitter for real-time updates
    * @param images Optional base64-encoded images for vision models
+   * @param signal Optional abort signal (e.g. client disconnected)
    */
   async run(
     query: string,
     emitter?: StreamEmitter,
-    images?: string[]
+    images?: string[],
+    signal?: AbortSignal
   ): Promise<OrchestratorResult> {
     const startTime = Date.now();
     const delegations: DelegationResult[] = [];
@@ -190,7 +197,7 @@ export class OrchestratorAgent {
     ];
 
     // Create the delegation tool with emitter support
-    const delegateTool = this.createDelegationTool(delegations, emitter);
+    const delegateTool = this.createDelegationTool(delegations, emitter, signal);
     const registry = getToolRegistry();
 
     // Temporarily register the delegation tool
@@ -215,6 +222,7 @@ export class OrchestratorAgent {
 
       while (iterations < maxIterations) {
         iterations++;
+        signal?.throwIfAborted();
 
         emitter?.thinking(
           `Orchestrator thinking (iteration ${iterations}/${maxIterations})...`
@@ -223,12 +231,21 @@ export class OrchestratorAgent {
         // Use streaming when we have an emitter so tokens arrive in real-time
         // streamOrchestratorChat handles both text and tool_call responses
         const response = emitter
-          ? await this.streamOrchestratorChat(messages, delegateTools, emitter)
-          : await ollama.chat({
-              model: this.config.model || 'functiongemma',
+          ? await this.streamOrchestratorChat(
               messages,
-              tools: delegateTools,
-            });
+              delegateTools,
+              emitter,
+              signal
+            )
+          : await ollama.chat(
+              {
+                model: this.config.model || 'functiongemma',
+                messages,
+                tools: delegateTools,
+                options: { temperature: this.config.temperature },
+              },
+              { signal }
+            );
 
         messages.push(response.message);
 
@@ -295,11 +312,15 @@ export class OrchestratorAgent {
       ];
 
       const finalResponse = emitter
-        ? await this.streamOrchestratorChat(finalMessages, [], emitter)
-        : await ollama.chat({
-            model: this.config.model || 'functiongemma',
-            messages: finalMessages,
-          });
+        ? await this.streamOrchestratorChat(finalMessages, [], emitter, signal)
+        : await ollama.chat(
+            {
+              model: this.config.model || 'functiongemma',
+              messages: finalMessages,
+              options: { temperature: this.config.temperature },
+            },
+            { signal }
+          );
 
       this.conversationHistory.push(
         { role: 'user', content: query },
@@ -366,7 +387,8 @@ Use your best judgment. When in doubt about whether an agent would add value, go
    */
   private createDelegationTool(
     delegations: DelegationResult[],
-    emitter?: StreamEmitter
+    emitter?: StreamEmitter,
+    signal?: AbortSignal
   ) {
     const agentNames = Array.from(this.subAgents.keys());
 
@@ -410,7 +432,7 @@ Use your best judgment. When in doubt about whether an agent would add value, go
 
         // Run the sub-agent with the same emitter for full visibility
         const delegationStart = Date.now();
-        const result = await agent.run(task, emitter);
+        const result = await agent.run(task, emitter, signal);
         const delegationDuration = Date.now() - delegationStart;
 
         emitter?.delegationEnd(

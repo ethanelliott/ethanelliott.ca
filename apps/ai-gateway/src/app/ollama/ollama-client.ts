@@ -66,19 +66,26 @@ export class OllamaClient {
     );
 
     // Link external signal if provided
+    let onExternalAbort: (() => void) | undefined;
     if (externalSignal) {
       if (externalSignal.aborted) {
         controller.abort(externalSignal.reason);
       } else {
-        externalSignal.addEventListener('abort', () => {
-          controller.abort(externalSignal.reason);
+        onExternalAbort = () => controller.abort(externalSignal.reason);
+        externalSignal.addEventListener('abort', onExternalAbort, {
+          once: true,
         });
       }
     }
 
     return {
       signal: controller.signal,
-      cleanup: () => clearTimeout(timeoutId),
+      cleanup: () => {
+        clearTimeout(timeoutId);
+        if (externalSignal && onExternalAbort) {
+          externalSignal.removeEventListener('abort', onExternalAbort);
+        }
+      },
     };
   }
 

@@ -295,6 +295,9 @@ export class ChatInputComponent {
 
   onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' && !event.shiftKey) {
+      // Don't send while an IME composition is in progress (e.g. Japanese,
+      // Chinese input) — Enter there confirms the composition, not the message
+      if (event.isComposing || event.keyCode === 229) return;
       event.preventDefault();
       this.send();
     }

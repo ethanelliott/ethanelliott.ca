@@ -66,20 +66,24 @@ export class Agent {
   protected async streamChat(
     messages: OllamaMessage[],
     tools: OllamaTool[] | undefined,
-    emitter: StreamEmitter
+    emitter: StreamEmitter,
+    signal?: AbortSignal
   ): Promise<OllamaChatResponse> {
     let content = '';
     let toolCalls: OllamaChatResponse['message']['tool_calls'] = undefined;
     let lastChunk: any = null;
 
-    for await (const chunk of this.ollama.chatStream({
-      model: this.config.model || 'functiongemma',
-      messages,
-      tools,
-      options: {
-        temperature: this.config.temperature,
+    for await (const chunk of this.ollama.chatStream(
+      {
+        model: this.config.model || 'functiongemma',
+        messages,
+        tools,
+        options: {
+          temperature: this.config.temperature,
+        },
       },
-    })) {
+      { signal }
+    )) {
       lastChunk = chunk;
 
       // Ollama surfaces thinking in a dedicated field
@@ -129,8 +133,13 @@ export class Agent {
    * Run the agent with a task/prompt
    * @param task The task or question to process
    * @param emitter Optional stream emitter for real-time updates including token streaming
+   * @param signal Optional abort signal (e.g. client disconnected)
    */
-  async run(task: string, emitter?: StreamEmitter): Promise<AgentResult> {
+  async run(
+    task: string,
+    emitter?: StreamEmitter,
+    signal?: AbortSignal
+  ): Promise<AgentResult> {
     const startTime = Date.now();
     const toolCalls: AgentToolCall[] = [];
     let iterations = 0;
@@ -148,6 +157,7 @@ export class Agent {
     try {
       while (iterations < (this.config.maxIterations || 10)) {
         iterations++;
+        signal?.throwIfAborted();
 
         // Emit thinking event
         emitter?.agentThinking(
@@ -162,16 +172,20 @@ export class Agent {
           ? await this.streamChat(
               messages,
               tools.length > 0 ? tools : undefined,
-              emitter
+              emitter,
+              signal
             )
-          : await this.ollama.chat({
-              model: this.config.model || 'functiongemma',
-              messages,
-              tools: tools.length > 0 ? tools : undefined,
-              options: {
-                temperature: this.config.temperature,
+          : await this.ollama.chat(
+              {
+                model: this.config.model || 'functiongemma',
+                messages,
+                tools: tools.length > 0 ? tools : undefined,
+                options: {
+                  temperature: this.config.temperature,
+                },
               },
-            });
+              { signal }
+            );
 
         messages.push(response.message);
 
@@ -311,17 +325,23 @@ export class Agent {
       // Max iterations reached - get final response without tools
       emitter?.status(`Max iterations reached, generating final response...`);
 
-      const finalResponse = await this.ollama.chat({
-        model: this.config.model || 'functiongemma',
-        messages: [
-          ...messages,
-          {
-            role: 'user',
-            content:
-              'Please provide a final summary response based on the information gathered.',
+      const finalResponse = await this.ollama.chat(
+        {
+          model: this.config.model || 'functiongemma',
+          messages: [
+            ...messages,
+            {
+              role: 'user',
+              content:
+                'Please provide a final summary response based on the information gathered.',
+            },
+          ],
+          options: {
+            temperature: this.config.temperature,
           },
-        ],
-      });
+        },
+        { signal }
+      );
 
       this.conversationHistory.push(
         { role: 'user', content: task },
@@ -338,6 +358,12 @@ export class Agent {
         totalDurationMs: Date.now() - startTime,
       };
     } catch (error) {
+      // Let aborts propagate so the orchestrator stops immediately instead of
+      // treating the cancellation as a recoverable agent failure
+      if (signal?.aborted || (error as Error)?.name === 'AbortError') {
+        throw error;
+      }
+
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       emitter?.error(`Agent error: ${errorMsg}`);
 
