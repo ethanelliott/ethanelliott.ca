@@ -1,10 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import {
   ApplicationConfig,
+  isDevMode,
   provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter } from '@angular/router';
+import { provideServiceWorker } from '@angular/service-worker';
 import { providePrimeNG } from 'primeng/config';
 import { MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
@@ -61,6 +63,10 @@ export const appConfig: ApplicationConfig = {
           darkModeSelector: '.dark-mode',
         },
       },
+    }),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
     }),
   ],
 };

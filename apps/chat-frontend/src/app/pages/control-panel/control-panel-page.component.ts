@@ -7,27 +7,27 @@ import {
   OnInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
 import { SliderModule } from 'primeng/slider';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
-import { TooltipModule } from 'primeng/tooltip';
-import { TagModule } from 'primeng/tag';
 import { MessageService } from 'primeng/api';
 import { GatewayApiService } from '../../services/gateway-api.service';
 import {
   GatewayConfig,
   GatewayModelInfo,
-  GatewaySubAgentDefinition,
   GatewayToolInfo,
   GatewayHealthInfo,
 } from '../../models/types';
 
-interface ModelOption {
-  name: string;
-  label: string;
+type PanelTab = 'overview' | 'orchestrator' | 'agents' | 'tools';
+
+interface AgentForm {
+  model: string;
+  systemPrompt: string;
+  tools: string[];
+  temperature: number; // 0–200 (slider), maps to 0.00–2.00
+  maxIterations: number;
 }
 
 @Component({
@@ -35,327 +35,485 @@ interface ModelOption {
   standalone: true,
   imports: [
     FormsModule,
-    ButtonModule,
     InputTextModule,
     TextareaModule,
     SelectModule,
     SliderModule,
-    ToggleSwitchModule,
-    TooltipModule,
-    TagModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="control-panel">
+      <!-- ─── Header ─── -->
       <div class="panel-header">
-        <div class="header-row">
+        <div class="header-main">
           <h1>Control Panel</h1>
-          <p-button
-            icon="pi pi-refresh"
-            label="Refresh"
-            severity="secondary"
-            size="small"
-            [loading]="loading()"
-            (click)="loadConfig()"
-          />
+          @if (health(); as h) {
+          <div class="health-pills">
+            <span
+              class="health-pill"
+              [class.ok]="h.status === 'healthy'"
+              [class.warn]="h.status !== 'healthy'"
+            >
+              <span class="pill-dot"></span>
+              {{ h.status }}
+            </span>
+            <span
+              class="health-pill"
+              [class.ok]="h.ollama === 'connected'"
+              [class.bad]="h.ollama !== 'connected'"
+            >
+              <span class="pill-dot"></span>
+              ollama
+            </span>
+          </div>
+          }
         </div>
-        <p class="header-desc">Manage your AI Gateway runtime configuration</p>
+        <button class="refresh-btn" [disabled]="loading()" (click)="loadConfig()">
+          <i class="pi" [class.pi-refresh]="!loading()" [class.pi-spin]="loading()" [class.pi-spinner]="loading()"></i>
+          Refresh
+        </button>
+      </div>
+
+      <!-- ─── Tabs ─── -->
+      <div class="tab-bar">
+        @for (tab of tabs; track tab.id) {
+        <button
+          class="tab"
+          [class.active]="activeTab() === tab.id"
+          (click)="activeTab.set(tab.id)"
+        >
+          <i class="pi" [class]="'pi ' + tab.icon"></i>
+          {{ tab.label }}
+          @if (tab.id === 'agents' && dirtyAgentCount() > 0) {
+          <span class="tab-badge">{{ dirtyAgentCount() }}</span>
+          } @if (tab.id === 'orchestrator' && orchestratorDirty()) {
+          <span class="tab-badge dot"></span>
+          }
+        </button>
+        }
       </div>
 
       @if (loading() && !config()) {
-      <div class="loading-state">
+      <div class="empty-panel">
         <i class="pi pi-spin pi-spinner"></i>
-        <span>Connecting to gateway...</span>
+        <span>Connecting to gateway…</span>
       </div>
       } @else if (error()) {
-      <div class="error-state">
-        <i class="pi pi-exclamation-triangle"></i>
+      <div class="empty-panel">
+        <i class="pi pi-exclamation-triangle error-icon"></i>
         <span>{{ error() }}</span>
-        <p-button
-          label="Retry"
-          severity="secondary"
-          size="small"
-          (click)="loadConfig()"
-        />
+        <button class="refresh-btn" (click)="loadConfig()">Retry</button>
       </div>
       } @else if (config()) {
 
-      <!-- Health Status -->
-      <section class="panel-section">
-        <h2><i class="pi pi-heart-fill section-icon"></i> System Health</h2>
-        @if (health()) {
-        <div class="health-grid">
-          <div class="health-card">
-            <div class="health-label">Status</div>
-            <p-tag
-              [severity]="health()!.status === 'healthy' ? 'success' : 'warn'"
-              [value]="health()!.status"
+      <div class="tab-content">
+        <!-- ═══ OVERVIEW ═══ -->
+        @if (activeTab() === 'overview') {
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <div class="stat-label">Gateway</div>
+            <div class="stat-value" [class.ok-text]="health()?.status === 'healthy'">
+              {{ health()?.status || 'unknown' }}
+            </div>
+            <i class="pi pi-server stat-icon"></i>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-label">Ollama</div>
+            <div
+              class="stat-value"
+              [class.ok-text]="health()?.ollama === 'connected'"
+              [class.bad-text]="health()?.ollama === 'disconnected'"
+            >
+              {{ health()?.ollama || 'unknown' }}
+            </div>
+            <i class="pi pi-microchip stat-icon"></i>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-label">Orchestrator model</div>
+            <div class="stat-value mono">
+              {{ health()?.orchestratorModel || 'default' }}
+            </div>
+            <i class="pi pi-sitemap stat-icon"></i>
+          </div>
+          <div class="stat-tile clickable" (click)="activeTab.set('agents')">
+            <div class="stat-label">Sub-agents</div>
+            <div class="stat-value">{{ health()?.subAgentCount ?? config()!.subAgents.length }}</div>
+            <i class="pi pi-users stat-icon"></i>
+          </div>
+          <div class="stat-tile clickable" (click)="activeTab.set('tools')">
+            <div class="stat-label">Tools</div>
+            <div class="stat-value">{{ health()?.toolCount ?? config()!.tools.length }}</div>
+            <i class="pi pi-wrench stat-icon"></i>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-label">Models available</div>
+            <div class="stat-value">{{ models().length }}</div>
+            <i class="pi pi-box stat-icon"></i>
+          </div>
+        </div>
+
+        <div class="danger-card">
+          <div class="danger-info">
+            <span class="danger-title">Reset orchestrator state</span>
+            <span class="danger-desc"
+              >Clears the default orchestrator's conversation history. Does not
+              change any configuration.</span
+            >
+          </div>
+          <button class="danger-btn" (click)="resetOrchestrator()">
+            <i class="pi pi-replay"></i>
+            Reset
+          </button>
+        </div>
+        }
+
+        <!-- ═══ ORCHESTRATOR ═══ -->
+        @if (activeTab() === 'orchestrator') {
+        <div class="editor-card">
+          <div class="editor-header">
+            <div class="editor-title">
+              <i class="pi pi-sitemap"></i>
+              <span>Routing &amp; delegation</span>
+            </div>
+            <button
+              class="save-btn"
+              [disabled]="!orchestratorDirty()"
+              (click)="saveOrchestrator()"
+            >
+              <i class="pi pi-check"></i>
+              Save
+            </button>
+          </div>
+
+          <div class="field-row">
+            <div class="field-info">
+              <label>Model</label>
+              <span class="field-desc"
+                >LLM used for routing and delegation decisions</span
+              >
+            </div>
+            <p-select
+              [options]="modelOptions()"
+              [(ngModel)]="orchModel"
+              optionLabel="label"
+              optionValue="name"
+              placeholder="Select model"
+              [showClear]="true"
+              [style]="{ minWidth: '230px' }"
+              size="small"
             />
           </div>
-          <div class="health-card">
-            <div class="health-label">Ollama</div>
-            <p-tag
-              [severity]="
-                health()!.ollama === 'connected' ? 'success' : 'danger'
-              "
-              [value]="health()!.ollama"
-            />
+
+          <div class="field-row">
+            <div class="field-info">
+              <label>Max delegations</label>
+              <span class="field-desc"
+                >How many times a single request may be handed to
+                sub-agents</span
+              >
+            </div>
+            <div class="slider-group">
+              <p-slider
+                [(ngModel)]="orchMaxDelegations"
+                [min]="1"
+                [max]="20"
+                [step]="1"
+                [style]="{ width: '150px' }"
+              />
+              <span class="slider-value">{{ orchMaxDelegations() }}</span>
+            </div>
           </div>
-          <div class="health-card">
-            <div class="health-label">Orchestrator Model</div>
-            <span class="health-value">{{
-              health()!.orchestratorModel || 'default'
-            }}</span>
-          </div>
-          <div class="health-card">
-            <div class="health-label">Sub-Agents</div>
-            <span class="health-value">{{ health()!.subAgentCount }}</span>
-          </div>
-          <div class="health-card">
-            <div class="health-label">Tools</div>
-            <span class="health-value">{{ health()!.toolCount }}</span>
+
+          <div class="field-row vertical">
+            <div class="field-info">
+              <label>System prompt</label>
+              <span class="field-desc"
+                >Controls routing behaviour. Leave empty to use the built-in
+                default.</span
+              >
+            </div>
+            <textarea
+              pTextarea
+              [(ngModel)]="orchSystemPrompt"
+              [rows]="10"
+              [autoResize]="true"
+              class="prompt-textarea"
+              placeholder="Leave empty to use the default orchestrator prompt…"
+            ></textarea>
           </div>
         </div>
         }
-      </section>
 
-      <!-- Orchestrator Config -->
-      <section class="panel-section">
-        <div class="section-header">
-          <h2><i class="pi pi-sitemap section-icon"></i> Orchestrator</h2>
-          <p-button
-            icon="pi pi-save"
-            label="Save"
-            size="small"
-            [disabled]="!orchestratorDirty()"
-            (click)="saveOrchestrator()"
-          />
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <label>Orchestrator Model</label>
-            <span class="setting-desc"
-              >LLM used for routing and delegation decisions</span
-            >
-          </div>
-          <p-select
-            [options]="modelOptions()"
-            [(ngModel)]="orchModel"
-            optionLabel="label"
-            optionValue="name"
-            placeholder="Select model"
-            [showClear]="true"
-            [style]="{ minWidth: '220px' }"
-            size="small"
-          />
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <label>Max Delegations</label>
-            <span class="setting-desc"
-              >Maximum times the orchestrator can delegate to sub-agents per
-              request</span
-            >
-          </div>
-          <div class="slider-group">
-            <p-slider
-              [(ngModel)]="orchMaxDelegations"
-              [min]="1"
-              [max]="20"
-              [step]="1"
-              [style]="{ width: '140px' }"
-            />
-            <span class="slider-value">{{ orchMaxDelegations() }}</span>
-          </div>
-        </div>
-        <div class="setting-row vertical">
-          <div class="setting-info">
-            <label>System Prompt</label>
-            <span class="setting-desc"
-              >Instructions that control how the orchestrator routes and
-              delegates tasks. Leave empty to use the built-in default.</span
-            >
-          </div>
-          <textarea
-            pTextarea
-            [(ngModel)]="orchSystemPrompt"
-            [rows]="8"
-            [autoResize]="true"
-            class="prompt-textarea"
-            placeholder="Leave empty to use the default orchestrator prompt..."
-          ></textarea>
-        </div>
-      </section>
-
-      <!-- Sub-Agents -->
-      <section class="panel-section">
-        <h2><i class="pi pi-users section-icon"></i> Sub-Agents</h2>
-        @for (agent of config()!.subAgents; track agent.name) {
-        <div class="agent-card">
-          <div class="agent-header">
-            <div class="agent-header-left">
-              <span class="agent-name">{{ agent.name }}</span>
-              <span class="agent-desc">{{ agent.description }}</span>
-            </div>
-            <p-button
-              icon="pi pi-save"
-              size="small"
-              [disabled]="!isAgentDirty(agent.name)"
-              (click)="saveAgent(agent.name)"
-              pTooltip="Save changes"
-            />
-          </div>
-          <div class="agent-body">
-            <div class="setting-row">
-              <div class="setting-info">
-                <label>Model</label>
-              </div>
-              <p-select
-                [options]="modelOptions()"
-                [ngModel]="getAgentForm(agent.name).model"
-                (ngModelChange)="updateAgentForm(agent.name, 'model', $event)"
-                optionLabel="label"
-                optionValue="name"
-                placeholder="Select model"
-                [showClear]="true"
-                [style]="{ minWidth: '200px' }"
-                size="small"
+        <!-- ═══ AGENTS ═══ -->
+        @if (activeTab() === 'agents') {
+        <div class="agents-layout" [class.detail-open]="selectedAgent()">
+          <!-- Agent list rail -->
+          <div class="agent-rail">
+            <div class="rail-search">
+              <i class="pi pi-search"></i>
+              <input
+                pInputText
+                [(ngModel)]="agentSearch"
+                placeholder="Filter agents…"
               />
             </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <label>Temperature</label>
-              </div>
-              <div class="slider-group">
-                <p-slider
-                  [ngModel]="getAgentForm(agent.name).temperature"
-                  (ngModelChange)="
-                    updateAgentForm(agent.name, 'temperature', $event)
-                  "
-                  [min]="0"
-                  [max]="200"
-                  [step]="1"
-                  [style]="{ width: '140px' }"
-                />
-                <span class="slider-value">{{
-                  (getAgentForm(agent.name).temperature / 100).toFixed(2)
-                }}</span>
-              </div>
-            </div>
-            <div class="setting-row vertical">
-              <div class="setting-info">
-                <label>System Prompt</label>
-              </div>
-              <textarea
-                pTextarea
-                [ngModel]="getAgentForm(agent.name).systemPrompt"
-                (ngModelChange)="
-                  updateAgentForm(agent.name, 'systemPrompt', $event)
-                "
-                [rows]="6"
-                [autoResize]="true"
-                class="prompt-textarea"
-              ></textarea>
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <label>Assigned Tools</label>
-                <span class="setting-desc">Tools this agent can use</span>
-              </div>
-            </div>
-            <div class="tool-chips">
-              @for (toolName of getAgentForm(agent.name).tools; track toolName)
-              {
-              <span class="tool-chip">
-                <i class="pi pi-wrench"></i>
-                {{ toolName }}
-                <button
-                  class="tool-chip-remove"
-                  (click)="removeToolFromAgent(agent.name, toolName)"
-                >
-                  <i class="pi pi-times"></i>
-                </button>
-              </span>
+            <div class="agent-list">
+              @for (agent of filteredAgents(); track agent.name) {
+              <button
+                class="agent-item"
+                [class.active]="selectedAgent() === agent.name"
+                (click)="selectAgent(agent.name)"
+              >
+                <div class="agent-item-top">
+                  <span class="agent-item-name">{{ agent.name }}</span>
+                  @if (isAgentDirty(agent.name)) {
+                  <span class="dirty-dot" title="Unsaved changes"></span>
+                  }
+                </div>
+                <div class="agent-item-meta">
+                  <span class="mono">{{
+                    getAgentForm(agent.name).model || 'default'
+                  }}</span>
+                  <span>·</span>
+                  <span>{{ getAgentForm(agent.name).tools.length }} tools</span>
+                </div>
+              </button>
               } @empty {
-              <span class="no-tools">No tools assigned</span>
+              <div class="rail-empty">No matching agents</div>
               }
             </div>
-            @if (unassignedTools(agent.name).length) {
-            <div class="add-tool-row">
-              <p-select
-                [options]="unassignedTools(agent.name)"
-                [(ngModel)]="addToolSelections[agent.name]"
-                optionLabel="name"
-                optionValue="name"
-                placeholder="Add a tool..."
-                [showClear]="true"
-                [style]="{ minWidth: '200px' }"
-                size="small"
-              />
-              <p-button
-                icon="pi pi-plus"
-                size="small"
-                severity="secondary"
-                [disabled]="!addToolSelections[agent.name]"
-                (click)="addToolToAgent(agent.name)"
-              />
+          </div>
+
+          <!-- Agent editor -->
+          <div class="agent-editor">
+            @if (selectedAgentDef(); as agent) {
+            <div class="editor-card">
+              <div class="editor-header">
+                <div class="editor-title">
+                  <button class="back-btn" (click)="selectedAgent.set(null)">
+                    <i class="pi pi-arrow-left"></i>
+                  </button>
+                  <i class="pi pi-user"></i>
+                  <div class="editor-title-text">
+                    <span>{{ agent.name }}</span>
+                    <span class="editor-subtitle">{{ agent.description }}</span>
+                  </div>
+                </div>
+                <button
+                  class="save-btn"
+                  [disabled]="!isAgentDirty(agent.name)"
+                  (click)="saveAgent(agent.name)"
+                >
+                  <i class="pi pi-check"></i>
+                  Save
+                </button>
+              </div>
+
+              <div class="field-row">
+                <div class="field-info">
+                  <label>Model</label>
+                </div>
+                <p-select
+                  [options]="modelOptions()"
+                  [ngModel]="getAgentForm(agent.name).model"
+                  (ngModelChange)="updateAgentForm(agent.name, 'model', $event)"
+                  optionLabel="label"
+                  optionValue="name"
+                  placeholder="Select model"
+                  [showClear]="true"
+                  [style]="{ minWidth: '230px' }"
+                  size="small"
+                />
+              </div>
+
+              <div class="field-row">
+                <div class="field-info">
+                  <label>Temperature</label>
+                  <span class="field-desc">Higher = more creative</span>
+                </div>
+                <div class="slider-group">
+                  <p-slider
+                    [ngModel]="getAgentForm(agent.name).temperature"
+                    (ngModelChange)="
+                      updateAgentForm(agent.name, 'temperature', $event)
+                    "
+                    [min]="0"
+                    [max]="200"
+                    [step]="5"
+                    [style]="{ width: '150px' }"
+                  />
+                  <span class="slider-value">{{
+                    (getAgentForm(agent.name).temperature / 100).toFixed(2)
+                  }}</span>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field-info">
+                  <label>Max iterations</label>
+                  <span class="field-desc"
+                    >Tool-call loop limit per task</span
+                  >
+                </div>
+                <div class="slider-group">
+                  <p-slider
+                    [ngModel]="getAgentForm(agent.name).maxIterations"
+                    (ngModelChange)="
+                      updateAgentForm(agent.name, 'maxIterations', $event)
+                    "
+                    [min]="1"
+                    [max]="20"
+                    [step]="1"
+                    [style]="{ width: '150px' }"
+                  />
+                  <span class="slider-value">{{
+                    getAgentForm(agent.name).maxIterations
+                  }}</span>
+                </div>
+              </div>
+
+              <div class="field-row vertical">
+                <div class="field-info">
+                  <label>System prompt</label>
+                </div>
+                <textarea
+                  pTextarea
+                  [ngModel]="getAgentForm(agent.name).systemPrompt"
+                  (ngModelChange)="
+                    updateAgentForm(agent.name, 'systemPrompt', $event)
+                  "
+                  [rows]="8"
+                  [autoResize]="true"
+                  class="prompt-textarea"
+                ></textarea>
+              </div>
+
+              <div class="field-row vertical">
+                <div class="field-info">
+                  <label>Tools ({{ getAgentForm(agent.name).tools.length }})</label>
+                  <span class="field-desc">What this agent can call</span>
+                </div>
+                <div class="tool-chips">
+                  @for (toolName of getAgentForm(agent.name).tools; track
+                  toolName) {
+                  <span class="tool-chip">
+                    {{ toolName }}
+                    <button
+                      class="tool-chip-remove"
+                      (click)="removeToolFromAgent(agent.name, toolName)"
+                      title="Remove tool"
+                    >
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </span>
+                  } @empty {
+                  <span class="no-tools">No tools assigned</span>
+                  }
+                </div>
+                @if (unassignedTools(agent.name).length) {
+                <div class="add-tool-row">
+                  <p-select
+                    [options]="unassignedTools(agent.name)"
+                    [(ngModel)]="addToolSelections[agent.name]"
+                    optionLabel="name"
+                    optionValue="name"
+                    placeholder="Add a tool…"
+                    [showClear]="true"
+                    [filter]="true"
+                    [style]="{ minWidth: '230px' }"
+                    size="small"
+                  />
+                  <button
+                    class="save-btn secondary"
+                    [disabled]="!addToolSelections[agent.name]"
+                    (click)="addToolToAgent(agent.name)"
+                  >
+                    <i class="pi pi-plus"></i>
+                    Add
+                  </button>
+                </div>
+                }
+              </div>
+            </div>
+            } @else {
+            <div class="empty-panel subtle">
+              <i class="pi pi-users"></i>
+              <span>Select an agent to configure it</span>
             </div>
             }
           </div>
         </div>
         }
-      </section>
 
-      <!-- Available Tools -->
-      <section class="panel-section">
-        <h2><i class="pi pi-wrench section-icon"></i> Available Tools</h2>
-        <p class="section-desc">
-          All tools registered in the gateway. Assign tools to agents above to
-          make them available during conversations.
-        </p>
-        @for (category of toolsByCategory(); track category.name) {
-        <div class="tool-category">
-          <h3 class="category-name">{{ category.name }}</h3>
-          @for (tool of category.tools; track tool.name) {
+        <!-- ═══ TOOLS ═══ -->
+        @if (activeTab() === 'tools') {
+        <div class="tools-controls">
+          <div class="rail-search wide">
+            <i class="pi pi-search"></i>
+            <input
+              pInputText
+              [(ngModel)]="toolSearch"
+              placeholder="Search {{ config()!.tools.length }} tools…"
+            />
+          </div>
+          <div class="category-chips">
+            <button
+              class="category-chip"
+              [class.active]="toolCategoryFilter() === null"
+              (click)="toolCategoryFilter.set(null)"
+            >
+              All
+            </button>
+            @for (cat of toolCategories(); track cat) {
+            <button
+              class="category-chip"
+              [class.active]="toolCategoryFilter() === cat"
+              (click)="toolCategoryFilter.set(cat)"
+            >
+              {{ cat }}
+            </button>
+            }
+          </div>
+        </div>
+
+        <div class="tool-table">
+          @for (tool of filteredTools(); track tool.name) {
           <div class="tool-row">
-            <div class="tool-info">
-              <span class="tool-name">{{ tool.name }}</span>
+            <div class="tool-main">
+              <div class="tool-name-row">
+                <span class="tool-name">{{ tool.name }}</span>
+                @if (tool.approval?.required) {
+                <span class="badge warn" title="Requires user approval">
+                  <i class="pi pi-shield"></i> approval
+                </span>
+                }
+                <span class="badge muted">{{ tool.category || 'other' }}</span>
+              </div>
               <span class="tool-desc">{{ tool.description }}</span>
             </div>
-            <div class="tool-meta">
-              @if (tool.approval?.required) {
-              <p-tag severity="warn" value="Approval Required" />
-              } @if (tool.tags?.length) { @for (tag of tool.tags; track tag) {
-              <p-tag severity="secondary" [value]="tag" />
-              } }
+            <div class="tool-agents">
+              @for (agentName of agentsUsingTool(tool.name); track agentName) {
+              <button
+                class="agent-link"
+                (click)="openAgent(agentName)"
+                title="Configure {{ agentName }}"
+              >
+                {{ shortAgentName(agentName) }}
+              </button>
+              } @empty {
+              <span class="unused">unused</span>
+              }
             </div>
+          </div>
+          } @empty {
+          <div class="empty-panel subtle">
+            <i class="pi pi-search"></i>
+            <span>No tools match your search</span>
           </div>
           }
         </div>
         }
-      </section>
-
-      <!-- Actions -->
-      <section class="panel-section">
-        <h2><i class="pi pi-bolt section-icon"></i> Actions</h2>
-        <div class="action-row">
-          <div class="setting-info">
-            <label>Reset Orchestrator State</label>
-            <span class="setting-desc"
-              >Clear conversation history and reset the orchestrator</span
-            >
-          </div>
-          <p-button
-            label="Reset"
-            icon="pi pi-replay"
-            severity="danger"
-            size="small"
-            [outlined]="true"
-            (click)="resetOrchestrator()"
-          />
-        </div>
-      </section>
-
+      </div>
       }
     </div>
   `,
@@ -364,141 +522,392 @@ interface ModelOption {
       display: block;
       height: 100%;
       overflow: hidden;
+      background:
+        radial-gradient(
+          ellipse 60% 40% at 50% -10%,
+          color-mix(in srgb, var(--p-primary-500) 6%, transparent),
+          transparent
+        ),
+        var(--p-surface-950);
     }
 
     .control-panel {
-      max-width: 740px;
+      max-width: 960px;
       margin: 0 auto;
       padding: 24px 24px 48px;
       overflow-y: auto;
       height: 100%;
+      box-sizing: border-box;
     }
 
+    /* ─── Header ─── */
     .panel-header {
-      margin-bottom: 24px;
-    }
-
-    .header-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .header-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
 
       h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
+        font-size: 1.4rem;
+        font-weight: 750;
+        letter-spacing: -0.02em;
         margin: 0;
         color: var(--p-text-color);
       }
     }
 
-    .header-desc {
-      font-size: 0.85rem;
-      color: var(--p-text-muted-color);
-      margin: 4px 0 0;
-    }
-
-    .loading-state,
-    .error-state {
+    .health-pills {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 48px 24px;
-      color: var(--p-text-muted-color);
-      font-size: 0.95rem;
-    }
-
-    .error-state i {
-      font-size: 2rem;
-      color: var(--p-red-400);
-    }
-
-    .loading-state i {
-      font-size: 2rem;
-    }
-
-    /* Sections */
-    .panel-section {
-      margin-bottom: 28px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--p-surface-800);
-
-      &:last-child {
-        border-bottom: none;
-      }
-
-      h2 {
-        font-size: 1rem;
-        font-weight: 600;
-        margin: 0 0 14px;
-        color: var(--p-text-color);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-    }
-
-    .section-icon {
-      font-size: 0.9rem;
-      color: var(--p-primary-color);
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-
-      h2 {
-        margin-bottom: 0;
-      }
-    }
-
-    .section-desc {
-      font-size: 0.82rem;
-      color: var(--p-text-muted-color);
-      margin: -8px 0 14px;
-    }
-
-    /* Health */
-    .health-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .health-card {
-      display: flex;
-      flex-direction: column;
       gap: 6px;
-      padding: 12px 16px;
-      background: var(--p-surface-900);
-      border: 1px solid var(--p-surface-700);
-      border-radius: 8px;
-      min-width: 110px;
-      flex: 1;
     }
 
-    .health-label {
-      font-size: 0.72rem;
+    .health-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--chat-font-mono);
+      font-size: 0.66rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--p-text-muted-color);
+      border: 1px solid var(--p-surface-800);
+      border-radius: 999px;
+      padding: 4px 10px;
+
+      .pill-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--p-text-muted-color);
+      }
+
+      &.ok .pill-dot { background: #34d399; box-shadow: 0 0 6px #34d39988; }
+      &.warn .pill-dot { background: #fbbf24; box-shadow: 0 0 6px #fbbf2488; }
+      &.bad .pill-dot { background: #f87171; box-shadow: 0 0 6px #f8717188; }
     }
 
-    .health-value {
-      font-size: 0.9rem;
+    .refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--p-surface-700);
+      border-radius: 9px;
+      background: none;
+      color: var(--p-text-muted-color);
+      font-family: inherit;
+      font-size: 0.78rem;
       font-weight: 500;
-      color: var(--p-text-color);
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+
+      i { font-size: 0.75rem; }
+
+      &:hover:not(:disabled) {
+        color: var(--p-text-color);
+        border-color: var(--p-surface-500);
+      }
+
+      &:disabled { opacity: 0.5; cursor: default; }
     }
 
-    /* Settings */
-    .setting-row {
+    /* ─── Tabs ─── */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--p-surface-800);
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--p-text-muted-color);
+      font-family: inherit;
+      font-size: 0.84rem;
+      font-weight: 550;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: color 0.15s ease;
+      white-space: nowrap;
+      margin-bottom: -1px;
+
+      i { font-size: 0.8rem; }
+
+      &:hover { color: var(--p-text-color); }
+
+      &.active {
+        color: var(--chat-accent);
+        border-bottom-color: var(--chat-accent);
+      }
+    }
+
+    .tab-badge {
+      font-family: var(--chat-font-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      background: var(--chat-gradient);
+      color: white;
+      border-radius: 999px;
+      padding: 1px 6px;
+      min-width: 10px;
+      text-align: center;
+
+      &.dot {
+        width: 7px;
+        height: 7px;
+        min-width: 0;
+        padding: 0;
+      }
+    }
+
+    /* ─── Empty / loading ─── */
+    .empty-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 56px 24px;
+      color: var(--p-text-muted-color);
+      font-size: 0.9rem;
+
+      i { font-size: 1.8rem; opacity: 0.6; }
+
+      .error-icon { color: #f87171; opacity: 1; }
+
+      &.subtle {
+        padding: 40px 20px;
+        i { font-size: 1.4rem; }
+      }
+    }
+
+    /* ─── Overview ─── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-tile {
+      position: relative;
+      background: color-mix(in srgb, var(--p-surface-900) 70%, transparent);
+      border: 1px solid var(--p-surface-800);
+      border-radius: var(--chat-radius-md);
+      padding: 16px;
+      overflow: hidden;
+
+      &.clickable {
+        cursor: pointer;
+        transition: border-color 0.15s ease;
+
+        &:hover { border-color: var(--chat-accent); }
+      }
+    }
+
+    .stat-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--p-text-muted-color);
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--p-text-color);
+
+      &.mono {
+        font-family: var(--chat-font-mono);
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+
+      &.ok-text { color: #34d399; }
+      &.bad-text { color: #f87171; }
+    }
+
+    .stat-icon {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 1rem;
+      color: var(--chat-accent);
+      opacity: 0.55;
+    }
+
+    .danger-card {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 0;
+      gap: 16px;
+      border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+      background: color-mix(in srgb, #ef4444 4%, transparent);
+      border-radius: var(--chat-radius-md);
+      padding: 14px 16px;
+    }
+
+    .danger-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .danger-title {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--p-text-color);
+    }
+
+    .danger-desc {
+      font-size: 0.76rem;
+      color: var(--p-text-muted-color);
+    }
+
+    .danger-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid color-mix(in srgb, #ef4444 50%, transparent);
+      border-radius: 9px;
+      background: none;
+      color: #f87171;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      flex-shrink: 0;
+
+      i { font-size: 0.75rem; }
+
+      &:hover {
+        background: color-mix(in srgb, #ef4444 12%, transparent);
+      }
+    }
+
+    /* ─── Editor cards / fields ─── */
+    .editor-card {
+      background: color-mix(in srgb, var(--p-surface-900) 70%, transparent);
+      border: 1px solid var(--p-surface-800);
+      border-radius: var(--chat-radius-md);
+      padding: 0 16px 16px;
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--p-surface-800);
+      margin-bottom: 4px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: inherit;
+    }
+
+    .editor-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+
+      > i {
+        color: var(--chat-accent);
+        font-size: 0.9rem;
+      }
+
+      span {
+        font-size: 0.92rem;
+        font-weight: 650;
+        color: var(--p-text-color);
+      }
+    }
+
+    .editor-title-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      .editor-subtitle {
+        font-size: 0.72rem;
+        font-weight: 400;
+        color: var(--p-text-muted-color);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .back-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 8px;
+      background: var(--p-surface-800);
+      color: var(--p-text-color);
+      cursor: pointer;
+
+      i { font-size: 0.75rem; }
+    }
+
+    .save-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: none;
+      border-radius: 9px;
+      background: var(--chat-gradient);
+      color: white;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: filter 0.15s ease, opacity 0.15s ease;
+      flex-shrink: 0;
+
+      i { font-size: 0.72rem; }
+
+      &:hover:not(:disabled) { filter: brightness(1.12); }
+
+      &:disabled { opacity: 0.35; cursor: default; }
+
+      &.secondary {
+        background: var(--p-surface-800);
+        color: var(--p-text-color);
+      }
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
       gap: 16px;
 
       &.vertical {
@@ -506,24 +915,24 @@ interface ModelOption {
         align-items: stretch;
       }
 
-      & + .setting-row {
-        border-top: 1px solid var(--p-surface-800);
+      & + .field-row {
+        border-top: 1px solid color-mix(in srgb, var(--p-surface-800) 60%, transparent);
       }
     }
 
-    .setting-info {
+    .field-info {
       display: flex;
       flex-direction: column;
       gap: 2px;
 
       label {
-        font-size: 0.88rem;
-        font-weight: 500;
+        font-size: 0.86rem;
+        font-weight: 550;
         color: var(--p-text-color);
       }
 
-      .setting-desc {
-        font-size: 0.78rem;
+      .field-desc {
+        font-size: 0.74rem;
         color: var(--p-text-muted-color);
       }
     }
@@ -535,68 +944,147 @@ interface ModelOption {
     }
 
     .slider-value {
-      font-size: 0.85rem;
+      font-family: var(--chat-font-mono);
+      font-size: 0.8rem;
       font-weight: 600;
-      color: var(--p-text-color);
-      min-width: 32px;
+      color: var(--chat-accent);
+      min-width: 36px;
       text-align: right;
     }
 
     .prompt-textarea {
       width: 100%;
-      font-size: 0.82rem;
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      font-family: var(--chat-font-mono);
       line-height: 1.6;
     }
 
-    /* Agent cards */
-    .agent-card {
-      background: var(--p-surface-900);
-      border: 1px solid var(--p-surface-700);
-      border-radius: 10px;
-      margin-bottom: 12px;
-      overflow: hidden;
+    /* ─── Agents layout ─── */
+    .agents-layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
 
-      &:last-child {
-        margin-bottom: 0;
+    .agent-rail {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+    }
+
+    .rail-search {
+      display: flex;
+      align-items: center;
+      position: relative;
+
+      > i {
+        position: absolute;
+        left: 10px;
+        font-size: 0.75rem;
+        color: var(--p-text-muted-color);
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      input {
+        width: 100%;
+        font-size: 0.8rem;
+        padding-left: 30px !important;
+        background: var(--p-surface-900) !important;
+        border-color: var(--p-surface-800) !important;
+        border-radius: 10px !important;
+      }
+
+      &.wide {
+        max-width: 340px;
       }
     }
 
-    .agent-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--p-surface-700);
-    }
-
-    .agent-header-left {
+    .agent-list {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
+      max-height: calc(100dvh - 240px);
+      overflow-y: auto;
     }
 
-    .agent-name {
-      font-size: 0.95rem;
+    .agent-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      text-align: left;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 9px 11px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, border-color 0.15s ease;
+
+      &:hover { background: var(--p-surface-900); }
+
+      &.active {
+        background: color-mix(in srgb, var(--p-primary-500) 12%, transparent);
+        border-color: color-mix(in srgb, var(--p-primary-500) 30%, transparent);
+      }
+    }
+
+    .agent-item-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .agent-item-name {
+      font-family: var(--chat-font-mono);
+      font-size: 0.76rem;
       font-weight: 600;
       color: var(--p-text-color);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .agent-desc {
+    .dirty-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #fbbf24;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .agent-item-meta {
+      display: flex;
+      gap: 5px;
+      font-size: 0.68rem;
+      color: var(--p-text-muted-color);
+
+      .mono {
+        font-family: var(--chat-font-mono);
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .rail-empty {
       font-size: 0.78rem;
       color: var(--p-text-muted-color);
+      padding: 16px 10px;
+      text-align: center;
     }
 
-    .agent-body {
-      padding: 8px 16px 16px;
-    }
-
-    /* Tool chips */
+    /* ─── Tool chips (agent editor) ─── */
     .tool-chips {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      padding: 4px 0 8px;
     }
 
     .tool-chip {
@@ -604,36 +1092,31 @@ interface ModelOption {
       align-items: center;
       gap: 6px;
       padding: 4px 10px;
-      background: color-mix(in srgb, var(--p-primary-color) 15%, transparent);
-      color: var(--p-primary-color);
-      border-radius: 16px;
-      font-size: 0.78rem;
+      background: color-mix(in srgb, var(--p-primary-500) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--p-primary-500) 20%, transparent);
+      color: var(--p-primary-200);
+      border-radius: 999px;
+      font-family: var(--chat-font-mono);
+      font-size: 0.7rem;
       font-weight: 500;
-
-      i {
-        font-size: 0.72rem;
-      }
     }
 
     .tool-chip-remove {
+      display: inline-flex;
       background: none;
       border: none;
       padding: 0;
       cursor: pointer;
-      color: var(--p-primary-color);
+      color: var(--p-primary-200);
       opacity: 0.6;
 
-      &:hover {
-        opacity: 1;
-      }
+      &:hover { opacity: 1; }
 
-      i {
-        font-size: 0.65rem;
-      }
+      i { font-size: 0.6rem; }
     }
 
     .no-tools {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--p-text-muted-color);
       font-style: italic;
     }
@@ -642,104 +1125,188 @@ interface ModelOption {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding-top: 4px;
+      margin-top: 10px;
     }
 
-    /* Tool list */
-    .tool-category {
-      margin-bottom: 16px;
+    /* ─── Tools tab ─── */
+    .tools-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
 
-      &:last-child {
-        margin-bottom: 0;
+    .category-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .category-chip {
+      background: none;
+      border: 1px solid var(--p-surface-800);
+      border-radius: 999px;
+      color: var(--p-text-muted-color);
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 550;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+
+      &:hover { color: var(--p-text-color); }
+
+      &.active {
+        color: var(--chat-accent);
+        border-color: color-mix(in srgb, var(--p-primary-500) 45%, transparent);
+        background: color-mix(in srgb, var(--p-primary-500) 8%, transparent);
       }
     }
 
-    .category-name {
-      font-size: 0.82rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--p-text-muted-color);
-      margin: 0 0 8px;
+    .tool-table {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .tool-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
-      background: var(--p-surface-900);
-      border: 1px solid var(--p-surface-700);
-      border-radius: 8px;
-      margin-bottom: 6px;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
+      gap: 16px;
+      background: color-mix(in srgb, var(--p-surface-900) 70%, transparent);
+      border: 1px solid var(--p-surface-800);
+      border-radius: var(--chat-radius-md);
+      padding: 10px 14px;
     }
 
-    .tool-info {
+    .tool-main {
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      flex: 1;
+      gap: 3px;
       min-width: 0;
+      flex: 1;
+    }
+
+    .tool-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .tool-name {
-      font-size: 0.88rem;
-      font-weight: 500;
+      font-family: var(--chat-font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
       color: var(--p-text-color);
-      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.62rem;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-radius: 999px;
+      padding: 2px 8px;
+
+      i { font-size: 0.55rem; }
+
+      &.warn {
+        color: #fbbf24;
+        border: 1px solid color-mix(in srgb, #fbbf24 40%, transparent);
+      }
+
+      &.muted {
+        color: var(--p-text-muted-color);
+        border: 1px solid var(--p-surface-800);
+      }
     }
 
     .tool-desc {
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       color: var(--p-text-muted-color);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .tool-meta {
+    .tool-agents {
       display: flex;
+      flex-wrap: wrap;
       gap: 4px;
+      justify-content: flex-end;
       flex-shrink: 0;
-      margin-left: 12px;
+      max-width: 40%;
     }
 
-    /* Actions */
-    .action-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 0;
-      gap: 16px;
+    .agent-link {
+      background: none;
+      border: 1px solid var(--p-surface-700);
+      border-radius: 999px;
+      color: var(--p-text-muted-color);
+      font-family: var(--chat-font-mono);
+      font-size: 0.64rem;
+      padding: 2px 8px;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+
+      &:hover {
+        color: var(--chat-accent);
+        border-color: var(--chat-accent);
+      }
     }
 
-    @media (max-width: 768px) {
+    .unused {
+      font-size: 0.68rem;
+      color: var(--p-text-muted-color);
+      opacity: 0.6;
+      font-style: italic;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 820px) {
       .control-panel {
-        padding: 16px 16px 48px;
+        padding: 16px 14px 40px;
       }
 
-      .setting-row {
+      .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .agents-layout {
+        grid-template-columns: 1fr;
+
+        /* Master-detail becomes two screens: list, then editor with back */
+        &.detail-open .agent-rail { display: none; }
+      }
+
+      .agents-layout:not(.detail-open) .agent-editor .empty-panel {
+        display: none;
+      }
+
+      .back-btn { display: inline-flex; }
+
+      .agent-list { max-height: none; }
+
+      .field-row {
         flex-direction: column;
         align-items: stretch;
         gap: 8px;
       }
 
-      .health-grid {
-        flex-direction: column;
-      }
-
       .tool-row {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
+        align-items: stretch;
+        gap: 8px;
+      }
 
-        .tool-meta {
-          margin-left: 0;
-        }
+      .tool-agents {
+        justify-content: flex-start;
+        max-width: none;
       }
     }
   `,
@@ -748,28 +1315,36 @@ export class ControlPanelPageComponent implements OnInit {
   private readonly gateway = inject(GatewayApiService);
   private readonly messageService = inject(MessageService);
 
+  readonly tabs: { id: PanelTab; label: string; icon: string }[] = [
+    { id: 'overview', label: 'Overview', icon: 'pi-th-large' },
+    { id: 'orchestrator', label: 'Orchestrator', icon: 'pi-sitemap' },
+    { id: 'agents', label: 'Agents', icon: 'pi-users' },
+    { id: 'tools', label: 'Tools', icon: 'pi-wrench' },
+  ];
+
+  readonly activeTab = signal<PanelTab>('overview');
   readonly config = signal<GatewayConfig | null>(null);
   readonly health = signal<GatewayHealthInfo | null>(null);
   readonly models = signal<GatewayModelInfo[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
+  // Agents tab state
+  readonly selectedAgent = signal<string | null>(null);
+  readonly agentSearch = signal('');
+
+  // Tools tab state
+  readonly toolSearch = signal('');
+  readonly toolCategoryFilter = signal<string | null>(null);
+
   // Form state for orchestrator
   readonly orchModel = signal('');
   readonly orchMaxDelegations = signal(5);
   readonly orchSystemPrompt = signal('');
 
-  // Form state for each sub-agent (keyed by name)
-  agentForms: Record<
-    string,
-    {
-      model: string;
-      systemPrompt: string;
-      tools: string[];
-      temperature: number;
-      maxIterations: number;
-    }
-  > = {};
+  // Form state for each sub-agent (keyed by name), wrapped in a signal so
+  // dirty indicators update reactively
+  readonly agentForms = signal<Record<string, AgentForm>>({});
 
   // Snapshot of original values for dirty checking
   private orchOriginal = { model: '', maxDelegations: 5, systemPrompt: '' };
@@ -781,25 +1356,9 @@ export class ControlPanelPageComponent implements OnInit {
   readonly modelOptions = computed(() =>
     this.models().map((m) => ({
       name: m.name,
-      label: `${m.name}${m.sizeGb ? ` (${m.sizeGb}GB)` : ''}${
-        m.family ? ` · ${m.family}` : ''
-      }`,
+      label: `${m.name}${m.sizeGb ? ` (${m.sizeGb}GB)` : ''}`,
     }))
   );
-
-  readonly toolsByCategory = computed(() => {
-    const cfg = this.config();
-    if (!cfg) return [];
-    const catMap = new Map<string, GatewayToolInfo[]>();
-    for (const tool of cfg.tools) {
-      const cat = tool.category || 'Uncategorized';
-      if (!catMap.has(cat)) catMap.set(cat, []);
-      catMap.get(cat)!.push(tool);
-    }
-    return Array.from(catMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, tools]) => ({ name, tools }));
-  });
 
   readonly orchestratorDirty = computed(() => {
     return (
@@ -807,6 +1366,54 @@ export class ControlPanelPageComponent implements OnInit {
       this.orchMaxDelegations() !== this.orchOriginal.maxDelegations ||
       this.orchSystemPrompt() !== this.orchOriginal.systemPrompt
     );
+  });
+
+  readonly dirtyAgentCount = computed(() => {
+    const forms = this.agentForms();
+    return Object.keys(forms).filter((name) => this.isAgentDirtyForm(name))
+      .length;
+  });
+
+  readonly filteredAgents = computed(() => {
+    const cfg = this.config();
+    if (!cfg) return [];
+    const query = this.agentSearch().trim().toLowerCase();
+    if (!query) return cfg.subAgents;
+    return cfg.subAgents.filter(
+      (sa) =>
+        sa.name.toLowerCase().includes(query) ||
+        sa.description.toLowerCase().includes(query)
+    );
+  });
+
+  readonly selectedAgentDef = computed(() => {
+    const cfg = this.config();
+    const name = this.selectedAgent();
+    if (!cfg || !name) return null;
+    return cfg.subAgents.find((sa) => sa.name === name) ?? null;
+  });
+
+  readonly toolCategories = computed(() => {
+    const cfg = this.config();
+    if (!cfg) return [];
+    const cats = new Set<string>();
+    for (const tool of cfg.tools) cats.add(tool.category || 'other');
+    return Array.from(cats).sort((a, b) => a.localeCompare(b));
+  });
+
+  readonly filteredTools = computed<GatewayToolInfo[]>(() => {
+    const cfg = this.config();
+    if (!cfg) return [];
+    const query = this.toolSearch().trim().toLowerCase();
+    const category = this.toolCategoryFilter();
+    return cfg.tools.filter((tool) => {
+      if (category && (tool.category || 'other') !== category) return false;
+      if (!query) return true;
+      return (
+        tool.name.toLowerCase().includes(query) ||
+        tool.description.toLowerCase().includes(query)
+      );
+    });
   });
 
   ngOnInit(): void {
@@ -823,6 +1430,11 @@ export class ControlPanelPageComponent implements OnInit {
         this.config.set(cfg);
         this.initOrchestratorForm(cfg);
         this.initAgentForms(cfg);
+        // Keep the selection valid across refreshes
+        const selected = this.selectedAgent();
+        if (selected && !cfg.subAgents.some((sa) => sa.name === selected)) {
+          this.selectedAgent.set(null);
+        }
       },
       error: (err) => {
         this.error.set(
@@ -859,24 +1471,39 @@ export class ControlPanelPageComponent implements OnInit {
   }
 
   private initAgentForms(cfg: GatewayConfig): void {
-    this.agentForms = {};
+    const forms: Record<string, AgentForm> = {};
     this.agentOriginals = {};
     for (const sa of cfg.subAgents) {
-      const form = {
+      const form: AgentForm = {
         model: sa.agent.model || '',
         systemPrompt: sa.agent.systemPrompt || '',
         tools: [...(sa.agent.tools || [])],
         temperature: Math.round((sa.agent.temperature ?? 0.7) * 100),
         maxIterations: sa.agent.maxIterations || 10,
       };
-      this.agentForms[sa.name] = form;
+      forms[sa.name] = form;
       this.agentOriginals[sa.name] = JSON.stringify(form);
     }
+    this.agentForms.set(forms);
   }
 
-  getAgentForm(name: string) {
+  selectAgent(name: string): void {
+    this.selectedAgent.set(name);
+  }
+
+  /** Jump from the tools tab straight into an agent's editor. */
+  openAgent(name: string): void {
+    this.selectedAgent.set(name);
+    this.activeTab.set('agents');
+  }
+
+  shortAgentName(name: string): string {
+    return name.replace(/-agent$/, '');
+  }
+
+  getAgentForm(name: string): AgentForm {
     return (
-      this.agentForms[name] || {
+      this.agentForms()[name] || {
         model: '',
         systemPrompt: '',
         tools: [],
@@ -886,16 +1513,31 @@ export class ControlPanelPageComponent implements OnInit {
     );
   }
 
-  updateAgentForm(name: string, field: string, value: unknown): void {
-    if (!this.agentForms[name]) return;
-    (this.agentForms[name] as any)[field] = value;
-    // Trigger change detection by reassigning
-    this.agentForms = { ...this.agentForms };
+  updateAgentForm(name: string, field: keyof AgentForm, value: unknown): void {
+    this.agentForms.update((forms) => {
+      if (!forms[name]) return forms;
+      return {
+        ...forms,
+        [name]: { ...forms[name], [field]: value },
+      };
+    });
+  }
+
+  private isAgentDirtyForm(name: string): boolean {
+    const form = this.agentForms()[name];
+    if (!form || !this.agentOriginals[name]) return false;
+    return JSON.stringify(form) !== this.agentOriginals[name];
   }
 
   isAgentDirty(name: string): boolean {
-    if (!this.agentForms[name] || !this.agentOriginals[name]) return false;
-    return JSON.stringify(this.agentForms[name]) !== this.agentOriginals[name];
+    return this.isAgentDirtyForm(name);
+  }
+
+  agentsUsingTool(toolName: string): string[] {
+    const forms = this.agentForms();
+    return Object.keys(forms).filter((name) =>
+      forms[name].tools.includes(toolName)
+    );
   }
 
   unassignedTools(agentName: string): { name: string }[] {
@@ -909,21 +1551,20 @@ export class ControlPanelPageComponent implements OnInit {
 
   addToolToAgent(agentName: string): void {
     const toolName = this.addToolSelections[agentName];
-    if (!toolName || !this.agentForms[agentName]) return;
-    this.agentForms[agentName].tools = [
-      ...this.agentForms[agentName].tools,
+    if (!toolName) return;
+    this.updateAgentForm(agentName, 'tools', [
+      ...this.getAgentForm(agentName).tools,
       toolName,
-    ];
+    ]);
     this.addToolSelections[agentName] = '';
-    this.agentForms = { ...this.agentForms };
   }
 
   removeToolFromAgent(agentName: string, toolName: string): void {
-    if (!this.agentForms[agentName]) return;
-    this.agentForms[agentName].tools = this.agentForms[agentName].tools.filter(
-      (t) => t !== toolName
+    this.updateAgentForm(
+      agentName,
+      'tools',
+      this.getAgentForm(agentName).tools.filter((t) => t !== toolName)
     );
-    this.agentForms = { ...this.agentForms };
   }
 
   saveOrchestrator(): void {
@@ -938,13 +1579,15 @@ export class ControlPanelPageComponent implements OnInit {
       updates['systemPrompt'] = this.orchSystemPrompt();
     }
 
-    this.gateway.updateOrchestrator(updates as any).subscribe({
-      next: (res) => {
+    this.gateway.updateOrchestrator(updates as never).subscribe({
+      next: () => {
         this.orchOriginal = {
           model: this.orchModel(),
           maxDelegations: this.orchMaxDelegations(),
           systemPrompt: this.orchSystemPrompt(),
         };
+        // Recompute dirty state
+        this.orchModel.set(this.orchModel());
         this.messageService.add({
           severity: 'success',
           summary: 'Saved',
@@ -952,7 +1595,7 @@ export class ControlPanelPageComponent implements OnInit {
           life: 3000,
         });
       },
-      error: (err) => {
+      error: () => {
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
@@ -964,7 +1607,7 @@ export class ControlPanelPageComponent implements OnInit {
   }
 
   saveAgent(name: string): void {
-    const form = this.agentForms[name];
+    const form = this.agentForms()[name];
     if (!form) return;
 
     this.gateway
@@ -978,6 +1621,8 @@ export class ControlPanelPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.agentOriginals[name] = JSON.stringify(form);
+          // Nudge the signal so dirty indicators recompute
+          this.agentForms.update((forms) => ({ ...forms }));
           this.messageService.add({
             severity: 'success',
             summary: 'Saved',

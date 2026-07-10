@@ -23,7 +23,8 @@
           }
         ],
         "styles": ["apps/chat-frontend/src/styles.scss"],
-        "scripts": []
+        "scripts": [],
+        "serviceWorker": "apps/chat-frontend/ngsw-config.json"
       },
       "configurations": {
         "production": {
