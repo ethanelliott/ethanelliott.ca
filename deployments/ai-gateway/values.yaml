@@ -42,3 +42,20 @@ secretEnv: []
 
 # Set to true to create the secret via Helm (for development/testing)
 createSecret: false
+
+# Postgres connection for workflow persistence. The gateway boots fine
+# without it (workflow endpoints answer 503), so this can be rolled out
+# incrementally.
+postgres:
+  host: postgres
+  port: 5432
+  database: ai_gateway
+  username: ai_gateway
+  adminUser: postgres
+  adminSecretName: postgres-secrets
+  adminSecretKey: postgres-password
+  # Flip to true AFTER sealing a db password into
+  # templates/sealed-secret.yaml (see the comment in that file). While
+  # false, the sealed secret and db-init job are not rendered and the
+  # gateway runs without workflow persistence.
+  sealedSecretEnabled: false

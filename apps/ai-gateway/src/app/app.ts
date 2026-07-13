@@ -8,6 +8,7 @@ import { MetricsRouter } from './metrics/metrics.router';
 import { ConfigRouter } from './config/config.router';
 import { initializeToolRegistry } from './mcp/tool-registry';
 import { initializeAgents } from './agents';
+import { WorkflowsRouter, initializeWorkflowDb } from './workflows';
 
 // Initialize MCP tools and agents on startup
 import './mcp/tools';
@@ -18,6 +19,11 @@ export async function Application(fastify: FastifyInstance) {
 
   // Initialize the agent system
   await initializeAgents();
+
+  // Connect workflow persistence (Postgres). The gateway still serves
+  // chat/tools/agents when the database is unreachable — the workflows
+  // router degrades to 503s.
+  await initializeWorkflowDb();
 
   // Register routes
   fastify
@@ -38,4 +44,7 @@ export async function Application(fastify: FastifyInstance) {
   fastify
     .withTypeProvider<ZodTypeProvider>()
     .register(ConfigRouter, { prefix: '/config' });
+  fastify
+    .withTypeProvider<ZodTypeProvider>()
+    .register(WorkflowsRouter, { prefix: '/workflows' });
 }
