@@ -22,7 +22,10 @@
             "input": "apps/chat-frontend/public"
           }
         ],
-        "styles": ["apps/chat-frontend/src/styles.scss"],
+        "styles": [
+          "node_modules/ng-diagram/styles.css",
+          "apps/chat-frontend/src/styles.scss"
+        ],
         "scripts": [],
         "serviceWorker": "apps/chat-frontend/ngsw-config.json"
       },

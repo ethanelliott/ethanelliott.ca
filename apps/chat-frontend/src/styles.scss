@@ -107,6 +107,33 @@ kbd {
   }
 }
 
+// ---------------------------------------------------------------------------
+// ng-diagram theme — align the workflow canvas with the app's dark identity
+// (the library's dark theme keys off html[data-theme='dark']; we key off
+// .dark-mode, so map the variables ourselves)
+// ---------------------------------------------------------------------------
+html.dark-mode {
+  --ngd-diagram-background-color: #0b0b0d;
+  --ngd-background-line-minor-color: #1c1c20;
+  --ngd-background-line-major-color: #26262b;
+  --ngd-txt-primary-default: #fafafa;
+  --ngd-node-bg-primary-default: #18181b;
+  --ngd-node-stroke-primary-default: #3f3f46;
+  --ngd-node-stroke-primary-hover: var(--p-primary-400);
+  --ngd-node-port-fill-default: #27272a;
+  --ngd-node-port-fill-active: var(--p-primary-400);
+  --ngd-node-port-stroke-default: #52525b;
+  --ngd-node-port-stroke-active: #fafafa;
+  --ngd-focus-ring-node-active: color-mix(
+    in srgb,
+    var(--p-primary-500) 40%,
+    transparent
+  );
+  --ngd-ui-bg-primary-default: #18181b;
+  --ngd-ui-border-color: #27272a;
+  --ngd-shadow: rgba(0, 0, 0, 0.5);
+}
+
 // Animated shimmer text used by streaming status lines
 .shimmer-text {
   background: linear-gradient(
