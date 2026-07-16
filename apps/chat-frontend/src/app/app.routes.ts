@@ -22,6 +22,20 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'workflows',
+        loadComponent: () =>
+          import('./pages/workflows/workflows-page.component').then(
+            (m) => m.WorkflowsPageComponent
+          ),
+      },
+      {
+        path: 'workflows/:id',
+        loadComponent: () =>
+          import('./pages/workflows/workflow-editor-page.component').then(
+            (m) => m.WorkflowEditorPageComponent
+          ),
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./pages/settings/settings-page.component').then(

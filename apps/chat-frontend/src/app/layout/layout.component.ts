@@ -116,6 +116,14 @@ interface ConversationGroup {
         <div class="sidebar-footer">
           <a
             class="nav-link"
+            routerLink="/workflows"
+            (click)="maybeClose(closeOnAction)"
+          >
+            <i class="pi pi-sitemap"></i>
+            <span>Workflows</span>
+          </a>
+          <a
+            class="nav-link"
             routerLink="/control-panel"
             (click)="maybeClose(closeOnAction)"
           >
