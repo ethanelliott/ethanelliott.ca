@@ -31,12 +31,18 @@ export class WorkflowEntity {
   @Column({ type: 'boolean', default: true })
   enabled!: boolean;
 
-  /**
-   * Cron expression for scheduled execution. Stored now for schema
-   * stability — the scheduler lands in a later phase and ignores it today.
-   */
+  /** Cron expression for scheduled execution (5-field, UTC) */
   @Column({ type: 'text', nullable: true })
   cron!: string | null;
+
+  /**
+   * Next scheduled firing time. Doubles as the multi-replica claim: the
+   * scheduler atomically advances it (UPDATE … WHERE nextRunAt = <seen>)
+   * and only the replica whose update lands starts the run.
+   */
+  @Index()
+  @Column({ type: 'timestamptz', nullable: true })
+  nextRunAt!: Date | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

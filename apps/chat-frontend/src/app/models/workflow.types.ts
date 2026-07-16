@@ -34,6 +34,7 @@ export interface Workflow {
   settings: WorkflowSettings;
   enabled: boolean;
   cron: string | null;
+  nextRunAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +45,7 @@ export interface WorkflowSummary {
   description: string | null;
   enabled: boolean;
   cron: string | null;
+  nextRunAt: string | null;
   nodeCount: number;
   updatedAt: string;
   lastRun: {

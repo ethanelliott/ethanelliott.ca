@@ -86,6 +86,15 @@ interface ToolInfo {
           }
           <button
             class="ghost-btn"
+            [class.active]="scheduleOpen() || !!workflow?.cron"
+            (click)="scheduleOpen.set(!scheduleOpen())"
+            [title]="workflow?.cron ? 'cron: ' + workflow?.cron : 'Schedule this workflow'"
+          >
+            <i class="pi pi-clock"></i>
+            {{ workflow?.cron && workflow?.enabled ? scheduleLabel() : 'Schedule' }}
+          </button>
+          <button
+            class="ghost-btn"
             [class.active]="runsOpen()"
             (click)="toggleRuns()"
           >
@@ -110,6 +119,65 @@ interface ToolInfo {
           </button>
         </div>
       </div>
+
+      @if (scheduleOpen()) {
+      <div class="schedule-popover">
+        <div class="schedule-title">
+          <i class="pi pi-clock"></i>
+          Schedule
+        </div>
+        <div class="preset-row">
+          @for (preset of cronPresets; track preset.cron) {
+          <button
+            class="preset-chip"
+            [class.active]="cronDraft() === preset.cron"
+            (click)="cronDraft.set(preset.cron)"
+          >
+            {{ preset.label }}
+          </button>
+          }
+          <button
+            class="preset-chip"
+            [class.active]="cronDraft() === ''"
+            (click)="cronDraft.set('')"
+          >
+            Off
+          </button>
+        </div>
+        <div class="cron-row">
+          <input
+            class="field-input"
+            [ngModel]="cronDraft()"
+            (ngModelChange)="cronDraft.set($event)"
+            placeholder="Custom cron (e.g. 0 8 * * 1-5) — UTC"
+          />
+        </div>
+        <label class="check-row">
+          <input
+            type="checkbox"
+            [ngModel]="notifyOnFailure()"
+            (ngModelChange)="notifyOnFailure.set($event)"
+          />
+          <span>Notify me when a scheduled run fails</span>
+        </label>
+        <div class="schedule-actions">
+          @if (workflow?.nextRunAt && workflow?.enabled) {
+          <span class="next-run">next: {{ workflow?.nextRunAt | date : 'MMM d, HH:mm' }} UTC</span>
+          }
+          <button class="ghost-btn small" (click)="scheduleOpen.set(false)">
+            Close
+          </button>
+          <button
+            class="primary-btn"
+            [disabled]="saving()"
+            (click)="saveSchedule()"
+          >
+            <i class="pi pi-check"></i>
+            Save schedule
+          </button>
+        </div>
+      </div>
+      }
 
       <div class="editor-body">
         <!-- ─── Palette ─── -->
@@ -379,6 +447,7 @@ interface ToolInfo {
       flex-direction: column;
       height: 100%;
       background: var(--p-surface-950);
+      position: relative;
     }
 
     .editor-toolbar {
@@ -497,6 +566,81 @@ interface ToolInfo {
       display: flex;
       flex: 1;
       min-height: 0;
+    }
+
+    /* ─── Schedule popover ─── */
+    .schedule-popover {
+      position: absolute;
+      top: 52px;
+      right: 14px;
+      z-index: 50;
+      width: 360px;
+      background: color-mix(in srgb, var(--p-surface-900) 96%, transparent);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--p-surface-700);
+      border-radius: var(--chat-radius-md);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .schedule-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.84rem;
+      font-weight: 650;
+      color: var(--p-text-color);
+
+      i { color: var(--chat-accent); font-size: 0.8rem; }
+    }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .preset-chip {
+      background: none;
+      border: 1px solid var(--p-surface-700);
+      border-radius: 999px;
+      color: var(--p-text-muted-color);
+      font-family: inherit;
+      font-size: 0.7rem;
+      font-weight: 550;
+      padding: 4px 11px;
+      cursor: pointer;
+
+      &:hover { color: var(--p-text-color); }
+
+      &.active {
+        color: var(--chat-accent);
+        border-color: color-mix(in srgb, var(--p-primary-500) 45%, transparent);
+        background: color-mix(in srgb, var(--p-primary-500) 8%, transparent);
+      }
+    }
+
+    .cron-row .field-input {
+      font-family: var(--chat-font-mono);
+      font-size: 0.72rem;
+    }
+
+    .schedule-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .next-run {
+      margin-right: auto;
+      font-family: var(--chat-font-mono);
+      font-size: 0.64rem;
+      color: var(--chat-accent);
     }
 
     /* ─── Palette ─── */
@@ -841,6 +985,16 @@ export class WorkflowEditorPageComponent implements OnInit, OnDestroy {
   readonly saving = signal(false);
   readonly running = signal(false);
 
+  readonly scheduleOpen = signal(false);
+  readonly cronDraft = signal('');
+  readonly notifyOnFailure = signal(false);
+  readonly cronPresets = [
+    { label: 'Hourly', cron: '0 * * * *' },
+    { label: 'Daily 8:00', cron: '0 8 * * *' },
+    { label: 'Weekdays 9:00', cron: '0 9 * * 1-5' },
+    { label: 'Weekly Mon 9:00', cron: '0 9 * * 1' },
+  ];
+
   readonly runsOpen = signal(false);
   readonly runs = signal<WorkflowRunSummary[]>([]);
   readonly activeRunId = signal<string | null>(null);
@@ -877,6 +1031,8 @@ export class WorkflowEditorPageComponent implements OnInit, OnDestroy {
       next: (wf) => {
         this.workflow = wf;
         this.workflowName.set(wf.name);
+        this.cronDraft.set(wf.cron ?? '');
+        this.notifyOnFailure.set(wf.settings?.notifyOnFailure === true);
         this.model.set(
           initializeModel(this.graphToModel(wf.graph), this.injector)
         );
@@ -1175,6 +1331,57 @@ export class WorkflowEditorPageComponent implements OnInit, OnDestroy {
         },
       });
     });
+  }
+
+  scheduleLabel(): string {
+    const preset = this.cronPresets.find((p) => p.cron === this.workflow?.cron);
+    return preset?.label ?? this.workflow?.cron ?? 'Schedule';
+  }
+
+  saveSchedule(): void {
+    if (!this.workflow) return;
+    const cron = this.cronDraft().trim() || null;
+    this.saving.set(true);
+    this.api
+      .update(this.workflow.id, {
+        cron,
+        settings: {
+          ...this.workflow.settings,
+          notifyOnFailure: this.notifyOnFailure(),
+        },
+      })
+      .subscribe({
+        next: (res) => {
+          this.saving.set(false);
+          this.workflow = res.workflow;
+          this.scheduleOpen.set(false);
+          this.messageService.add({
+            severity: 'success',
+            summary: cron ? 'Scheduled' : 'Schedule removed',
+            detail: cron
+              ? `Runs on "${cron}" (UTC) — next ${
+                  res.workflow.nextRunAt
+                    ? new Date(res.workflow.nextRunAt).toLocaleString()
+                    : 'soon'
+                }`
+              : undefined,
+            life: 4000,
+          });
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Schedule failed',
+            detail:
+              err?.error?.message?.includes?.('cron') ||
+              err?.status === 400
+                ? 'Invalid cron expression'
+                : err?.error?.error || 'Unknown error',
+            life: 5000,
+          });
+        },
+      });
   }
 
   /** ─── runs panel ─────────────────────────────────────────────── */

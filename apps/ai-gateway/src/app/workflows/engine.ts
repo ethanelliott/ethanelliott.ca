@@ -129,7 +129,10 @@ export function validateGraph(graph: WorkflowGraph): GraphValidationError[] {
  * the first time it is reached and is skipped on later arrivals.
  */
 class WorkflowEngine {
-  private activeRuns = new Map<string, AbortController>();
+  private activeRuns = new Map<
+    string,
+    { abort: AbortController; workflowId: string }
+  >();
 
   /** Start a run in the background and return its id. */
   async startRun(
@@ -152,7 +155,7 @@ class WorkflowEngine {
     );
 
     const abort = new AbortController();
-    this.activeRuns.set(run.id, abort);
+    this.activeRuns.set(run.id, { abort, workflowId: workflow.id });
 
     // Fire and forget — errors are captured into the run row
     this.executeRun(workflow, run, input, abort.signal)
@@ -168,14 +171,22 @@ class WorkflowEngine {
 
   /** Request cancellation of an active run. */
   cancel(runId: string): boolean {
-    const abort = this.activeRuns.get(runId);
-    if (!abort) return false;
-    abort.abort();
+    const entry = this.activeRuns.get(runId);
+    if (!entry) return false;
+    entry.abort.abort();
     return true;
   }
 
   isActive(runId: string): boolean {
     return this.activeRuns.has(runId);
+  }
+
+  /** Whether any run of this workflow is currently executing */
+  isWorkflowActive(workflowId: string): boolean {
+    for (const entry of this.activeRuns.values()) {
+      if (entry.workflowId === workflowId) return true;
+    }
+    return false;
   }
 
   private async executeRun(

@@ -21,8 +21,9 @@ import {
 import { newDb, DataType } from 'pg-mem';
 import { randomUUID } from 'crypto';
 
-import { WORKFLOW_ENTITIES, initializeWorkflowDb } from '../src/app/workflows/db';
+import { WORKFLOW_ENTITIES, initializeWorkflowDb, getWorkflowRepos } from '../src/app/workflows/db';
 import { Application } from '../src/app/app';
+import { WorkflowScheduler, getWorkflowScheduler } from '../src/app/workflows/scheduler';
 
 let passed = 0;
 let failed = 0;
@@ -265,6 +266,70 @@ console.log('\n── api edges');
   check('delete works', del.body.success === true);
   const gone = await api('GET', `/workflows/${workflowId}`);
   check('deleted workflow 404s', gone.status === 404);
+}
+
+// ── 6. cron scheduler ───────────────────────────────────────────────
+console.log('\n── cron scheduler');
+{
+  // The Application boot started the singleton scheduler — stop it so
+  // ticks below are deterministic
+  getWorkflowScheduler().stop();
+
+  // invalid cron rejected by schema
+  const bad = await api('POST', '/workflows', {
+    name: 'Bad cron',
+    cron: 'not a cron',
+    graph: { nodes: [{ id: 't', kind: 'manual_trigger', config: {} }], edges: [] },
+  });
+  check('invalid cron rejected', bad.status === 400, bad.status);
+
+  // valid cron computes a future nextRunAt
+  const created = await api('POST', '/workflows', {
+    name: 'Scheduled test',
+    cron: '0 8 * * *',
+    graph: {
+      nodes: [
+        { id: 't', kind: 'manual_trigger', config: {} },
+        { id: 'calc', kind: 'tool_call', config: { tool: 'calculate', params: { expression: '1 + 1' } } },
+      ],
+      edges: [{ id: 'e1', from: 't', to: 'calc' }],
+    },
+  });
+  const wfId = created.body.workflow.id;
+  check('cron workflow created with future nextRunAt',
+    created.status === 201 && new Date(created.body.workflow.nextRunAt) > new Date(),
+    created.body.workflow.nextRunAt);
+
+  // Force the schedule into the past and drive two "replicas" concurrently:
+  // exactly one must claim the firing
+  const { workflows } = getWorkflowRepos();
+  await workflows.update({ id: wfId }, { nextRunAt: new Date(Date.now() - 60000) });
+  const replicaA = new WorkflowScheduler();
+  const replicaB = new WorkflowScheduler();
+  const [startedA, startedB] = await Promise.all([replicaA.tick(), replicaB.tick()]);
+  const totalStarted = startedA.length + startedB.length;
+  check('exactly one replica claims the firing', totalStarted === 1, { startedA, startedB });
+
+  // wait for the run to finish and confirm it was a cron run
+  let cronRun: any = null;
+  for (let i = 0; i < 50; i++) {
+    await sleep(100);
+    const list = await api('GET', `/workflows/${wfId}/runs`);
+    cronRun = list.body.runs[0];
+    if (cronRun && cronRun.status !== 'running') break;
+  }
+  check('cron run succeeded', cronRun?.status === 'succeeded', cronRun);
+  check('run recorded with cron trigger', cronRun?.trigger === 'cron', cronRun?.trigger);
+
+  // nextRunAt advanced into the future — an immediate re-tick fires nothing
+  const wfAfter = await api('GET', `/workflows/${wfId}`);
+  check('nextRunAt advanced to future', new Date(wfAfter.body.nextRunAt) > new Date(), wfAfter.body.nextRunAt);
+  const again = await replicaA.tick();
+  check('re-tick fires nothing', again.length === 0, again);
+
+  // disabling clears the schedule
+  const disabled = await api('PUT', `/workflows/${wfId}`, { enabled: false });
+  check('disable clears nextRunAt', disabled.body.workflow.nextRunAt === null, disabled.body.workflow.nextRunAt);
 }
 
 console.log(`\n═══ ${passed} passed, ${failed} failed`);

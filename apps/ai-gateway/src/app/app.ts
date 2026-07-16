@@ -8,7 +8,11 @@ import { MetricsRouter } from './metrics/metrics.router';
 import { ConfigRouter } from './config/config.router';
 import { initializeToolRegistry } from './mcp/tool-registry';
 import { initializeAgents } from './agents';
-import { WorkflowsRouter, initializeWorkflowDb } from './workflows';
+import {
+  WorkflowsRouter,
+  initializeWorkflowDb,
+  getWorkflowScheduler,
+} from './workflows';
 
 // Initialize MCP tools and agents on startup
 import './mcp/tools';
@@ -23,7 +27,16 @@ export async function Application(fastify: FastifyInstance) {
   // Connect workflow persistence (Postgres). The gateway still serves
   // chat/tools/agents when the database is unreachable — the workflows
   // router degrades to 503s.
-  await initializeWorkflowDb();
+  const workflowDbReady = await initializeWorkflowDb();
+
+  // Cron scheduler: multi-replica safe (DB-claimed firings), so it can
+  // run on every instance
+  if (workflowDbReady) {
+    getWorkflowScheduler().start();
+    fastify.addHook('onClose', async () => {
+      getWorkflowScheduler().stop();
+    });
+  }
 
   // Register routes
   fastify

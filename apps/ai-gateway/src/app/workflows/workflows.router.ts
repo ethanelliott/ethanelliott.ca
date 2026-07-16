@@ -7,6 +7,7 @@ import {
 } from './workflow.types';
 import { getStepRegistry } from './step-registry';
 import { validateGraph, getWorkflowEngine } from './engine';
+import { isValidCron, nextCronOccurrence } from './scheduler';
 import {
   getWorkflowRepos,
   isWorkflowDbAvailable,
@@ -19,8 +20,22 @@ const WorkflowBodySchema = z.object({
   graph: WorkflowGraphSchema,
   settings: WorkflowSettingsSchema.optional(),
   enabled: z.boolean().optional(),
-  cron: z.string().max(100).nullable().optional(),
+  cron: z
+    .string()
+    .max(100)
+    .refine(isValidCron, 'Invalid cron expression (expected 5-field cron)')
+    .nullable()
+    .optional(),
 });
+
+/** Next firing time for an enabled, scheduled workflow (else null) */
+function computeNextRunAt(
+  cron: string | null | undefined,
+  enabled: boolean
+): Date | null {
+  if (!cron || !enabled) return null;
+  return nextCronOccurrence(cron);
+}
 
 export const WorkflowsRouter: FastifyPluginAsync = async (
   fastify: FastifyInstance
@@ -91,6 +106,7 @@ export const WorkflowsRouter: FastifyPluginAsync = async (
           description: wf.description,
           enabled: wf.enabled,
           cron: wf.cron,
+          nextRunAt: wf.nextRunAt,
           nodeCount: wf.graph.nodes.length,
           updatedAt: wf.updatedAt,
           lastRun: lastRun
@@ -122,14 +138,17 @@ export const WorkflowsRouter: FastifyPluginAsync = async (
       }
 
       const { workflows } = getWorkflowRepos();
+      const enabled = request.body.enabled ?? true;
+      const cron = request.body.cron ?? null;
       const workflow = await workflows.save(
         workflows.create({
           name: request.body.name,
           description: request.body.description ?? null,
           graph: request.body.graph,
           settings: request.body.settings ?? {},
-          enabled: request.body.enabled ?? true,
-          cron: request.body.cron ?? null,
+          enabled,
+          cron,
+          nextRunAt: computeNextRunAt(cron, enabled),
         })
       );
 
@@ -186,6 +205,9 @@ export const WorkflowsRouter: FastifyPluginAsync = async (
       if (request.body.enabled !== undefined)
         workflow.enabled = request.body.enabled;
       if (request.body.cron !== undefined) workflow.cron = request.body.cron;
+
+      // Any change to cron/enabled reshapes the schedule
+      workflow.nextRunAt = computeNextRunAt(workflow.cron, workflow.enabled);
 
       await workflows.save(workflow);
       return { success: true, workflow };

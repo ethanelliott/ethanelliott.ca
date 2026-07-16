@@ -93,6 +93,12 @@ import { WorkflowSummary } from '../../models/workflow.types';
               ><i class="pi pi-circle-fill node-dot"></i
               >{{ wf.nodeCount }} steps</span
             >
+            @if (wf.cron && wf.enabled) {
+            <span class="cron-chip" [title]="'cron: ' + wf.cron">
+              <i class="pi pi-clock"></i>
+              {{ nextRunLabel(wf.nextRunAt) }}
+            </span>
+            }
             @if (wf.lastRun) {
             <span
               class="run-pill"
@@ -306,6 +312,20 @@ import { WorkflowSummary } from '../../models/workflow.types';
       }
     }
 
+    .cron-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--chat-font-mono);
+      font-size: 0.62rem;
+      color: var(--chat-accent);
+      border: 1px solid color-mix(in srgb, var(--p-primary-500) 35%, transparent);
+      border-radius: 999px;
+      padding: 2px 8px;
+
+      i { font-size: 0.58rem; }
+    }
+
     .run-pill {
       font-family: var(--chat-font-mono);
       font-size: 0.62rem;
@@ -452,6 +472,17 @@ export class WorkflowsPageComponent implements OnInit {
         });
       },
     });
+  }
+
+  nextRunLabel(nextRunAt: string | null): string {
+    if (!nextRunAt) return 'scheduled';
+    const diffMs = new Date(nextRunAt).getTime() - Date.now();
+    if (diffMs <= 0) return 'due now';
+    const mins = Math.round(diffMs / 60000);
+    if (mins < 60) return `in ${mins}m`;
+    const hours = Math.round(mins / 60);
+    if (hours < 48) return `in ${hours}h`;
+    return `in ${Math.round(hours / 24)}d`;
   }
 
   remove(wf: WorkflowSummary): void {
