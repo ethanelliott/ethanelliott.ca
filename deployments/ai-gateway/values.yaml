@@ -58,4 +58,4 @@ postgres:
   # templates/sealed-secret.yaml (see the comment in that file). While
   # false, the sealed secret and db-init job are not rendered and the
   # gateway runs without workflow persistence.
-  sealedSecretEnabled: false
+  sealedSecretEnabled: true
