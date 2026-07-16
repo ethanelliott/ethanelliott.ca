@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/split
-  tag: s-7f330b2
+  tag: s-3445076
   pullPolicy: Always
 
 service:
