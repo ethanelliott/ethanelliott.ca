@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('partials/head') %>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">🎬 B-Roll</a>
+      <span class="tagline">drop an HTML file, get a link</span>
+    </header>
+
+    <main class="container">
+      <% if (files.length === 0) { %>
+      <div class="empty">
+        <p class="empty-icon">🎞️</p>
+        <p>No takes yet.</p>
+        <p class="hint">
+          Drop an <code>.html</code> file anywhere on this page, or
+          <button type="button" class="linklike" id="pick-file">browse</button>
+          for one.
+        </p>
+      </div>
+      <% } else { %>
+      <div class="list-header">
+        <h1>Your takes</h1>
+        <button type="button" class="btn" id="pick-file">Upload</button>
+      </div>
+      <ul class="files">
+        <% for (const file of files) { %>
+        <li class="file" data-id="<%= file.id %>">
+          <a class="file-main" href="/v/<%= file.id %>">
+            <span class="file-name"><%= file.name %></span>
+            <span class="file-meta">
+              <%= file.filename %> · <%= fmtSize(file.size) %> ·
+              <%= file.created_at %> UTC
+            </span>
+          </a>
+          <div class="file-actions">
+            <button
+              type="button"
+              class="btn rename-file"
+              data-id="<%= file.id %>"
+              data-name="<%= file.name %>"
+            >
+              Rename
+            </button>
+            <button type="button" class="btn copy-link" data-id="<%= file.id %>">
+              Copy link
+            </button>
+            <button
+              type="button"
+              class="btn danger delete-file"
+              data-id="<%= file.id %>"
+            >
+              Delete
+            </button>
+          </div>
+        </li>
+        <% } %>
+      </ul>
+      <p class="hint center">
+        Drop an <code>.html</code> file anywhere on this page to upload another.
+      </p>
+      <% } %>
+    </main>
+
+    <input
+      type="file"
+      id="file-input"
+      accept=".html,.htm,text/html"
+      multiple
+      hidden
+    />
+    <div id="drop-overlay" hidden>
+      <div class="drop-message">🎬 Drop to upload</div>
+    </div>
+    <div id="toast" hidden></div>
+  </body>
+</html>

@@ -1,0 +1,83 @@
+{
+  "name": "b-roll",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/b-roll/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/apps/b-roll",
+        "format": ["esm"],
+        "bundle": true,
+        "main": "apps/b-roll/src/main.ts",
+        "tsConfig": "apps/b-roll/tsconfig.app.json",
+        "assets": [
+          {
+            "input": "apps/b-roll/src/views",
+            "glob": "**/*",
+            "output": "views"
+          },
+          {
+            "input": "apps/b-roll/src/public",
+            "glob": "**/*",
+            "output": "public"
+          }
+        ],
+        "generatePackageJson": true,
+        "thirdParty": false,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "b-roll:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "b-roll:build:development"
+        },
+        "production": {
+          "buildTarget": "b-roll:build:production"
+        }
+      }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "./tools/executors/deploy:container",
+      "options": {
+        "image": "ethanelliottio/b-roll",
+        "dockerfile": "apps/b-roll/Dockerfile",
+        "deployment": "b-roll"
+      }
+    }
+  }
+}
