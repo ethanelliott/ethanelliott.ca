@@ -65,9 +65,9 @@ export class AuthService {
       rpName: this.RP_NAME,
       rpID: this.RP_ID,
       userID: new TextEncoder().encode(user.webAuthnUserId) as any,
-      // Accounts are anonymous; the authenticator only needs a stable handle
-      // and a friendly display name to show in its own UI.
-      userName: `wheel-${user.id.slice(0, 8)}`,
+      // The authenticator only needs a stable handle and a friendly display
+      // name to show in its own UI.
+      userName: user.username || `wheel-${user.id.slice(0, 8)}`,
       userDisplayName: user.name,
       attestationType: 'none',
       authenticatorSelection: {
@@ -219,7 +219,7 @@ export class AuthService {
   }
 
   /**
-   * 📧 REGISTER USER (anonymous — generates a fresh random account)
+   * 📧 REGISTER USER (generates a fresh account with a unique username)
    */
   async registerUser(
     userData: UserRegistration
@@ -228,6 +228,7 @@ export class AuthService {
 
     const user = new User();
     user.name = userData?.name?.trim() || 'Wheel user';
+    user.username = await this._generateUniqueUsername();
     user.webAuthnUserId = webAuthnUserId;
     user.isActive = true;
 
@@ -283,7 +284,29 @@ export class AuthService {
       throw new HttpErrors.NotFound('User not found');
     }
 
+    // Accounts created before usernames existed get one on first load.
+    if (!user.username) {
+      user.username = await this._generateUniqueUsername();
+      await this._userRepository.update(userId, { username: user.username });
+    }
+
     return { user, credentials: user.credentials };
+  }
+
+  /** Generate a random, unused handle like `wheel-4f9c2a`. */
+  private async _generateUniqueUsername(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = `wheel-${randomBytes(3).toString('hex')}`;
+      const existing = await this._userRepository.findOneBy({
+        username: candidate,
+      });
+      if (!existing) {
+        return candidate;
+      }
+    }
+    // 16.7M combinations — colliding ten times in a row means something is
+    // deeply wrong with the RNG or the table.
+    throw new Error('Could not generate a unique username');
   }
 
   /**

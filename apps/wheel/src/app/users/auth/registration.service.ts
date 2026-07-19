@@ -24,6 +24,7 @@ export class RegistrationService {
       user: {
         id: user.id,
         name: user.name,
+        username: user.username ?? null,
         isActive: user.isActive,
         lastLoginAt: user.lastLoginAt || null,
         timestamp: user.timestamp,

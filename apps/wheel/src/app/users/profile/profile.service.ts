@@ -19,6 +19,7 @@ export class ProfileService {
       user: {
         id: profile.user.id,
         name: profile.user.name,
+        username: profile.user.username ?? null,
         isActive: profile.user.isActive,
         lastLoginAt: profile.user.lastLoginAt || null,
         timestamp: profile.user.timestamp,
@@ -46,6 +47,7 @@ export class ProfileService {
       user: {
         id: profile.user.id,
         name: profile.user.name,
+        username: profile.user.username ?? null,
         isActive: profile.user.isActive,
         lastLoginAt: profile.user.lastLoginAt || null,
         timestamp: profile.user.timestamp,

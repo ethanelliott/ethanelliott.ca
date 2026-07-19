@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SafeUserSchema } from '../user';
+import { SafeUserSchema, UsernameSchema } from '../user';
 
 export const UserCredentialInfoSchema = z.object({
   id: z.string(),
@@ -17,6 +17,7 @@ export const ProfileResponseSchema = z.object({
 
 export const UpdateProfileRequestSchema = z.object({
   name: z.string().min(1).max(50).optional(),
+  username: UsernameSchema.optional(),
 });
 
 export const UpdateProfileResponseSchema = z.object({

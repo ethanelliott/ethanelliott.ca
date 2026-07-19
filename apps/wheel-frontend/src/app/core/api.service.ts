@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { SaveWheelRequest, Wheel, WheelSummary } from './models';
+import { PublicUser, SaveWheelRequest, Wheel, WheelSummary } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -27,5 +27,21 @@ export class ApiService {
 
   deleteWheel(id: string): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(`${this.base}/${id}`);
+  }
+
+  searchUsers(query: string): Observable<PublicUser[]> {
+    return this.http.get<PublicUser[]>(`${environment.apiUrl}/users/search`, {
+      params: { q: query },
+    });
+  }
+
+  shareWheel(id: string, username: string): Observable<Wheel> {
+    return this.http.post<Wheel>(`${this.base}/${id}/shares`, { username });
+  }
+
+  unshareWheel(id: string, userId: string): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(
+      `${this.base}/${id}/shares/${userId}`
+    );
   }
 }
