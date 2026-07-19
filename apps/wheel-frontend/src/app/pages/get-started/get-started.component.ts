@@ -22,8 +22,8 @@ import { AuthService } from '../../core/auth.service';
         <div class="logo"><i class="pi pi-bullseye"></i></div>
         <h1>Create a wheel space</h1>
         <p class="subtitle">
-          No email, no username — just a passkey. We'll bind it to a private
-          space where your saved wheels live.
+          No password — just a passkey. You'll get a unique username so
+          friends can share wheels with you, and you can change it anytime.
         </p>
 
         <div class="field">

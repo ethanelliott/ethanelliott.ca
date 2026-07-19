@@ -49,8 +49,9 @@ export class AuthService {
   }
 
   /**
-   * Create a fresh anonymous account and bind a passkey to it. There is no
-   * username — an optional display name can be supplied up front.
+   * Create a fresh account and bind a passkey to it. A unique username is
+   * generated server-side (editable later); an optional display name can be
+   * supplied up front.
    */
   async register(input?: { name?: string }): Promise<void> {
     const start: any = await firstValueFrom(
@@ -83,7 +84,10 @@ export class AuthService {
     }
   }
 
-  async updateProfile(updates: { name?: string }): Promise<void> {
+  async updateProfile(updates: {
+    name?: string;
+    username?: string;
+  }): Promise<void> {
     const res: any = await firstValueFrom(
       this.http.put(`${this.baseUrl}/users/profile`, updates)
     );

@@ -12,6 +12,7 @@ import { InputText } from 'primeng/inputtext';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { WheelSummary } from '../../core/models';
 
 @Component({
@@ -50,15 +51,35 @@ import { WheelSummary } from '../../core/models';
                   @if (wheel.tagCount > 0) {
                     <span><i class="pi pi-tags"></i> {{ wheel.tagCount }} tags</span>
                   }
+                  @if (wheel.role === 'editor') {
+                    <span class="shared-badge">
+                      <i class="pi pi-users"></i>
+                      &#64;{{ wheel.owner.username || wheel.owner.name }}
+                    </span>
+                  } @else if (wheel.sharedCount > 0) {
+                    <span class="shared-badge">
+                      <i class="pi pi-users"></i> {{ wheel.sharedCount }}
+                    </span>
+                  }
                 </div>
               </div>
-              <button
-                class="delete-btn"
-                (click)="confirmDelete($event, wheel)"
-                aria-label="Delete wheel"
-              >
-                <i class="pi pi-trash"></i>
-              </button>
+              @if (wheel.role === 'owner') {
+                <button
+                  class="delete-btn"
+                  (click)="confirmDelete($event, wheel)"
+                  aria-label="Delete wheel"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              } @else {
+                <button
+                  class="delete-btn"
+                  (click)="confirmLeave($event, wheel)"
+                  aria-label="Leave shared wheel"
+                >
+                  <i class="pi pi-sign-out"></i>
+                </button>
+              }
             </div>
           }
         </div>
@@ -141,8 +162,16 @@ import { WheelSummary } from '../../core/models';
         text-overflow: ellipsis;
       }
     }
+    .shared-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--brand);
+      font-weight: 600;
+    }
     .meta {
       display: flex;
+      flex-wrap: wrap;
       gap: 14px;
       color: var(--text-secondary);
       font-size: 13px;
@@ -181,6 +210,7 @@ import { WheelSummary } from '../../core/models';
 })
 export class WheelsComponent {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
   private readonly confirm = inject(ConfirmationService);
@@ -252,6 +282,38 @@ export class WheelsComponent {
             this.messages.add({
               severity: 'error',
               summary: 'Could not delete wheel',
+            }),
+        });
+      },
+    });
+  }
+
+  confirmLeave(event: Event, wheel: WheelSummary): void {
+    event.stopPropagation();
+    this.confirm.confirm({
+      header: 'Leave wheel',
+      message: `Stop collaborating on "${wheel.name}"? The owner keeps the wheel.`,
+      icon: 'pi pi-sign-out',
+      accept: async () => {
+        const myId =
+          this.auth.profile()?.id ?? (await this.auth.loadProfile())?.id;
+        if (!myId) {
+          this.messages.add({
+            severity: 'error',
+            summary: 'Could not leave wheel',
+            detail: 'Please try again.',
+          });
+          return;
+        }
+        this.api.unshareWheel(wheel.id, myId).subscribe({
+          next: () =>
+            this.wheels.update((list) =>
+              list.filter((w) => w.id !== wheel.id)
+            ),
+          error: () =>
+            this.messages.add({
+              severity: 'error',
+              summary: 'Could not leave wheel',
             }),
         });
       },

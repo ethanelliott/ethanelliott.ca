@@ -77,9 +77,11 @@ export class RefreshToken {
 }
 
 /**
- * A Wheel account is intentionally anonymous: there is no username or email.
- * Each account is just a random id (the primary key) that a passkey is bound
- * to. An optional display name can be set later from the profile screen.
+ * A Wheel account is identified by a random uuid (the primary key) that a
+ * passkey is bound to — no email is ever stored. Every account also has a
+ * unique, user-editable username so wheels can be shared between people.
+ * The uuid backs uniqueness; the username is just a friendly, changeable
+ * handle on top of it.
  */
 @Entity()
 export class User {
@@ -94,6 +96,12 @@ export class User {
 
   @Column('text', { default: 'Wheel user' })
   name!: string;
+
+  // Unique handle used to find people when sharing wheels. Nullable so
+  // accounts created before usernames existed keep working — they are
+  // backfilled with a generated handle the next time their profile loads.
+  @Column('text', { unique: true, nullable: true })
+  username?: string | null;
 
   @Column('text', { unique: true })
   webAuthnUserId!: string;
@@ -119,25 +127,45 @@ export class User {
 
 // Zod schemas for validation
 
-// Registration takes no input — accounts are anonymous. An optional display
-// name may be provided to personalise the account up front.
+// Registration takes no credentials — a passkey is all that's required. An
+// optional display name may be provided to personalise the account up front;
+// a unique username is generated automatically and can be edited later.
 export const UserRegistrationSchema = z
   .object({
     name: z.string().min(1).max(50).optional(),
   })
   .optional();
 
+// 3-24 chars, letters/digits/underscore/hyphen, must start alphanumeric.
+export const USERNAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{2,23}$/;
+
+export const UsernameSchema = z
+  .string()
+  .regex(
+    USERNAME_PATTERN,
+    'Username must be 3-24 characters using letters, numbers, - or _'
+  );
+
 export const SafeUserSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  username: z.string().nullable(),
   isActive: z.boolean(),
   lastLoginAt: z.date().nullable(),
   timestamp: z.date(),
   updatedAt: z.date(),
 });
 
+// Minimal shape exposed to other users (search results, share lists).
+export const PublicUserSchema = z.object({
+  id: z.string().uuid(),
+  username: z.string().nullable(),
+  name: z.string(),
+});
+
 export type UserRegistration = z.infer<typeof UserRegistrationSchema>;
 export type SafeUser = z.infer<typeof SafeUserSchema>;
+export type PublicUser = z.infer<typeof PublicUserSchema>;
 
 // Register entities with TypeORM
 provide(ENTITIES, User);

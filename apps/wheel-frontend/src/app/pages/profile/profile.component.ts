@@ -27,7 +27,9 @@ import { UpdateService } from '../../core/update.service';
           styleClass="profile-avatar"
         />
         <h1>{{ auth.profile()?.name || 'Wheel user' }}</h1>
-        <span class="muted">Anonymous passkey account</span>
+        @if (auth.profile()?.username) {
+          <span class="muted">{{ '@' + auth.profile()?.username }}</span>
+        }
       </div>
 
       <h2 class="section-title">Account</h2>
@@ -35,6 +37,21 @@ import { UpdateService } from '../../core/update.service';
         <div class="field">
           <label>Display name</label>
           <input pInputText [(ngModel)]="name" placeholder="Wheel user" />
+        </div>
+        <div class="field">
+          <label>Username</label>
+          <input
+            pInputText
+            [(ngModel)]="username"
+            placeholder="e.g. wheel-fan-42"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <span class="field-hint">
+            Your unique handle — friends use it to share wheels with you.
+            3–24 characters: letters, numbers, - or _.
+          </span>
         </div>
         <p-button
           label="Save changes"
@@ -48,10 +65,6 @@ import { UpdateService } from '../../core/update.service';
         <div class="info-row">
           <i class="pi pi-key"></i>
           <span>Signed in with a passkey on this device.</span>
-        </div>
-        <div class="info-row">
-          <i class="pi pi-lock"></i>
-          <span>No email or username is stored — only your passkey.</span>
         </div>
       </div>
 
@@ -124,6 +137,10 @@ import { UpdateService } from '../../core/update.service';
         width: 100%;
       }
     }
+    .field-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
     .info-row {
       display: flex;
       align-items: center;
@@ -172,6 +189,7 @@ export class ProfileComponent {
   private readonly messages = inject(MessageService);
 
   name = '';
+  username = '';
   readonly saving = signal(false);
   readonly checkLabel = signal('Check for updates');
 
@@ -180,6 +198,7 @@ export class ProfileComponent {
       const p = this.auth.profile();
       if (p) {
         this.name = p.name;
+        this.username = p.username ?? '';
       }
     };
     if (this.auth.profile()) {
@@ -206,21 +225,38 @@ export class ProfileComponent {
   }
 
   save(): void {
+    const username = this.username.trim().toLowerCase();
+    if (username && !/^[a-z0-9][a-z0-9_-]{2,23}$/.test(username)) {
+      this.messages.add({
+        severity: 'warn',
+        summary: 'Invalid username',
+        detail: '3–24 characters: letters, numbers, - or _.',
+      });
+      return;
+    }
+
     this.saving.set(true);
     this.auth
-      .updateProfile({ name: this.name.trim() || 'Wheel user' })
+      .updateProfile({
+        name: this.name.trim() || 'Wheel user',
+        ...(username ? { username } : {}),
+      })
       .then(() => {
+        this.username = this.auth.profile()?.username ?? this.username;
         this.messages.add({
           severity: 'success',
           summary: 'Saved',
           detail: 'Your profile has been updated.',
         });
       })
-      .catch(() => {
+      .catch((error: any) => {
         this.messages.add({
           severity: 'error',
           summary: 'Could not save',
-          detail: 'Please try again.',
+          detail:
+            error?.status === 409
+              ? 'That username is already taken.'
+              : 'Please try again.',
         });
       })
       .finally(() => this.saving.set(false));
