@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -32,7 +33,17 @@ export class UserCredential {
   @Column('integer')
   counter!: number;
 
-  @ManyToOne(() => User, (c) => c.id)
+  // The FK is exposed as a plain column so lookups always have the value.
+  // (It used to be a relation property typed as string: findOneBy never
+  // loaded it, so login resolved `{ id: undefined }` — which TypeORM turns
+  // into "first user in the table" — and sessions crossed accounts.)
+  // The column keeps its historical name so existing rows survive
+  // schema synchronization.
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userIdId' })
+  user!: User;
+
+  @Column('uuid', { name: 'userIdId' })
   userId!: string;
 
   @Column('text', { nullable: true })
@@ -51,6 +62,15 @@ export class UserCredential {
   lastUsed!: Date;
 }
 
+/**
+ * Refresh tokens issued before this generation carried the wrong user id
+ * (see the UserCredential.userId note) and must never be honoured again.
+ * Legacy rows have a NULL generation (the column has no DB default on
+ * purpose), so bumping this constant force-expires every outstanding
+ * session and users re-authenticate with their passkey.
+ */
+export const REFRESH_TOKEN_GENERATION = 2;
+
 // Entity for refresh tokens
 @Entity()
 export class RefreshToken {
@@ -60,8 +80,16 @@ export class RefreshToken {
   @Column('text')
   token!: string;
 
-  @ManyToOne(() => User, (c) => c.id)
+  // Same FK-as-column shape (and historical column name) as UserCredential.
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userIdId' })
+  user!: User;
+
+  @Column('uuid', { name: 'userIdId' })
   userId!: string;
+
+  @Column('integer', { nullable: true })
+  generation?: number | null;
 
   @Column('timestamp')
   expiresAt!: Date;
@@ -118,10 +146,10 @@ export class User {
   @Column('timestamp', { nullable: true })
   lockedUntil?: Date;
 
-  @OneToMany(() => UserCredential, (cred) => cred.userId)
+  @OneToMany(() => UserCredential, (cred) => cred.user)
   credentials!: UserCredential[];
 
-  @OneToMany(() => RefreshToken, (cred) => cred.userId)
+  @OneToMany(() => RefreshToken, (token) => token.user)
   refreshTokens!: RefreshToken[];
 }
 
