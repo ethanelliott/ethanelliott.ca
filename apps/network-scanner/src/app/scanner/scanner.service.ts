@@ -81,6 +81,9 @@ export class ScannerService {
   private readonly ntfyEnabled = (process.env.NTFY_ENABLED || 'true') === 'true';
   private readonly ntfyUrl = process.env.NTFY_URL || 'https://ntfy.elliott.haus';
   private readonly ntfyTopic = process.env.NTFY_TOPIC || 'network';
+  // ntfy priority for regular new-device alerts (1=min … 3=default … 5=max).
+  // Randomized-MAC devices always drop one notch below this.
+  private readonly ntfyPriority = process.env.NTFY_PRIORITY || 'default';
   private readonly alertOnRandomized =
     (process.env.ALERT_ON_RANDOMIZED_MAC || 'true') === 'true';
 
@@ -322,7 +325,7 @@ export class ScannerService {
         method: 'POST',
         headers: {
           Title: 'New device on network',
-          Priority: device.randomized ? 'default' : 'high',
+          Priority: device.randomized ? 'low' : this.ntfyPriority,
           Tags: 'satellite,warning',
         },
         body: lines.join('\n'),

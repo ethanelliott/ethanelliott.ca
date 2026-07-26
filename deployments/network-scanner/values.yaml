@@ -65,6 +65,9 @@ env:
   NTFY_ENABLED: 'true'
   NTFY_URL: 'https://ntfy.elliott.haus'
   NTFY_TOPIC: 'network'
+  # ntfy priority for new-device alerts: 1=min, 2=low, 3=default, 4=high, 5=max.
+  # Randomized-MAC devices are sent one notch lower than this.
+  NTFY_PRIORITY: 'default'
   ALERT_ON_RANDOMIZED_MAC: 'true'
   # Comma-separated MAC allowlist that should never trigger a new-device alert.
   # KNOWN_MACS: 'aa:bb:cc:dd:ee:ff,...'
