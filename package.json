@@ -25,6 +25,7 @@
   "scripts": {
     "start": "bun nx serve",
     "build": "bun nx build",
+    "verify:passkey-identity": "tsx --tsconfig tsconfig.base.json tools/scripts/verify-passkey-identity.mts",
     "release:prepare": "bun run tools/scripts/prepare-release.ts",
     "release:prepare:dry-run": "bun run tools/scripts/prepare-release.ts --dry-run",
     "release:publish": "bun run tools/scripts/publish-release.ts",
