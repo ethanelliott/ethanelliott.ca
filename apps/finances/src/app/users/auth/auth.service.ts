@@ -15,7 +15,13 @@ import {
 import { randomBytes } from 'crypto';
 import HttpErrors from 'http-errors';
 import { Database } from '../../data-source';
-import { RefreshToken, User, UserCredential, UserRegistration } from '../user';
+import {
+  REFRESH_TOKEN_GENERATION,
+  RefreshToken,
+  User,
+  UserCredential,
+  UserRegistration,
+} from '../user';
 
 export interface JWTPayload {
   id: string;
@@ -207,10 +213,12 @@ export class AuthService {
       credentialId: credentialId,
     });
 
-    if (!credential) {
+    if (!credential || !credential.userId) {
       throw new HttpErrors.Unauthorized('Passkey not found');
     }
 
+    // The session MUST be issued for the account this exact passkey is
+    // bound to — never fall through to a broader lookup.
     const user = await this._userRepository.findOneBy({
       id: credential.userId,
     });
@@ -318,6 +326,18 @@ export class AuthService {
       throw new HttpErrors.Unauthorized('Invalid or expired refresh token');
     }
 
+    // Tokens minted before the current generation may be bound to the wrong
+    // account (see REFRESH_TOKEN_GENERATION) — force a fresh passkey login.
+    if (
+      tokenRecord.generation !== REFRESH_TOKEN_GENERATION ||
+      !tokenRecord.userId
+    ) {
+      await this._refreshTokenRepository.update(tokenRecord.id, {
+        revoked: true,
+      });
+      throw new HttpErrors.Unauthorized('Session expired, please log in again');
+    }
+
     const user = await this._userRepository.findOneBy({
       id: tokenRecord.userId,
     });
@@ -408,6 +428,7 @@ export class AuthService {
     const refreshToken = new RefreshToken();
     refreshToken.token = refreshTokenValue;
     refreshToken.userId = user.id;
+    refreshToken.generation = REFRESH_TOKEN_GENERATION;
     refreshToken.expiresAt = new Date(
       Date.now() + this.REFRESH_TOKEN_EXPIRY * 24 * 60 * 60 * 1000
     );
