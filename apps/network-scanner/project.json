@@ -1,0 +1,73 @@
+{
+  "name": "network-scanner",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/network-scanner/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/apps/network-scanner",
+        "format": ["esm"],
+        "bundle": true,
+        "main": "apps/network-scanner/src/main.ts",
+        "tsConfig": "apps/network-scanner/tsconfig.app.json",
+        "assets": ["apps/network-scanner/src/assets"],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {
+          "thirdParty": false
+        },
+        "production": {
+          "generateLockfile": true,
+          "thirdParty": false,
+          "esbuildOptions": {
+            "sourcemap": false,
+            "bundle": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "network-scanner:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "network-scanner:build:development"
+        },
+        "production": {
+          "buildTarget": "network-scanner:build:production"
+        }
+      }
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "executor": "./tools/executors/deploy:container",
+      "options": {
+        "image": "ethanelliottio/network-scanner",
+        "dockerfile": "apps/network-scanner/Dockerfile",
+        "deployment": "network-scanner"
+      }
+    }
+  }
+}

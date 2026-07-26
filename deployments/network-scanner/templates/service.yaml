@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "network-scanner.fullname" . }}
+  labels:
+    {{- include "network-scanner.labels" . | nindent 4 }}
+  # No prometheus.io/scrape here on purpose: the pod template carries the scrape
+  # annotation so the 'kubernetes-pods' job scrapes it exactly once.
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "network-scanner.selectorLabels" . | nindent 4 }}

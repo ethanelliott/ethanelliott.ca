@@ -1,0 +1,70 @@
+replicaCount: 1
+
+image:
+  repository: ethanelliottio/network-scanner
+  # CI (push to main) rewrites this tag to s-<shortsha> after build/push.
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  # Uncommon host port to avoid clashing with anything else on the node's
+  # network namespace (the pod runs with hostNetwork).
+  port: 9116
+
+# The scanner must sit on the physical LAN at layer 2 to do ARP discovery, so
+# it shares the host network and is pinned to a stable Linux node on the LAN.
+# (e-wsl is WSL2-NAT'd and excluded.)
+hostNetwork: true
+nodeSelector:
+  kubernetes.io/hostname: skynet
+
+tolerations: []
+
+# nmap ARP (-sn) and SYN (-sS) scans need raw sockets. CAP_NET_RAW/NET_ADMIN
+# are sufficient — no need for full privileged mode.
+securityContext:
+  runAsUser: 0
+  capabilities:
+    add:
+      - NET_RAW
+      - NET_ADMIN
+
+resources:
+  limits:
+    cpu: '1'
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '9116'
+
+  # ── what to scan ──────────────────────────────────────────────────────────
+  SCAN_TARGET: '192.168.86.0/24'
+
+  # ── discovery loop (presence / vendor / RTT) ─────────────────────────────
+  DISCOVERY_INTERVAL_SECONDS: '60'
+  DISCOVERY_TIMEOUT_SECONDS: '60'
+
+  # ── port-scan loop (full TCP fingerprinting) ─────────────────────────────
+  # NOTE: full 1-65535 SYN scan of the whole LAN every hour. Dial PORT_SCAN_PORTS
+  # down (e.g. '1-1024,1883,8008-8009,8443,32400') or raise the interval if it's
+  # too heavy for finicky IoT devices.
+  PORT_SCAN_ENABLED: 'true'
+  PORT_SCAN_INTERVAL_MINUTES: '60'
+  PORT_SCAN_PORTS: '1-65535'
+  PORT_SCAN_TIMING: '-T4'
+  PORT_SCAN_MIN_RATE: '2000'
+  PORT_SCAN_TIMEOUT_SECONDS: '1200'
+
+  # ── new-device alerts via ntfy ───────────────────────────────────────────
+  NTFY_ENABLED: 'true'
+  NTFY_URL: 'https://ntfy.elliott.haus'
+  NTFY_TOPIC: 'network'
+  ALERT_ON_RANDOMIZED_MAC: 'true'
+  # Comma-separated MAC allowlist that should never trigger a new-device alert.
+  # KNOWN_MACS: 'aa:bb:cc:dd:ee:ff,...'
