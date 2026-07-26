@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/wheel
-  tag: s-782b278
+  tag: s-66fa1fe
   pullPolicy: Always
 
 service:
