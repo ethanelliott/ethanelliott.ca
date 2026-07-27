@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ethanelliottio/split-frontend
-  tag: s-700123a
+  tag: s-6ec6cdb
   pullPolicy: Always
 
 service:
