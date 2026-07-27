@@ -1,0 +1,6 @@
+apiVersion: v2
+name: nextdns-exporter
+description: NextDNS analytics Prometheus exporter (raylas/nextdns-exporter)
+type: application
+version: 1.0.0
+appVersion: '0.7.0'

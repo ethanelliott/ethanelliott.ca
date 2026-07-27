@@ -1,0 +1,29 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/raylas/nextdns-exporter
+  tag: '0.7.0'
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9948
+
+nextdns:
+  # Profile ID — matches the one in ip-monitor's link-ip URL (link-ip.nextdns.io/f77259/…).
+  profile: 'f77259'
+  # API key is delivered via the SealedSecret in templates/sealed-secret.yaml.
+  secretName: nextdns-exporter-secrets
+  secretKey: api-key
+  # The exporter re-queries the NextDNS analytics API each scrape over this
+  # rolling window; the *_total gauges are counts within it (not counters).
+  resultWindow: '-5m'
+  resultLimit: '50'
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 25m
+    memory: 64Mi

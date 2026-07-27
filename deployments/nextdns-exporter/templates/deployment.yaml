@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nextdns-exporter.fullname" . }}
+  labels:
+    {{- include "nextdns-exporter.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "nextdns-exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nextdns-exporter.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.service.port }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http-metrics
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            - name: NEXTDNS_PROFILE
+              value: {{ .Values.nextdns.profile | quote }}
+            - name: NEXTDNS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.nextdns.secretName }}
+                  key: {{ .Values.nextdns.secretKey }}
+            - name: METRICS_PORT
+              value: {{ .Values.service.port | quote }}
+            - name: METRICS_PATH
+              value: "/metrics"
+            - name: NEXTDNS_RESULT_WINDOW
+              value: {{ .Values.nextdns.resultWindow | quote }}
+            - name: NEXTDNS_RESULT_LIMIT
+              value: {{ .Values.nextdns.resultLimit | quote }}
+          # The exporter queries the NextDNS API on each scrape, so probe the TCP
+          # socket rather than /metrics to avoid hammering the upstream API.
+          livenessProbe:
+            tcpSocket:
+              port: http-metrics
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: http-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
