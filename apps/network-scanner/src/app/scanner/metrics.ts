@@ -177,3 +177,35 @@ export const internetDownEventsTotal = new Counter({
   name: 'internet_down_events_total',
   help: 'Total number of times the internet was detected down.',
 });
+
+// ── Internet / WAN throughput (speed test) ────────────────────────────────
+
+export const internetDownloadMbps = new Gauge({
+  name: 'internet_speedtest_download_mbps',
+  help: 'Download throughput from the most recent speed test (Mbps).',
+});
+
+export const internetUploadMbps = new Gauge({
+  name: 'internet_speedtest_upload_mbps',
+  help: 'Upload throughput from the most recent speed test (Mbps).',
+});
+
+export const internetSpeedtestLatencyMs = new Gauge({
+  name: 'internet_speedtest_latency_ms',
+  help: 'Idle latency to the speed-test edge from the most recent test (ms).',
+});
+
+export const internetSpeedtestTimestamp = new Gauge({
+  name: 'internet_speedtest_timestamp_seconds',
+  help: 'Unix timestamp of the most recent successful speed test.',
+});
+
+export const internetSpeedtestsTotal = new Counter({
+  name: 'internet_speedtests_total',
+  help: 'Total number of speed tests run.',
+});
+
+export const internetSpeedtestErrorsTotal = new Counter({
+  name: 'internet_speedtest_errors_total',
+  help: 'Total number of failed speed tests.',
+});

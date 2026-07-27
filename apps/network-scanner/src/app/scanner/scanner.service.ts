@@ -5,7 +5,7 @@ import {
   scanPorts,
 } from './nmap';
 import { resolveMdnsNames, reverseDns } from './mdns';
-import { checkTargets, resolveTiming } from './internet';
+import { checkTargets, resolveTiming, runSpeedTest } from './internet';
 import * as m from './metrics';
 
 export interface DeviceState {
@@ -130,6 +130,19 @@ export class ScannerService {
   private readonly internetDownAfterMisses =
     Number(process.env.INTERNET_DOWN_AFTER_MISSES || 2);
 
+  // Periodic Cloudflare throughput test. Each run moves real data across the
+  // WAN, so it's deliberately infrequent (default every 6h).
+  private readonly speedTestEnabled =
+    (process.env.SPEEDTEST_ENABLED || 'true') === 'true';
+  private readonly speedTestIntervalMs =
+    Number(process.env.SPEEDTEST_INTERVAL_MINUTES || 360) * 60 * 1000;
+  private readonly speedTestDownloadBytes =
+    Number(process.env.SPEEDTEST_DOWNLOAD_MB || 50) * 1024 * 1024;
+  private readonly speedTestUploadBytes =
+    Number(process.env.SPEEDTEST_UPLOAD_MB || 10) * 1024 * 1024;
+  private readonly speedTestTimeoutMs =
+    Number(process.env.SPEEDTEST_TIMEOUT_SECONDS || 60) * 1000;
+
   private readonly ntfyEnabled = (process.env.NTFY_ENABLED || 'true') === 'true';
   private readonly ntfyUrl = process.env.NTFY_URL || 'https://ntfy.elliott.haus';
   private readonly ntfyTopic = process.env.NTFY_TOPIC || 'network';
@@ -173,6 +186,7 @@ export class ScannerService {
   private internetTimer: ReturnType<typeof setInterval> | null = null;
   private internetMisses = 0;
   private internetDownAlerted = false;
+  private speedTestTimer: ReturnType<typeof setInterval> | null = null;
 
   async start(): Promise<void> {
     console.log(`🛰️  Scanner target: ${this.target}`);
@@ -236,6 +250,18 @@ export class ScannerService {
         this.runInternetCheck().catch((e) => console.error('internet check failed:', e));
       }, this.internetIntervalMs);
     }
+
+    if (this.speedTestEnabled) {
+      console.log(
+        `🚀 Speed test every ${this.speedTestIntervalMs / 60000}min ` +
+          `(↓${this.speedTestDownloadBytes / 1024 / 1024}MB ↑${this.speedTestUploadBytes / 1024 / 1024}MB via Cloudflare)`
+      );
+      // Kick off an initial run shortly after boot, then on interval.
+      this.runSpeedTest().catch((e) => console.error('speed test failed:', e));
+      this.speedTestTimer = setInterval(() => {
+        this.runSpeedTest().catch((e) => console.error('speed test failed:', e));
+      }, this.speedTestIntervalMs);
+    }
   }
 
   stop(): void {
@@ -243,10 +269,12 @@ export class ScannerService {
     if (this.portScanTimer) clearInterval(this.portScanTimer);
     if (this.nameTimer) clearInterval(this.nameTimer);
     if (this.internetTimer) clearInterval(this.internetTimer);
+    if (this.speedTestTimer) clearInterval(this.speedTestTimer);
     this.discoveryTimer = null;
     this.portScanTimer = null;
     this.nameTimer = null;
     this.internetTimer = null;
+    this.speedTestTimer = null;
     console.log('🛑 Network scanner stopped');
   }
 
@@ -511,6 +539,30 @@ export class ScannerService {
           );
         }
       }
+    }
+  }
+
+  private async runSpeedTest(): Promise<void> {
+    m.internetSpeedtestsTotal.inc();
+    const started = Date.now();
+    try {
+      const r = await runSpeedTest({
+        downloadBytes: this.speedTestDownloadBytes,
+        uploadBytes: this.speedTestUploadBytes,
+        timeoutMs: this.speedTestTimeoutMs,
+      });
+      m.internetDownloadMbps.set(r.downloadMbps);
+      m.internetUploadMbps.set(r.uploadMbps);
+      if (r.latencyMs !== undefined) m.internetSpeedtestLatencyMs.set(r.latencyMs);
+      m.internetSpeedtestTimestamp.set(nowSec());
+      console.log(
+        `🚀 Speed test: ↓${r.downloadMbps.toFixed(1)} ↑${r.uploadMbps.toFixed(1)} Mbps` +
+          `${r.latencyMs !== undefined ? ` (${r.latencyMs}ms)` : ''} ` +
+          `in ${((Date.now() - started) / 1000).toFixed(0)}s`
+      );
+    } catch (err) {
+      m.internetSpeedtestErrorsTotal.inc();
+      console.error('speed test failed:', err);
     }
   }
 
