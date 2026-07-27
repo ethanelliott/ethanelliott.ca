@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: ethanelliottio/network-scanner
   # CI (push to main) rewrites this tag to s-<shortsha> after build/push.
-  tag: s-25f3a05
+  tag: s-e4d3439
   pullPolicy: Always
 
 service:
