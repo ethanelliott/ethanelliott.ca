@@ -981,7 +981,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "traefik_entrypoint_open_connections",
+          "expr": "sum by (entrypoint, protocol) (traefik_entrypoint_open_connections)",
           "legendFormat": "{{entrypoint}} ({{protocol}})",
           "refId": "A"
         }
@@ -1035,7 +1035,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "traefik_service_open_connections",
+          "expr": "sum by (service) (traefik_service_open_connections)",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -1114,7 +1114,7 @@
       "type": "table",
       "targets": [
         {
-          "expr": "traefik_service_server_up",
+          "expr": "max by (service, url) (traefik_service_server_up)",
           "format": "table",
           "instant": true,
           "refId": "A"

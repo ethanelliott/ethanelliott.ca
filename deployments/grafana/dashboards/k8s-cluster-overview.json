@@ -1995,7 +1995,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "nvidia_smi_utilization_gpu_ratio",
+          "expr": "max by (uuid) (nvidia_smi_utilization_gpu_ratio)",
           "legendFormat": "{{uuid}}",
           "refId": "A"
         }
@@ -2078,12 +2078,12 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "nvidia_smi_memory_used_bytes",
+          "expr": "max by (uuid) (nvidia_smi_memory_used_bytes)",
           "legendFormat": "Used",
           "refId": "A"
         },
         {
-          "expr": "nvidia_smi_memory_total_bytes",
+          "expr": "max by (uuid) (nvidia_smi_memory_total_bytes)",
           "legendFormat": "Total",
           "refId": "B"
         }
@@ -2168,7 +2168,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "nvidia_smi_utilization_memory_ratio",
+          "expr": "max by (uuid) (nvidia_smi_utilization_memory_ratio)",
           "legendFormat": "{{uuid}}",
           "refId": "A"
         }
@@ -2229,7 +2229,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "nvidia_smi_temperature_gpu",
+          "expr": "max by (uuid) (nvidia_smi_temperature_gpu)",
           "legendFormat": "{{uuid}}",
           "refId": "A"
         }
