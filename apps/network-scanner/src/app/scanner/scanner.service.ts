@@ -4,6 +4,7 @@ import {
   discover,
   scanPorts,
 } from './nmap';
+import { resolveMdnsNames, reverseDns } from './mdns';
 import * as m from './metrics';
 
 export interface DeviceState {
@@ -11,7 +12,11 @@ export interface DeviceState {
   ip: string;
   mac: string;
   vendor: string;
-  hostname: string;
+  hostname: string; // hostname from nmap (usually empty on this LAN)
+  name: string; // best friendly name (mDNS fn > mDNS instance > reverse DNS)
+  mdnsHost: string; // advertised .local hostname
+  model: string; // mDNS model string, e.g. "Google Nest Hub"
+  services: string[]; // mDNS service types the device advertises
   deviceType: string;
   randomized: boolean;
   firstSeen: number; // unix seconds
@@ -29,11 +34,24 @@ function isRandomizedMac(mac: string): boolean {
   return (firstOctet & 0x02) === 0x02;
 }
 
-/** Infer a friendly device type from vendor + open ports (best-effort). */
-function classify(vendor: string, ports: OpenPort[], randomized: boolean): string {
+/** Infer a friendly device type from mDNS model + vendor + open ports (best-effort). */
+function classify(
+  vendor: string,
+  ports: OpenPort[],
+  randomized: boolean,
+  model = ''
+): string {
   const v = vendor.toLowerCase();
+  const md = model.toLowerCase();
   const p = new Set(ports.map((x) => x.port));
   const has = (...xs: number[]) => xs.some((x) => p.has(x));
+
+  // mDNS model is the most reliable signal when we have it.
+  if (md.includes('chromecast')) return 'chromecast';
+  if (md.includes('nest hub') || md.includes('nest display')) return 'smart-display';
+  if (md.includes('home') || md.includes('nest audio') || md.includes('nest mini') ||
+      md.includes('nest wifi')) return 'smart-speaker';
+  if (md.includes('homepod') || md.includes('apple tv')) return 'apple-media';
 
   if (v.includes('google')) {
     if (has(8008, 8009)) return 'google-cast';
@@ -87,6 +105,15 @@ export class ScannerService {
   private readonly alertOnRandomized =
     (process.env.ALERT_ON_RANDOMIZED_MAC || 'true') === 'true';
 
+  private readonly nameResolutionEnabled =
+    (process.env.NAME_RESOLUTION_ENABLED || 'true') === 'true';
+  private readonly nameResolutionIntervalMs =
+    Number(process.env.NAME_RESOLUTION_INTERVAL_MINUTES || 15) * 60 * 1000;
+  private readonly mdnsBrowseMs =
+    Number(process.env.MDNS_BROWSE_SECONDS || 8) * 1000;
+  private readonly reverseDnsEnabled =
+    (process.env.REVERSE_DNS_ENABLED || 'true') === 'true';
+
   // ── state ────────────────────────────────────────────────────────────────
   private readonly devices = new Map<string, DeviceState>();
   private readonly allowlist = new Set(
@@ -98,6 +125,7 @@ export class ScannerService {
   private baselineDone = false;
   private discoveryTimer: ReturnType<typeof setInterval> | null = null;
   private portScanTimer: ReturnType<typeof setInterval> | null = null;
+  private nameTimer: ReturnType<typeof setInterval> | null = null;
 
   async start(): Promise<void> {
     console.log(`🛰️  Scanner target: ${this.target}`);
@@ -110,6 +138,13 @@ export class ScannerService {
     );
     console.log(
       `📢 ntfy ${this.ntfyEnabled ? `→ ${this.ntfyUrl}/${this.ntfyTopic}` : 'disabled'}`
+    );
+    console.log(
+      `🏷️  Name resolution ${
+        this.nameResolutionEnabled
+          ? `every ${this.nameResolutionIntervalMs / 60000}min (mDNS/DNS-SD${this.reverseDnsEnabled ? ' + reverse DNS' : ''})`
+          : 'disabled'
+      }`
     );
 
     // First discovery seeds the baseline silently so we don't alert on the
@@ -129,13 +164,22 @@ export class ScannerService {
         this.runPortScan().catch((e) => console.error('port scan failed:', e));
       }, this.portScanIntervalMs);
     }
+
+    if (this.nameResolutionEnabled) {
+      this.runNameResolution().catch((e) => console.error('name resolution failed:', e));
+      this.nameTimer = setInterval(() => {
+        this.runNameResolution().catch((e) => console.error('name resolution failed:', e));
+      }, this.nameResolutionIntervalMs);
+    }
   }
 
   stop(): void {
     if (this.discoveryTimer) clearInterval(this.discoveryTimer);
     if (this.portScanTimer) clearInterval(this.portScanTimer);
+    if (this.nameTimer) clearInterval(this.nameTimer);
     this.discoveryTimer = null;
     this.portScanTimer = null;
+    this.nameTimer = null;
     console.log('🛑 Network scanner stopped');
   }
 
@@ -168,7 +212,7 @@ export class ScannerService {
         existing.rttMs = h.rttMs;
         existing.lastSeen = nowSec();
         existing.up = true;
-        existing.deviceType = classify(existing.vendor, existing.ports, randomized);
+        existing.deviceType = classify(existing.vendor, existing.ports, randomized, existing.model);
       } else {
         const device: DeviceState = {
           key,
@@ -176,6 +220,10 @@ export class ScannerService {
           mac,
           vendor: h.vendor ?? '',
           hostname: h.hostname ?? '',
+          name: '',
+          mdnsHost: '',
+          model: '',
+          services: [],
           randomized,
           deviceType: classify(h.vendor ?? '', [], randomized),
           firstSeen: nowSec(),
@@ -229,7 +277,7 @@ export class ScannerService {
       const ports = byIp.get(device.ip);
       if (ports) {
         device.ports = ports.sort((a, b) => a.port - b.port);
-        device.deviceType = classify(device.vendor, device.ports, device.randomized);
+        device.deviceType = classify(device.vendor, device.ports, device.randomized, device.model);
       }
     }
 
@@ -239,6 +287,50 @@ export class ScannerService {
     this.publish();
     console.log(
       `🔌 Port scan complete: ${results.reduce((n, r) => n + r.ports.length, 0)} open ports across ${upIps.length} hosts in ${((Date.now() - started) / 1000).toFixed(0)}s`
+    );
+  }
+
+  private async runNameResolution(): Promise<void> {
+    const started = Date.now();
+    // Index currently-up devices by IP so we can attach names.
+    const byIp = new Map<string, DeviceState>();
+    for (const d of this.devices.values()) if (d.up) byIp.set(d.ip, d);
+    if (byIp.size === 0) return;
+
+    // 1) mDNS / DNS-SD → friendly name, .local host, model, advertised services.
+    let named = 0;
+    try {
+      const mdns = await resolveMdnsNames(this.mdnsBrowseMs);
+      for (const [ip, r] of mdns) {
+        const device = byIp.get(ip);
+        if (!device) continue;
+        if (r.name) device.name = r.name;
+        if (r.host) device.mdnsHost = r.host;
+        if (r.model) device.model = r.model;
+        if (r.services.length) {
+          device.services = [...new Set([...device.services, ...r.services])];
+        }
+        device.deviceType = classify(device.vendor, device.ports, device.randomized, device.model);
+        named++;
+      }
+    } catch (err) {
+      console.error('mDNS resolution failed:', err);
+    }
+
+    // 2) Reverse-DNS fallback for up devices that still have no friendly name.
+    if (this.reverseDnsEnabled) {
+      const pending = [...byIp.values()].filter((d) => !d.name);
+      await Promise.all(
+        pending.map(async (d) => {
+          const ptr = await reverseDns(d.ip);
+          if (ptr) d.name = ptr;
+        })
+      );
+    }
+
+    this.publish();
+    console.log(
+      `🏷️  Name resolution: ${named} devices named via mDNS in ${((Date.now() - started) / 1000).toFixed(0)}s`
     );
   }
 
@@ -265,7 +357,8 @@ export class ScannerService {
         ip: d.ip,
         mac: d.mac || 'unknown',
         vendor: d.vendor || 'unknown',
-        hostname: d.hostname || '',
+        // Prefer the resolved friendly name; fall back to .local host / nmap name.
+        hostname: d.name || d.mdnsHost || d.hostname || '',
         device_type: d.deviceType,
       };
       m.deviceUp.set(labels, d.up ? 1 : 0);
@@ -310,6 +403,7 @@ export class ScannerService {
     console.log(`🆕 New device: ${device.ip} ${device.mac} (${vendor})`);
     if (!this.ntfyEnabled) return;
 
+    const friendly = device.name || device.mdnsHost || device.hostname;
     const lines = [
       `A new device joined the network.`,
       ``,
@@ -318,7 +412,7 @@ export class ScannerService {
       `Vendor: ${vendor}`,
       `Type: ${device.deviceType}`,
     ];
-    if (device.hostname) lines.push(`Hostname: ${device.hostname}`);
+    if (friendly) lines.push(`Name: ${friendly}`);
 
     try {
       const res = await fetch(`${this.ntfyUrl}/${this.ntfyTopic}`, {

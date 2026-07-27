@@ -352,7 +352,7 @@
               "ip": "IP",
               "mac": "MAC",
               "vendor": "Vendor",
-              "hostname": "Hostname",
+              "hostname": "Name",
               "device_type": "Type",
               "Value": "Status"
             },
@@ -554,7 +554,7 @@
               "ip": "IP",
               "mac": "MAC",
               "vendor": "Vendor",
-              "hostname": "Hostname",
+              "hostname": "Name",
               "device_type": "Type"
             },
             "indexByName": {}
