@@ -27,7 +27,7 @@ export const deviceInfo = new Gauge({
 export const deviceLastSeen = new Gauge({
   name: 'network_device_last_seen_timestamp_seconds',
   help: 'Unix timestamp when the device was last seen up.',
-  labelNames: ['mac'],
+  labelNames: ['mac', 'ip', 'hostname'],
 });
 
 export const deviceFirstSeen = new Gauge({
@@ -114,4 +114,25 @@ export const scanErrorsTotal = new Counter({
 export const newDevicesTotal = new Counter({
   name: 'network_new_devices_total',
   help: 'Total number of never-before-seen devices detected since startup.',
+});
+
+export const newVendorsTotal = new Counter({
+  name: 'network_new_vendors_total',
+  help: 'Total number of never-before-seen vendors detected since startup.',
+});
+
+export const newPortsTotal = new Counter({
+  name: 'network_new_ports_total',
+  help: 'Total number of newly-opened ports detected on known devices.',
+});
+
+export const offlineEventsTotal = new Counter({
+  name: 'network_offline_events_total',
+  help: 'Total number of times a watched device dropped offline.',
+});
+
+export const deviceWatched = new Gauge({
+  name: 'network_device_watched',
+  help: '1 if the device is on the offline-alert watchlist.',
+  labelNames: ['ip', 'mac', 'hostname'],
 });
