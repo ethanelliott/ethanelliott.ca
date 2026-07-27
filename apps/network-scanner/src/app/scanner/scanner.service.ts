@@ -438,8 +438,9 @@ export class ScannerService {
         ip: d.ip,
         mac: d.mac || 'unknown',
         vendor: d.vendor || 'unknown',
-        // Prefer the resolved friendly name; fall back to .local host / nmap name.
-        hostname: d.name || d.mdnsHost || d.hostname || '',
+        // Prefer the resolved friendly name; fall back to .local host / nmap
+        // name, and finally the IP so every device is identifiable & selectable.
+        hostname: d.name || d.mdnsHost || d.hostname || d.ip,
         device_type: d.deviceType,
       };
       m.deviceUp.set(labels, d.up ? 1 : 0);
