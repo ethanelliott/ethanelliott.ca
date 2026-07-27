@@ -5,6 +5,7 @@ import {
   scanPorts,
 } from './nmap';
 import { resolveMdnsNames, reverseDns } from './mdns';
+import { checkTargets, resolveTiming } from './internet';
 import * as m from './metrics';
 
 export interface DeviceState {
@@ -106,6 +107,28 @@ export class ScannerService {
   private readonly portScanMinRate = Number(process.env.PORT_SCAN_MIN_RATE || 2000);
   private readonly portScanTimeoutMs =
     Number(process.env.PORT_SCAN_TIMEOUT_SECONDS || 1200) * 1000;
+  // Add nmap -sV to the port scan to fingerprint service/product/version.
+  private readonly serviceDetection =
+    (process.env.PORT_SCAN_SERVICE_DETECTION || 'true') === 'true';
+
+  private readonly internetEnabled =
+    (process.env.INTERNET_CHECK_ENABLED || 'true') === 'true';
+  private readonly internetIntervalMs =
+    Number(process.env.INTERNET_CHECK_INTERVAL_SECONDS || 30) * 1000;
+  private readonly internetTargets = (
+    process.env.INTERNET_CHECK_TARGETS || '1.1.1.1:443,8.8.8.8:443,1.1.1.1:53'
+  )
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  private readonly internetAttempts = Number(process.env.INTERNET_CHECK_ATTEMPTS || 3);
+  private readonly internetTimeoutMs =
+    Number(process.env.INTERNET_CHECK_TIMEOUT_SECONDS || 3) * 1000;
+  private readonly internetDnsHost = process.env.INTERNET_DNS_HOST || 'google.com';
+  private readonly internetAlertEnabled =
+    (process.env.INTERNET_ALERT_ENABLED || 'true') === 'true';
+  private readonly internetDownAfterMisses =
+    Number(process.env.INTERNET_DOWN_AFTER_MISSES || 2);
 
   private readonly ntfyEnabled = (process.env.NTFY_ENABLED || 'true') === 'true';
   private readonly ntfyUrl = process.env.NTFY_URL || 'https://ntfy.elliott.haus';
@@ -147,6 +170,9 @@ export class ScannerService {
   private discoveryTimer: ReturnType<typeof setInterval> | null = null;
   private portScanTimer: ReturnType<typeof setInterval> | null = null;
   private nameTimer: ReturnType<typeof setInterval> | null = null;
+  private internetTimer: ReturnType<typeof setInterval> | null = null;
+  private internetMisses = 0;
+  private internetDownAlerted = false;
 
   async start(): Promise<void> {
     console.log(`🛰️  Scanner target: ${this.target}`);
@@ -173,11 +199,14 @@ export class ScannerService {
       }, new-port: ${this.alertOnNewPorts}, new-vendor: ${this.alertOnNewVendor}`
     );
 
-    // First discovery seeds the baseline silently so we don't alert on the
-    // devices already present when the scanner boots.
-    await this.runDiscovery();
-    this.baselineDone = true;
-    console.log(`✅ Baseline established: ${this.devices.size} devices`);
+    // First discovery seeds the baseline silently (runDiscovery marks baseline
+    // once it succeeds). Wrapped so a transient first-scan failure doesn't stop
+    // the other loops (port scan, name resolution, internet health) from running.
+    try {
+      await this.runDiscovery();
+    } catch (e) {
+      console.error('initial discovery failed; baseline will be set on first success:', e);
+    }
 
     this.discoveryTimer = setInterval(() => {
       this.runDiscovery().catch((e) => console.error('discovery failed:', e));
@@ -197,15 +226,27 @@ export class ScannerService {
         this.runNameResolution().catch((e) => console.error('name resolution failed:', e));
       }, this.nameResolutionIntervalMs);
     }
+
+    if (this.internetEnabled) {
+      console.log(
+        `🌐 Internet health every ${this.internetIntervalMs / 1000}s → ${this.internetTargets.join(', ')}`
+      );
+      this.runInternetCheck().catch((e) => console.error('internet check failed:', e));
+      this.internetTimer = setInterval(() => {
+        this.runInternetCheck().catch((e) => console.error('internet check failed:', e));
+      }, this.internetIntervalMs);
+    }
   }
 
   stop(): void {
     if (this.discoveryTimer) clearInterval(this.discoveryTimer);
     if (this.portScanTimer) clearInterval(this.portScanTimer);
     if (this.nameTimer) clearInterval(this.nameTimer);
+    if (this.internetTimer) clearInterval(this.internetTimer);
     this.discoveryTimer = null;
     this.portScanTimer = null;
     this.nameTimer = null;
+    this.internetTimer = null;
     console.log('🛑 Network scanner stopped');
   }
 
@@ -305,6 +346,13 @@ export class ScannerService {
     m.scannerUp.set(1);
     this.publish();
 
+    // The first successful scan is the silent baseline (no alerts fired above,
+    // since newDevices only fills once baselineDone is true).
+    if (!this.baselineDone) {
+      this.baselineDone = true;
+      console.log(`✅ Baseline established: ${this.devices.size} devices`);
+    }
+
     for (const { device, newVendor } of newDevices) await this.alertNewDevice(device, newVendor);
     for (const device of offlineAlerts) await this.alertOffline(device);
     for (const device of recoveryAlerts) await this.alertOnline(device);
@@ -331,7 +379,8 @@ export class ScannerService {
         this.portScanPorts,
         this.portScanTiming,
         this.portScanMinRate,
-        this.portScanTimeoutMs
+        this.portScanTimeoutMs,
+        this.serviceDetection
       );
     } catch (err) {
       m.scanErrorsTotal.inc({ scan_type: 'port' });
@@ -414,6 +463,57 @@ export class ScannerService {
     );
   }
 
+  private async runInternetCheck(): Promise<void> {
+    m.internetChecksTotal.inc();
+    const results = await checkTargets(
+      this.internetTargets,
+      this.internetAttempts,
+      this.internetTimeoutMs
+    );
+    let anyUp = false;
+    for (const r of results) {
+      m.internetSuccessRatio.set({ target: r.target }, r.attempts ? r.successes / r.attempts : 0);
+      if (r.rttMs !== undefined) m.internetRttMs.set({ target: r.target }, r.rttMs);
+      if (r.successes > 0) anyUp = true;
+    }
+    m.internetUp.set(anyUp ? 1 : 0);
+
+    const dnsSec = await resolveTiming(this.internetDnsHost, this.internetTimeoutMs);
+    if (dnsSec !== null) m.internetDnsResolveSeconds.set({ host: this.internetDnsHost }, dnsSec);
+
+    // Down / recovery detection, debounced by INTERNET_DOWN_AFTER_MISSES.
+    if (anyUp) {
+      this.internetMisses = 0;
+      if (this.internetDownAlerted) {
+        this.internetDownAlerted = false;
+        console.log('🌐 Internet recovered');
+        if (this.internetAlertEnabled) {
+          await this.notify(
+            'Internet back online',
+            'WAN connectivity has recovered.',
+            'globe_with_meridians,green_circle',
+            'low'
+          );
+        }
+      }
+    } else {
+      this.internetMisses++;
+      if (!this.internetDownAlerted && this.internetMisses >= this.internetDownAfterMisses) {
+        this.internetDownAlerted = true;
+        m.internetDownEventsTotal.inc();
+        console.log('🌐 Internet DOWN');
+        if (this.internetAlertEnabled) {
+          await this.notify(
+            'Internet is DOWN',
+            `No internet targets reachable (${this.internetTargets.join(', ')}).`,
+            'globe_with_meridians,red_circle',
+            this.ntfyPriority
+          );
+        }
+      }
+    }
+  }
+
   // ── metric publishing ──────────────────────────────────────────────────────
 
   /** Reset and fully repopulate every gauge from the in-memory device map. */
@@ -425,6 +525,7 @@ export class ScannerService {
     m.deviceRtt.reset();
     m.deviceOpenPorts.reset();
     m.devicePortOpen.reset();
+    m.deviceServiceInfo.reset();
     m.devicesByVendor.reset();
     m.devicesByType.reset();
     m.deviceWatched.reset();
@@ -468,6 +569,19 @@ export class ScannerService {
             },
             1
           );
+          if (port.product || port.version) {
+            m.deviceServiceInfo.set(
+              {
+                ip: d.ip,
+                mac: d.mac || 'unknown',
+                port: String(port.port),
+                service: port.service || 'unknown',
+                product: port.product || '',
+                version: port.version || '',
+              },
+              1
+            );
+          }
         }
         const vendor = d.vendor || 'unknown';
         vendorCounts.set(vendor, (vendorCounts.get(vendor) ?? 0) + 1);
@@ -569,7 +683,10 @@ export class ScannerService {
 
   private async alertNewPorts(device: DeviceState, ports: OpenPort[]): Promise<void> {
     m.newPortsTotal.inc(ports.length);
-    const list = ports.map((p) => `${p.port}/${p.protocol}${p.service ? ` (${p.service})` : ''}`);
+    const list = ports.map((p) => {
+      const detail = [p.service, p.product, p.version].filter(Boolean).join(' ');
+      return `${p.port}/${p.protocol}${detail ? ` (${detail})` : ''}`;
+    });
     console.log(`🔓 New port(s) on ${this.label(device)}: ${list.join(', ')}`);
     await this.notify(
       'New open port detected',

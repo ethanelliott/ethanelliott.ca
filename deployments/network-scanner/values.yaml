@@ -60,6 +60,9 @@ env:
   PORT_SCAN_TIMING: '-T4'
   PORT_SCAN_MIN_RATE: '2000'
   PORT_SCAN_TIMEOUT_SECONDS: '1200'
+  # Add nmap -sV to fingerprint the product/version behind each open port
+  # (e.g. "OpenSSH 9.6"). Only probes ports already found open, so cheap.
+  PORT_SCAN_SERVICE_DETECTION: 'true'
 
   # ── new-device alerts via ntfy ───────────────────────────────────────────
   NTFY_ENABLED: 'true'
@@ -77,6 +80,19 @@ env:
   NAME_RESOLUTION_INTERVAL_MINUTES: '15'
   MDNS_BROWSE_SECONDS: '8'
   REVERSE_DNS_ENABLED: 'true'
+
+  # ── internet / WAN health ────────────────────────────────────────────────
+  # TCP-connect probes to well-known hosts + DNS-resolution timing. Sends a
+  # down/recovery ntfy alert (ntfy.elliott.haus resolves to the local cluster,
+  # so alerts still get out when the WAN is down).
+  INTERNET_CHECK_ENABLED: 'true'
+  INTERNET_CHECK_INTERVAL_SECONDS: '30'
+  INTERNET_CHECK_TARGETS: '1.1.1.1:443,8.8.8.8:443,1.1.1.1:53'
+  INTERNET_CHECK_ATTEMPTS: '3'
+  INTERNET_CHECK_TIMEOUT_SECONDS: '3'
+  INTERNET_DNS_HOST: 'google.com'
+  INTERNET_ALERT_ENABLED: 'true'
+  INTERNET_DOWN_AFTER_MISSES: '2'
 
   # ── presence & change alerting ───────────────────────────────────────────
   # Offline alerts fire only for devices on the watchlist. Match by MAC and/or

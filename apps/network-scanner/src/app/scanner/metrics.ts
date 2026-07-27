@@ -56,6 +56,12 @@ export const devicePortOpen = new Gauge({
   labelNames: ['ip', 'mac', 'port', 'service'],
 });
 
+export const deviceServiceInfo = new Gauge({
+  name: 'network_device_service_info',
+  help: 'Service/version fingerprint per open port from nmap -sV (always 1).',
+  labelNames: ['ip', 'mac', 'port', 'service', 'product', 'version'],
+});
+
 // ── Aggregates ────────────────────────────────────────────────────────────
 
 export const devicesTotal = new Gauge({
@@ -135,4 +141,39 @@ export const deviceWatched = new Gauge({
   name: 'network_device_watched',
   help: '1 if the device is on the offline-alert watchlist.',
   labelNames: ['ip', 'mac', 'hostname'],
+});
+
+// ── Internet / WAN health ─────────────────────────────────────────────────
+
+export const internetUp = new Gauge({
+  name: 'internet_up',
+  help: '1 if any internet target was reachable in the last check.',
+});
+
+export const internetRttMs = new Gauge({
+  name: 'internet_rtt_ms',
+  help: 'Average TCP-handshake RTT to an internet target (ms).',
+  labelNames: ['target'],
+});
+
+export const internetSuccessRatio = new Gauge({
+  name: 'internet_probe_success_ratio',
+  help: 'Fraction of successful TCP probes to an internet target (0-1).',
+  labelNames: ['target'],
+});
+
+export const internetDnsResolveSeconds = new Gauge({
+  name: 'internet_dns_resolve_seconds',
+  help: 'Time to resolve a well-known hostname via the pod resolver.',
+  labelNames: ['host'],
+});
+
+export const internetChecksTotal = new Counter({
+  name: 'internet_checks_total',
+  help: 'Total number of internet-health checks run.',
+});
+
+export const internetDownEventsTotal = new Counter({
+  name: 'internet_down_events_total',
+  help: 'Total number of times the internet was detected down.',
 });
