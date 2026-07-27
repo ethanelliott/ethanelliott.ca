@@ -69,5 +69,13 @@ env:
   # Randomized-MAC devices are sent one notch lower than this.
   NTFY_PRIORITY: 'default'
   ALERT_ON_RANDOMIZED_MAC: 'true'
+
+  # ── friendly-name resolution (mDNS/DNS-SD + reverse DNS) ─────────────────
+  # Resolves human names like "Living Room speaker" / "Office Display" for
+  # devices that advertise them (Google Cast, Apple, printers, ESPHome, …).
+  NAME_RESOLUTION_ENABLED: 'true'
+  NAME_RESOLUTION_INTERVAL_MINUTES: '15'
+  MDNS_BROWSE_SECONDS: '8'
+  REVERSE_DNS_ENABLED: 'true'
   # Comma-separated MAC allowlist that should never trigger a new-device alert.
   # KNOWN_MACS: 'aa:bb:cc:dd:ee:ff,...'
