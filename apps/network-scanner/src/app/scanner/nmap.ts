@@ -12,6 +12,8 @@ export interface OpenPort {
   port: number;
   protocol: string;
   service?: string;
+  product?: string; // e.g. "OpenSSH" (only with -sV service detection)
+  version?: string; // e.g. "9.6p1"
 }
 
 export interface HostPorts {
@@ -111,19 +113,22 @@ export async function discover(target: string, timeoutMs: number): Promise<Disco
 /**
  * TCP port scan of the given IPs. Uses SYN scan (`-sS`, needs CAP_NET_RAW) and
  * `--open` so only open ports are reported. Ports/timing are caller-controlled.
+ * When `serviceDetection` is set, adds `-sV` to identify the product/version on
+ * each open port (probes only open ports, so the extra cost scales with those).
  */
 export async function scanPorts(
   ips: string[],
   ports: string,
   timing: string,
   minRate: number,
-  timeoutMs: number
+  timeoutMs: number,
+  serviceDetection = false
 ): Promise<HostPorts[]> {
   if (ips.length === 0) return [];
-  const xml = await runNmap(
-    ['-sS', '-n', '--open', timing, `--min-rate=${minRate}`, '-p', ports, '-oX', '-', ...ips],
-    timeoutMs
-  );
+  const args = ['-sS', '-n', '--open', timing, `--min-rate=${minRate}`, '-p', ports];
+  if (serviceDetection) args.push('-sV', '--version-intensity', '2');
+  args.push('-oX', '-', ...ips);
+  const xml = await runNmap(args, timeoutMs);
 
   const results: HostPorts[] = [];
   for (const block of hostBlocks(xml)) {
@@ -143,6 +148,8 @@ export async function scanPorts(
         port: Number(attr(portTag, 'portid')),
         protocol: attr(portTag, 'protocol') ?? 'tcp',
         service: serviceTag ? attr(serviceTag, 'name') : undefined,
+        product: serviceTag ? attr(serviceTag, 'product') : undefined,
+        version: serviceTag ? attr(serviceTag, 'version') : undefined,
       });
     }
     results.push({ ip, ports: openPorts });
