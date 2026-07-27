@@ -77,5 +77,20 @@ env:
   NAME_RESOLUTION_INTERVAL_MINUTES: '15'
   MDNS_BROWSE_SECONDS: '8'
   REVERSE_DNS_ENABLED: 'true'
+
+  # ── presence & change alerting ───────────────────────────────────────────
+  # Offline alerts fire only for devices on the watchlist. Match by MAC and/or
+  # by a case-insensitive substring of the resolved name — e.g. WATCH_NAMES set
+  # to 'office display,printer' watches those devices. Left empty = no offline
+  # alerts. A device must miss OFFLINE_AFTER_MISSES consecutive discovery scans
+  # (~1 min each) before it's reported offline; a recovery ping is sent when it
+  # returns.
+  WATCH_MACS: ''
+  WATCH_NAMES: ''
+  OFFLINE_AFTER_MISSES: '3'
+  # Alert when a known device opens a port it wasn't serving before.
+  ALERT_ON_NEW_PORTS: 'true'
+  # Flag new devices whose vendor has never been seen on the network before.
+  ALERT_ON_NEW_VENDOR: 'true'
   # Comma-separated MAC allowlist that should never trigger a new-device alert.
   # KNOWN_MACS: 'aa:bb:cc:dd:ee:ff,...'

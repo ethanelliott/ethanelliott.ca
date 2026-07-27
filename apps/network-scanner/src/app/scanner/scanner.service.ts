@@ -24,9 +24,20 @@ export interface DeviceState {
   up: boolean;
   rttMs?: number;
   ports: OpenPort[];
+  misses: number; // consecutive discovery scans missed while down
+  offlineAlerted: boolean; // an offline ntfy alert has been sent, awaiting recovery
+  portsSeeded: boolean; // a first port scan has run, so new-port diffing is valid
+  watched: boolean; // on the offline-alert watchlist
 }
 
 const nowSec = () => Math.floor(Date.now() / 1000);
+
+/** Parse a comma-separated env value into a trimmed, lowercased list. */
+const csv = (v?: string) =>
+  (v || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
 
 /** Locally-administered ("randomized") MACs have bit 1 of the first octet set. */
 function isRandomizedMac(mac: string): boolean {
@@ -114,8 +125,18 @@ export class ScannerService {
   private readonly reverseDnsEnabled =
     (process.env.REVERSE_DNS_ENABLED || 'true') === 'true';
 
+  // Offline / change alerting.
+  private readonly watchMacs = new Set(csv(process.env.WATCH_MACS));
+  private readonly watchNames = csv(process.env.WATCH_NAMES);
+  private readonly offlineAfterMisses = Number(process.env.OFFLINE_AFTER_MISSES || 3);
+  private readonly alertOnNewPorts =
+    (process.env.ALERT_ON_NEW_PORTS || 'true') === 'true';
+  private readonly alertOnNewVendor =
+    (process.env.ALERT_ON_NEW_VENDOR || 'true') === 'true';
+
   // ── state ────────────────────────────────────────────────────────────────
   private readonly devices = new Map<string, DeviceState>();
+  private readonly knownVendors = new Set<string>();
   private readonly allowlist = new Set(
     (process.env.KNOWN_MACS || '')
       .split(',')
@@ -145,6 +166,11 @@ export class ScannerService {
           ? `every ${this.nameResolutionIntervalMs / 60000}min (mDNS/DNS-SD${this.reverseDnsEnabled ? ' + reverse DNS' : ''})`
           : 'disabled'
       }`
+    );
+    console.log(
+      `🔔 Alerts — watchlist: ${
+        this.watchMacs.size + this.watchNames.length || 'none'
+      }, new-port: ${this.alertOnNewPorts}, new-vendor: ${this.alertOnNewVendor}`
     );
 
     // First discovery seeds the baseline silently so we don't alert on the
@@ -196,7 +222,7 @@ export class ScannerService {
     }
 
     const seen = new Set<string>();
-    const newDevices: DeviceState[] = [];
+    const newDevices: { device: DeviceState; newVendor: boolean }[] = [];
 
     for (const h of hosts) {
       const mac = h.mac ?? '';
@@ -212,35 +238,65 @@ export class ScannerService {
         existing.rttMs = h.rttMs;
         existing.lastSeen = nowSec();
         existing.up = true;
+        existing.watched = this.isWatched(existing);
         existing.deviceType = classify(existing.vendor, existing.ports, randomized, existing.model);
+        if (existing.vendor) this.knownVendors.add(existing.vendor.toLowerCase());
       } else {
+        const vendor = h.vendor ?? '';
+        const newVendor =
+          this.baselineDone && !!vendor && !this.knownVendors.has(vendor.toLowerCase());
         const device: DeviceState = {
           key,
           ip: h.ip,
           mac,
-          vendor: h.vendor ?? '',
+          vendor,
           hostname: h.hostname ?? '',
           name: '',
           mdnsHost: '',
           model: '',
           services: [],
           randomized,
-          deviceType: classify(h.vendor ?? '', [], randomized),
+          deviceType: classify(vendor, [], randomized),
           firstSeen: nowSec(),
           lastSeen: nowSec(),
           up: true,
           rttMs: h.rttMs,
           ports: [],
+          misses: 0,
+          offlineAlerted: false,
+          portsSeeded: false,
+          watched: false,
         };
+        device.watched = this.isWatched(device);
         this.devices.set(key, device);
+        if (vendor) this.knownVendors.add(vendor.toLowerCase());
         const known = this.allowlist.has(mac);
-        if (this.baselineDone && !known) newDevices.push(device);
+        if (this.baselineDone && !known) newDevices.push({ device, newVendor });
       }
     }
 
-    // Anything previously known but not seen this scan is now down.
+    // Reconcile up/down transitions and gather offline/recovery alerts.
+    const offlineAlerts: DeviceState[] = [];
+    const recoveryAlerts: DeviceState[] = [];
     for (const [key, device] of this.devices) {
-      if (!seen.has(key)) device.up = false;
+      if (seen.has(key)) {
+        device.misses = 0;
+        if (device.offlineAlerted) {
+          device.offlineAlerted = false;
+          if (device.watched) recoveryAlerts.push(device);
+        }
+      } else {
+        device.up = false;
+        device.misses++;
+        if (
+          device.watched &&
+          !device.offlineAlerted &&
+          device.misses >= this.offlineAfterMisses
+        ) {
+          device.offlineAlerted = true;
+          offlineAlerts.push(device);
+        }
+      }
     }
 
     m.scansTotal.inc({ scan_type: 'discovery' });
@@ -249,7 +305,18 @@ export class ScannerService {
     m.scannerUp.set(1);
     this.publish();
 
-    for (const device of newDevices) await this.alertNewDevice(device);
+    for (const { device, newVendor } of newDevices) await this.alertNewDevice(device, newVendor);
+    for (const device of offlineAlerts) await this.alertOffline(device);
+    for (const device of recoveryAlerts) await this.alertOnline(device);
+  }
+
+  /** True if the device matches the offline-alert watchlist (MAC or name substring). */
+  private isWatched(d: DeviceState): boolean {
+    if (this.watchMacs.has(d.mac.toLowerCase())) return true;
+    const haystacks = [d.name, d.mdnsHost, d.hostname]
+      .filter(Boolean)
+      .map((s) => s.toLowerCase());
+    return this.watchNames.some((w) => haystacks.some((h) => h.includes(w)));
   }
 
   private async runPortScan(): Promise<void> {
@@ -272,13 +339,22 @@ export class ScannerService {
     }
 
     const byIp = new Map(results.map((r) => [r.ip, r.ports]));
+    const newPortAlerts: { device: DeviceState; ports: OpenPort[] }[] = [];
     for (const device of this.devices.values()) {
       if (!device.up) continue;
       const ports = byIp.get(device.ip);
-      if (ports) {
-        device.ports = ports.sort((a, b) => a.port - b.port);
-        device.deviceType = classify(device.vendor, device.ports, device.randomized, device.model);
+      if (!ports) continue;
+
+      // Diff against the previously-known ports (only once a baseline exists).
+      if (device.portsSeeded && this.alertOnNewPorts) {
+        const before = new Set(device.ports.map((p) => p.port));
+        const added = ports.filter((p) => !before.has(p.port));
+        if (added.length) newPortAlerts.push({ device, ports: added });
       }
+
+      device.ports = ports.sort((a, b) => a.port - b.port);
+      device.portsSeeded = true;
+      device.deviceType = classify(device.vendor, device.ports, device.randomized, device.model);
     }
 
     m.scansTotal.inc({ scan_type: 'port' });
@@ -288,6 +364,8 @@ export class ScannerService {
     console.log(
       `🔌 Port scan complete: ${results.reduce((n, r) => n + r.ports.length, 0)} open ports across ${upIps.length} hosts in ${((Date.now() - started) / 1000).toFixed(0)}s`
     );
+
+    for (const { device, ports } of newPortAlerts) await this.alertNewPorts(device, ports);
   }
 
   private async runNameResolution(): Promise<void> {
@@ -311,6 +389,8 @@ export class ScannerService {
           device.services = [...new Set([...device.services, ...r.services])];
         }
         device.deviceType = classify(device.vendor, device.ports, device.randomized, device.model);
+        // Names may now match WATCH_NAMES — refresh the watch flag immediately.
+        device.watched = this.isWatched(device);
         named++;
       }
     } catch (err) {
@@ -347,6 +427,7 @@ export class ScannerService {
     m.devicePortOpen.reset();
     m.devicesByVendor.reset();
     m.devicesByType.reset();
+    m.deviceWatched.reset();
 
     let upCount = 0;
     const vendorCounts = new Map<string, number>();
@@ -363,8 +444,14 @@ export class ScannerService {
       };
       m.deviceUp.set(labels, d.up ? 1 : 0);
       m.deviceInfo.set(labels, 1);
-      m.deviceLastSeen.set({ mac: d.mac || d.ip }, d.lastSeen);
+      m.deviceLastSeen.set(
+        { mac: d.mac || d.ip, ip: d.ip, hostname: labels.hostname },
+        d.lastSeen
+      );
       m.deviceFirstSeen.set({ mac: d.mac || d.ip }, d.firstSeen);
+      if (d.watched) {
+        m.deviceWatched.set({ ip: d.ip, mac: d.mac || 'unknown', hostname: labels.hostname }, 1);
+      }
 
       if (d.up) {
         upCount++;
@@ -395,13 +482,39 @@ export class ScannerService {
 
   // ── notifications ───────────────────────────────────────────────────────────
 
-  private async alertNewDevice(device: DeviceState): Promise<void> {
+  private label(d: DeviceState): string {
+    const name = d.name || d.mdnsHost || d.hostname;
+    return name ? `${name} (${d.ip})` : d.ip;
+  }
+
+  /** Post a single ntfy message. Never throws. */
+  private async notify(
+    title: string,
+    body: string,
+    tags: string,
+    priority: string
+  ): Promise<void> {
+    if (!this.ntfyEnabled) return;
+    try {
+      const res = await fetch(`${this.ntfyUrl}/${this.ntfyTopic}`, {
+        method: 'POST',
+        headers: { Title: title, Priority: priority, Tags: tags },
+        body,
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) console.error(`ntfy failed: ${res.status} ${res.statusText}`);
+    } catch (err) {
+      console.error('ntfy notification failed:', err);
+    }
+  }
+
+  private async alertNewDevice(device: DeviceState, newVendor: boolean): Promise<void> {
     m.newDevicesTotal.inc();
+    if (newVendor && this.alertOnNewVendor) m.newVendorsTotal.inc();
     if (device.randomized && !this.alertOnRandomized) return;
 
     const vendor = device.vendor || 'unknown vendor';
-    console.log(`🆕 New device: ${device.ip} ${device.mac} (${vendor})`);
-    if (!this.ntfyEnabled) return;
+    console.log(`🆕 New device: ${device.ip} ${device.mac} (${vendor})${newVendor ? ' [new vendor]' : ''}`);
 
     const friendly = device.name || device.mdnsHost || device.hostname;
     const lines = [
@@ -413,22 +526,62 @@ export class ScannerService {
       `Type: ${device.deviceType}`,
     ];
     if (friendly) lines.push(`Name: ${friendly}`);
-
-    try {
-      const res = await fetch(`${this.ntfyUrl}/${this.ntfyTopic}`, {
-        method: 'POST',
-        headers: {
-          Title: 'New device on network',
-          Priority: device.randomized ? 'low' : this.ntfyPriority,
-          Tags: 'satellite,warning',
-        },
-        body: lines.join('\n'),
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!res.ok) console.error(`ntfy failed: ${res.status} ${res.statusText}`);
-    } catch (err) {
-      console.error('ntfy notification failed:', err);
+    if (newVendor && this.alertOnNewVendor) {
+      lines.push('', '⚠️ First device ever seen from this vendor.');
     }
+
+    await this.notify(
+      newVendor ? 'New device (new vendor!) on network' : 'New device on network',
+      lines.join('\n'),
+      'satellite,warning',
+      device.randomized ? 'low' : this.ntfyPriority
+    );
+  }
+
+  private async alertOffline(device: DeviceState): Promise<void> {
+    m.offlineEventsTotal.inc();
+    console.log(`📴 Watched device offline: ${this.label(device)}`);
+    const mins = Math.round((device.misses * this.discoveryIntervalMs) / 60000);
+    await this.notify(
+      'Device went offline',
+      [
+        `A watched device dropped off the network.`,
+        ``,
+        `Device: ${this.label(device)}`,
+        `MAC: ${device.mac || 'unknown'}`,
+        `Last seen: ~${mins} min ago`,
+      ].join('\n'),
+      'satellite,red_circle',
+      this.ntfyPriority
+    );
+  }
+
+  private async alertOnline(device: DeviceState): Promise<void> {
+    console.log(`📶 Watched device back online: ${this.label(device)}`);
+    await this.notify(
+      'Device back online',
+      `${this.label(device)} is back on the network.`,
+      'satellite,green_circle',
+      'low'
+    );
+  }
+
+  private async alertNewPorts(device: DeviceState, ports: OpenPort[]): Promise<void> {
+    m.newPortsTotal.inc(ports.length);
+    const list = ports.map((p) => `${p.port}/${p.protocol}${p.service ? ` (${p.service})` : ''}`);
+    console.log(`🔓 New port(s) on ${this.label(device)}: ${list.join(', ')}`);
+    await this.notify(
+      'New open port detected',
+      [
+        `A device opened a port it wasn't serving before.`,
+        ``,
+        `Device: ${this.label(device)}`,
+        `MAC: ${device.mac || 'unknown'}`,
+        `New port(s): ${list.join(', ')}`,
+      ].join('\n'),
+      'satellite,lock',
+      this.ntfyPriority
+    );
   }
 
   // ── read model (for the JSON API) ────────────────────────────────────────────
