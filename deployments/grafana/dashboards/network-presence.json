@@ -59,7 +59,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_total",
+          "expr": "max(network_devices_total)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -120,7 +120,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(network_device_up == 0) or vector(0)",
+          "expr": "count(max by (ip, mac) (network_device_up) == 0) or vector(0)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -185,7 +185,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avg(avg_over_time(network_device_up[$__range])) * 100",
+          "expr": "avg(avg_over_time((max by (ip, mac, vendor, hostname, device_type) (network_device_up))[$__range:1m])) * 100",
           "refId": "A",
           "range": false,
           "instant": true
@@ -254,7 +254,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(network_device_watched) or vector(0)",
+          "expr": "count(max by (ip, mac) (network_device_watched)) or vector(0)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -315,7 +315,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "increase(network_offline_events_total[$__range])",
+          "expr": "sum(increase(network_offline_events_total[$__range]))",
           "refId": "A",
           "range": false,
           "instant": true
@@ -397,7 +397,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_up",
+          "expr": "max by (ip, hostname) (network_device_up)",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -423,7 +423,7 @@
         "defaults": {
           "custom": {
             "lineWidth": 0,
-            "fillOpacity": 80
+            "fillOpacity": 85
           },
           "color": {
             "mode": "thresholds"
@@ -502,10 +502,11 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avg_over_time(network_device_up[$__range]) * 100",
+          "expr": "avg_over_time((max by (ip, mac, vendor, hostname, device_type) (network_device_up))[$__range:1m]) * 100",
           "refId": "A",
           "range": false,
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -514,13 +515,7 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "instance": true,
-              "job": true,
-              "kubernetes_namespace": true,
-              "kubernetes_pod_name": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_instance": true
+              "__name__": true
             },
             "renameByName": {
               "ip": "IP",
@@ -618,10 +613,11 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "time() - network_device_last_seen_timestamp_seconds",
+          "expr": "time() - max by (mac, ip, hostname) (network_device_last_seen_timestamp_seconds)",
           "refId": "A",
           "range": false,
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -631,12 +627,6 @@
             "excludeByName": {
               "Time": true,
               "__name__": true,
-              "instance": true,
-              "job": true,
-              "kubernetes_namespace": true,
-              "kubernetes_pod_name": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_instance": true,
               "vendor": true,
               "device_type": true
             },

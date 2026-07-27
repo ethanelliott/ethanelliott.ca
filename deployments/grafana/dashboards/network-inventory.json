@@ -59,7 +59,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_total",
+          "expr": "max(network_devices_total)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -120,7 +120,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(network_device_up == 0) or vector(0)",
+          "expr": "count(max by (ip, mac) (network_device_up) == 0) or vector(0)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -185,7 +185,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_new_devices_total",
+          "expr": "max(network_new_devices_total)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -250,7 +250,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(network_device_port_open)",
+          "expr": "sum(max by (ip, mac, port, service) (network_device_port_open))",
           "refId": "A",
           "range": false,
           "instant": true
@@ -328,10 +328,11 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_up",
+          "expr": "max by (ip, mac, vendor, hostname, device_type) (network_device_up)",
           "refId": "A",
           "range": false,
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -340,13 +341,7 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "instance": true,
-              "job": true,
-              "kubernetes_namespace": true,
-              "kubernetes_pod_name": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_instance": true
+              "__name__": true
             },
             "renameByName": {
               "ip": "IP",
@@ -457,10 +452,11 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_port_open",
+          "expr": "max by (ip, mac, port, service) (network_device_port_open)",
           "refId": "A",
           "range": false,
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -470,12 +466,6 @@
             "excludeByName": {
               "Time": true,
               "__name__": true,
-              "instance": true,
-              "job": true,
-              "kubernetes_namespace": true,
-              "kubernetes_pod_name": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_instance": true,
               "Value": true
             },
             "renameByName": {
@@ -529,10 +519,11 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_up == 0",
+          "expr": "max by (ip, mac, vendor, hostname, device_type) (network_device_up) == 0",
           "refId": "A",
           "range": false,
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -542,12 +533,6 @@
             "excludeByName": {
               "Time": true,
               "__name__": true,
-              "instance": true,
-              "job": true,
-              "kubernetes_namespace": true,
-              "kubernetes_pod_name": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_instance": true,
               "Value": true
             },
             "renameByName": {

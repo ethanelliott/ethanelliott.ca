@@ -59,7 +59,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_up{hostname=\"$device\"}",
+          "expr": "max(network_device_up{hostname=\"$device\"})",
           "refId": "A",
           "range": false,
           "instant": true
@@ -138,7 +138,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avg_over_time(network_device_up{hostname=\"$device\"}[$__range]) * 100",
+          "expr": "avg_over_time((max(network_device_up{hostname=\"$device\"}))[$__range:1m]) * 100",
           "refId": "A",
           "range": false,
           "instant": true
@@ -207,7 +207,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_open_ports{mac=~\"$mac\"}",
+          "expr": "max(network_device_open_ports{mac=~\"$mac\"})",
           "refId": "A",
           "range": false,
           "instant": true
@@ -268,7 +268,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_response_time_ms{mac=~\"$mac\"}",
+          "expr": "max(network_device_response_time_ms{mac=~\"$mac\"})",
           "refId": "A",
           "range": false,
           "instant": true
@@ -333,7 +333,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_first_seen_timestamp_seconds{mac=~\"$mac\"} * 1000",
+          "expr": "max(network_device_first_seen_timestamp_seconds{mac=~\"$mac\"}) * 1000",
           "refId": "A",
           "range": false,
           "instant": true
@@ -394,7 +394,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_last_seen_timestamp_seconds{hostname=\"$device\"} * 1000",
+          "expr": "max(network_device_last_seen_timestamp_seconds{hostname=\"$device\"}) * 1000",
           "refId": "A",
           "range": false,
           "instant": true
@@ -472,10 +472,11 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_info{hostname=\"$device\"}",
+          "expr": "max by (ip, mac, vendor, hostname, device_type) (network_device_info{hostname=\"$device\"})",
           "refId": "A",
           "range": false,
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -484,13 +485,7 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "instance": true,
-              "job": true,
-              "kubernetes_namespace": true,
-              "kubernetes_pod_name": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_instance": true
+              "__name__": true
             },
             "renameByName": {
               "ip": "IP",
@@ -539,7 +534,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_up{hostname=\"$device\"}",
+          "expr": "max by (ip) (network_device_up{hostname=\"$device\"})",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -627,7 +622,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_up{hostname=\"$device\"}",
+          "expr": "max by (mac) (network_device_up{hostname=\"$device\"})",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -715,7 +710,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_up{hostname=\"$device\"}",
+          "expr": "max by (hostname) (network_device_up{hostname=\"$device\"})",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -820,10 +815,11 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_port_open{mac=~\"$mac\"}",
+          "expr": "max by (ip, mac, port, service) (network_device_port_open{mac=~\"$mac\"})",
           "refId": "A",
           "range": false,
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -833,12 +829,6 @@
             "excludeByName": {
               "Time": true,
               "__name__": true,
-              "instance": true,
-              "job": true,
-              "kubernetes_namespace": true,
-              "kubernetes_pod_name": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_instance": true,
               "Value": true,
               "vendor": true,
               "hostname": true,
@@ -895,7 +885,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_port_open{mac=~\"$mac\"}",
+          "expr": "max by (port, service) (network_device_port_open{mac=~\"$mac\"})",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -974,7 +964,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_open_ports{mac=~\"$mac\"}",
+          "expr": "max(network_device_open_ports{mac=~\"$mac\"})",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -1040,7 +1030,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_response_time_ms{mac=~\"$mac\"}",
+          "expr": "max by (ip) (network_device_response_time_ms{mac=~\"$mac\"})",
           "refId": "A",
           "range": true,
           "instant": false,

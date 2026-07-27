@@ -59,7 +59,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_total",
+          "expr": "max(network_devices_total)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -120,7 +120,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_known_total",
+          "expr": "max(network_devices_known_total)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -181,7 +181,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_new_devices_total",
+          "expr": "max(network_new_devices_total)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -246,7 +246,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(network_device_port_open)",
+          "expr": "sum(max by (ip, mac, port, service) (network_device_port_open))",
           "refId": "A",
           "range": false,
           "instant": true
@@ -307,7 +307,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_scanner_up",
+          "expr": "max(network_scanner_up)",
           "refId": "A",
           "range": false,
           "instant": true
@@ -472,7 +472,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_total",
+          "expr": "max(network_devices_total)",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -538,7 +538,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_by_type",
+          "expr": "max by (device_type) (network_devices_by_type)",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -624,7 +624,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_by_vendor",
+          "expr": "max by (vendor) (network_devices_by_vendor)",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -684,7 +684,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_devices_by_type",
+          "expr": "max by (device_type) (network_devices_by_type)",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -744,7 +744,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (service) (network_device_port_open)",
+          "expr": "sum by (service) (max by (ip, mac, port, service) (network_device_port_open))",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -819,7 +819,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_device_response_time_ms",
+          "expr": "max by (ip, mac) (network_device_response_time_ms)",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -888,7 +888,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "network_scan_duration_seconds",
+          "expr": "max by (scan_type) (network_scan_duration_seconds)",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -954,7 +954,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(network_scan_errors_total[15m])",
+          "expr": "sum by (scan_type) (rate(network_scan_errors_total[15m]))",
           "refId": "A",
           "range": true,
           "instant": false,
