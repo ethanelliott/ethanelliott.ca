@@ -94,6 +94,17 @@ env:
   INTERNET_ALERT_ENABLED: 'true'
   INTERNET_DOWN_AFTER_MISSES: '2'
 
+  # ── periodic speed test (Cloudflare edge) ─────────────────────────────────
+  # In-process download/upload throughput test against speed.cloudflare.com
+  # (no binary, no API key). Each run moves real data across the WAN, so it's
+  # deliberately infrequent — every 6h by default. Raise the MB sizes for more
+  # accuracy on fast links, or the interval down if you're actively debugging.
+  SPEEDTEST_ENABLED: 'true'
+  SPEEDTEST_INTERVAL_MINUTES: '360'
+  SPEEDTEST_DOWNLOAD_MB: '50'
+  SPEEDTEST_UPLOAD_MB: '10'
+  SPEEDTEST_TIMEOUT_SECONDS: '60'
+
   # ── presence & change alerting ───────────────────────────────────────────
   # Offline alerts fire only for devices on the watchlist. Match by MAC and/or
   # by a case-insensitive substring of the resolved name — e.g. WATCH_NAMES set
