@@ -41,6 +41,18 @@ export interface ScannedReading {
 export class AranetScanner {
   private _destroy: (() => void) | null = null;
   private _adapter: any = null;
+  /**
+   * One node-ble Device proxy per MAC, reused across polls.
+   *
+   * node-ble builds every Device with `usePropsEvents: true`, so the first
+   * property read registers a persistent `PropertiesChanged` listener on the
+   * shared system-bus connection (plus a D-Bus match rule). Those are never
+   * auto-removed, and the listener closure pins the whole proxy-object graph.
+   * Creating a fresh Device every cycle therefore leaks a listener per device
+   * per poll — a steady climb that OOM-kills the pod on a fixed cadence. Hold
+   * one Device per MAC and reuse it so the listener count stays bounded.
+   */
+  private readonly _deviceCache = new Map<string, any>();
 
   async init(): Promise<void> {
     const { bluetooth, destroy } = createBluetooth();
@@ -62,7 +74,7 @@ export class AranetScanner {
 
     for (const target of targets) {
       try {
-        const device = await this._adapter.getDevice(target.mac);
+        const device = await this._getDevice(target.mac);
         const mfg = await device.getManufacturerData();
         const raw = extractManufacturerBuffer(mfg, ARANET_MANUFACTURER_ID);
         if (!raw) continue;
@@ -79,11 +91,32 @@ export class AranetScanner {
           rawHex: raw.toString('hex'),
         });
       } catch {
-        // Device not yet (re)discovered this cycle — skip; it'll reappear.
+        // Read failed — BlueZ may have dropped this device from its cache.
+        // Evict our proxy (releasing its listener) so next cycle rebuilds a
+        // fresh one once BlueZ rediscovers it.
+        this._evictDevice(target.mac);
       }
     }
 
     return out;
+  }
+
+  /** Get the reused Device proxy for a MAC, creating and caching it once. */
+  private async _getDevice(mac: string): Promise<any> {
+    let device = this._deviceCache.get(mac);
+    if (!device) {
+      device = await this._adapter.getDevice(mac);
+      this._deviceCache.set(mac, device);
+    }
+    return device;
+  }
+
+  /** Drop a cached Device and release its bus listener / match rule. */
+  private _evictDevice(mac: string): void {
+    const device = this._deviceCache.get(mac);
+    if (!device) return;
+    this._deviceCache.delete(mac);
+    releaseDevice(device);
   }
 
   /**
@@ -98,8 +131,13 @@ export class AranetScanner {
     const found: DiscoveredDevice[] = [];
 
     for (const mac of macs) {
+      // Reuse the cached proxy for managed devices; for the rest build a
+      // throwaway that we release below so this enumeration doesn't strand a
+      // bus listener per nearby BLE device on every /scan call.
+      const cached = this._deviceCache.get(mac);
+      let device: any;
       try {
-        const device = await this._adapter.getDevice(mac);
+        device = cached ?? (await this._adapter.getDevice(mac));
         const name = await safeGet(() => device.getName(), '');
         const mfg = await safeGet<any>(() => device.getManufacturerData(), null);
         const raw = extractManufacturerBuffer(mfg, ARANET_MANUFACTURER_ID);
@@ -120,6 +158,8 @@ export class AranetScanner {
         });
       } catch {
         // device vanished mid-enumeration — skip
+      } finally {
+        if (device && device !== cached) releaseDevice(device);
       }
     }
 
@@ -136,9 +176,24 @@ export class AranetScanner {
     } catch {
       // best effort
     }
+    for (const device of this._deviceCache.values()) releaseDevice(device);
+    this._deviceCache.clear();
     this._destroy?.();
     this._destroy = null;
     this._adapter = null;
+  }
+}
+
+/**
+ * Release a node-ble Device's persistent bus subscription (the
+ * `PropertiesChanged` listener + D-Bus match rule it registered on first use).
+ * Best-effort: shapes vary across node-ble versions, so guard every access.
+ */
+function releaseDevice(device: any): void {
+  try {
+    device?.helper?.removeListeners?.();
+  } catch {
+    // best effort — nothing else references the proxy, so it can be GC'd
   }
 }
 
