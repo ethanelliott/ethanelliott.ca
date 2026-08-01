@@ -16,6 +16,7 @@ import {
   MeasurementType,
   readingToMeasurements,
 } from './measurement-types';
+import * as metrics from './metrics';
 
 const DEFAULT_SCAN_INTERVAL_SECONDS = 30;
 const DEFAULT_WINDOW_HOURS = 24;
@@ -71,6 +72,11 @@ export class AranetService {
   private readonly _lastAge = new Map<string, number>();
   /** Devices we've already logged raw bytes for (one-time verification). */
   private readonly _loggedRaw = new Set<string>();
+  /** Latest decoded advertisement per mac, for republishing Prometheus gauges. */
+  private readonly _latest = new Map<
+    string,
+    { result: ScannedReading; at: Date }
+  >();
 
   private get _intervalMs(): number {
     const s = Number(process.env.SCAN_INTERVAL_SECONDS);
@@ -101,28 +107,87 @@ export class AranetService {
 
   /** One scan cycle: read each enabled device's advert and persist new readings. */
   async poll(): Promise<void> {
-    const devices = await this._devices.listEnabled();
-    if (devices.length === 0) return;
+    try {
+      const devices = await this._devices.listEnabled();
+      const byMac = new Map(devices.map((d) => [d.macAddress, d]));
+      const targets: AranetTarget[] = devices.map((d) => ({
+        mac: d.macAddress,
+        type: d.type as AranetDeviceType,
+      }));
 
-    const byMac = new Map(devices.map((d) => [d.macAddress, d]));
-    const targets: AranetTarget[] = devices.map((d) => ({
-      mac: d.macAddress,
-      type: d.type as AranetDeviceType,
-    }));
+      const scanned = devices.length
+        ? await this._scanner.poll(targets)
+        : [];
+      const now = new Date();
+      const freshMacs = new Set<string>();
 
-    const scanned = await this._scanner.poll(targets);
-    const now = new Date();
+      for (const result of scanned) {
+        const device = byMac.get(result.deviceId);
+        if (!device) continue;
 
-    for (const result of scanned) {
-      const device = byMac.get(result.deviceId);
-      if (!device) continue;
+        freshMacs.add(result.deviceId);
+        this._latest.set(result.deviceId, { result, at: now });
+        this._logRawOnce(result);
+        await this._devices.markSeen(device.id, now);
 
-      this._logRawOnce(result);
-      await this._devices.markSeen(device.id, now);
-
-      if (this._isNewReading(result.deviceId, result.reading.age)) {
-        await this._store(device, result);
+        if (this._isNewReading(result.deviceId, result.reading.age)) {
+          await this._store(device, result);
+        }
       }
+
+      this._publishMetrics(devices, freshMacs);
+      metrics.scanCyclesTotal.inc();
+    } catch (err) {
+      metrics.scanErrorsTotal.inc();
+      throw err;
+    }
+  }
+
+  /** Mirror the latest per-device readings and scan health onto Prometheus. */
+  private _publishMetrics(
+    devices: DeviceEntity[],
+    freshMacs: Set<string>
+  ): void {
+    // Reset+repopulate so a device removed via the API drops its series.
+    metrics.resetPerDeviceGauges();
+    metrics.scannerUp.set(1);
+    metrics.devicesTotal.set(devices.length);
+    metrics.lastScanTimestamp.set(Math.floor(Date.now() / 1000));
+
+    const managed = new Set(devices.map((d) => d.macAddress));
+    for (const mac of this._latest.keys()) {
+      if (!managed.has(mac)) this._latest.delete(mac);
+    }
+
+    for (const device of devices) {
+      const labels = {
+        device: device.name,
+        mac: device.macAddress,
+        type: device.type,
+      };
+      metrics.deviceInfo.set(labels, 1);
+      metrics.deviceUp.set(labels, freshMacs.has(device.macAddress) ? 1 : 0);
+
+      const latest = this._latest.get(device.macAddress);
+      if (!latest) continue;
+      const { reading } = latest.result;
+
+      if (reading.co2 != null) metrics.co2Ppm.set(labels, reading.co2);
+      if (reading.radon != null) metrics.radonBqM3.set(labels, reading.radon);
+      metrics.temperatureCelsius.set(labels, reading.temperature);
+      metrics.humidityPercent.set(labels, reading.humidity);
+      metrics.pressureHpa.set(labels, reading.pressure);
+      metrics.batteryPercent.set(labels, reading.battery);
+      metrics.status.set(labels, reading.status);
+
+      // `age` is seconds-since-measurement when we captured it; advance it so a
+      // stale reading visibly ages between fresh reads.
+      const elapsed = Math.max(0, (Date.now() - latest.at.getTime()) / 1000);
+      metrics.readingAgeSeconds.set(labels, Math.round(reading.age + elapsed));
+      metrics.lastReadingTimestamp.set(
+        labels,
+        Math.floor((latest.at.getTime() - reading.age * 1000) / 1000)
+      );
     }
   }
 
