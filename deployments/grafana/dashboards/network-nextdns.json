@@ -948,7 +948,7 @@
       "id": 19,
       "type": "table",
       "title": "Top blocked domains",
-      "description": "Totalled across the selected time range. NextDNS returns only the top 50 domains per 5-minute window, so the long tail is undercounted — the ranking at the top is reliable, the bottom of the table is not.",
+      "description": "Totalled across the selected time range. NextDNS returns only the top 50 domains per 5-minute window, so the long tail is undercounted \u2014 the ranking at the top is reliable, the bottom of the table is not.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1134,6 +1134,24 @@
                 "value": {
                   "type": "color-background"
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "DNS detail for this device",
+                    "url": "/d/network-nextdns-device?var-device=${__data.fields.Device}&${__url_time_range}",
+                    "targetBlank": false
+                  }
+                ]
               }
             ]
           }
