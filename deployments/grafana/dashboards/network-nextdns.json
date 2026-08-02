@@ -24,7 +24,7 @@
     {
       "id": 1,
       "type": "row",
-      "title": "At a glance (5-minute window)",
+      "title": "At a glance (selected range)",
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
@@ -42,6 +42,7 @@
       "id": 2,
       "type": "stat",
       "title": "Queries",
+      "description": "The exporter reports counts over a rolling 5-minute window, so totals are built by summing non-overlapping 5-minute samples across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -59,7 +60,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_queries_total)",
+          "expr": "sum_over_time(max(nextdns_queries_total)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true
@@ -103,6 +104,7 @@
       "id": 3,
       "type": "stat",
       "title": "Blocked",
+      "description": "The exporter reports counts over a rolling 5-minute window, so totals are built by summing non-overlapping 5-minute samples across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -120,7 +122,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_blocked_queries_total)",
+          "expr": "sum_over_time(max(nextdns_blocked_queries_total)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true
@@ -164,6 +166,7 @@
       "id": 4,
       "type": "stat",
       "title": "Allowed",
+      "description": "The exporter reports counts over a rolling 5-minute window, so totals are built by summing non-overlapping 5-minute samples across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -181,7 +184,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_allowed_queries_total)",
+          "expr": "sum_over_time(max(nextdns_allowed_queries_total)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true
@@ -225,6 +228,7 @@
       "id": 5,
       "type": "stat",
       "title": "Block rate",
+      "description": "Blocked queries as a share of all queries over the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -242,7 +246,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_blocked_queries_total) / max(nextdns_queries_total) * 100",
+          "expr": "sum_over_time(max(nextdns_blocked_queries_total)[$__range:5m]) / sum_over_time(max(nextdns_queries_total)[$__range:5m]) * 100",
           "refId": "A",
           "range": false,
           "instant": true
@@ -294,6 +298,7 @@
       "id": 6,
       "type": "stat",
       "title": "Queries/sec",
+      "description": "Average query rate across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -311,7 +316,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_queries_total) / 300",
+          "expr": "sum_over_time(max(nextdns_queries_total)[$__range:5m]) / $__range_s",
           "refId": "A",
           "range": false,
           "instant": true
@@ -371,11 +376,13 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Queries over time (5m window)",
+      "title": "Query rate",
+      "description": "Queries per second, averaged over each graph step. Plotting a rate rather than the raw 5-minute counts keeps the scale comparable no matter how long a range is selected.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "interval": "1m",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -389,7 +396,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_queries_total)",
+          "expr": "avg_over_time(max(nextdns_queries_total)[$__interval:1m]) / 300",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -401,8 +408,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_allowed_queries_total)",
-          "refId": "A",
+          "expr": "avg_over_time(max(nextdns_allowed_queries_total)[$__interval:1m]) / 300",
+          "refId": "B",
           "range": true,
           "instant": false,
           "legendFormat": "allowed"
@@ -413,8 +420,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_blocked_queries_total)",
-          "refId": "A",
+          "expr": "avg_over_time(max(nextdns_blocked_queries_total)[$__interval:1m]) / 300",
+          "refId": "C",
           "range": true,
           "instant": false,
           "legendFormat": "blocked"
@@ -433,7 +440,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
+          "unit": "reqps",
           "color": {
             "mode": "palette-classic"
           },
@@ -462,10 +469,12 @@
       "id": 9,
       "type": "timeseries",
       "title": "Block rate %",
+      "description": "Blocked share of queries, averaged over each graph step.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "interval": "1m",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -479,7 +488,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(nextdns_blocked_queries_total) / max(nextdns_queries_total) * 100",
+          "expr": "avg_over_time(max(nextdns_blocked_queries_total)[$__interval:1m]) / avg_over_time(max(nextdns_queries_total)[$__interval:1m]) * 100",
           "refId": "A",
           "range": true,
           "instant": false,
@@ -545,6 +554,7 @@
       "id": 11,
       "type": "piechart",
       "title": "Queries by device",
+      "description": "Totalled across the selected time range. NextDNS only returns the top entries per 5-minute window, so devices with very little traffic are undercounted.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -562,7 +572,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (name) (nextdns_device_queries)",
+          "expr": "sum_over_time(max by (name) (nextdns_device_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -603,6 +613,7 @@
       "id": 12,
       "type": "piechart",
       "title": "Query types",
+      "description": "Totalled across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -620,7 +631,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (name) (nextdns_type_queries)",
+          "expr": "sum_over_time(max by (name) (nextdns_type_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -661,6 +672,7 @@
       "id": 13,
       "type": "piechart",
       "title": "Protocols",
+      "description": "Totalled across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -678,7 +690,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (protocol) (nextdns_protocol_queries)",
+          "expr": "sum_over_time(max by (protocol) (nextdns_protocol_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -736,6 +748,7 @@
       "id": 15,
       "type": "bargauge",
       "title": "IP version",
+      "description": "Totalled across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -753,7 +766,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (version) (nextdns_ip_version_queries)",
+          "expr": "sum_over_time(max by (version) (nextdns_ip_version_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -796,6 +809,7 @@
       "id": 16,
       "type": "bargauge",
       "title": "DNSSEC validated",
+      "description": "Totalled across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -813,7 +827,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (validated) (nextdns_dnssec_queries)",
+          "expr": "sum_over_time(max by (validated) (nextdns_dnssec_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -856,6 +870,7 @@
       "id": 17,
       "type": "bargauge",
       "title": "Encrypted",
+      "description": "Totalled across the selected time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -873,7 +888,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (encrypted) (nextdns_encrypted_queries)",
+          "expr": "sum_over_time(max by (encrypted) (nextdns_encrypted_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -915,7 +930,7 @@
     {
       "id": 18,
       "type": "row",
-      "title": "Top lists (5m window)",
+      "title": "Top lists (selected range)",
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
@@ -933,6 +948,7 @@
       "id": 19,
       "type": "table",
       "title": "Top blocked domains",
+      "description": "Totalled across the selected time range. NextDNS returns only the top 50 domains per 5-minute window, so the long tail is undercounted — the ranking at the top is reliable, the bottom of the table is not.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -950,7 +966,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (domain, root, tracker) (nextdns_blocked_queries)",
+          "expr": "sum_over_time(max by (domain, root, tracker) (nextdns_blocked_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -1030,6 +1046,7 @@
       "id": 20,
       "type": "table",
       "title": "Top devices",
+      "description": "Totalled across the selected time range. NextDNS returns only the top 50 devices per 5-minute window, so the long tail is undercounted.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1047,7 +1064,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (name, model, local_ip) (nextdns_device_queries)",
+          "expr": "sum_over_time(max by (name, model, local_ip) (nextdns_device_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -1127,6 +1144,7 @@
       "id": 21,
       "type": "table",
       "title": "Top destinations",
+      "description": "Totalled across the selected time range. NextDNS returns only the top 50 destinations per 5-minute window, so the long tail is undercounted.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1144,7 +1162,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (code, name) (nextdns_destination_queries)",
+          "expr": "sum_over_time(max by (code, name) (nextdns_destination_queries)[$__range:5m])",
           "refId": "A",
           "range": false,
           "instant": true,
@@ -1220,7 +1238,7 @@
       }
     }
   ],
-  "refresh": "30s",
+  "refresh": "1m",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
@@ -1236,7 +1254,15 @@
     "from": "now-6h",
     "to": "now"
   },
-  "timepicker": {},
+  "timepicker": {
+    "refresh_intervals": [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h"
+    ]
+  },
   "timezone": "",
   "title": "Network \u2014 NextDNS",
   "uid": "network-nextdns",
