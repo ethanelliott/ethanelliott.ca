@@ -12,7 +12,9 @@ import { WebSocketService } from '../websocket/websocket.service';
 import { StreamService } from '../stream/stream.service';
 import { NotificationService } from '../notification/notification.service';
 import { AnalysisService } from '../analysis/analysis.service';
-import { AnomalyRating, SceneAnalysis } from '../analysis/analysis.entity';
+import { SceneAnalysis } from '../analysis/analysis.entity';
+import { ratingFromThreat } from '../analysis/taxonomy';
+import type { ThreatLevel } from '../analysis/taxonomy';
 
 /** All 80 COCO-SSD labels */
 export const COCO_SSD_LABELS = [
@@ -241,14 +243,14 @@ export class DetectionService {
     minConfidence?: number;
     since?: Date;
     until?: Date;
-    rating?: AnomalyRating;
+    threat?: ThreatLevel;
     pinnedOnly?: boolean;
     includeAnalysis?: boolean;
   }): Promise<{ events: DetectionEvent[]; total: number }> {
     const qb = this._repository.createQueryBuilder('event');
 
-    // Filtering by rating needs the analysis row regardless of the flag.
-    if (options.includeAnalysis || options.rating) {
+    // Filtering by threat needs the analysis row regardless of the flag.
+    if (options.includeAnalysis || options.threat) {
       qb.leftJoinAndMapOne(
         'event.analysis',
         SceneAnalysis,
@@ -275,10 +277,17 @@ export class DetectionService {
       qb.andWhere('event.timestamp <= :until', { until: options.until });
     }
 
-    if (options.rating) {
-      qb.andWhere('analysis.overallRating = :rating', {
-        rating: options.rating,
-      });
+    // Rows written before the taxonomy have no `threat`, only the legacy
+    // rating, so match those through the same mapping the UI displays them
+    // with — otherwise filtering would silently hide all older analyses.
+    if (options.threat) {
+      qb.andWhere(
+        '(analysis.threat = :threat OR (analysis.threat IS NULL AND analysis.overallRating = :legacyRating))',
+        {
+          threat: options.threat,
+          legacyRating: ratingFromThreat(options.threat),
+        }
+      );
     }
 
     if (options.pinnedOnly) {

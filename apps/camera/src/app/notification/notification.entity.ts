@@ -7,6 +7,8 @@ import {
 } from 'typeorm';
 import { z } from 'zod';
 import { ENTITIES } from '../data-source';
+import { NOTIFY_TRIGGERS, THREAT_LEVELS } from '../analysis/taxonomy';
+import type { NotifyTrigger, ThreatLevel } from '../analysis/taxonomy';
 
 /**
  * Persists notification settings (single-row table).
@@ -48,6 +50,33 @@ export class NotificationSettingsEntity {
   /** Whether to attach the snapshot image to the notification */
   @Column('boolean', { default: true })
   attachSnapshot!: boolean;
+
+  // ── Scene-analysis gating ──
+
+  /**
+   * Route notifications through scene analysis instead of firing on the raw
+   * detection. Off by default: turning it on means a detection that is never
+   * analysed — cooldown, unlisted label, Ollama down — never notifies, which
+   * is a real behaviour change on a camera someone relies on.
+   */
+  @Column('boolean', { default: false })
+  useAnalysis!: boolean;
+
+  /** Minimum threat level that notifies when `useAnalysis` is on */
+  @Column('text', { default: 'suspicious' })
+  minThreat!: ThreatLevel;
+
+  /**
+   * Conditions that notify on their own, whatever the threat level. This is
+   * the rule surface: "tell me if someone is at a car after dark" is a thing
+   * to select here, not a threshold to tune.
+   */
+  @Column('simple-json', { default: '[]' })
+  notifyTriggers!: NotifyTrigger[];
+
+  /** Honour the model's own `notify` recommendation as a trigger */
+  @Column('boolean', { default: true })
+  followModelRecommendation!: boolean;
 }
 
 // ── Zod Schemas ──
@@ -61,6 +90,10 @@ export const NotificationSettingsSchema = z.object({
   minConfidence: z.number().min(0).max(1),
   notifyLabels: z.array(z.string()),
   attachSnapshot: z.boolean(),
+  useAnalysis: z.boolean(),
+  minThreat: z.enum(THREAT_LEVELS),
+  notifyTriggers: z.array(z.enum(NOTIFY_TRIGGERS)),
+  followModelRecommendation: z.boolean(),
 });
 
 export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>;
@@ -74,6 +107,10 @@ export const UpdateNotificationSettingsSchema = z.object({
   minConfidence: z.number().min(0).max(1).optional(),
   notifyLabels: z.array(z.string()).optional(),
   attachSnapshot: z.boolean().optional(),
+  useAnalysis: z.boolean().optional(),
+  minThreat: z.enum(THREAT_LEVELS).optional(),
+  notifyTriggers: z.array(z.enum(NOTIFY_TRIGGERS)).optional(),
+  followModelRecommendation: z.boolean().optional(),
 });
 
 export type UpdateNotificationSettings = z.infer<

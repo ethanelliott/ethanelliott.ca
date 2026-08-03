@@ -3,40 +3,105 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { Database } from '../data-source';
 import { WebSocketService } from '../websocket/websocket.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   SceneAnalysis,
   SceneEntity,
-  AnomalyRating,
   AnalysisSettingsEntity,
   AnalysisSettings,
   UpdateAnalysisSettings,
 } from './analysis.entity';
+import {
+  LIGHTING_CONDITIONS,
+  NOTIFY_TRIGGERS,
+  SCENE_ACTIVITIES,
+  THREAT_LEVELS,
+  VISIBILITY_LEVELS,
+  ratingFromThreat,
+  scoreFromThreat,
+} from './taxonomy';
+import type {
+  LightingCondition,
+  NotifyTrigger,
+  SceneActivity,
+  ThreatLevel,
+  VisibilityLevel,
+} from './taxonomy';
 
+/**
+ * Structured output contract for the vision model.
+ *
+ * Every judgement is a closed enum. Asking for a 0–10 anomaly score reads as
+ * more precise than it is: the model clusters on a few values, moves between
+ * runs on the same frame, and leaves nothing a notification rule can test.
+ * Named categories are stable, and `triggers` in particular gives a rule
+ * something concrete to match on instead of a threshold on a fuzzy number.
+ */
 const OLLAMA_SCHEMA = {
   type: 'object',
   properties: {
-    timestamp: { type: ['string', 'null'] },
+    summary: { type: 'string' },
+    activity: { type: 'string', enum: [...SCENE_ACTIVITIES] },
+    threat: { type: 'string', enum: [...THREAT_LEVELS] },
+    triggers: {
+      type: 'array',
+      items: { type: 'string', enum: [...NOTIFY_TRIGGERS] },
+    },
+    notify: { type: 'boolean' },
+    notify_reason: { type: ['string', 'null'] },
+    lighting: { type: 'string', enum: [...LIGHTING_CONDITIONS] },
+    visibility: { type: 'string', enum: [...VISIBILITY_LEVELS] },
     entities: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: ['person', 'vehicle', 'animal', 'object'] },
+          type: {
+            type: 'string',
+            enum: ['person', 'vehicle', 'animal', 'object'],
+          },
           description: { type: 'string' },
           location: { type: 'string' },
           activity: { type: 'string' },
           anomaly_score: { type: 'integer', minimum: 0, maximum: 10 },
           anomaly_reason: { type: ['string', 'null'] },
         },
-        required: ['type', 'description', 'location', 'activity', 'anomaly_score', 'anomaly_reason'],
+        required: [
+          'type',
+          'description',
+          'location',
+          'activity',
+          'anomaly_score',
+          'anomaly_reason',
+        ],
       },
     },
-    overall_score: { type: 'integer', minimum: 0, maximum: 10 },
-    overall_rating: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
-    summary: { type: 'string' },
   },
-  required: ['timestamp', 'entities', 'overall_score', 'overall_rating', 'summary'],
+  required: [
+    'summary',
+    'activity',
+    'threat',
+    'triggers',
+    'notify',
+    'notify_reason',
+    'lighting',
+    'visibility',
+    'entities',
+  ],
 } as const;
+
+/** Shape the model is contracted to return, before it is trusted. */
+interface AnalysisResponse {
+  summary: string;
+  activity: SceneActivity;
+  threat: ThreatLevel;
+  triggers: NotifyTrigger[];
+  notify: boolean;
+  notify_reason: string | null;
+  lighting: LightingCondition;
+  visibility: VisibilityLevel;
+  entities: SceneEntity[];
+}
 
 /**
  * AnalysisService sends detection snapshots to an Ollama vision model
@@ -46,6 +111,7 @@ const OLLAMA_SCHEMA = {
 export class AnalysisService {
   private readonly _db = inject(Database);
   private readonly _wsService = inject(WebSocketService);
+  private readonly _notificationService = inject(NotificationService);
   private readonly _repository = this._db.repositoryFor(SceneAnalysis);
   private readonly _settingsRepo = this._db.repositoryFor(
     AnalysisSettingsEntity
@@ -279,6 +345,73 @@ export class AnalysisService {
   }
 
   /**
+   * Build the classification prompt.
+   *
+   * Each enum value is spelled out with the condition that selects it. Left to
+   * infer what `person_loitering` or `suspicious` mean, the model picks a
+   * plausible reading and picks a different one on the next frame; naming the
+   * test is what makes the labels reproducible enough to trigger on.
+   */
+  private _buildPrompt(baseline: string, detectedLabel: string): string {
+    return `You are a security camera analyst. Classify a single frame.
+
+WHAT IS NORMAL HERE — never treat these as suspicious on their own:
+${baseline}
+
+An object detector already found: ${detectedLabel}. Describe what it is DOING.
+
+activity — pick the one that fits best:
+  nothing_notable         nothing worth logging
+  person_passing          walking through, not stopping or diverting
+  person_loitering        stationary or circling with no apparent purpose
+  person_approaching      moving toward a building, door, or the camera
+  person_at_entrance      at a door, gate, or entryway
+  person_with_package     carrying or handling a parcel
+  person_at_vehicle       standing at, leaning into, or entering a vehicle
+  group_gathering         three or more people together
+  vehicle_passing         driving through without stopping
+  vehicle_arriving        pulling in or parking
+  vehicle_departing       pulling out or leaving
+  vehicle_parked_occupied someone is sitting inside a parked vehicle
+  delivery                courier or delivery vehicle dropping something off
+  animal_present          an animal is the subject
+  view_obstructed         the lens is blocked, sprayed, or covered
+  other                   none of the above
+
+threat — how much attention this deserves:
+  benign      matches what is normal here
+  notable     worth having in the log; no action needed
+  suspicious  out of place for the time or location; deserves a look
+  critical    someone is being harmed, or a break-in is in progress
+
+triggers — list EVERY condition that is clearly true. Empty list if none:
+  person_after_dark            a person present and the scene is dusk or night
+  loitering                    remaining without apparent purpose
+  approaching_entrance         heading toward a door, gate, or entryway
+  trying_doors_or_handles      touching or pulling at handles, doors, windows
+  looking_into_vehicles        peering into or through vehicle windows
+  package_interaction          picking up, moving, or opening a parcel
+  face_concealed               face hidden by a mask, hood, or covering
+  multiple_people              two or more people together
+  carrying_large_object        carrying something bulky or awkward
+  unfamiliar_vehicle           a vehicle inconsistent with what is normal here
+  vehicle_occupied_after_dark  someone inside a parked vehicle at dusk or night
+  large_animal                 an animal bigger than a domestic dog
+  camera_obstructed            the view is blocked or tampered with
+
+notify — true only if this is worth interrupting someone for. A person simply
+walking past in daylight is not. Set notify_reason to one short clause when
+true, otherwise null.
+
+visibility — poor means you cannot reliably tell what is happening. Say poor
+rather than guessing, and keep threat at benign or notable when you do.
+
+Report entities for people, animals, and active vehicles only. Skip parked
+cars unless something is happening at them. Location format: left/center/right
+plus near/mid/far, e.g. "center-right-near". /no_think`;
+  }
+
+  /**
    * Send a snapshot to Ollama for scene analysis.
    */
   private async _analyzeSnapshot(params: {
@@ -307,14 +440,7 @@ export class AnalysisService {
       this._settings?.prompt ??
       'Parked cars, SUVs, trucks in the lot. Residential apartment buildings, trees, grass, sidewalks. Normal ambient lighting.';
 
-    const prompt = `You are a security camera analysis system.
-
-KNOWN BASELINE — do not flag these as anomalies:
-${baseline}
-
-Analyze this frame. Report only notable entities (people, animals, active vehicles). Omit static parked cars unless anomalous.
-Anomaly score: 0=normal, 1-3=present but expected, 4-6=mildly suspicious, 7-9=concerning, 10=critical.
-Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /no_think`;
+    const prompt = this._buildPrompt(baseline, params.label);
 
     console.log(
       `🔬 Analyzing ${params.label} detection (${params.snapshotFilename}) with ${model}...`
@@ -357,40 +483,58 @@ Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /n
         return;
       }
 
-      let parsed: {
-        summary: string;
-        overall_score: number;
-        overall_rating: AnomalyRating;
-        entities: SceneEntity[];
-      };
-
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        console.warn('Ollama response was not valid JSON, storing as plain text');
-        parsed = {
-          summary: raw,
-          overall_score: 0,
-          overall_rating: 'LOW',
-          entities: [],
-        };
-      }
-
+      const parsed = this._parseResponse(raw);
       const durationMs = Date.now() - startTime;
+
+      // A frame the model could not read is not evidence of calm — cap its
+      // severity so an obscured lens cannot report itself as benign.
+      const threat =
+        parsed.visibility === 'poor' && parsed.threat === 'critical'
+          ? 'suspicious'
+          : parsed.threat;
 
       const analysis = this._repository.create({
         detectionEventId: params.detectionEventId,
         label: params.label,
         model,
         description: parsed.summary,
-        overallScore: parsed.overall_score ?? null,
-        overallRating: parsed.overall_rating ?? null,
-        entities: parsed.entities ?? null,
+        // Derived from the classification so existing filters and the score
+        // display keep working against rows written under either schema.
+        overallScore: scoreFromThreat(threat),
+        overallRating: ratingFromThreat(threat),
+        entities: parsed.entities.length ? parsed.entities : null,
         durationMs,
         snapshotFilename: params.snapshotFilename,
+        activity: parsed.activity,
+        threat,
+        triggers: parsed.triggers,
+        notifyRecommended: parsed.notify,
+        notifyReason: parsed.notify_reason,
+        lighting: parsed.lighting,
+        visibility: parsed.visibility,
+        notified: false,
       });
 
       const saved = await this._repository.save(analysis);
+
+      // The notification decision belongs to the analysis, not the raw
+      // detection: "person, 87%" cannot tell you whether to care.
+      const notified = await this._notificationService.onAnalysis({
+        label: params.label,
+        confidence: params.confidence,
+        snapshotFilename: params.snapshotFilename,
+        summary: saved.description,
+        activity: saved.activity,
+        threat: saved.threat,
+        triggers: saved.triggers ?? [],
+        notifyRecommended: saved.notifyRecommended ?? false,
+        notifyReason: saved.notifyReason,
+      });
+
+      if (notified) {
+        saved.notified = true;
+        await this._repository.save(saved);
+      }
 
       this._wsService.emitSceneAnalysis({
         id: saved.id,
@@ -404,10 +548,21 @@ Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /n
         entities: saved.entities,
         durationMs: saved.durationMs,
         snapshotFilename: saved.snapshotFilename,
+        activity: saved.activity,
+        threat: saved.threat,
+        triggers: saved.triggers,
+        notifyRecommended: saved.notifyRecommended,
+        notifyReason: saved.notifyReason,
+        lighting: saved.lighting,
+        visibility: saved.visibility,
+        notified: saved.notified,
       });
 
       console.log(
-        `🔬 Analysis complete for ${params.label} in ${durationMs}ms [${saved.overallRating ?? 'UNKNOWN'} / ${saved.overallScore ?? '?'}/10]: "${parsed.summary.slice(0, 80)}"`
+        `🔬 Analysis complete for ${params.label} in ${durationMs}ms ` +
+          `[${threat} / ${saved.activity}${
+            saved.triggers?.length ? ` / ${saved.triggers.join(',')}` : ''
+          }${notified ? ' / NOTIFIED' : ''}]: "${parsed.summary.slice(0, 80)}"`
       );
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
@@ -418,6 +573,64 @@ Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /n
         throw err;
       }
     }
+  }
+
+  /**
+   * Parse and validate the model's reply.
+   *
+   * The schema constrains generation but does not guarantee it: a model can
+   * still emit a value outside an enum, drop a field, or return prose. Rather
+   * than store a bad label that a notification rule would then match on,
+   * anything unrecognised falls back to the inert value.
+   */
+  private _parseResponse(raw: string): AnalysisResponse {
+    let json: Partial<AnalysisResponse>;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      console.warn('Ollama response was not valid JSON, keeping it as prose');
+      return {
+        summary: raw.slice(0, 500),
+        activity: 'other',
+        threat: 'benign',
+        triggers: [],
+        notify: false,
+        notify_reason: null,
+        lighting: 'daylight',
+        visibility: 'poor',
+        entities: [],
+      };
+    }
+
+    const oneOf = <T extends string>(
+      value: unknown,
+      allowed: readonly T[],
+      fallback: T
+    ): T => (allowed.includes(value as T) ? (value as T) : fallback);
+
+    const triggers = Array.isArray(json.triggers)
+      ? json.triggers.filter((t): t is NotifyTrigger =>
+          NOTIFY_TRIGGERS.includes(t as NotifyTrigger)
+        )
+      : [];
+
+    return {
+      summary:
+        typeof json.summary === 'string' && json.summary.trim()
+          ? json.summary.trim()
+          : 'No description returned.',
+      activity: oneOf(json.activity, SCENE_ACTIVITIES, 'other'),
+      threat: oneOf(json.threat, THREAT_LEVELS, 'benign'),
+      triggers: [...new Set(triggers)],
+      notify: json.notify === true,
+      notify_reason:
+        typeof json.notify_reason === 'string' && json.notify_reason.trim()
+          ? json.notify_reason.trim()
+          : null,
+      lighting: oneOf(json.lighting, LIGHTING_CONDITIONS, 'daylight'),
+      visibility: oneOf(json.visibility, VISIBILITY_LEVELS, 'clear'),
+      entities: Array.isArray(json.entities) ? json.entities : [],
+    };
   }
 
   /**

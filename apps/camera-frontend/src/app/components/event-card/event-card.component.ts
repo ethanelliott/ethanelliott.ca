@@ -11,8 +11,14 @@ import {
   CameraApiService,
   DetectionEvent,
   SceneEntity,
+  ThreatLevel,
 } from '../../services/camera-api.service';
-import { labelColor, labelIcon } from '../../constants/labels';
+import {
+  activityLabel,
+  labelColor,
+  labelIcon,
+  triggerLabel,
+} from '../../constants/labels';
 
 /**
  * How much of an event to show.
@@ -65,17 +71,20 @@ export type EventCardVariant = 'compact' | 'detail' | 'gallery';
 
           <span class="confidence">{{ confidencePct() }}%</span>
 
-          @if (analysis()?.overallRating; as rating) {
-          <span class="rating" [class]="'rating-' + rating.toLowerCase()">
-            {{ rating }}
-            @if (analysis()?.overallScore !== null) {
-            <span class="score">{{ analysis()!.overallScore }}/10</span>
-            }
+          @if (threat(); as level) {
+          <span class="rating" [class]="'threat-' + level">
+            {{ level }}
           </span>
           } @else if (variant() !== 'compact') {
           <span class="rating rating-pending">
             <i class="pi pi-sparkles"></i>
             no analysis
+          </span>
+          } @if (activityLabel(); as activity) {
+          <span class="activity">{{ activity }}</span>
+          } @if (analysis()?.notified) {
+          <span class="notified" title="A push notification was sent">
+            <i class="pi pi-bell"></i>
           </span>
           }
 
@@ -88,6 +97,16 @@ export type EventCardVariant = 'compact' | 'detail' | 'gallery';
 
         @if (analysis()?.description; as description) {
         <p class="summary">{{ description }}</p>
+        }
+
+        <!-- The conditions the model matched: what a notification rule fires
+             on, so they are worth showing even when nothing was sent. -->
+        @if (variant() !== 'compact' && triggers().length) {
+        <div class="triggers">
+          @for (trigger of triggers(); track trigger) {
+          <span class="trigger">{{ trigger }}</span>
+          }
+        </div>
         }
 
         @if (variant() === 'detail' && analysis()?.entities?.length) {
@@ -385,19 +404,26 @@ export type EventCardVariant = 'compact' | 'detail' | 'gallery';
       padding: 1px 7px;
       border-radius: 8px;
 
-      &.rating-low {
+      text-transform: uppercase;
+
+      &.threat-benign {
+        background: rgba(148, 163, 184, 0.14);
+        color: #94a3b8;
+      }
+      &.threat-notable {
         background: rgba(34, 197, 94, 0.14);
         color: var(--accent-green);
       }
-      &.rating-medium {
-        background: rgba(234, 179, 8, 0.14);
+      &.threat-suspicious {
+        background: rgba(234, 179, 8, 0.16);
         color: var(--accent-yellow);
       }
-      &.rating-high {
-        background: rgba(239, 68, 68, 0.16);
+      &.threat-critical {
+        background: rgba(239, 68, 68, 0.18);
         color: var(--accent-red);
       }
       &.rating-pending {
+        text-transform: none;
         background: rgba(255, 255, 255, 0.04);
         color: var(--text-muted);
         font-weight: 500;
@@ -409,10 +435,35 @@ export type EventCardVariant = 'compact' | 'detail' | 'gallery';
       }
     }
 
-    .score {
-      font-weight: 600;
-      opacity: 0.75;
-      font-variant-numeric: tabular-nums;
+    .activity {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .notified {
+      display: inline-flex;
+      color: var(--accent-blue);
+
+      i {
+        font-size: 11px;
+      }
+    }
+
+    .triggers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .trigger {
+      padding: 1px 7px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--accent-yellow);
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.25);
     }
 
     .spacer {
@@ -544,6 +595,33 @@ export class EventCardComponent {
   readonly togglePin = output<DetectionEvent>();
 
   readonly analysis = computed(() => this.event().analysis ?? null);
+
+  /**
+   * Rows written before the taxonomy existed carry only a LOW/MEDIUM/HIGH
+   * rating, so map those forward rather than showing them as unanalysed.
+   */
+  readonly threat = computed<ThreatLevel | null>(() => {
+    const analysis = this.analysis();
+    if (!analysis) return null;
+    if (analysis.threat) return analysis.threat;
+    if (!analysis.overallRating) return null;
+    return { LOW: 'benign', MEDIUM: 'suspicious', HIGH: 'critical' }[
+      analysis.overallRating
+    ] as ThreatLevel;
+  });
+
+  readonly activityLabel = computed(() => {
+    const activity = this.analysis()?.activity;
+    // 'nothing_notable' adds nothing next to a summary that says the same.
+    return activity && activity !== 'nothing_notable'
+      ? activityLabel(activity)
+      : null;
+  });
+
+  readonly triggers = computed(() =>
+    (this.analysis()?.triggers ?? []).map(triggerLabel)
+  );
+
   readonly accent = computed(() => labelColor(this.event().label));
   readonly icon = computed(() => labelIcon(this.event().label));
   readonly confidencePct = computed(() =>
