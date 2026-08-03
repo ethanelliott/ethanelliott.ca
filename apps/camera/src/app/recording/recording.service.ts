@@ -9,6 +9,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'fs';
+import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { Database } from '../data-source';
 import {
@@ -35,6 +36,34 @@ export interface RecordingStatus {
   segmentSeconds: number;
   /** Estimated GB written per day, measured from the segments on disk */
   estimatedDailyGB: number | null;
+}
+
+/**
+ * A contiguous run of footage inside a DVR window.
+ *
+ * Recording gaps (camera offline, FFmpeg restart) collapse to nothing in the
+ * assembled playlist, so media time and wall-clock time drift apart across a
+ * gap. Emitting the runs lets the client map between the two exactly:
+ * within a run, `mediaTime = wallClock - start + mediaOffsetSec`.
+ */
+export interface DvrRun {
+  start: string;
+  end: string;
+  mediaOffsetSec: number;
+}
+
+export interface DvrWindow {
+  /** Start of the assembled window (first segment actually included) */
+  start: string;
+  /** End of the assembled window (the DVR edge, ~1 segment behind live) */
+  end: string;
+  /** Total playable duration, excluding gaps */
+  durationSec: number;
+  segmentCount: number;
+  /** Oldest footage on disk, regardless of the window that was requested */
+  availableStart: string | null;
+  /** Contiguous runs of footage, in order */
+  runs: DvrRun[];
 }
 
 /**
@@ -220,12 +249,8 @@ export class RecordingService {
     const segmentSeconds = this.getSegmentSeconds();
     const startEpoch = Math.floor(start.getTime() / 1000);
     const endEpoch = startEpoch + Math.ceil(durationSec);
-    const nowEpoch = Math.floor(Date.now() / 1000);
 
-    // Skip segments that may still be written by FFmpeg
-    const completed = this._listSegments().filter(
-      (s) => s.epoch + segmentSeconds + 3 <= nowEpoch
-    );
+    const completed = this._completedSegments();
 
     const inWindow = completed.filter(
       (s) => s.epoch >= startEpoch && s.epoch < endEpoch
@@ -327,6 +352,176 @@ export class RecordingService {
       segmentSeconds,
       estimatedDailyGB,
     };
+  }
+
+  // ── DVR playback ──
+  //
+  // The rolling recording segments double as an HLS media playlist: they are
+  // already MPEG-TS written with `-c copy`, so a DVR window can be assembled
+  // by listing them — no re-encode, no extra FFmpeg output, no extra disk.
+
+  /**
+   * Describe the DVR window ending at the current DVR edge and covering at
+   * most `minutes` of wall-clock time.
+   *
+   * Returns null when no completed segments overlap the window.
+   */
+  getDvrWindow(minutes: number): DvrWindow | null {
+    const all = this._listSegments();
+    const completed = this._completedSegments(all);
+    if (completed.length === 0) return null;
+
+    const edgeEpoch =
+      completed[completed.length - 1].epoch + this.getSegmentSeconds();
+    const fromEpoch = edgeEpoch - Math.round(minutes * 60);
+    const timed = this._timedSegments(completed, fromEpoch);
+    if (timed.length === 0) return null;
+
+    // Walk the segments, starting a new run wherever the footage is not
+    // contiguous (a segment that does not begin where the previous ended).
+    const runs: DvrRun[] = [];
+    let mediaOffsetSec = 0;
+    let runStart = timed[0].epoch;
+    let runEnd = timed[0].epoch;
+    let runOffset = 0;
+
+    for (const { epoch, duration } of timed) {
+      if (epoch > runEnd + 1) {
+        runs.push({
+          start: new Date(runStart * 1000).toISOString(),
+          end: new Date(runEnd * 1000).toISOString(),
+          mediaOffsetSec: runOffset,
+        });
+        runStart = epoch;
+        runOffset = mediaOffsetSec;
+      }
+      runEnd = epoch + duration;
+      mediaOffsetSec += duration;
+    }
+    runs.push({
+      start: new Date(runStart * 1000).toISOString(),
+      end: new Date(runEnd * 1000).toISOString(),
+      mediaOffsetSec: runOffset,
+    });
+
+    return {
+      start: new Date(timed[0].epoch * 1000).toISOString(),
+      end: new Date(runEnd * 1000).toISOString(),
+      durationSec: Math.round(mediaOffsetSec * 1000) / 1000,
+      segmentCount: timed.length,
+      availableStart: all.length
+        ? new Date(all[0].epoch * 1000).toISOString()
+        : null,
+      runs,
+    };
+  }
+
+  /**
+   * Build an HLS playlist for a DVR window.
+   *
+   * The playlist is a VOD snapshot rather than a live playlist: the client
+   * requests a fresh one when it changes the window, and switches back to the
+   * low-latency live playlist to catch up to the edge. That keeps seeking
+   * predictable — media time never shifts underneath the scrubber.
+   *
+   * Every segment gets an `EXT-X-DISCONTINUITY`: the recording output runs
+   * with `-reset_timestamps 1`, so each segment restarts its PTS at zero and
+   * the player must be told not to expect a continuous timeline.
+   */
+  buildDvrPlaylist(minutes: number): string | null {
+    const completed = this._completedSegments();
+    if (completed.length === 0) return null;
+
+    const edgeEpoch =
+      completed[completed.length - 1].epoch + this.getSegmentSeconds();
+    const timed = this._timedSegments(
+      completed,
+      edgeEpoch - Math.round(minutes * 60)
+    );
+    if (timed.length === 0) return null;
+
+    const targetDuration = Math.ceil(
+      timed.reduce((max, s) => Math.max(max, s.duration), 0)
+    );
+
+    const lines = [
+      '#EXTM3U',
+      '#EXT-X-VERSION:3',
+      `#EXT-X-TARGETDURATION:${targetDuration}`,
+      '#EXT-X-MEDIA-SEQUENCE:0',
+      '#EXT-X-DISCONTINUITY-SEQUENCE:0',
+      '#EXT-X-PLAYLIST-TYPE:VOD',
+    ];
+
+    for (const { filename, epoch, duration } of timed) {
+      lines.push('#EXT-X-DISCONTINUITY');
+      lines.push(
+        `#EXT-X-PROGRAM-DATE-TIME:${new Date(epoch * 1000).toISOString()}`
+      );
+      lines.push(`#EXTINF:${duration.toFixed(3)},`);
+      lines.push(`dvr/${filename}`);
+    }
+
+    lines.push('#EXT-X-ENDLIST');
+    return lines.join('\n') + '\n';
+  }
+
+  /**
+   * Read a recording segment for DVR playback.
+   * Only `rec_<epoch>.ts` names are accepted, so the filename can never
+   * escape the recordings directory.
+   */
+  async readDvrSegment(filename: string): Promise<Buffer | null> {
+    if (!/^rec_\d+\.ts$/.test(filename)) return null;
+    try {
+      return await readFile(join(this._recordingsDir, filename));
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Segments FFmpeg has finished writing. The newest segment on disk is still
+   * being appended to, so serving it would truncate mid-frame.
+   */
+  private _completedSegments(segments?: SegmentInfo[]): SegmentInfo[] {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    const segmentSeconds = this.getSegmentSeconds();
+    return (segments ?? this._listSegments()).filter(
+      (s) => s.epoch + segmentSeconds + 3 <= nowEpoch
+    );
+  }
+
+  /**
+   * Attach a measured duration to each segment at or after `fromEpoch`.
+   *
+   * Copy-mode segments drift from the requested `segment_time` (cuts land on
+   * keyframes), so the gap to the next segment on disk is the only accurate
+   * duration available — but only while recording was continuous. A gap much
+   * larger than the nominal length means recording stopped, not that the
+   * segment is long, so those fall back to the nominal duration rather than
+   * padding the playlist with time that was never recorded.
+   */
+  private _timedSegments(
+    completed: SegmentInfo[],
+    fromEpoch: number
+  ): (SegmentInfo & { duration: number })[] {
+    const segmentSeconds = this.getSegmentSeconds();
+    const maxDrift = segmentSeconds * 1.5;
+
+    const timed: (SegmentInfo & { duration: number })[] = [];
+    for (let i = 0; i < completed.length; i++) {
+      const segment = completed[i];
+      if (segment.epoch + segmentSeconds <= fromEpoch) continue;
+
+      const next = completed[i + 1];
+      const gap = next ? next.epoch - segment.epoch : segmentSeconds;
+      timed.push({
+        ...segment,
+        duration: gap > maxDrift ? segmentSeconds : Math.max(gap, 0.1),
+      });
+    }
+    return timed;
   }
 
   /** List segments on disk, sorted oldest → newest. */

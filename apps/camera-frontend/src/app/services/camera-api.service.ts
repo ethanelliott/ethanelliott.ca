@@ -21,6 +21,8 @@ export interface DetectionEvent {
   frameWidth: number;
   frameHeight: number;
   pinned: boolean;
+  /** Present when the event was fetched with `includeAnalysis` */
+  analysis?: SceneAnalysis | null;
 }
 
 /** Lightweight detection data emitted per frame for the live overlay. */
@@ -146,6 +148,26 @@ export interface RecordingSettings {
   segmentSeconds: number;
 }
 
+/**
+ * A contiguous run of footage inside a DVR window. Recording gaps collapse
+ * in the assembled playlist, so media time and wall-clock drift apart across
+ * one; the runs let the scrubber map between them exactly.
+ */
+export interface DvrRun {
+  start: string;
+  end: string;
+  mediaOffsetSec: number;
+}
+
+export interface DvrWindow {
+  start: string;
+  end: string;
+  durationSec: number;
+  segmentCount: number;
+  availableStart: string | null;
+  runs: DvrRun[];
+}
+
 export interface RecordingStatus {
   enabled: boolean;
   segmentCount: number;
@@ -201,6 +223,10 @@ export class CameraApiService {
     label?: string;
     minConfidence?: number;
     since?: string;
+    until?: string;
+    rating?: AnomalyRating;
+    pinnedOnly?: boolean;
+    includeAnalysis?: boolean;
   }): Observable<DetectionEventsResponse> {
     let httpParams = new HttpParams();
     if (params?.limit) httpParams = httpParams.set('limit', params.limit);
@@ -209,6 +235,11 @@ export class CameraApiService {
     if (params?.minConfidence)
       httpParams = httpParams.set('minConfidence', params.minConfidence);
     if (params?.since) httpParams = httpParams.set('since', params.since);
+    if (params?.until) httpParams = httpParams.set('until', params.until);
+    if (params?.rating) httpParams = httpParams.set('rating', params.rating);
+    if (params?.pinnedOnly) httpParams = httpParams.set('pinnedOnly', true);
+    if (params?.includeAnalysis)
+      httpParams = httpParams.set('includeAnalysis', true);
 
     return this.http.get<DetectionEventsResponse>(
       `${this.baseUrl}/detections`,
@@ -350,6 +381,20 @@ export class CameraApiService {
       `${this.baseUrl}/recordings/settings`,
       update
     );
+  }
+
+  // ── DVR playback ──
+
+  /** Bounds and gap layout of the scrub-back window. */
+  getDvrWindow(minutes: number): Observable<DvrWindow> {
+    return this.http.get<DvrWindow>(`${this.baseUrl}/recordings/dvr/window`, {
+      params: new HttpParams().set('minutes', minutes),
+    });
+  }
+
+  /** HLS playlist assembled from the rolling recording segments. */
+  getDvrPlaylistUrl(minutes: number): string {
+    return `${this.baseUrl}/recordings/dvr.m3u8?minutes=${minutes}`;
   }
 
   getClipUrl(start: Date, durationSec: number): string {

@@ -21,6 +21,24 @@ const RecordingStatusSchema = z.object({
   estimatedDailyGB: z.number().nullable(),
 });
 
+const DvrWindowSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  durationSec: z.number(),
+  segmentCount: z.number(),
+  availableStart: z.string().nullable(),
+  runs: z.array(
+    z.object({
+      start: z.string(),
+      end: z.string(),
+      mediaOffsetSec: z.number(),
+    })
+  ),
+});
+
+/** Upper bound on how far back the DVR scrubber may reach, in minutes. */
+const MAX_DVR_MINUTES = 60 * 24 * 7;
+
 export async function RecordingRouter(fastify: FastifyInstance) {
   const recordingService = inject(RecordingService);
   const streamService = inject(StreamService);
@@ -79,6 +97,88 @@ export async function RecordingRouter(fastify: FastifyInstance) {
     },
     async () => {
       return recordingService.getStatus();
+    }
+  );
+
+  // Describe the DVR window the scrubber can reach: its bounds, how much of
+  // it is actually playable, and where the gaps are.
+  fastify.withTypeProvider<ZodTypeProvider>().get(
+    '/dvr/window',
+    {
+      schema: {
+        querystring: z.object({
+          minutes: z.coerce
+            .number()
+            .min(1)
+            .max(MAX_DVR_MINUTES)
+            .default(30),
+        }),
+        response: {
+          200: DvrWindowSchema,
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const window = recordingService.getDvrWindow(request.query.minutes);
+      if (!window) {
+        return reply.code(404).send({ error: 'No recorded video available' });
+      }
+      return window;
+    }
+  );
+
+  // HLS playlist assembled from the rolling recording segments.
+  fastify.withTypeProvider<ZodTypeProvider>().get(
+    '/dvr.m3u8',
+    {
+      schema: {
+        querystring: z.object({
+          minutes: z.coerce
+            .number()
+            .min(1)
+            .max(MAX_DVR_MINUTES)
+            .default(30),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const playlist = recordingService.buildDvrPlaylist(request.query.minutes);
+      if (!playlist) {
+        reply.code(404).send({ error: 'No recorded video available' });
+        return reply;
+      }
+
+      reply
+        .header('Content-Type', 'application/vnd.apple.mpegurl')
+        .header('Cache-Control', 'no-cache, no-store')
+        .header('Cross-Origin-Resource-Policy', 'cross-origin')
+        .header('Access-Control-Allow-Origin', '*')
+        .send(playlist);
+      return reply;
+    }
+  );
+
+  // Serve a recording segment referenced by the DVR playlist. Segments are
+  // immutable once written, so they cache aggressively.
+  fastify.get<{ Params: { filename: string } }>(
+    '/dvr/:filename',
+    async (request, reply) => {
+      const data = await recordingService.readDvrSegment(
+        request.params.filename
+      );
+      if (!data) {
+        reply.code(404).send({ error: 'Segment not found' });
+        return reply;
+      }
+
+      reply
+        .header('Content-Type', 'video/mp2t')
+        .header('Cache-Control', 'private, max-age=3600')
+        .header('Cross-Origin-Resource-Policy', 'cross-origin')
+        .header('Access-Control-Allow-Origin', '*')
+        .send(data);
+      return reply;
     }
   );
 

@@ -8,38 +8,38 @@ import {
 } from './camera-api.service';
 
 /**
- * EventService connects to the backend via Socket.io
- * to receive real-time detection events.
+ * Live detection stream over Socket.io.
+ *
+ * Scene analysis arrives seconds after the detection that triggered it, on a
+ * separate channel. This service reunites them, so consumers always see one
+ * event object that either has its analysis or does not yet — no parallel
+ * lookup map to keep in sync.
  */
 @Injectable({ providedIn: 'root' })
 export class EventService implements OnDestroy {
   private socket: Socket | null = null;
 
-  /** Signal holding the latest detection events (most recent first) */
+  /** Latest detection events, most recent first, analysis attached. */
   readonly recentEvents = signal<DetectionEvent[]>([]);
 
-  /** Signal holding all detections from the latest frame (for live overlay) */
+  /** All detections in the newest frame, for the live overlay. */
   readonly currentFrameDetections = signal<FrameDetection[]>([]);
 
-  /** Signal holding recent scene analyses (most recent first) */
-  readonly recentAnalyses = signal<SceneAnalysis[]>([]);
-
-  /** Map of detectionEventId → SceneAnalysis for quick lookup */
-  readonly analysisMap = signal<Map<string, SceneAnalysis>>(new Map());
-
-  /** Signal indicating connection status */
   readonly connected = signal(false);
 
   /** Maximum events to keep in memory */
   private readonly maxEvents = 100;
 
+  /**
+   * Analyses that arrived before their detection was in the buffer (a page
+   * load mid-analysis, say). Held briefly so the pairing is not lost.
+   */
+  private readonly orphanedAnalyses = new Map<string, SceneAnalysis>();
+
   constructor() {
     this.connect();
   }
 
-  /**
-   * Connect to the WebSocket server
-   */
   connect(): void {
     if (this.socket?.connected) {
       return;
@@ -64,10 +64,17 @@ export class EventService implements OnDestroy {
     });
 
     this.socket.on('detection', (event: DetectionEvent) => {
-      this.recentEvents.update((events) => {
-        const updated = [event, ...events];
-        return updated.slice(0, this.maxEvents);
-      });
+      const pending = this.orphanedAnalyses.get(event.id);
+      if (pending) {
+        this.orphanedAnalyses.delete(event.id);
+        event = { ...event, analysis: pending };
+      }
+      this.recentEvents.update((events) =>
+        [event, ...events.filter((e) => e.id !== event.id)].slice(
+          0,
+          this.maxEvents
+        )
+      );
     });
 
     this.socket.on('frame-detections', (detections: FrameDetection[]) => {
@@ -75,15 +82,23 @@ export class EventService implements OnDestroy {
     });
 
     this.socket.on('scene-analysis', (analysis: SceneAnalysis) => {
-      this.recentAnalyses.update((analyses) => {
-        const updated = [analysis, ...analyses];
-        return updated.slice(0, this.maxEvents);
-      });
-      this.analysisMap.update((map) => {
-        const updated = new Map(map);
-        updated.set(analysis.detectionEventId, analysis);
-        return updated;
-      });
+      let matched = false;
+      this.recentEvents.update((events) =>
+        events.map((event) => {
+          if (event.id !== analysis.detectionEventId) return event;
+          matched = true;
+          return { ...event, analysis };
+        })
+      );
+
+      if (!matched) {
+        this.orphanedAnalyses.set(analysis.detectionEventId, analysis);
+        // Bound the holding area; these only matter for a few seconds.
+        if (this.orphanedAnalyses.size > 50) {
+          const oldest = this.orphanedAnalyses.keys().next().value;
+          if (oldest) this.orphanedAnalyses.delete(oldest);
+        }
+      }
     });
 
     this.socket.on('connect_error', (error: Error) => {
@@ -92,8 +107,32 @@ export class EventService implements OnDestroy {
   }
 
   /**
-   * Disconnect from the WebSocket server
+   * Merge historical events fetched over HTTP into the live buffer, so a
+   * freshly loaded page shows recent activity instead of waiting for the
+   * next detection. Live copies win — they are never staler.
    */
+  seed(events: DetectionEvent[]): void {
+    this.recentEvents.update((current) => {
+      const byId = new Map(events.map((event) => [event.id, event]));
+      for (const event of current) byId.set(event.id, event);
+      return [...byId.values()]
+        .sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )
+        .slice(0, this.maxEvents);
+    });
+  }
+
+  /** Apply a pin toggle from the API to the live buffer. */
+  patch(updated: DetectionEvent): void {
+    this.recentEvents.update((events) =>
+      events.map((event) =>
+        event.id === updated.id ? { ...updated, analysis: event.analysis } : event
+      )
+    );
+  }
+
   disconnect(): void {
     if (this.socket) {
       this.socket.disconnect();
@@ -102,9 +141,6 @@ export class EventService implements OnDestroy {
     this.connected.set(false);
   }
 
-  /**
-   * Clear the recent events buffer
-   */
   clearEvents(): void {
     this.recentEvents.set([]);
   }

@@ -41,8 +41,8 @@ import { UpdateService } from '../services/update.service';
               routerLink="/dashboard"
               routerLinkActive="active-link"
             >
-              <i class="pi pi-objects-column"></i>
-              Dashboard
+              <i class="pi pi-video"></i>
+              Live
             </a>
             <a
               pButton
@@ -52,15 +52,6 @@ import { UpdateService } from '../services/update.service';
             >
               <i class="pi pi-bell"></i>
               Events
-            </a>
-            <a
-              pButton
-              [text]="true"
-              routerLink="/archive"
-              routerLinkActive="active-link"
-            >
-              <i class="pi pi-images"></i>
-              Archive
             </a>
             <a
               pButton

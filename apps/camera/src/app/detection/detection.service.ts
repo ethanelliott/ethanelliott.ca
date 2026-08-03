@@ -12,6 +12,7 @@ import { WebSocketService } from '../websocket/websocket.service';
 import { StreamService } from '../stream/stream.service';
 import { NotificationService } from '../notification/notification.service';
 import { AnalysisService } from '../analysis/analysis.service';
+import { AnomalyRating, SceneAnalysis } from '../analysis/analysis.entity';
 
 /** All 80 COCO-SSD labels */
 export const COCO_SSD_LABELS = [
@@ -227,7 +228,11 @@ export class DetectionService {
   }
 
   /**
-   * Get detection events with optional filtering
+   * Get detection events with optional filtering.
+   *
+   * With `includeAnalysis`, each event carries its scene analysis inline so a
+   * page of events costs one round trip instead of one per row. The link is a
+   * plain id column rather than a relation, so the join is spelled out.
    */
   async getEvents(options: {
     limit?: number;
@@ -235,8 +240,22 @@ export class DetectionService {
     label?: string;
     minConfidence?: number;
     since?: Date;
+    until?: Date;
+    rating?: AnomalyRating;
+    pinnedOnly?: boolean;
+    includeAnalysis?: boolean;
   }): Promise<{ events: DetectionEvent[]; total: number }> {
     const qb = this._repository.createQueryBuilder('event');
+
+    // Filtering by rating needs the analysis row regardless of the flag.
+    if (options.includeAnalysis || options.rating) {
+      qb.leftJoinAndMapOne(
+        'event.analysis',
+        SceneAnalysis,
+        'analysis',
+        'analysis.detectionEventId = event.id'
+      );
+    }
 
     if (options.label) {
       qb.andWhere('event.label = :label', { label: options.label });
@@ -250,6 +269,20 @@ export class DetectionService {
 
     if (options.since) {
       qb.andWhere('event.timestamp >= :since', { since: options.since });
+    }
+
+    if (options.until) {
+      qb.andWhere('event.timestamp <= :until', { until: options.until });
+    }
+
+    if (options.rating) {
+      qb.andWhere('analysis.overallRating = :rating', {
+        rating: options.rating,
+      });
+    }
+
+    if (options.pinnedOnly) {
+      qb.andWhere('event.pinned = :pinned', { pinned: true });
     }
 
     qb.orderBy('event.timestamp', 'DESC');

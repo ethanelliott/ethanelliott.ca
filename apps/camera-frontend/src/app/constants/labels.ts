@@ -91,3 +91,42 @@ export const LABEL_OPTIONS = COCO_LABELS.map((value) => ({
     .join(' '),
   value,
 }));
+
+/**
+ * Colours for the labels that actually show up on an outdoor camera. Shared
+ * by the bounding-box overlay, the timeline markers and the event list so a
+ * label reads the same colour everywhere.
+ */
+export const LABEL_COLORS: Record<string, string> = {
+  person: '#3b82f6',
+  car: '#22c55e',
+  truck: '#eab308',
+  bicycle: '#a855f7',
+  motorcycle: '#f97316',
+  bus: '#06b6d4',
+  cat: '#ec4899',
+  dog: '#f43f5e',
+  bird: '#14b8a6',
+};
+
+export const DEFAULT_LABEL_COLOR = '#3b82f6';
+
+export function labelColor(label: string): string {
+  return LABEL_COLORS[label] ?? DEFAULT_LABEL_COLOR;
+}
+
+/** PrimeIcons name for a detection label. */
+export function labelIcon(label: string): string {
+  const icons: Record<string, string> = {
+    person: 'pi-user',
+    car: 'pi-car',
+    truck: 'pi-truck',
+    bus: 'pi-truck',
+    bicycle: 'pi-compass',
+    motorcycle: 'pi-compass',
+    cat: 'pi-heart',
+    dog: 'pi-heart',
+    bird: 'pi-sun',
+  };
+  return icons[label] ?? 'pi-eye';
+}

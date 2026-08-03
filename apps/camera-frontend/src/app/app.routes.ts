@@ -25,12 +25,10 @@ export const appRoutes: Route[] = [
             (m) => m.EventsComponent
           ),
       },
+      // The snapshot archive folded into Events as its gallery view.
       {
         path: 'archive',
-        loadComponent: () =>
-          import('./pages/archive/archive.component').then(
-            (m) => m.ArchiveComponent
-          ),
+        redirectTo: 'events',
       },
       {
         path: 'settings',

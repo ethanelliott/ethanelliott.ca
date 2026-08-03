@@ -5,10 +5,19 @@ import { z } from 'zod';
 import { DetectionService } from './detection.service';
 import {
   DetectionEventOutSchema,
+  DetectionEventWithAnalysisSchema,
   DetectionStatsSchema,
   DetectionSettingsSchema,
   UpdateDetectionSettingsSchema,
 } from './detection.entity';
+
+/**
+ * Query-string boolean. `z.coerce.boolean()` is not usable here: it follows
+ * JS truthiness, so `?flag=false` would come through as true.
+ */
+const QueryBoolean = z
+  .enum(['true', 'false', '1', '0'])
+  .transform((value) => value === 'true' || value === '1');
 
 export async function DetectionRouter(fastify: FastifyInstance) {
   const detectionService = inject(DetectionService);
@@ -19,15 +28,19 @@ export async function DetectionRouter(fastify: FastifyInstance) {
     {
       schema: {
         querystring: z.object({
-          limit: z.coerce.number().int().positive().max(200).default(50),
+          limit: z.coerce.number().int().positive().max(500).default(50),
           offset: z.coerce.number().int().min(0).default(0),
           label: z.string().optional(),
           minConfidence: z.coerce.number().min(0).max(1).optional(),
           since: z.coerce.date().optional(),
+          until: z.coerce.date().optional(),
+          rating: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+          pinnedOnly: QueryBoolean.optional(),
+          includeAnalysis: QueryBoolean.optional(),
         }),
         response: {
           200: z.object({
-            events: z.array(DetectionEventOutSchema),
+            events: z.array(DetectionEventWithAnalysisSchema),
             total: z.number(),
           }),
         },
@@ -40,6 +53,10 @@ export async function DetectionRouter(fastify: FastifyInstance) {
         label: request.query.label,
         minConfidence: request.query.minConfidence,
         since: request.query.since,
+        until: request.query.until,
+        rating: request.query.rating,
+        pinnedOnly: request.query.pinnedOnly,
+        includeAnalysis: request.query.includeAnalysis,
       });
     }
   );

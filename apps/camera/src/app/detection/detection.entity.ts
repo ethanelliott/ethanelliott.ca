@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { z } from 'zod';
 import { ENTITIES } from '../data-source';
+import { SceneAnalysis, SceneAnalysisOutSchema } from '../analysis/analysis.entity';
 
 @Entity('detection_event')
 export class DetectionEvent {
@@ -38,6 +39,12 @@ export class DetectionEvent {
 
   @Column('boolean', { default: false })
   pinned!: boolean;
+
+  /**
+   * Scene analysis for this event, mapped in by `getEvents` when requested.
+   * Not a column — scene_analysis links back by id rather than by relation.
+   */
+  analysis?: SceneAnalysis | null;
 }
 
 // ── Zod Schemas ──
@@ -62,6 +69,15 @@ export const DetectionEventOutSchema = z.object({
 });
 
 export type DetectionEventOut = z.infer<typeof DetectionEventOutSchema>;
+
+/**
+ * List-endpoint shape: the base event plus its scene analysis when the
+ * caller asked for it, so the feed can render AI output without a second
+ * request per row.
+ */
+export const DetectionEventWithAnalysisSchema = DetectionEventOutSchema.extend({
+  analysis: SceneAnalysisOutSchema.nullish(),
+});
 
 /** Lightweight detection data emitted per frame for the live overlay. */
 export interface FrameDetection {
