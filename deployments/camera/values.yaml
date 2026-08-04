@@ -34,8 +34,18 @@ env:
   CAMERA_ONVIF_PORT: '8000'
   CAMERA_RTSP_PORT: '8554'
   CAMERA_RTSP_PATH: '/Streaming/Channels/101'
-  DETECTION_FPS: '5'
+  # Inference rate while a subject is being tracked. The motion gate keeps an
+  # idle scene from paying for it, and the higher rate is what makes tracking
+  # a walking subject reliable — at 5 FPS the boxes stop overlapping and one
+  # crossing splits into a dozen events.
+  DETECTION_FPS: '10'
+  MOTION_CHECK_FPS: '4'
+  # MobileNet resizes its input internally, so decoding 720p for it was
+  # spending the frame budget on pixels the model throws away.
+  DETECTION_INPUT_WIDTH: '640'
   DETECTION_THRESHOLD: '0.6'
+  ANALYSIS_QUEUE_MAX: '200'
+  ANALYSIS_QUEUE_ATTEMPTS: '4'
   DATA_DIR: '/app/data'
   NTFY_SERVER_URL: 'http://ntfy.elliott-haus.svc.cluster.local'
   NTFY_TOPIC: 'camera-detections'

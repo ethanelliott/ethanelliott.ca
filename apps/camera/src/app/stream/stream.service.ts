@@ -54,6 +54,16 @@ export class StreamService {
     parseFloat(process.env.DETECTION_FPS || '10')
   );
 
+  /**
+   * Width of the detection frames. Kept in step with the detector's own input
+   * size — writing larger frames only to shrink them again wastes the encode
+   * as well as the decode.
+   */
+  private readonly _detectionWidth = parseInt(
+    process.env.DETECTION_INPUT_WIDTH || '640',
+    10
+  );
+
   /** Path where FFmpeg writes the latest detection JPEG frame */
   private readonly _detectionFramePath = join(
     this._dataDir,
@@ -249,7 +259,7 @@ export class StreamService {
       '-map',
       '0:v',
       '-vf',
-      `fps=${this._detectionFps},scale=1280:720`,
+      `fps=${this._detectionFps},scale=${this._detectionWidth}:-2`,
       '-f',
       'image2',
       '-update',

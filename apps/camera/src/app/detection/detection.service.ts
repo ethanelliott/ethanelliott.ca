@@ -147,6 +147,19 @@ export class DetectionService {
   /** How often the motion gate is consulted while the scene is still. */
   private readonly _idleFps = parseFloat(process.env.MOTION_CHECK_FPS || '4');
 
+  /**
+   * Width the frame is decoded to before inference.
+   *
+   * COCO-SSD/MobileNet resizes its input to a few hundred pixels square
+   * internally, so decoding and tensorising a full 720p frame buys nothing
+   * and costs the most expensive part of each pass. Detecting a subject at
+   * the far end of the lot is what sets the floor here, not the model.
+   */
+  private readonly _inputWidth = parseInt(
+    process.env.DETECTION_INPUT_WIDTH || '640',
+    10
+  );
+
   private readonly _tracker = new Tracker();
   private _motion: MotionDetector | null = null;
 
@@ -573,7 +586,7 @@ export class DetectionService {
   } | null> {
     try {
       const { data, info } = await this._sharp(frame)
-        .resize(1280, 720, { fit: 'inside' })
+        .resize(this._inputWidth, null, { fit: 'inside', withoutEnlargement: true })
         .raw()
         .toBuffer({ resolveWithObject: true });
 
