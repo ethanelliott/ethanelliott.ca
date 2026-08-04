@@ -452,6 +452,8 @@ export class CameraViewerComponent implements AfterViewInit, OnDestroy {
   private stallCount = 0;
   /** Media time to apply once the next manifest is ready. */
   private pendingSeekSec: number | null = null;
+  /** Pause as soon as the frame at the seek target is actually showing. */
+  private pauseWhenReady = false;
 
   readonly color = labelColor;
 
@@ -469,6 +471,7 @@ export class CameraViewerComponent implements AfterViewInit, OnDestroy {
   // ── Transport ──
 
   goLive(): void {
+    this.pauseWhenReady = false;
     this.position.set(null);
     this.positionChange.emit(null);
     if (this.mode() === 'live') return;
@@ -486,9 +489,19 @@ export class CameraViewerComponent implements AfterViewInit, OnDestroy {
 
     const mediaSec = this.wallToMedia(target);
     if (this.mode() === 'dvr' && mediaSec !== null) {
-      this.videoRef().nativeElement.currentTime = mediaSec;
-      this.videoRef().nativeElement.play().catch(() => undefined);
-      this.paused.set(false);
+      // Already inside the loaded window — seeking is just a time change.
+      const video = this.videoRef().nativeElement;
+      video.currentTime = mediaSec;
+      if (this.pauseWhenReady) {
+        // Handled here rather than in `playing`, which does not re-fire for a
+        // seek that never interrupts playback.
+        this.pauseWhenReady = false;
+        video.pause();
+        this.paused.set(true);
+      } else {
+        video.play().catch(() => undefined);
+        this.paused.set(false);
+      }
       return;
     }
 
@@ -522,6 +535,16 @@ export class CameraViewerComponent implements AfterViewInit, OnDestroy {
   nudge(seconds: number): void {
     const from = this.position() ?? new Date();
     this.seekTo(new Date(from.getTime() + seconds * 1000));
+  }
+
+  /**
+   * Jump to a moment and hold on it — used when picking an event out of the
+   * activity list, where the point is to look at the frame rather than to
+   * resume playback from it.
+   */
+  seekAndPause(target: Date): void {
+    this.pauseWhenReady = true;
+    this.seekTo(target);
   }
 
   retry(): void {
@@ -598,8 +621,17 @@ export class CameraViewerComponent implements AfterViewInit, OnDestroy {
   onPlaying(): void {
     this.isPlaying.set(true);
     this.buffering.set(false);
-    this.paused.set(false);
     this.error.set(null);
+
+    // Pausing before playback starts leaves the element on a blank frame, so
+    // a requested pause waits until there is actually a picture to hold.
+    if (this.pauseWhenReady) {
+      this.pauseWhenReady = false;
+      this.videoRef().nativeElement.pause();
+      this.paused.set(true);
+      return;
+    }
+    this.paused.set(false);
   }
 
   /**

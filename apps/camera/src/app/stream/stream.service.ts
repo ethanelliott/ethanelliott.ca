@@ -43,9 +43,15 @@ export class StreamService {
     { data: Buffer; expires: number }
   >();
 
-  /** FPS for the detection frame output (second FFmpeg output) */
+  /**
+   * FPS for the detection frame output (second FFmpeg output).
+   *
+   * Written at the cascade's *active* rate rather than its idle one: the
+   * detector reads less often while the scene is still, but when a subject
+   * appears there has to be a fresh frame waiting every time it looks.
+   */
   private readonly _detectionFps = Math.ceil(
-    parseFloat(process.env.DETECTION_FPS || '5')
+    parseFloat(process.env.DETECTION_FPS || '10')
   );
 
   /** Path where FFmpeg writes the latest detection JPEG frame */

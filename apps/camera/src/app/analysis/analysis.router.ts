@@ -3,11 +3,19 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { AnalysisService } from './analysis.service';
+import { AnalysisQueueService } from './analysis-queue.service';
 import {
   SceneAnalysisOutSchema,
   AnalysisSettingsSchema,
   UpdateAnalysisSettingsSchema,
 } from './analysis.entity';
+import {
+  ACTIVITY_LABELS,
+  NOTIFY_TRIGGERS,
+  SCENE_ACTIVITIES,
+  THREAT_LEVELS,
+  TRIGGER_LABELS,
+} from './taxonomy';
 
 export async function AnalysisRouter(fastify: FastifyInstance) {
   const analysisService = inject(AnalysisService);
@@ -89,6 +97,56 @@ export async function AnalysisRouter(fastify: FastifyInstance) {
       }
       return analysis;
     }
+  );
+
+  // Queue depth, so a backlog or a stuck model is visible rather than
+  // something you notice by not being told about an intruder.
+  fastify.withTypeProvider<ZodTypeProvider>().get(
+    '/queue',
+    {
+      schema: {
+        response: {
+          200: z.object({
+            pending: z.number(),
+            failed: z.number(),
+            oldestPendingAgeSec: z.number().nullable(),
+          }),
+        },
+      },
+    },
+    async () => inject(AnalysisQueueService).getStats()
+  );
+
+  // The classification vocabulary, served so the settings UI builds its
+  // options from the same source the model is prompted with.
+  fastify.withTypeProvider<ZodTypeProvider>().get(
+    '/taxonomy',
+    {
+      schema: {
+        response: {
+          200: z.object({
+            activities: z.array(
+              z.object({ value: z.string(), label: z.string() })
+            ),
+            threatLevels: z.array(z.string()),
+            triggers: z.array(
+              z.object({ value: z.string(), label: z.string() })
+            ),
+          }),
+        },
+      },
+    },
+    async () => ({
+      activities: SCENE_ACTIVITIES.map((value) => ({
+        value,
+        label: ACTIVITY_LABELS[value],
+      })),
+      threatLevels: [...THREAT_LEVELS],
+      triggers: NOTIFY_TRIGGERS.map((value) => ({
+        value,
+        label: TRIGGER_LABELS[value],
+      })),
+    })
   );
 
   // Get analysis settings

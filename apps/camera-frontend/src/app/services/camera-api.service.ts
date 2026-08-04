@@ -21,6 +21,10 @@ export interface DetectionEvent {
   frameWidth: number;
   frameHeight: number;
   pinned: boolean;
+  /** How long the subject was tracked; null on pre-tracker rows */
+  durationSec?: number | null;
+  /** Plain-language path across the frame */
+  trajectory?: string | null;
   /** Present when the event was fetched with `includeAnalysis` */
   analysis?: SceneAnalysis | null;
 }
@@ -80,6 +84,9 @@ export interface NotificationSettings {
   minConfidence: number;
   notifyLabels: string[];
   attachSnapshot: boolean;
+  minThreat: ThreatLevel;
+  notifyTriggers: string[];
+  followModelRecommendation: boolean;
 }
 
 export interface NotificationTestResult {
@@ -99,6 +106,35 @@ export interface SceneEntity {
   anomaly_reason: string | null;
 }
 
+export type SceneActivity =
+  | 'nothing_notable'
+  | 'person_passing'
+  | 'person_loitering'
+  | 'person_approaching'
+  | 'person_at_entrance'
+  | 'person_with_package'
+  | 'person_at_vehicle'
+  | 'group_gathering'
+  | 'vehicle_passing'
+  | 'vehicle_arriving'
+  | 'vehicle_departing'
+  | 'vehicle_parked_occupied'
+  | 'delivery'
+  | 'animal_present'
+  | 'view_obstructed'
+  | 'other';
+
+export type ThreatLevel = 'benign' | 'notable' | 'suspicious' | 'critical';
+
+export type LightingCondition =
+  | 'daylight'
+  | 'overcast'
+  | 'dusk'
+  | 'night'
+  | 'glare';
+
+export type VisibilityLevel = 'clear' | 'partial' | 'poor';
+
 export interface SceneAnalysis {
   id: string;
   timestamp: string;
@@ -111,6 +147,23 @@ export interface SceneAnalysis {
   entities: SceneEntity[] | null;
   durationMs: number;
   snapshotFilename: string | null;
+  /** What the model judged to be happening; null on pre-taxonomy rows */
+  activity: SceneActivity | null;
+  threat: ThreatLevel | null;
+  triggers: string[] | null;
+  notifyRecommended: boolean | null;
+  notifyReason: string | null;
+  lighting: LightingCondition | null;
+  visibility: VisibilityLevel | null;
+  /** Whether a push notification was actually dispatched */
+  notified: boolean;
+}
+
+/** The classification vocabulary, served by the backend so it cannot drift. */
+export interface AnalysisTaxonomy {
+  activities: { value: string; label: string }[];
+  threatLevels: string[];
+  triggers: { value: string; label: string }[];
 }
 
 export interface SceneAnalysesResponse {
@@ -224,7 +277,7 @@ export class CameraApiService {
     minConfidence?: number;
     since?: string;
     until?: string;
-    rating?: AnomalyRating;
+    threat?: ThreatLevel;
     pinnedOnly?: boolean;
     includeAnalysis?: boolean;
   }): Observable<DetectionEventsResponse> {
@@ -236,7 +289,7 @@ export class CameraApiService {
       httpParams = httpParams.set('minConfidence', params.minConfidence);
     if (params?.since) httpParams = httpParams.set('since', params.since);
     if (params?.until) httpParams = httpParams.set('until', params.until);
-    if (params?.rating) httpParams = httpParams.set('rating', params.rating);
+    if (params?.threat) httpParams = httpParams.set('threat', params.threat);
     if (params?.pinnedOnly) httpParams = httpParams.set('pinnedOnly', true);
     if (params?.includeAnalysis)
       httpParams = httpParams.set('includeAnalysis', true);
@@ -347,6 +400,10 @@ export class CameraApiService {
     return this.http.get<SceneAnalysis>(
       `${this.baseUrl}/analysis/by-detection/${detectionEventId}`
     );
+  }
+
+  getAnalysisTaxonomy(): Observable<AnalysisTaxonomy> {
+    return this.http.get<AnalysisTaxonomy>(`${this.baseUrl}/analysis/taxonomy`);
   }
 
   getAnalysisSettings(): Observable<AnalysisSettings> {

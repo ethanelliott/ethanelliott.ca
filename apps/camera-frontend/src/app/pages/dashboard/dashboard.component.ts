@@ -1,8 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   OnInit,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
@@ -11,10 +13,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { CameraViewerComponent } from '../../components/camera-viewer/camera-viewer.component';
-import {
-  EventCardComponent,
-  EventCardVariant,
-} from '../../components/event-card/event-card.component';
+import { EventCardComponent } from '../../components/event-card/event-card.component';
 import { ClipPlayerComponent } from '../../components/clip-player/clip-player.component';
 import {
   CameraApiService,
@@ -40,9 +39,11 @@ import { EventService } from '../../services/event.service';
     <div class="dashboard">
       <div class="stage">
         <app-camera-viewer
+          #viewer
           [markers]="markers()"
           [title]="cameraTitle()"
           (rangeChange)="onRangeChange($event)"
+          (positionChange)="playhead.set($event)"
         />
 
         <div class="status-strip glass-card">
@@ -90,28 +91,25 @@ import { EventService } from '../../services/event.service';
         <div class="rail-header">
           <i class="pi pi-bolt"></i>
           <span>Activity</span>
+          @if (playhead()) {
+          <span class="following">
+            <i class="pi pi-arrow-down-left"></i>
+            following playback
+          </span>
+          }
           <span class="spacer"></span>
-          <div class="variant-rail" role="group" aria-label="Card layout">
-            @for (option of variants; track option.value) {
-            <button
-              type="button"
-              class="variant-btn"
-              [class.active]="variant() === option.value"
-              [title]="option.hint"
-              (click)="variant.set(option.value)"
-            >
-              <i class="pi" [class]="option.icon"></i>
-            </button>
-            }
-          </div>
+          <span class="rail-count">{{ railEvents().length }}</span>
         </div>
 
-        <div class="rail-list" [class.gallery]="variant() === 'gallery'">
-          @for (event of events.recentEvents(); track event.id) {
+        <div class="rail-list" #railList>
+          @for (event of railEvents(); track event.id) {
           <app-event-card
+            [attr.data-event-id]="event.id"
             [event]="event"
-            [variant]="variant()"
+            variant="detail"
+            [selected]="event.id === activeEventId()"
             [playable]="playable(event)"
+            (activate)="jumpTo($event)"
             (playClip)="playClip($event)"
             (togglePin)="togglePin($event)"
           />
@@ -222,38 +220,27 @@ import { EventService } from '../../services/event.service';
       }
     }
 
-    .variant-rail {
-      display: flex;
-      gap: 2px;
-      padding: 2px;
-      border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.04);
-    }
-
-    .variant-btn {
+    .following {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      width: 26px;
-      height: 22px;
-      border: none;
-      border-radius: 4px;
-      background: transparent;
-      color: var(--text-muted);
-      cursor: pointer;
-
-      &:hover {
-        color: var(--text-primary);
-      }
-
-      &.active {
-        background: rgba(59, 130, 246, 0.18);
-        color: var(--accent-blue);
-      }
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--accent-yellow);
+      background: rgba(234, 179, 8, 0.12);
 
       i {
-        font-size: 12px;
+        font-size: 9px;
       }
+    }
+
+    .rail-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
     }
 
     .rail-list {
@@ -264,11 +251,7 @@ import { EventService } from '../../services/event.service';
       flex-direction: column;
       gap: 8px;
       padding: 10px;
-
-      &.gallery {
-        display: grid;
-        grid-template-columns: 1fr;
-      }
+      scroll-behavior: smooth;
     }
 
     .rail-footer {
@@ -334,10 +317,16 @@ export class DashboardComponent implements OnInit {
   private readonly clipPlayer =
     viewChild.required<ClipPlayerComponent>('clipPlayer');
 
+  private readonly viewer = viewChild.required<CameraViewerComponent>('viewer');
+  private readonly railList =
+    viewChild.required<ElementRef<HTMLElement>>('railList');
+
   readonly cameraInfo = signal<CameraInfo | null>(null);
   readonly stats = signal<DetectionStats | null>(null);
   readonly recording = signal<RecordingStatus | null>(null);
-  readonly variant = signal<EventCardVariant>('detail');
+
+  /** Wall-clock position of the viewer; null while live. */
+  readonly playhead = signal<Date | null>(null);
 
   /**
    * Detections plotted on the timeline. The live buffer only reaches back as
@@ -350,6 +339,40 @@ export class DashboardComponent implements OnInit {
     const byId = new Map(this.windowEvents().map((e) => [e.id, e]));
     for (const event of this.events.recentEvents()) byId.set(event.id, event);
     return [...byId.values()];
+  });
+
+  /** Newest first — the rail reads top-down as most recent first. */
+  readonly railEvents = computed(() =>
+    [...this.markers()].sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+  );
+
+  /**
+   * The event the playhead is currently sitting on or just past. Detections
+   * fire at the start of what they describe, so the match is the most recent
+   * event at or before the playhead rather than the nearest in either
+   * direction — otherwise the rail jumps ahead to something not yet on screen.
+   */
+  readonly activeEventId = computed(() => {
+    const at = this.playhead();
+    if (!at) return null;
+
+    const atMs = at.getTime();
+    let best: DetectionEvent | null = null;
+    for (const event of this.railEvents()) {
+      const eventMs = new Date(event.timestamp).getTime();
+      if (eventMs <= atMs + 1000) {
+        best = event;
+        break; // railEvents is newest-first, so the first match is the closest
+      }
+    }
+    if (!best) return null;
+
+    // Past a couple of minutes there is nothing meaningful to highlight.
+    const gapMs = atMs - new Date(best.timestamp).getTime();
+    return gapMs <= 120_000 ? best.id : null;
   });
 
   readonly cameraTitle = computed(() => this.cameraInfo()?.model ?? 'Camera');
@@ -366,15 +389,24 @@ export class DashboardComponent implements OnInit {
     return `${Math.round(hours / 24)}d`;
   });
 
-  readonly variants: {
-    value: EventCardVariant;
-    icon: string;
-    hint: string;
-  }[] = [
-    { value: 'compact', icon: 'pi-bars', hint: 'Compact rows' },
-    { value: 'detail', icon: 'pi-list', hint: 'Detail cards with AI summary' },
-    { value: 'gallery', icon: 'pi-th-large', hint: 'Snapshot-first cards' },
-  ];
+  constructor() {
+    // Keep the highlighted event in view as playback moves through the
+    // window, so the list tracks the video without the user chasing it.
+    effect(() => {
+      const id = this.activeEventId();
+      if (!id) return;
+
+      const card = this.railList().nativeElement.querySelector(
+        `[data-event-id="${id}"]`
+      );
+      card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
+  /** Scrub the video to an event and hold on that frame. */
+  jumpTo(event: DetectionEvent): void {
+    this.viewer().seekAndPause(new Date(event.timestamp));
+  }
 
   ngOnInit(): void {
     this.api.getCameraInfo().subscribe({

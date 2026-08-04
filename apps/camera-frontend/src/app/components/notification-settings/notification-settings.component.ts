@@ -17,6 +17,7 @@ import { COCO_LABELS } from '../../constants/labels';
 import {
   CameraApiService,
   NotificationSettings,
+  ThreatLevel,
 } from '../../services/camera-api.service';
 
 @Component({
@@ -127,15 +128,14 @@ import {
       </div>
 
       <!-- Min Confidence -->
-      <div class="setting-row border-bottom">
+      <div class="setting-row border-bottom superseded">
         <div class="setting-info">
           <span class="setting-label">
             <i class="pi pi-percentage"></i>
             Min Confidence
           </span>
           <span class="setting-hint">
-            Only notify when confidence is at least
-            {{ minConfidencePct() }}%
+            Not used while scene analysis decides
           </span>
         </div>
         <p-select
@@ -168,15 +168,15 @@ import {
       </div>
 
       <!-- Notify Labels -->
-      <div class="labels-section border-bottom">
+      <div class="labels-section border-bottom superseded">
         <div class="labels-header">
           <span>Notify Labels</span>
           <span class="spacer"></span>
           <span class="enabled-count"> {{ notifyLabelCount() }} selected </span>
         </div>
         <span class="setting-hint label-hint">
-          Only send notifications for these labels (empty = all enabled
-          detection labels)
+          Not used while scene analysis decides — which labels get analysed is
+          set under Scene Analysis.
         </span>
         <div class="label-chips">
           @for (label of commonLabels; track label) {
@@ -189,6 +189,87 @@ import {
             {{ label }}
           </button>
           }
+        </div>
+      </div>
+
+      <!-- Scene-analysis rules -->
+      <div class="rules-section border-bottom">
+        <div class="rules-intro">
+          <i class="pi pi-sparkles"></i>
+          <div>
+            <strong>Scene analysis decides</strong>
+            <p>
+              Alerts come from what the vision model saw, not from the raw
+              detection &mdash; so &ldquo;person, 87%&rdquo; becomes
+              &ldquo;someone at a car door after dark&rdquo;. Turning scene
+              analysis off under Scene Analysis falls back to notifying on
+              labels and confidence alone.
+            </p>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">
+              <i class="pi pi-shield"></i>
+              Minimum threat
+            </span>
+            <span class="setting-hint">
+              Notify when the scene is rated at least this severe
+            </span>
+          </div>
+          <p-select
+            [(ngModel)]="minThreat"
+            [options]="threatOptions"
+            optionLabel="label"
+            optionValue="value"
+            (ngModelChange)="onMinThreatChange()"
+            [style]="{ width: '150px' }"
+            [disabled]="loading()"
+          />
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">
+              <i class="pi pi-flag"></i>
+              Follow the model's call
+            </span>
+            <span class="setting-hint">
+              Also notify whenever the model itself flags the frame as worth
+              interrupting you for
+            </span>
+          </div>
+          <p-toggleswitch
+            [(ngModel)]="followModelRecommendation"
+            (ngModelChange)="onFollowRecommendationChange()"
+            [disabled]="loading()"
+          />
+        </div>
+
+        <div class="labels-section">
+          <div class="labels-header">
+            <span>Always notify on</span>
+            <span class="spacer"></span>
+            <span class="enabled-count">
+              {{ triggerSet().size }} selected
+            </span>
+          </div>
+          <span class="setting-hint label-hint">
+            These conditions notify on their own, whatever the threat rating.
+          </span>
+          <div class="label-chips">
+            @for (trigger of availableTriggers(); track trigger.value) {
+            <button
+              class="label-chip"
+              [class.active]="triggerSet().has(trigger.value)"
+              (click)="toggleTrigger(trigger.value)"
+              [disabled]="loading()"
+            >
+              {{ trigger.label }}
+            </button>
+            }
+          </div>
         </div>
       </div>
 
@@ -356,6 +437,49 @@ import {
       }
     }
 
+    .rules-section {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .rules-section .setting-row,
+    .rules-section .labels-section {
+      border-bottom: none;
+    }
+
+    :host ::ng-deep .rules-note {
+      margin: 0 16px 4px;
+    }
+
+    /* Settings the analysis path bypasses: kept reachable, visibly not in play */
+    .superseded {
+      opacity: 0.45;
+    }
+
+    .rules-intro {
+      display: flex;
+      gap: 10px;
+      padding: 14px 16px 4px;
+
+      > i {
+        color: #a855f7;
+        font-size: 16px;
+        margin-top: 2px;
+      }
+
+      strong {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      p {
+        margin-top: 3px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+    }
+
     .test-section {
       padding: 12px 16px;
       display: flex;
@@ -385,14 +509,26 @@ export class NotificationSettingsComponent implements OnInit {
   readonly notifyLabelCount = signal(0);
   readonly minConfidencePct = signal(70);
 
+  /** Trigger vocabulary, fetched so it cannot drift from the backend enum. */
+  readonly availableTriggers = signal<{ value: string; label: string }[]>([]);
+  readonly triggerSet = signal<Set<string>>(new Set());
+
   enabledValue = false;
   serverUrl = '';
   topic = '';
   cooldownSeconds = 30;
   minConfidence = 0.7;
   attachSnapshot = true;
+  minThreat: ThreatLevel = 'suspicious';
+  followModelRecommendation = true;
 
   readonly commonLabels = [...COCO_LABELS];
+
+  readonly threatOptions = [
+    { label: 'Notable', value: 'notable' },
+    { label: 'Suspicious', value: 'suspicious' },
+    { label: 'Critical only', value: 'critical' },
+  ];
 
   readonly cooldownOptions = [
     { label: 'None', value: 0 },
@@ -418,6 +554,30 @@ export class NotificationSettingsComponent implements OnInit {
       next: (settings) => this._applySettings(settings),
       error: () => this.loading.set(false),
     });
+
+    this.api.getAnalysisTaxonomy().subscribe({
+      next: (taxonomy) => this.availableTriggers.set(taxonomy.triggers),
+      error: () => this.availableTriggers.set([]),
+    });
+  }
+
+  onMinThreatChange(): void {
+    this._save({ minThreat: this.minThreat });
+  }
+
+  onFollowRecommendationChange(): void {
+    this._save({ followModelRecommendation: this.followModelRecommendation });
+  }
+
+  toggleTrigger(trigger: string): void {
+    const current = new Set(this.triggerSet());
+    if (current.has(trigger)) {
+      current.delete(trigger);
+    } else {
+      current.add(trigger);
+    }
+    this.triggerSet.set(current);
+    this._save({ notifyTriggers: [...current] });
   }
 
   onEnabledChange(): void {
@@ -487,6 +647,9 @@ export class NotificationSettingsComponent implements OnInit {
     this.minConfidence = settings.minConfidence;
     this.minConfidencePct.set(Math.round(settings.minConfidence * 100));
     this.attachSnapshot = settings.attachSnapshot;
+    this.minThreat = settings.minThreat;
+    this.followModelRecommendation = settings.followModelRecommendation;
+    this.triggerSet.set(new Set(settings.notifyTriggers));
 
     const labelSet = new Set(settings.notifyLabels);
     this.notifyLabelSet.set(labelSet);

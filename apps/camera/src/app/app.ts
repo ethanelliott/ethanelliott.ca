@@ -9,6 +9,7 @@ import { DetectionRouter } from './detection/detection.router';
 import { SnapshotRouter } from './snapshot/snapshot.router';
 import { NotificationRouter } from './notification/notification.router';
 import { AnalysisRouter } from './analysis/analysis.router';
+import { AnalysisQueueService } from './analysis/analysis-queue.service';
 import { CleanupRouter } from './cleanup/cleanup.router';
 import { RecordingRouter } from './recording/recording.router';
 import { WebSocketService } from './websocket/websocket.service';
@@ -101,13 +102,8 @@ export async function Application(fastify: FastifyInstance) {
       console.error('❌ Failed to start stream service:', err);
     }
 
-    try {
-      await detectionService.start();
-      console.log('🧠 Detection service started');
-    } catch (err) {
-      console.error('❌ Failed to start detection service:', err);
-    }
-
+    // Notifications and analysis come up before detection so the first
+    // subject of the run is judged by a fully configured pipeline.
     const notificationService = inject(NotificationService);
     try {
       await notificationService.initialize();
@@ -124,6 +120,17 @@ export async function Application(fastify: FastifyInstance) {
       console.error('❌ Failed to initialize analysis service:', err);
     }
 
+    // Drains whatever survived the last shutdown before taking new work.
+    const analysisQueue = inject(AnalysisQueueService);
+    analysisQueue.start((item) => analysisService.processQueueItem(item));
+
+    try {
+      await detectionService.start();
+      console.log('🧠 Detection service started');
+    } catch (err) {
+      console.error('❌ Failed to start detection service:', err);
+    }
+
     const cleanupService = inject(CleanupService);
     cleanupService.start();
   });
@@ -135,6 +142,7 @@ export async function Application(fastify: FastifyInstance) {
 
     const cleanupService = inject(CleanupService);
     cleanupService.stop();
+    await inject(AnalysisQueueService).stop();
     detectionService.stop();
     streamService.stop();
     io.close();

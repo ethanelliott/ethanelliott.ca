@@ -2,6 +2,7 @@ import { inject } from '@ee/di';
 import { existsSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { Database } from '../data-source';
+import { AnalysisQueueService } from '../analysis/analysis-queue.service';
 import {
   DetectionEvent,
   DetectionSettingsEntity,
@@ -24,6 +25,7 @@ import { RecordingService } from '../recording/recording.service';
  */
 export class CleanupService {
   private readonly _db = inject(Database);
+  private readonly _analysisQueue = inject(AnalysisQueueService);
   private readonly _detectionRepo = this._db.repositoryFor(DetectionEvent);
   private readonly _settingsRepo = this._db.repositoryFor(
     DetectionSettingsEntity
@@ -117,6 +119,10 @@ export class CleanupService {
       const orphansDeleted = this._purgeOrphanedSnapshots(cutoff);
       const cappedDeleted = this._capSnapshotCount();
       const recordingsDeleted = this._pruneRecordings();
+      // Permanently-failed queue rows are kept a day for diagnosis, no longer.
+      const queueDeleted = await this._analysisQueue.pruneFailed(
+        new Date(Date.now() - 24 * 60 * 60 * 1000)
+      );
 
       const totalDeleted =
         eventsDeleted.rows +
@@ -124,7 +130,8 @@ export class CleanupService {
         analysesDeleted +
         orphansDeleted +
         cappedDeleted +
-        recordingsDeleted;
+        recordingsDeleted +
+        queueDeleted;
 
       // Reclaim SQLite space after large deletions
       if (eventsDeleted.rows + analysesDeleted > 100) {

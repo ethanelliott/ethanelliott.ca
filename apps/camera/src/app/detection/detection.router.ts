@@ -10,6 +10,7 @@ import {
   DetectionSettingsSchema,
   UpdateDetectionSettingsSchema,
 } from './detection.entity';
+import { THREAT_LEVELS } from '../analysis/taxonomy';
 
 /**
  * Query-string boolean. `z.coerce.boolean()` is not usable here: it follows
@@ -34,7 +35,7 @@ export async function DetectionRouter(fastify: FastifyInstance) {
           minConfidence: z.coerce.number().min(0).max(1).optional(),
           since: z.coerce.date().optional(),
           until: z.coerce.date().optional(),
-          rating: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+          threat: z.enum(THREAT_LEVELS).optional(),
           pinnedOnly: QueryBoolean.optional(),
           includeAnalysis: QueryBoolean.optional(),
         }),
@@ -54,7 +55,7 @@ export async function DetectionRouter(fastify: FastifyInstance) {
         minConfidence: request.query.minConfidence,
         since: request.query.since,
         until: request.query.until,
-        rating: request.query.rating,
+        threat: request.query.threat,
         pinnedOnly: request.query.pinnedOnly,
         includeAnalysis: request.query.includeAnalysis,
       });

@@ -8,6 +8,20 @@ import {
 } from 'typeorm';
 import { z } from 'zod';
 import { ENTITIES } from '../data-source';
+import {
+  LIGHTING_CONDITIONS,
+  NOTIFY_TRIGGERS,
+  SCENE_ACTIVITIES,
+  THREAT_LEVELS,
+  VISIBILITY_LEVELS,
+} from './taxonomy';
+import type {
+  LightingCondition,
+  NotifyTrigger,
+  SceneActivity,
+  ThreatLevel,
+  VisibilityLevel,
+} from './taxonomy';
 
 export type SceneEntityType = 'person' | 'vehicle' | 'animal' | 'object';
 export type AnomalyRating = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -70,6 +84,44 @@ export class SceneAnalysis {
   /** The snapshot filename that was analysed */
   @Column('text', { nullable: true })
   snapshotFilename!: string | null;
+
+  // ── Classification ──
+  //
+  // Nullable throughout: rows written before the taxonomy existed keep their
+  // legacy score and rating, and the read path fills these in from those.
+
+  /** What is happening in the frame */
+  @Column('text', { nullable: true })
+  @Index()
+  activity!: SceneActivity | null;
+
+  /** How much attention the frame deserves */
+  @Column('text', { nullable: true })
+  @Index()
+  threat!: ThreatLevel | null;
+
+  /** Notification conditions the model found to be met */
+  @Column('simple-json', { nullable: true })
+  triggers!: NotifyTrigger[] | null;
+
+  /** Whether the model thinks this is worth a push notification */
+  @Column('boolean', { nullable: true })
+  notifyRecommended!: boolean | null;
+
+  /** Why, in one clause — shown as the notification body */
+  @Column('text', { nullable: true })
+  notifyReason!: string | null;
+
+  @Column('text', { nullable: true })
+  lighting!: LightingCondition | null;
+
+  /** Whether the frame is good enough to trust the rest of this row */
+  @Column('text', { nullable: true })
+  visibility!: VisibilityLevel | null;
+
+  /** True when a notification was actually dispatched for this analysis */
+  @Column('boolean', { default: false })
+  notified!: boolean;
 }
 
 /**
@@ -131,6 +183,14 @@ export const SceneAnalysisOutSchema = z.object({
   entities: z.array(SceneEntitySchema).nullable(),
   durationMs: z.number(),
   snapshotFilename: z.string().nullable(),
+  activity: z.enum(SCENE_ACTIVITIES).nullable(),
+  threat: z.enum(THREAT_LEVELS).nullable(),
+  triggers: z.array(z.enum(NOTIFY_TRIGGERS)).nullable(),
+  notifyRecommended: z.boolean().nullable(),
+  notifyReason: z.string().nullable(),
+  lighting: z.enum(LIGHTING_CONDITIONS).nullable(),
+  visibility: z.enum(VISIBILITY_LEVELS).nullable(),
+  notified: z.boolean(),
 });
 
 export type SceneAnalysisOut = z.infer<typeof SceneAnalysisOutSchema>;

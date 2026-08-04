@@ -12,11 +12,11 @@ import { FormsModule } from '@angular/forms';
 import { Select } from 'primeng/select';
 import { Paginator, PaginatorState } from 'primeng/paginator';
 import {
-  AnomalyRating,
   CameraApiService,
   DetectionEvent,
   RecordingStatus,
   SceneEntity,
+  ThreatLevel,
 } from '../../services/camera-api.service';
 import { LABEL_OPTIONS, labelColor, labelIcon } from '../../constants/labels';
 import { ClipPlayerComponent } from '../../components/clip-player/clip-player.component';
@@ -97,11 +97,11 @@ type EventView = EventCardVariant | 'table';
         </div>
 
         <div class="filter">
-          <label for="f-rating">AI rating</label>
+          <label for="f-rating">Threat</label>
           <p-select
             inputId="f-rating"
-            [(ngModel)]="ratingFilter"
-            [options]="ratingOptions"
+            [(ngModel)]="threatFilter"
+            [options]="threatOptions"
             placeholder="Any"
             (onChange)="reload()"
             [showClear]="true"
@@ -165,7 +165,7 @@ type EventView = EventCardVariant | 'table';
           <span>Label</span>
           <span>Confidence</span>
           <span>AI reading</span>
-          <span class="center">Rating</span>
+          <span class="center">Threat</span>
           <span class="center">Media</span>
         </div>
 
@@ -204,10 +204,8 @@ type EventView = EventCardVariant | 'table';
             }
           </span>
           <span class="center">
-            @if (event.analysis?.overallRating; as rating) {
-            <span class="rating" [class]="'rating-' + rating.toLowerCase()">
-              {{ rating }} {{ event.analysis!.overallScore }}
-            </span>
+            @if (threatOf(event); as level) {
+            <span class="rating" [class]="'threat-' + level">{{ level }}</span>
             } @else {
             <span class="none">—</span>
             }
@@ -594,16 +592,22 @@ type EventView = EventCardVariant | 'table';
       font-weight: 700;
       letter-spacing: 0.04em;
 
-      &.rating-low {
+      text-transform: uppercase;
+
+      &.threat-benign {
+        background: rgba(148, 163, 184, 0.14);
+        color: #94a3b8;
+      }
+      &.threat-notable {
         background: rgba(34, 197, 94, 0.14);
         color: var(--accent-green);
       }
-      &.rating-medium {
-        background: rgba(234, 179, 8, 0.14);
+      &.threat-suspicious {
+        background: rgba(234, 179, 8, 0.16);
         color: var(--accent-yellow);
       }
-      &.rating-high {
-        background: rgba(239, 68, 68, 0.16);
+      &.threat-critical {
+        background: rgba(239, 68, 68, 0.18);
         color: var(--accent-red);
       }
     }
@@ -802,7 +806,7 @@ export class EventsComponent implements OnInit {
 
   labelFilter: string | null = null;
   minConfidenceFilter = 0;
-  ratingFilter: AnomalyRating | null = null;
+  threatFilter: ThreatLevel | null = null;
   sinceFilter = 0;
   pinnedOnly = false;
   pageSize = 50;
@@ -851,10 +855,11 @@ export class EventsComponent implements OnInit {
     { label: '90%+', value: 0.9 },
   ];
 
-  readonly ratingOptions = [
-    { label: 'Low', value: 'LOW' },
-    { label: 'Medium', value: 'MEDIUM' },
-    { label: 'High', value: 'HIGH' },
+  readonly threatOptions = [
+    { label: 'Benign', value: 'benign' },
+    { label: 'Notable', value: 'notable' },
+    { label: 'Suspicious', value: 'suspicious' },
+    { label: 'Critical', value: 'critical' },
   ];
 
   readonly sinceOptions = [
@@ -882,7 +887,7 @@ export class EventsComponent implements OnInit {
         offset: this.pageIndex * this.pageSize,
         label: this.labelFilter || undefined,
         minConfidence: this.minConfidenceFilter || undefined,
-        rating: this.ratingFilter || undefined,
+        threat: this.threatFilter || undefined,
         pinnedOnly: this.pinnedOnly || undefined,
         since: this.sinceFilter
           ? new Date(Date.now() - this.sinceFilter * 3_600_000).toISOString()
@@ -919,7 +924,7 @@ export class EventsComponent implements OnInit {
   clearFilters(): void {
     this.labelFilter = null;
     this.minConfidenceFilter = 0;
-    this.ratingFilter = null;
+    this.threatFilter = null;
     this.sinceFilter = 0;
     this.pinnedOnly = false;
     this.pageIndex = 0;
@@ -959,6 +964,17 @@ export class EventsComponent implements OnInit {
 
   snapshotUrl(filename: string): string {
     return this.api.getSnapshotUrl(filename);
+  }
+
+  /** Falls back to the legacy rating so pre-taxonomy rows still show a level. */
+  threatOf(event: DetectionEvent): ThreatLevel | null {
+    const analysis = event.analysis;
+    if (!analysis) return null;
+    if (analysis.threat) return analysis.threat;
+    if (!analysis.overallRating) return null;
+    return { LOW: 'benign', MEDIUM: 'suspicious', HIGH: 'critical' }[
+      analysis.overallRating
+    ] as ThreatLevel;
   }
 
   confidenceColor(confidence: number): string {

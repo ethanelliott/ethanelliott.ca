@@ -7,6 +7,21 @@ import {
   NotificationSettings,
   UpdateNotificationSettings,
 } from './notification.entity';
+import { ACTIVITY_LABELS, THREAT_ORDER, TRIGGER_LABELS } from '../analysis/taxonomy';
+import type {
+  NotifyTrigger,
+  SceneActivity,
+  ThreatLevel,
+} from '../analysis/taxonomy';
+
+/**
+ * ntfy's binary upload puts title and message in HTTP headers, which cannot
+ * carry non-ASCII. Strip rather than let the request fail outright.
+ */
+function toAscii(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[^\x20-\x7E]/g, '').trim() || 'Camera event';
+}
 
 /**
  * NotificationService sends push notifications via ntfy when detection
@@ -21,8 +36,20 @@ export class NotificationService {
   /** In-memory cache of the current settings */
   private _settings: NotificationSettingsEntity | null = null;
 
-  /** Per-label timestamp of the last notification sent */
+  /** Per-reason timestamp of the last notification sent */
   private readonly _lastNotified = new Map<string, number>();
+
+  /**
+   * Whether scene analysis is running and will therefore make the call.
+   * Pushed in by AnalysisService rather than read from it, because the
+   * dependency already runs the other way.
+   */
+  private _analysisAvailable = false;
+
+  /** Told by AnalysisService whenever it starts up or its settings change. */
+  setAnalysisAvailable(available: boolean): void {
+    this._analysisAvailable = available;
+  }
 
   private get _dataDir(): string {
     return (
@@ -52,6 +79,9 @@ export class NotificationService {
           minConfidence: 0.7,
           notifyLabels: ['person', 'car', 'dog', 'cat'],
           attachSnapshot: true,
+          minThreat: 'suspicious',
+          notifyTriggers: [],
+          followModelRecommendation: true,
         });
         await this._settingsRepo.save(row);
         console.log('🔔 Initialized default notification settings');
@@ -104,6 +134,9 @@ export class NotificationService {
       minConfidence: s?.minConfidence ?? 0.7,
       notifyLabels: s?.notifyLabels ?? [],
       attachSnapshot: s?.attachSnapshot ?? true,
+      minThreat: s?.minThreat ?? 'suspicious',
+      notifyTriggers: s?.notifyTriggers ?? [],
+      followModelRecommendation: s?.followModelRecommendation ?? true,
     };
   }
 
@@ -130,6 +163,11 @@ export class NotificationService {
       row.notifyLabels = update.notifyLabels;
     if (update.attachSnapshot !== undefined)
       row.attachSnapshot = update.attachSnapshot;
+    if (update.minThreat !== undefined) row.minThreat = update.minThreat;
+    if (update.notifyTriggers !== undefined)
+      row.notifyTriggers = update.notifyTriggers;
+    if (update.followModelRecommendation !== undefined)
+      row.followModelRecommendation = update.followModelRecommendation;
 
     await this._settingsRepo.save(row);
     this._settings = row;
@@ -203,6 +241,11 @@ export class NotificationService {
   }): Promise<void> {
     if (!this._settings?.enabled) return;
 
+    // Scene analysis decides whenever it is running: a raw detection can only
+    // say "person, 87%", which is not enough to judge. This path is the
+    // fallback for when analysis is switched off entirely.
+    if (this._analysisAvailable) return;
+
     // Check minimum confidence
     if (event.confidence < this._settings.minConfidence) return;
 
@@ -227,6 +270,177 @@ export class NotificationService {
     } catch (err) {
       console.error('Failed to send detection notification:', err);
     }
+  }
+
+  /**
+   * Decide whether a completed scene analysis is worth a push notification.
+   *
+   * This is the point where the vision model earns its keep. The detector can
+   * only say "person, 87%"; the analysis can say the person is at a car door
+   * after dark, which is the difference between a useful alert and the kind of
+   * noise that gets notifications muted.
+   *
+   * Returns whether a notification was actually sent.
+   */
+  async onAnalysis(analysis: {
+    label: string;
+    snapshotFilename: string | null;
+    summary: string;
+    activity: SceneActivity | null;
+    threat: ThreatLevel | null;
+    triggers: NotifyTrigger[];
+    notifyRecommended: boolean;
+    notifyReason: string | null;
+  }): Promise<boolean> {
+    const settings = this._settings;
+    if (!settings?.enabled) return false;
+
+    const threat = analysis.threat ?? 'benign';
+    const matchedTriggers = analysis.triggers.filter((trigger) =>
+      settings.notifyTriggers.includes(trigger)
+    );
+
+    // Any one of the three routes is enough: severity, a configured
+    // condition, or the model asking for attention outright.
+    const meetsThreat =
+      THREAT_ORDER[threat] >= THREAT_ORDER[settings.minThreat];
+    const meetsTrigger = matchedTriggers.length > 0;
+    const meetsRecommendation =
+      settings.followModelRecommendation && analysis.notifyRecommended;
+
+    if (!meetsThreat && !meetsTrigger && !meetsRecommendation) return false;
+
+    // Cooldown is keyed on the reason rather than the label, so a car arriving
+    // cannot suppress the alert for someone at a car door a moment later.
+    const reasonKey = meetsTrigger
+      ? `trigger:${matchedTriggers[0]}`
+      : `threat:${threat}`;
+    const now = Date.now();
+    const lastTime = this._lastNotified.get(reasonKey) ?? 0;
+    if (now - lastTime < settings.cooldownSeconds * 1000) return false;
+
+    try {
+      await this._sendAnalysisNotification(analysis, threat, matchedTriggers);
+      this._lastNotified.set(reasonKey, now);
+      return true;
+    } catch (err) {
+      console.error('Failed to send analysis notification:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Send an ntfy notification describing what the model saw. Priority follows
+   * the threat level so a critical alert can break through a phone's quiet
+   * hours while a merely notable one cannot.
+   */
+  private async _sendAnalysisNotification(
+    analysis: {
+      label: string;
+      snapshotFilename: string | null;
+      summary: string;
+      activity: SceneActivity | null;
+      notifyReason: string | null;
+    },
+    threat: ThreatLevel,
+    matchedTriggers: NotifyTrigger[]
+  ): Promise<void> {
+    const s = this._settings!;
+    const activityLabel = analysis.activity
+      ? ACTIVITY_LABELS[analysis.activity]
+      : analysis.label;
+
+    const title =
+      threat === 'critical' ? `⚠️ ${activityLabel}` : activityLabel;
+
+    const reasons = matchedTriggers.map((t) => TRIGGER_LABELS[t]);
+    const message = [
+      analysis.notifyReason ?? analysis.summary,
+      reasons.length ? `\n\n${reasons.join(' · ')}` : '',
+    ].join('');
+
+    const priority = { benign: 2, notable: 3, suspicious: 4, critical: 5 }[
+      threat
+    ];
+    const tags = [
+      ...this._labelToTags(analysis.label),
+      ...(threat === 'critical' ? ['rotating_light'] : []),
+    ];
+
+    await this._dispatch({
+      title,
+      message,
+      tags,
+      priority,
+      snapshotFilename: s.attachSnapshot ? analysis.snapshotFilename : null,
+    });
+
+    console.log(
+      `🔔 Notification sent: ${activityLabel} [${threat}]${
+        reasons.length ? ` (${reasons.join(', ')})` : ''
+      }`
+    );
+  }
+
+  /**
+   * Publish to ntfy, attaching the snapshot when there is one.
+   *
+   * The binary upload carries its metadata in headers, which must stay
+   * ASCII — so it is only used when an image is actually attached, and any
+   * failure falls back to the JSON API that handles UTF-8 natively.
+   */
+  private async _dispatch(payload: {
+    title: string;
+    message: string;
+    tags: string[];
+    priority: number;
+    snapshotFilename: string | null;
+  }): Promise<void> {
+    const s = this._settings!;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (s.authToken) headers['Authorization'] = `Bearer ${s.authToken}`;
+
+    if (payload.snapshotFilename) {
+      try {
+        const imageData = readFileSync(
+          join(this._snapshotDir, payload.snapshotFilename)
+        );
+        const putHeaders: Record<string, string> = {
+          Title: toAscii(payload.title),
+          Message: toAscii(payload.message),
+          Tags: payload.tags.join(','),
+          Priority: String(payload.priority),
+          Filename: payload.snapshotFilename,
+          'Content-Type': 'image/jpeg',
+        };
+        if (s.authToken) putHeaders['Authorization'] = `Bearer ${s.authToken}`;
+
+        const response = await fetch(`${s.serverUrl}/${s.topic}`, {
+          method: 'PUT',
+          headers: putHeaders,
+          body: imageData,
+        });
+        if (response.ok) return;
+
+        console.warn(
+          `ntfy image upload returned ${response.status}, falling back to JSON`
+        );
+      } catch {
+        // Fall through to the JSON API below.
+      }
+    }
+
+    await this._sendJsonNotification(
+      s.serverUrl,
+      headers,
+      s.topic,
+      payload.title,
+      payload.message,
+      payload.tags,
+      payload.priority
+    );
   }
 
   /**

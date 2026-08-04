@@ -3,40 +3,107 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { Database } from '../data-source';
 import { WebSocketService } from '../websocket/websocket.service';
+import { NotificationService } from '../notification/notification.service';
+import { AnalysisQueueItem } from './analysis-queue.entity';
 import {
   SceneAnalysis,
   SceneEntity,
-  AnomalyRating,
   AnalysisSettingsEntity,
   AnalysisSettings,
   UpdateAnalysisSettings,
 } from './analysis.entity';
+import {
+  LIGHTING_CONDITIONS,
+  NOTIFY_TRIGGERS,
+  SCENE_ACTIVITIES,
+  THREAT_LEVELS,
+  VISIBILITY_LEVELS,
+  ratingFromThreat,
+  scoreFromThreat,
+} from './taxonomy';
+import type { EpisodeContext } from '../detection/tracker';
+import type {
+  LightingCondition,
+  NotifyTrigger,
+  SceneActivity,
+  ThreatLevel,
+  VisibilityLevel,
+} from './taxonomy';
 
+/**
+ * Structured output contract for the vision model.
+ *
+ * Every judgement is a closed enum. Asking for a 0–10 anomaly score reads as
+ * more precise than it is: the model clusters on a few values, moves between
+ * runs on the same frame, and leaves nothing a notification rule can test.
+ * Named categories are stable, and `triggers` in particular gives a rule
+ * something concrete to match on instead of a threshold on a fuzzy number.
+ */
 const OLLAMA_SCHEMA = {
   type: 'object',
   properties: {
-    timestamp: { type: ['string', 'null'] },
+    summary: { type: 'string' },
+    activity: { type: 'string', enum: [...SCENE_ACTIVITIES] },
+    threat: { type: 'string', enum: [...THREAT_LEVELS] },
+    triggers: {
+      type: 'array',
+      items: { type: 'string', enum: [...NOTIFY_TRIGGERS] },
+    },
+    notify: { type: 'boolean' },
+    notify_reason: { type: ['string', 'null'] },
+    lighting: { type: 'string', enum: [...LIGHTING_CONDITIONS] },
+    visibility: { type: 'string', enum: [...VISIBILITY_LEVELS] },
     entities: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: ['person', 'vehicle', 'animal', 'object'] },
+          type: {
+            type: 'string',
+            enum: ['person', 'vehicle', 'animal', 'object'],
+          },
           description: { type: 'string' },
           location: { type: 'string' },
           activity: { type: 'string' },
           anomaly_score: { type: 'integer', minimum: 0, maximum: 10 },
           anomaly_reason: { type: ['string', 'null'] },
         },
-        required: ['type', 'description', 'location', 'activity', 'anomaly_score', 'anomaly_reason'],
+        required: [
+          'type',
+          'description',
+          'location',
+          'activity',
+          'anomaly_score',
+          'anomaly_reason',
+        ],
       },
     },
-    overall_score: { type: 'integer', minimum: 0, maximum: 10 },
-    overall_rating: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
-    summary: { type: 'string' },
   },
-  required: ['timestamp', 'entities', 'overall_score', 'overall_rating', 'summary'],
+  required: [
+    'summary',
+    'activity',
+    'threat',
+    'triggers',
+    'notify',
+    'notify_reason',
+    'lighting',
+    'visibility',
+    'entities',
+  ],
 } as const;
+
+/** Shape the model is contracted to return, before it is trusted. */
+interface AnalysisResponse {
+  summary: string;
+  activity: SceneActivity;
+  threat: ThreatLevel;
+  triggers: NotifyTrigger[];
+  notify: boolean;
+  notify_reason: string | null;
+  lighting: LightingCondition;
+  visibility: VisibilityLevel;
+  entities: SceneEntity[];
+}
 
 /**
  * AnalysisService sends detection snapshots to an Ollama vision model
@@ -46,6 +113,7 @@ const OLLAMA_SCHEMA = {
 export class AnalysisService {
   private readonly _db = inject(Database);
   private readonly _wsService = inject(WebSocketService);
+  private readonly _notificationService = inject(NotificationService);
   private readonly _repository = this._db.repositoryFor(SceneAnalysis);
   private readonly _settingsRepo = this._db.repositoryFor(
     AnalysisSettingsEntity
@@ -53,12 +121,6 @@ export class AnalysisService {
 
   /** In-memory cache of settings */
   private _settings: AnalysisSettingsEntity | null = null;
-
-  /** Per-label timestamp of the last analysis sent (cooldown tracker) */
-  private readonly _lastAnalyzed = new Map<string, number>();
-
-  /** Track in-flight analyses to prevent duplicates */
-  private readonly _inFlight = new Set<string>();
 
   private readonly _ollamaUrl =
     process.env.OLLAMA_URL ||
@@ -95,6 +157,7 @@ export class AnalysisService {
         console.log('🔬 Initialized default analysis settings');
       }
       this._settings = row;
+      this._notificationService.setAnalysisAvailable(row.enabled);
 
       // Verify Ollama connectivity
       try {
@@ -144,48 +207,35 @@ export class AnalysisService {
   }
 
   /**
-   * Handle a new detection event. If analysis is enabled and the label
-   * qualifies, send the snapshot to Ollama for scene analysis.
+   * Should this subject be described at all?
    *
-   * This method is fire-and-forget — it does not block the detection loop.
+   * Only the label filter survives from the old gate. The per-label cooldown
+   * is gone: it existed to cap model load, but it did that by dropping events
+   * on the floor — including the second person of the evening. Load is now
+   * shed by the tracker sending one episode per subject instead of one per
+   * frame it lost, and by the queue, which defers rather than discards.
    */
-  async onDetection(params: {
-    detectionEventId: string;
-    label: string;
-    confidence: number;
-    snapshotFilename: string | null;
-  }): Promise<void> {
-    if (!this._settings?.enabled) return;
-    if (!params.snapshotFilename) return;
-
-    // Check confidence threshold
-    if (params.confidence < (this._settings.minConfidence ?? 0.7)) return;
-
-    // Check if this label should trigger analysis
+  shouldAnalyze(label: string): boolean {
+    if (!this._settings?.enabled) return false;
     const analyzeLabels = this._settings.analyzeLabels ?? [];
-    if (analyzeLabels.length > 0 && !analyzeLabels.includes(params.label)) {
-      return;
-    }
+    return analyzeLabels.length === 0 || analyzeLabels.includes(label);
+  }
 
-    // Check cooldown for this label
-    const now = Date.now();
-    const lastTime = this._lastAnalyzed.get(params.label) ?? 0;
-    const cooldownMs = (this._settings.cooldownSeconds ?? 30) * 1000;
-    if (now - lastTime < cooldownMs) return;
+  /**
+   * Describe one queued episode. Throws on a failure the queue should retry —
+   * a model that is down is a reason to wait, not a reason to lose the event.
+   */
+  async processQueueItem(item: AnalysisQueueItem): Promise<void> {
+    if (!this._settings?.enabled) return;
+    if (!item.snapshotFilename) return;
+    if (!this.shouldAnalyze(item.label)) return;
 
-    // Prevent duplicate in-flight requests for the same detection event
-    if (this._inFlight.has(params.detectionEventId)) return;
-
-    this._lastAnalyzed.set(params.label, now);
-    this._inFlight.add(params.detectionEventId);
-
-    try {
-      await this._analyzeSnapshot(params);
-    } catch (err) {
-      console.error('Scene analysis error:', err);
-    } finally {
-      this._inFlight.delete(params.detectionEventId);
-    }
+    await this._analyzeSnapshot({
+      detectionEventId: item.detectionEventId,
+      label: item.label,
+      snapshotFilename: item.snapshotFilename,
+      context: item.context,
+    });
   }
 
   /**
@@ -273,9 +323,122 @@ export class AnalysisService {
       this._settings.minConfidence = updates.minConfidence;
 
     await this._settingsRepo.save(this._settings);
+    this._notificationService.setAnalysisAvailable(this._settings.enabled);
     console.log('🔬 Analysis settings updated');
 
     return this.getSettings();
+  }
+
+  /**
+   * Build the classification prompt.
+   *
+   * Each enum value is spelled out with the condition that selects it. Left to
+   * infer what `person_loitering` or `suspicious` mean, the model picks a
+   * plausible reading and picks a different one on the next frame; naming the
+   * test is what makes the labels reproducible enough to trigger on.
+   */
+  /**
+   * State what the tracker measured, so the model does not have to guess it.
+   *
+   * `person_passing`, `person_approaching` and `person_loitering` are claims
+   * about a trajectory, and no still frame contains one. Before this, the
+   * model was picking between them on vibes. Dwell time and apparent-size
+   * growth turn them into something close to a lookup — and telling the model
+   * how long it has been watching is what lets a brief presence become
+   * loitering on a later pass rather than being re-guessed from scratch.
+   */
+  private _describeEpisode(context: EpisodeContext | null): string {
+    if (!context) return '';
+
+    const approach = {
+      toward: 'growing larger in frame — moving toward the camera',
+      away: 'shrinking — moving away from the camera',
+      lateral: 'holding size — moving across the scene',
+      stationary: 'not moving',
+    }[context.approach];
+
+    const dwellPct = Math.round(context.dwellRatio * 100);
+
+    return `
+WHAT THE CAMERA MEASURED — these are observations, not guesses. Trust them
+over your reading of the still image, which cannot show movement:
+  watched for:  ${context.durationSec}s${
+      context.round > 1 ? ` (observation #${context.round} of this subject)` : ''
+    }
+  path:         ${context.trajectory}
+  motion:       ${approach}
+  held still:   ${dwellPct}% of the time
+  others present: ${Math.max(context.concurrentSubjects - 1, 0)}
+
+Use these directly. A subject that crossed the frame and left is passing
+through, however suspicious the still looks. One that has been watched for
+tens of seconds while mostly holding still is loitering. One growing larger
+is approaching. Do not report loitering for a subject seen for a few seconds.
+`;
+  }
+
+  private _buildPrompt(
+    baseline: string,
+    detectedLabel: string,
+    context: EpisodeContext | null
+  ): string {
+    return `You are a security camera analyst. Classify one subject.
+
+WHAT IS NORMAL HERE — never treat these as suspicious on their own:
+${baseline}
+
+An object detector already found: ${detectedLabel}. Describe what it is DOING.
+${this._describeEpisode(context)}
+
+activity — pick the one that fits best:
+  nothing_notable         nothing worth logging
+  person_passing          walking through, not stopping or diverting
+  person_loitering        stationary or circling with no apparent purpose
+  person_approaching      moving toward a building, door, or the camera
+  person_at_entrance      at a door, gate, or entryway
+  person_with_package     carrying or handling a parcel
+  person_at_vehicle       standing at, leaning into, or entering a vehicle
+  group_gathering         three or more people together
+  vehicle_passing         driving through without stopping
+  vehicle_arriving        pulling in or parking
+  vehicle_departing       pulling out or leaving
+  vehicle_parked_occupied someone is sitting inside a parked vehicle
+  delivery                courier or delivery vehicle dropping something off
+  animal_present          an animal is the subject
+  view_obstructed         the lens is blocked, sprayed, or covered
+  other                   none of the above
+
+threat — how much attention this deserves:
+  benign      matches what is normal here
+  notable     worth having in the log; no action needed
+  suspicious  out of place for the time or location; deserves a look
+  critical    someone is being harmed, or a break-in is in progress
+
+triggers — list EVERY condition that is clearly true. Empty list if none:
+  person_after_dark            a person present and the scene is dusk or night
+  loitering                    remaining without apparent purpose
+  approaching_entrance         heading toward a door, gate, or entryway
+  trying_doors_or_handles      touching or pulling at handles, doors, windows
+  looking_into_vehicles        peering into or through vehicle windows
+  package_interaction          picking up, moving, or opening a parcel
+  face_concealed               face hidden by a mask, hood, or covering
+  multiple_people              two or more people together
+  carrying_large_object        carrying something bulky or awkward
+  unfamiliar_vehicle           a vehicle inconsistent with what is normal here
+  vehicle_occupied_after_dark  someone inside a parked vehicle at dusk or night
+  large_animal                 an animal bigger than a domestic dog
+  camera_obstructed            the view is blocked or tampered with
+
+notify — true only if this is worth interrupting someone for. A person simply
+walking past in daylight is not. Set notify_reason to one short clause when
+true, otherwise null.
+
+visibility — poor means you cannot reliably tell what is happening. Say poor
+rather than guessing, and keep threat at benign or notable when you do.
+
+Report entities for people, animals, and active vehicles only. Skip parked
+cars unless something is happening at them. Location format: left/center/right
+plus near/mid/far, e.g. "center-right-near". /no_think`;
   }
 
   /**
@@ -284,16 +447,17 @@ export class AnalysisService {
   private async _analyzeSnapshot(params: {
     detectionEventId: string;
     label: string;
-    confidence: number;
-    snapshotFilename: string | null;
+    snapshotFilename: string;
+    context: EpisodeContext | null;
   }): Promise<void> {
-    if (!params.snapshotFilename) return;
 
     const snapshotPath = join(this._snapshotDir, params.snapshotFilename);
     let imageBuffer: Buffer;
     try {
       imageBuffer = readFileSync(snapshotPath);
     } catch (err) {
+      // The snapshot is gone (pruned, or never written) — retrying will not
+      // conjure it back, so this is a drop rather than a queue failure.
       console.error(
         `Cannot read snapshot for analysis: ${params.snapshotFilename}`,
         err
@@ -307,14 +471,7 @@ export class AnalysisService {
       this._settings?.prompt ??
       'Parked cars, SUVs, trucks in the lot. Residential apartment buildings, trees, grass, sidewalks. Normal ambient lighting.';
 
-    const prompt = `You are a security camera analysis system.
-
-KNOWN BASELINE — do not flag these as anomalies:
-${baseline}
-
-Analyze this frame. Report only notable entities (people, animals, active vehicles). Omit static parked cars unless anomalous.
-Anomaly score: 0=normal, 1-3=present but expected, 4-6=mildly suspicious, 7-9=concerning, 10=critical.
-Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /no_think`;
+    const prompt = this._buildPrompt(baseline, params.label, params.context);
 
     console.log(
       `🔬 Analyzing ${params.label} detection (${params.snapshotFilename}) with ${model}...`
@@ -339,10 +496,9 @@ Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /n
 
       if (!response.ok) {
         const body = await response.text();
-        console.error(
+        throw new Error(
           `Ollama API error (${response.status}): ${body.slice(0, 200)}`
         );
-        return;
       }
 
       // qwen3-vl places structured output in 'thinking' when format schema is set
@@ -353,44 +509,67 @@ Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /n
       const raw = (result.response || result.thinking || '').trim();
 
       if (!raw) {
-        console.warn('Ollama returned empty analysis');
-        return;
+        throw new Error('Ollama returned an empty analysis');
       }
 
-      let parsed: {
-        summary: string;
-        overall_score: number;
-        overall_rating: AnomalyRating;
-        entities: SceneEntity[];
-      };
-
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        console.warn('Ollama response was not valid JSON, storing as plain text');
-        parsed = {
-          summary: raw,
-          overall_score: 0,
-          overall_rating: 'LOW',
-          entities: [],
-        };
-      }
-
+      const parsed = this._parseResponse(raw);
       const durationMs = Date.now() - startTime;
+
+      // A frame the model could not read is not evidence of calm — cap its
+      // severity so an obscured lens cannot report itself as benign.
+      const threat =
+        parsed.visibility === 'poor' && parsed.threat === 'critical'
+          ? 'suspicious'
+          : parsed.threat;
 
       const analysis = this._repository.create({
         detectionEventId: params.detectionEventId,
         label: params.label,
         model,
         description: parsed.summary,
-        overallScore: parsed.overall_score ?? null,
-        overallRating: parsed.overall_rating ?? null,
-        entities: parsed.entities ?? null,
+        // Derived from the classification so existing filters and the score
+        // display keep working against rows written under either schema.
+        overallScore: scoreFromThreat(threat),
+        overallRating: ratingFromThreat(threat),
+        entities: parsed.entities.length ? parsed.entities : null,
         durationMs,
         snapshotFilename: params.snapshotFilename,
+        activity: parsed.activity,
+        threat,
+        triggers: parsed.triggers,
+        notifyRecommended: parsed.notify,
+        notifyReason: parsed.notify_reason,
+        lighting: parsed.lighting,
+        visibility: parsed.visibility,
+        notified: false,
       });
 
+      const existing = await this._repository.findOne({
+        where: { detectionEventId: params.detectionEventId },
+      });
+      // Later passes supersede earlier ones: one subject, one reading, which
+      // happens to be the latest and best-informed.
+      if (existing) analysis.id = existing.id;
+
       const saved = await this._repository.save(analysis);
+
+      // The notification decision belongs to the analysis, not the raw
+      // detection: "person, 87%" cannot tell you whether to care.
+      const notified = await this._notificationService.onAnalysis({
+        label: params.label,
+        snapshotFilename: params.snapshotFilename,
+        summary: saved.description,
+        activity: saved.activity,
+        threat: saved.threat,
+        triggers: saved.triggers ?? [],
+        notifyRecommended: saved.notifyRecommended ?? false,
+        notifyReason: saved.notifyReason,
+      });
+
+      if (notified) {
+        saved.notified = true;
+        await this._repository.save(saved);
+      }
 
       this._wsService.emitSceneAnalysis({
         id: saved.id,
@@ -404,20 +583,86 @@ Location format: left/center/right + near/mid/far (e.g. "center-right-near"). /n
         entities: saved.entities,
         durationMs: saved.durationMs,
         snapshotFilename: saved.snapshotFilename,
+        activity: saved.activity,
+        threat: saved.threat,
+        triggers: saved.triggers,
+        notifyRecommended: saved.notifyRecommended,
+        notifyReason: saved.notifyReason,
+        lighting: saved.lighting,
+        visibility: saved.visibility,
+        notified: saved.notified,
       });
 
       console.log(
-        `🔬 Analysis complete for ${params.label} in ${durationMs}ms [${saved.overallRating ?? 'UNKNOWN'} / ${saved.overallScore ?? '?'}/10]: "${parsed.summary.slice(0, 80)}"`
+        `🔬 Analysis complete for ${params.label} in ${durationMs}ms ` +
+          `[${threat} / ${saved.activity}${
+            saved.triggers?.length ? ` / ${saved.triggers.join(',')}` : ''
+          }${notified ? ' / NOTIFIED' : ''}]: "${parsed.summary.slice(0, 80)}"`
       );
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
-        console.error(
-          `Ollama analysis timed out for ${params.snapshotFilename}`
-        );
-      } else {
-        throw err;
+        throw new Error(`Ollama analysis timed out for ${params.label}`);
       }
+      throw err;
     }
+  }
+
+  /**
+   * Parse and validate the model's reply.
+   *
+   * The schema constrains generation but does not guarantee it: a model can
+   * still emit a value outside an enum, drop a field, or return prose. Rather
+   * than store a bad label that a notification rule would then match on,
+   * anything unrecognised falls back to the inert value.
+   */
+  private _parseResponse(raw: string): AnalysisResponse {
+    let json: Partial<AnalysisResponse>;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      console.warn('Ollama response was not valid JSON, keeping it as prose');
+      return {
+        summary: raw.slice(0, 500),
+        activity: 'other',
+        threat: 'benign',
+        triggers: [],
+        notify: false,
+        notify_reason: null,
+        lighting: 'daylight',
+        visibility: 'poor',
+        entities: [],
+      };
+    }
+
+    const oneOf = <T extends string>(
+      value: unknown,
+      allowed: readonly T[],
+      fallback: T
+    ): T => (allowed.includes(value as T) ? (value as T) : fallback);
+
+    const triggers = Array.isArray(json.triggers)
+      ? json.triggers.filter((t): t is NotifyTrigger =>
+          NOTIFY_TRIGGERS.includes(t as NotifyTrigger)
+        )
+      : [];
+
+    return {
+      summary:
+        typeof json.summary === 'string' && json.summary.trim()
+          ? json.summary.trim()
+          : 'No description returned.',
+      activity: oneOf(json.activity, SCENE_ACTIVITIES, 'other'),
+      threat: oneOf(json.threat, THREAT_LEVELS, 'benign'),
+      triggers: [...new Set(triggers)],
+      notify: json.notify === true,
+      notify_reason:
+        typeof json.notify_reason === 'string' && json.notify_reason.trim()
+          ? json.notify_reason.trim()
+          : null,
+      lighting: oneOf(json.lighting, LIGHTING_CONDITIONS, 'daylight'),
+      visibility: oneOf(json.visibility, VISIBILITY_LEVELS, 'clear'),
+      entities: Array.isArray(json.entities) ? json.entities : [],
+    };
   }
 
   /**

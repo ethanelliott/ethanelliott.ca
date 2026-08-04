@@ -40,6 +40,14 @@ export class DetectionEvent {
   @Column('boolean', { default: false })
   pinned!: boolean;
 
+  /** How long the subject was tracked, filled in as the episode develops */
+  @Column('real', { nullable: true })
+  durationSec!: number | null;
+
+  /** Plain-language path across the frame, e.g. "left edge mid → centre near" */
+  @Column('text', { nullable: true })
+  trajectory!: string | null;
+
   /**
    * Scene analysis for this event, mapped in by `getEvents` when requested.
    * Not a column — scene_analysis links back by id rather than by relation.
@@ -66,6 +74,8 @@ export const DetectionEventOutSchema = z.object({
   frameWidth: z.number(),
   frameHeight: z.number(),
   pinned: z.boolean(),
+  durationSec: z.number().nullable(),
+  trajectory: z.string().nullable(),
 });
 
 export type DetectionEventOut = z.infer<typeof DetectionEventOutSchema>;
