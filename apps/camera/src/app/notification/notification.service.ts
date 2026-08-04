@@ -36,8 +36,20 @@ export class NotificationService {
   /** In-memory cache of the current settings */
   private _settings: NotificationSettingsEntity | null = null;
 
-  /** Per-label timestamp of the last notification sent */
+  /** Per-reason timestamp of the last notification sent */
   private readonly _lastNotified = new Map<string, number>();
+
+  /**
+   * Whether scene analysis is running and will therefore make the call.
+   * Pushed in by AnalysisService rather than read from it, because the
+   * dependency already runs the other way.
+   */
+  private _analysisAvailable = false;
+
+  /** Told by AnalysisService whenever it starts up or its settings change. */
+  setAnalysisAvailable(available: boolean): void {
+    this._analysisAvailable = available;
+  }
 
   private get _dataDir(): string {
     return (
@@ -67,7 +79,6 @@ export class NotificationService {
           minConfidence: 0.7,
           notifyLabels: ['person', 'car', 'dog', 'cat'],
           attachSnapshot: true,
-          useAnalysis: false,
           minThreat: 'suspicious',
           notifyTriggers: [],
           followModelRecommendation: true,
@@ -123,7 +134,6 @@ export class NotificationService {
       minConfidence: s?.minConfidence ?? 0.7,
       notifyLabels: s?.notifyLabels ?? [],
       attachSnapshot: s?.attachSnapshot ?? true,
-      useAnalysis: s?.useAnalysis ?? false,
       minThreat: s?.minThreat ?? 'suspicious',
       notifyTriggers: s?.notifyTriggers ?? [],
       followModelRecommendation: s?.followModelRecommendation ?? true,
@@ -153,7 +163,6 @@ export class NotificationService {
       row.notifyLabels = update.notifyLabels;
     if (update.attachSnapshot !== undefined)
       row.attachSnapshot = update.attachSnapshot;
-    if (update.useAnalysis !== undefined) row.useAnalysis = update.useAnalysis;
     if (update.minThreat !== undefined) row.minThreat = update.minThreat;
     if (update.notifyTriggers !== undefined)
       row.notifyTriggers = update.notifyTriggers;
@@ -232,9 +241,10 @@ export class NotificationService {
   }): Promise<void> {
     if (!this._settings?.enabled) return;
 
-    // When analysis drives notifications, the raw detection stays quiet and
-    // `onAnalysis` decides once the model has actually looked at the frame.
-    if (this._settings.useAnalysis) return;
+    // Scene analysis decides whenever it is running: a raw detection can only
+    // say "person, 87%", which is not enough to judge. This path is the
+    // fallback for when analysis is switched off entirely.
+    if (this._analysisAvailable) return;
 
     // Check minimum confidence
     if (event.confidence < this._settings.minConfidence) return;
@@ -284,7 +294,7 @@ export class NotificationService {
     notifyReason: string | null;
   }): Promise<boolean> {
     const settings = this._settings;
-    if (!settings?.enabled || !settings.useAnalysis) return false;
+    if (!settings?.enabled) return false;
 
     const threat = analysis.threat ?? 'benign';
     const matchedTriggers = analysis.triggers.filter((trigger) =>

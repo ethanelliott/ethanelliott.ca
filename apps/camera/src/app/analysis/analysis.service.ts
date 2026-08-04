@@ -161,6 +161,7 @@ export class AnalysisService {
         console.log('🔬 Initialized default analysis settings');
       }
       this._settings = row;
+      this._notificationService.setAnalysisAvailable(row.enabled);
 
       // Verify Ollama connectivity
       try {
@@ -339,6 +340,7 @@ export class AnalysisService {
       this._settings.minConfidence = updates.minConfidence;
 
     await this._settingsRepo.save(this._settings);
+    this._notificationService.setAnalysisAvailable(this._settings.enabled);
     console.log('🔬 Analysis settings updated');
 
     return this.getSettings();

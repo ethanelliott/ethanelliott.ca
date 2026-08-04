@@ -128,15 +128,14 @@ import {
       </div>
 
       <!-- Min Confidence -->
-      <div class="setting-row border-bottom" [class.superseded]="useAnalysis">
+      <div class="setting-row border-bottom superseded">
         <div class="setting-info">
           <span class="setting-label">
             <i class="pi pi-percentage"></i>
             Min Confidence
           </span>
           <span class="setting-hint">
-            @if (useAnalysis) { Not used while scene analysis decides } @else {
-            Only notify when confidence is at least {{ minConfidencePct() }}% }
+            Not used while scene analysis decides
           </span>
         </div>
         <p-select
@@ -169,17 +168,15 @@ import {
       </div>
 
       <!-- Notify Labels -->
-      <div class="labels-section border-bottom" [class.superseded]="useAnalysis">
+      <div class="labels-section border-bottom superseded">
         <div class="labels-header">
           <span>Notify Labels</span>
           <span class="spacer"></span>
           <span class="enabled-count"> {{ notifyLabelCount() }} selected </span>
         </div>
         <span class="setting-hint label-hint">
-          @if (useAnalysis) { Not used while scene analysis decides — which
-          labels get analysed is set under Scene Analysis. } @else { Only send
-          notifications for these labels (empty = all enabled detection labels)
-          }
+          Not used while scene analysis decides — which labels get analysed is
+          set under Scene Analysis.
         </span>
         <div class="label-chips">
           @for (label of commonLabels; track label) {
@@ -197,30 +194,19 @@ import {
 
       <!-- Scene-analysis rules -->
       <div class="rules-section border-bottom">
-        <div class="setting-row">
-          <div class="setting-info">
-            <span class="setting-label">
-              <i class="pi pi-sparkles"></i>
-              Decide with scene analysis
-            </span>
-            <span class="setting-hint">
-              Notify on what the vision model saw rather than on the raw
-              detection, so &ldquo;person, 87%&rdquo; becomes
-              &ldquo;someone at a car door after dark&rdquo;.
-            </span>
+        <div class="rules-intro">
+          <i class="pi pi-sparkles"></i>
+          <div>
+            <strong>Scene analysis decides</strong>
+            <p>
+              Alerts come from what the vision model saw, not from the raw
+              detection &mdash; so &ldquo;person, 87%&rdquo; becomes
+              &ldquo;someone at a car door after dark&rdquo;. Turning scene
+              analysis off under Scene Analysis falls back to notifying on
+              labels and confidence alone.
+            </p>
           </div>
-          <p-toggleswitch
-            [(ngModel)]="useAnalysis"
-            (ngModelChange)="onUseAnalysisChange()"
-            [disabled]="loading()"
-          />
         </div>
-
-        @if (useAnalysis) {
-        <p-message severity="warn" styleClass="rules-note">
-          Detections that are never analysed — outside the analysis cooldown or
-          label list, or while Ollama is unreachable — will not notify.
-        </p-message>
 
         <div class="setting-row">
           <div class="setting-info">
@@ -285,7 +271,6 @@ import {
             }
           </div>
         </div>
-        }
       </div>
 
       <!-- Test Notification -->
@@ -471,6 +456,30 @@ import {
       opacity: 0.45;
     }
 
+    .rules-intro {
+      display: flex;
+      gap: 10px;
+      padding: 14px 16px 4px;
+
+      > i {
+        color: #a855f7;
+        font-size: 16px;
+        margin-top: 2px;
+      }
+
+      strong {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      p {
+        margin-top: 3px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+    }
+
     .test-section {
       padding: 12px 16px;
       display: flex;
@@ -510,7 +519,6 @@ export class NotificationSettingsComponent implements OnInit {
   cooldownSeconds = 30;
   minConfidence = 0.7;
   attachSnapshot = true;
-  useAnalysis = false;
   minThreat: ThreatLevel = 'suspicious';
   followModelRecommendation = true;
 
@@ -551,10 +559,6 @@ export class NotificationSettingsComponent implements OnInit {
       next: (taxonomy) => this.availableTriggers.set(taxonomy.triggers),
       error: () => this.availableTriggers.set([]),
     });
-  }
-
-  onUseAnalysisChange(): void {
-    this._save({ useAnalysis: this.useAnalysis });
   }
 
   onMinThreatChange(): void {
@@ -643,7 +647,6 @@ export class NotificationSettingsComponent implements OnInit {
     this.minConfidence = settings.minConfidence;
     this.minConfidencePct.set(Math.round(settings.minConfidence * 100));
     this.attachSnapshot = settings.attachSnapshot;
-    this.useAnalysis = settings.useAnalysis;
     this.minThreat = settings.minThreat;
     this.followModelRecommendation = settings.followModelRecommendation;
     this.triggerSet.set(new Set(settings.notifyTriggers));

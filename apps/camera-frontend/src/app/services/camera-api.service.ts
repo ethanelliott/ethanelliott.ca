@@ -80,8 +80,6 @@ export interface NotificationSettings {
   minConfidence: number;
   notifyLabels: string[];
   attachSnapshot: boolean;
-  /** Route notifications through scene analysis instead of raw detections */
-  useAnalysis: boolean;
   minThreat: ThreatLevel;
   notifyTriggers: string[];
   followModelRecommendation: boolean;

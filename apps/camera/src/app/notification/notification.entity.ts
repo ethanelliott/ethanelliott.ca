@@ -53,16 +53,7 @@ export class NotificationSettingsEntity {
 
   // ── Scene-analysis gating ──
 
-  /**
-   * Route notifications through scene analysis instead of firing on the raw
-   * detection. Off by default: turning it on means a detection that is never
-   * analysed — cooldown, unlisted label, Ollama down — never notifies, which
-   * is a real behaviour change on a camera someone relies on.
-   */
-  @Column('boolean', { default: false })
-  useAnalysis!: boolean;
-
-  /** Minimum threat level that notifies when `useAnalysis` is on */
+  /** Minimum threat level that notifies */
   @Column('text', { default: 'suspicious' })
   minThreat!: ThreatLevel;
 
@@ -90,7 +81,6 @@ export const NotificationSettingsSchema = z.object({
   minConfidence: z.number().min(0).max(1),
   notifyLabels: z.array(z.string()),
   attachSnapshot: z.boolean(),
-  useAnalysis: z.boolean(),
   minThreat: z.enum(THREAT_LEVELS),
   notifyTriggers: z.array(z.enum(NOTIFY_TRIGGERS)),
   followModelRecommendation: z.boolean(),
@@ -107,7 +97,6 @@ export const UpdateNotificationSettingsSchema = z.object({
   minConfidence: z.number().min(0).max(1).optional(),
   notifyLabels: z.array(z.string()).optional(),
   attachSnapshot: z.boolean().optional(),
-  useAnalysis: z.boolean().optional(),
   minThreat: z.enum(THREAT_LEVELS).optional(),
   notifyTriggers: z.array(z.enum(NOTIFY_TRIGGERS)).optional(),
   followModelRecommendation: z.boolean().optional(),
