@@ -559,6 +559,7 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
       // The notification decision belongs to the analysis, not the raw
       // detection: "person, 87%" cannot tell you whether to care.
       const notified = await this._notificationService.onAnalysis({
+        detectionEventId: params.detectionEventId,
         label: params.label,
         snapshotFilename: params.snapshotFilename,
         // The subject was seen when the episode started, not when the model

@@ -45,6 +45,43 @@ export const THREAT_ORDER: Record<ThreatLevel, number> = {
 };
 
 /**
+ * ntfy priority per threat level.
+ *
+ * The levels exist so an alert can arrive without demanding attention. ntfy
+ * treats 2 as silent-but-visible, 3 as a normal notification, 4 as sound and
+ * vibration, and 5 as urgent enough to break through do-not-disturb. Mapping
+ * threat onto that is what makes "tell me when anyone walks past" survivable:
+ * the phone lists it without buzzing, and keeps the buzz for the frames that
+ * earned it.
+ */
+export const THREAT_PRIORITY: Record<ThreatLevel, number> = {
+  benign: 2,
+  notable: 3,
+  suspicious: 4,
+  critical: 5,
+};
+
+/**
+ * Cooldown multiplier per threat level.
+ *
+ * A quiet alert is still an interruption if it arrives thirty times an hour,
+ * so the less a level matters the longer it waits between repeats. Critical
+ * is never held back — suppressing it because something else happened
+ * recently is the one failure that would matter.
+ *
+ * These stay modest because the heavier deduplication happens elsewhere: each
+ * subject is only announced once unless it escalates, so this window is only
+ * protecting against several *different* subjects at once — which is the case
+ * where wanting to be told is most reasonable.
+ */
+export const THREAT_COOLDOWN_SCALE: Record<ThreatLevel, number> = {
+  benign: 3,
+  notable: 2,
+  suspicious: 1,
+  critical: 0,
+};
+
+/**
  * Concrete conditions the model is asked to check for, independent of its
  * overall judgement. These are what notification rules are written against:
  * "wake me for `face_concealed`" is a rule someone can reason about, where

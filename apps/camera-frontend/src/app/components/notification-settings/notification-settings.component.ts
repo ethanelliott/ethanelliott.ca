@@ -215,7 +215,8 @@ import {
               Minimum threat
             </span>
             <span class="setting-hint">
-              Notify when the scene is rated at least this severe
+              Notify when the scene is rated at least this severe. Lower
+              levels arrive quietly rather than not at all.
             </span>
           </div>
           <p-select
@@ -245,6 +246,21 @@ import {
             (ngModelChange)="onFollowRecommendationChange()"
             [disabled]="loading()"
           />
+        </div>
+
+        <div class="priority-map">
+          @for (row of threatPriorities; track row.threat) {
+          <div class="priority-row" [class.muted]="!passesThreshold(row.threat)">
+            <span class="priority-threat" [class]="'threat-' + row.threat">
+              {{ row.label }}
+            </span>
+            <span class="priority-name">{{ row.priority }}</span>
+            <span class="priority-effect">{{ row.effect }}</span>
+            @if (!passesThreshold(row.threat)) {
+            <span class="priority-off">not sent</span>
+            }
+          </div>
+          }
         </div>
 
         <div class="labels-section">
@@ -456,6 +472,60 @@ import {
       opacity: 0.45;
     }
 
+    .priority-map {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin: 4px 16px 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .priority-row {
+      display: grid;
+      grid-template-columns: 92px 62px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 3px 0;
+      font-size: 12px;
+
+      &.muted {
+        opacity: 0.4;
+      }
+    }
+
+    .priority-threat {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 8px;
+      text-align: center;
+
+      &.threat-benign { background: rgba(148, 163, 184, 0.16); color: #94a3b8; }
+      &.threat-notable { background: rgba(34, 197, 94, 0.14); color: var(--accent-green); }
+      &.threat-suspicious { background: rgba(234, 179, 8, 0.16); color: var(--accent-yellow); }
+      &.threat-critical { background: rgba(239, 68, 68, 0.18); color: var(--accent-red); }
+    }
+
+    .priority-name {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .priority-effect {
+      color: var(--text-muted);
+    }
+
+    .priority-off {
+      font-size: 10px;
+      font-style: italic;
+      color: var(--text-muted);
+    }
+
     .rules-intro {
       display: flex;
       gap: 10px;
@@ -524,11 +594,36 @@ export class NotificationSettingsComponent implements OnInit {
 
   readonly commonLabels = [...COCO_LABELS];
 
+  /**
+   * Every level is selectable, including benign — "tell me when anyone walks
+   * past" is a reasonable thing to want, and the priority mapping is what
+   * makes it liveable rather than a firehose.
+   */
   readonly threatOptions = [
-    { label: 'Notable', value: 'notable' },
-    { label: 'Suspicious', value: 'suspicious' },
+    { label: 'Benign — everything', value: 'benign' },
+    { label: 'Notable and above', value: 'notable' },
+    { label: 'Suspicious and above', value: 'suspicious' },
     { label: 'Critical only', value: 'critical' },
   ];
+
+  /** How each level lands on the phone, mirroring the backend mapping. */
+  readonly threatPriorities: {
+    threat: ThreatLevel;
+    label: string;
+    priority: string;
+    effect: string;
+  }[] = [
+    { threat: 'benign', label: 'Benign', priority: 'low', effect: 'silent, sits in the drawer' },
+    { threat: 'notable', label: 'Notable', priority: 'default', effect: 'normal notification' },
+    { threat: 'suspicious', label: 'Suspicious', priority: 'high', effect: 'sound and vibration' },
+    { threat: 'critical', label: 'Critical', priority: 'max', effect: 'breaks through do-not-disturb' },
+  ];
+
+  /** True for levels the current threshold will actually let through. */
+  passesThreshold(threat: ThreatLevel): boolean {
+    const order: ThreatLevel[] = ['benign', 'notable', 'suspicious', 'critical'];
+    return order.indexOf(threat) >= order.indexOf(this.minThreat);
+  }
 
   readonly cooldownOptions = [
     { label: 'None', value: 0 },

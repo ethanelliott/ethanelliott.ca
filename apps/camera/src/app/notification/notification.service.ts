@@ -7,7 +7,13 @@ import {
   NotificationSettings,
   UpdateNotificationSettings,
 } from './notification.entity';
-import { ACTIVITY_LABELS, THREAT_ORDER, TRIGGER_LABELS } from '../analysis/taxonomy';
+import {
+  ACTIVITY_LABELS,
+  THREAT_COOLDOWN_SCALE,
+  THREAT_ORDER,
+  THREAT_PRIORITY,
+  TRIGGER_LABELS,
+} from '../analysis/taxonomy';
 import type {
   NotifyTrigger,
   SceneActivity,
@@ -38,6 +44,12 @@ export class NotificationService {
 
   /** Per-reason timestamp of the last notification sent */
   private readonly _lastNotified = new Map<string, number>();
+
+  /** What each recently announced subject was last reported as. */
+  private readonly _notifiedSubjects = new Map<
+    string,
+    { threat: ThreatLevel; triggers: Set<NotifyTrigger> }
+  >();
 
   /**
    * Whether scene analysis is running and will therefore make the call.
@@ -283,6 +295,7 @@ export class NotificationService {
    * Returns whether a notification was actually sent.
    */
   async onAnalysis(analysis: {
+    detectionEventId: string;
     label: string;
     snapshotFilename: string | null;
     /** When the subject was seen, so the alert can link back to it */
@@ -312,22 +325,62 @@ export class NotificationService {
 
     if (!meetsThreat && !meetsTrigger && !meetsRecommendation) return false;
 
+    // A subject is watched repeatedly as it lingers, so without this a
+    // loiterer would re-announce itself on every pass. Only an escalation is
+    // news: a higher threat than last time, or a condition that was not
+    // matched before.
+    const seen = this._notifiedSubjects.get(analysis.detectionEventId);
+    if (seen) {
+      const escalated = THREAT_ORDER[threat] > THREAT_ORDER[seen.threat];
+      const newTrigger = matchedTriggers.some((t) => !seen.triggers.has(t));
+      if (!escalated && !newTrigger) return false;
+    }
+
     // Cooldown is keyed on the reason rather than the label, so a car arriving
-    // cannot suppress the alert for someone at a car door a moment later.
+    // cannot suppress the alert for someone at a car door a moment later, and
+    // scaled by level so a quiet channel cannot become a firehose.
     const reasonKey = meetsTrigger
       ? `trigger:${matchedTriggers[0]}`
       : `threat:${threat}`;
+    const cooldownMs =
+      settings.cooldownSeconds * 1000 * THREAT_COOLDOWN_SCALE[threat];
     const now = Date.now();
     const lastTime = this._lastNotified.get(reasonKey) ?? 0;
-    if (now - lastTime < settings.cooldownSeconds * 1000) return false;
+    if (cooldownMs > 0 && now - lastTime < cooldownMs) return false;
 
     try {
       await this._sendAnalysisNotification(analysis, threat, matchedTriggers);
       this._lastNotified.set(reasonKey, now);
+      this._rememberSubject(analysis.detectionEventId, threat, matchedTriggers);
       return true;
     } catch (err) {
       console.error('Failed to send analysis notification:', err);
       return false;
+    }
+  }
+
+  /**
+   * Record what a subject has already been announced as, so later passes only
+   * interrupt again when they have something worse to report.
+   */
+  private _rememberSubject(
+    detectionEventId: string,
+    threat: ThreatLevel,
+    triggers: NotifyTrigger[]
+  ): void {
+    const existing = this._notifiedSubjects.get(detectionEventId);
+    const merged = new Set(existing?.triggers ?? []);
+    for (const trigger of triggers) merged.add(trigger);
+
+    this._notifiedSubjects.delete(detectionEventId);
+    this._notifiedSubjects.set(detectionEventId, { threat, triggers: merged });
+
+    // Subjects stop being re-analysed once they leave, so only the recent few
+    // can still escalate. Insertion order makes the oldest the first to go.
+    while (this._notifiedSubjects.size > 200) {
+      const oldest = this._notifiedSubjects.keys().next().value;
+      if (oldest === undefined) break;
+      this._notifiedSubjects.delete(oldest);
     }
   }
 
@@ -362,9 +415,7 @@ export class NotificationService {
       reasons.length ? `\n\n${reasons.join(' · ')}` : '',
     ].join('');
 
-    const priority = { benign: 2, notable: 3, suspicious: 4, critical: 5 }[
-      threat
-    ];
+    const priority = THREAT_PRIORITY[threat];
     const tags = [
       ...this._labelToTags(analysis.label),
       ...(threat === 'critical' ? ['rotating_light'] : []),
