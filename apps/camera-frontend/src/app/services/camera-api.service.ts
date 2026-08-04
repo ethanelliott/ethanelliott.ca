@@ -21,6 +21,10 @@ export interface DetectionEvent {
   frameWidth: number;
   frameHeight: number;
   pinned: boolean;
+  /** How long the subject was tracked; null on pre-tracker rows */
+  durationSec?: number | null;
+  /** Plain-language path across the frame */
+  trajectory?: string | null;
   /** Present when the event was fetched with `includeAnalysis` */
   analysis?: SceneAnalysis | null;
 }

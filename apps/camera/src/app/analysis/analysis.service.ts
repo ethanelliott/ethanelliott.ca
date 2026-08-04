@@ -4,6 +4,7 @@ import { join } from 'path';
 import { Database } from '../data-source';
 import { WebSocketService } from '../websocket/websocket.service';
 import { NotificationService } from '../notification/notification.service';
+import { AnalysisQueueItem } from './analysis-queue.entity';
 import {
   SceneAnalysis,
   SceneEntity,
@@ -20,6 +21,7 @@ import {
   ratingFromThreat,
   scoreFromThreat,
 } from './taxonomy';
+import type { EpisodeContext } from '../detection/tracker';
 import type {
   LightingCondition,
   NotifyTrigger,
@@ -120,12 +122,6 @@ export class AnalysisService {
   /** In-memory cache of settings */
   private _settings: AnalysisSettingsEntity | null = null;
 
-  /** Per-label timestamp of the last analysis sent (cooldown tracker) */
-  private readonly _lastAnalyzed = new Map<string, number>();
-
-  /** Track in-flight analyses to prevent duplicates */
-  private readonly _inFlight = new Set<string>();
-
   private readonly _ollamaUrl =
     process.env.OLLAMA_URL ||
     'http://ollama.elliott-haus.svc.cluster.local:11434';
@@ -211,48 +207,35 @@ export class AnalysisService {
   }
 
   /**
-   * Handle a new detection event. If analysis is enabled and the label
-   * qualifies, send the snapshot to Ollama for scene analysis.
+   * Should this subject be described at all?
    *
-   * This method is fire-and-forget — it does not block the detection loop.
+   * Only the label filter survives from the old gate. The per-label cooldown
+   * is gone: it existed to cap model load, but it did that by dropping events
+   * on the floor — including the second person of the evening. Load is now
+   * shed by the tracker sending one episode per subject instead of one per
+   * frame it lost, and by the queue, which defers rather than discards.
    */
-  async onDetection(params: {
-    detectionEventId: string;
-    label: string;
-    confidence: number;
-    snapshotFilename: string | null;
-  }): Promise<void> {
-    if (!this._settings?.enabled) return;
-    if (!params.snapshotFilename) return;
-
-    // Check confidence threshold
-    if (params.confidence < (this._settings.minConfidence ?? 0.7)) return;
-
-    // Check if this label should trigger analysis
+  shouldAnalyze(label: string): boolean {
+    if (!this._settings?.enabled) return false;
     const analyzeLabels = this._settings.analyzeLabels ?? [];
-    if (analyzeLabels.length > 0 && !analyzeLabels.includes(params.label)) {
-      return;
-    }
+    return analyzeLabels.length === 0 || analyzeLabels.includes(label);
+  }
 
-    // Check cooldown for this label
-    const now = Date.now();
-    const lastTime = this._lastAnalyzed.get(params.label) ?? 0;
-    const cooldownMs = (this._settings.cooldownSeconds ?? 30) * 1000;
-    if (now - lastTime < cooldownMs) return;
+  /**
+   * Describe one queued episode. Throws on a failure the queue should retry —
+   * a model that is down is a reason to wait, not a reason to lose the event.
+   */
+  async processQueueItem(item: AnalysisQueueItem): Promise<void> {
+    if (!this._settings?.enabled) return;
+    if (!item.snapshotFilename) return;
+    if (!this.shouldAnalyze(item.label)) return;
 
-    // Prevent duplicate in-flight requests for the same detection event
-    if (this._inFlight.has(params.detectionEventId)) return;
-
-    this._lastAnalyzed.set(params.label, now);
-    this._inFlight.add(params.detectionEventId);
-
-    try {
-      await this._analyzeSnapshot(params);
-    } catch (err) {
-      console.error('Scene analysis error:', err);
-    } finally {
-      this._inFlight.delete(params.detectionEventId);
-    }
+    await this._analyzeSnapshot({
+      detectionEventId: item.detectionEventId,
+      label: item.label,
+      snapshotFilename: item.snapshotFilename,
+      context: item.context,
+    });
   }
 
   /**
@@ -354,13 +337,58 @@ export class AnalysisService {
    * plausible reading and picks a different one on the next frame; naming the
    * test is what makes the labels reproducible enough to trigger on.
    */
-  private _buildPrompt(baseline: string, detectedLabel: string): string {
-    return `You are a security camera analyst. Classify a single frame.
+  /**
+   * State what the tracker measured, so the model does not have to guess it.
+   *
+   * `person_passing`, `person_approaching` and `person_loitering` are claims
+   * about a trajectory, and no still frame contains one. Before this, the
+   * model was picking between them on vibes. Dwell time and apparent-size
+   * growth turn them into something close to a lookup — and telling the model
+   * how long it has been watching is what lets a brief presence become
+   * loitering on a later pass rather than being re-guessed from scratch.
+   */
+  private _describeEpisode(context: EpisodeContext | null): string {
+    if (!context) return '';
+
+    const approach = {
+      toward: 'growing larger in frame — moving toward the camera',
+      away: 'shrinking — moving away from the camera',
+      lateral: 'holding size — moving across the scene',
+      stationary: 'not moving',
+    }[context.approach];
+
+    const dwellPct = Math.round(context.dwellRatio * 100);
+
+    return `
+WHAT THE CAMERA MEASURED — these are observations, not guesses. Trust them
+over your reading of the still image, which cannot show movement:
+  watched for:  ${context.durationSec}s${
+      context.round > 1 ? ` (observation #${context.round} of this subject)` : ''
+    }
+  path:         ${context.trajectory}
+  motion:       ${approach}
+  held still:   ${dwellPct}% of the time
+  others present: ${Math.max(context.concurrentSubjects - 1, 0)}
+
+Use these directly. A subject that crossed the frame and left is passing
+through, however suspicious the still looks. One that has been watched for
+tens of seconds while mostly holding still is loitering. One growing larger
+is approaching. Do not report loitering for a subject seen for a few seconds.
+`;
+  }
+
+  private _buildPrompt(
+    baseline: string,
+    detectedLabel: string,
+    context: EpisodeContext | null
+  ): string {
+    return `You are a security camera analyst. Classify one subject.
 
 WHAT IS NORMAL HERE — never treat these as suspicious on their own:
 ${baseline}
 
 An object detector already found: ${detectedLabel}. Describe what it is DOING.
+${this._describeEpisode(context)}
 
 activity — pick the one that fits best:
   nothing_notable         nothing worth logging
@@ -419,16 +447,17 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
   private async _analyzeSnapshot(params: {
     detectionEventId: string;
     label: string;
-    confidence: number;
-    snapshotFilename: string | null;
+    snapshotFilename: string;
+    context: EpisodeContext | null;
   }): Promise<void> {
-    if (!params.snapshotFilename) return;
 
     const snapshotPath = join(this._snapshotDir, params.snapshotFilename);
     let imageBuffer: Buffer;
     try {
       imageBuffer = readFileSync(snapshotPath);
     } catch (err) {
+      // The snapshot is gone (pruned, or never written) — retrying will not
+      // conjure it back, so this is a drop rather than a queue failure.
       console.error(
         `Cannot read snapshot for analysis: ${params.snapshotFilename}`,
         err
@@ -442,7 +471,7 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
       this._settings?.prompt ??
       'Parked cars, SUVs, trucks in the lot. Residential apartment buildings, trees, grass, sidewalks. Normal ambient lighting.';
 
-    const prompt = this._buildPrompt(baseline, params.label);
+    const prompt = this._buildPrompt(baseline, params.label, params.context);
 
     console.log(
       `🔬 Analyzing ${params.label} detection (${params.snapshotFilename}) with ${model}...`
@@ -467,10 +496,9 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
 
       if (!response.ok) {
         const body = await response.text();
-        console.error(
+        throw new Error(
           `Ollama API error (${response.status}): ${body.slice(0, 200)}`
         );
-        return;
       }
 
       // qwen3-vl places structured output in 'thinking' when format schema is set
@@ -481,8 +509,7 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
       const raw = (result.response || result.thinking || '').trim();
 
       if (!raw) {
-        console.warn('Ollama returned empty analysis');
-        return;
+        throw new Error('Ollama returned an empty analysis');
       }
 
       const parsed = this._parseResponse(raw);
@@ -517,13 +544,19 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
         notified: false,
       });
 
+      const existing = await this._repository.findOne({
+        where: { detectionEventId: params.detectionEventId },
+      });
+      // Later passes supersede earlier ones: one subject, one reading, which
+      // happens to be the latest and best-informed.
+      if (existing) analysis.id = existing.id;
+
       const saved = await this._repository.save(analysis);
 
       // The notification decision belongs to the analysis, not the raw
       // detection: "person, 87%" cannot tell you whether to care.
       const notified = await this._notificationService.onAnalysis({
         label: params.label,
-        confidence: params.confidence,
         snapshotFilename: params.snapshotFilename,
         summary: saved.description,
         activity: saved.activity,
@@ -568,12 +601,9 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
       );
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
-        console.error(
-          `Ollama analysis timed out for ${params.snapshotFilename}`
-        );
-      } else {
-        throw err;
+        throw new Error(`Ollama analysis timed out for ${params.label}`);
       }
+      throw err;
     }
   }
 

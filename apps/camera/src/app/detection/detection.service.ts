@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { inject } from '@ee/di';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -10,9 +9,10 @@ import {
 } from './detection.entity';
 import { WebSocketService } from '../websocket/websocket.service';
 import { StreamService } from '../stream/stream.service';
-import { NotificationService } from '../notification/notification.service';
-import { AnalysisService } from '../analysis/analysis.service';
+import { AnalysisQueueService } from '../analysis/analysis-queue.service';
 import { SceneAnalysis } from '../analysis/analysis.entity';
+import { MotionDetector } from './motion';
+import { Observation, Track, Tracker } from './tracker';
 import { ratingFromThreat } from '../analysis/taxonomy';
 import type { ThreatLevel } from '../analysis/taxonomy';
 
@@ -101,31 +101,22 @@ export const COCO_SSD_LABELS = [
 ] as const;
 
 /**
- * A tracked object correlated across frames via spatial overlap.
- */
-interface TrackedObject {
-  id: string;
-  label: string;
-  bbox: { x: number; y: number; width: number; height: number };
-  confidence: number;
-  firstSeen: Date;
-  lastSeen: Date;
-  eventId: string;
-  frameWidth: number;
-  frameHeight: number;
-  snapshotFilename: string | null;
-}
-
-/**
- * DetectionService runs periodic frame extraction and object detection
- * using TensorFlow.js with COCO-SSD model.
+ * DetectionService runs the detection cascade over the camera's frames.
+ *
+ * The cascade escalates in cost. Motion differencing is nearly free and
+ * decides whether anything is happening; object detection runs only when it
+ * might be; and the vision model — by far the most expensive step — sees a
+ * subject once per episode rather than once per frame the tracker happened to
+ * lose. Each layer's job is to spend the next layer's budget wisely.
+ *
+ * There is room for another layer between detection and the vision model — a
+ * stronger detector on the GPU — and the seam for it is `_detectObjects`.
  */
 export class DetectionService {
   private readonly _db = inject(Database);
   private readonly _streamService = inject(StreamService);
   private readonly _wsService = inject(WebSocketService);
-  private readonly _notificationService = inject(NotificationService);
-  private readonly _analysisService = inject(AnalysisService);
+  private readonly _queue = inject(AnalysisQueueService);
   private readonly _repository = this._db.repositoryFor(DetectionEvent);
   private readonly _settingsRepo = this._db.repositoryFor(
     DetectionSettingsEntity
@@ -146,21 +137,22 @@ export class DetectionService {
     process.env.DETECTION_THRESHOLD || '0.6'
   );
 
-  /** Target detection FPS (default 5). Controls minimum ms between detections. */
-  private readonly _targetFps = parseFloat(process.env.DETECTION_FPS || '5');
-  private readonly _minFrameIntervalMs = 1000 / this._targetFps;
+  /**
+   * Inference rate while something is being tracked. Higher is better for
+   * association — halving the gap between frames halves how far a subject can
+   * move between them — and the motion gate is what buys the headroom.
+   */
+  private readonly _activeFps = parseFloat(process.env.DETECTION_FPS || '10');
 
-  /** In-memory tracked objects correlated across frames */
-  private _trackedObjects = new Map<string, TrackedObject>();
+  /** How often the motion gate is consulted while the scene is still. */
+  private readonly _idleFps = parseFloat(process.env.MOTION_CHECK_FPS || '4');
 
-  /** Minimum IoU (Intersection over Union) to consider two boxes the same object */
-  private readonly _iouThreshold = parseFloat(
-    process.env.IOU_THRESHOLD || '0.3'
-  );
+  private readonly _tracker = new Tracker();
+  private _motion: MotionDetector | null = null;
 
-  /** How long (ms) before a tracked object is considered stale and removed */
-  private readonly _staleTimeoutMs =
-    parseInt(process.env.TRACK_STALE_SECONDS || '5', 10) * 1000;
+  /** Rolling counters, reported by the detection stats endpoint. */
+  private _framesInspected = 0;
+  private _framesInferred = 0;
 
   /** Whether the detection loop is currently running */
   private _detectLoopRunning = false;
@@ -207,6 +199,7 @@ export class DetectionService {
 
     // Pre-load sharp so we don't dynamic-import on every frame
     this._sharp = (await import('sharp')).default;
+    this._motion = new MotionDetector(this._sharp);
 
     this._isRunning = true;
 
@@ -216,7 +209,9 @@ export class DetectionService {
     this._runDetectLoop();
 
     console.log(
-      `🧠 Detection running at up to ${this._targetFps} FPS (threshold: ${this._threshold}, retention: ${this._retentionDays}d)`
+      `🧠 Detection cascade running: motion gate at ${this._idleFps} FPS, ` +
+        `inference up to ${this._activeFps} FPS ` +
+        `(threshold: ${this._threshold}, retention: ${this._retentionDays}d)`
     );
   }
 
@@ -483,8 +478,13 @@ export class DetectionService {
   }
 
   /**
-   * Continuous detection loop. Grabs the latest frame from the pipe,
-   * runs inference, then sleeps to maintain the target FPS.
+   * The cascade loop.
+   *
+   * Each pass reads the newest frame and decides how far up the cascade to
+   * go. While nothing is tracked, the motion gate usually ends the pass on
+   * its own and inference never runs; once a subject exists the gate is
+   * bypassed entirely, because a person who stops moving stops generating
+   * motion and is exactly the subject worth watching.
    */
   private async _runDetectLoop(): Promise<void> {
     if (this._detectLoopRunning) return;
@@ -494,257 +494,266 @@ export class DetectionService {
 
     while (this._isRunning && !signal?.aborted) {
       const start = Date.now();
+      const active = this._tracker.size > 0;
 
       try {
-        await this._detectFrame();
+        await this._tick();
       } catch (err) {
         console.error('Detection error:', err);
       }
 
-      // Sleep the remaining time to hit target FPS
-      const elapsed = Date.now() - start;
-      const sleepMs = Math.max(0, this._minFrameIntervalMs - elapsed);
+      const intervalMs = 1000 / (active ? this._activeFps : this._idleFps);
+      const sleepMs = Math.max(0, intervalMs - (Date.now() - start));
       if (sleepMs > 0) {
-        await new Promise((r) => setTimeout(r, sleepMs));
+        await new Promise((resolve) => setTimeout(resolve, sleepMs));
       }
     }
 
     this._detectLoopRunning = false;
   }
 
+  private async _tick(): Promise<void> {
+    if (!this._model || !this._tf || !this._sharp) return;
+
+    const frame = this._streamService.getLatestFrame();
+    if (!frame) return;
+
+    this._framesInspected++;
+
+    // Layer 0. Skipped while tracking: the gate cannot see a stationary
+    // subject, and losing one mid-episode would split it into two events.
+    if (this._tracker.size === 0 && this._motion) {
+      const motion = await this._motion.check(frame);
+      if (!motion.moving) return;
+    }
+
+    // Layer 1.
+    const detection = await this._detectObjects(frame);
+    if (!detection) return;
+    this._framesInferred++;
+
+    const { observations, frameWidth, frameHeight } = detection;
+    const { confirmed, finished } = this._tracker.update(
+      observations,
+      frameWidth,
+      frameHeight,
+      frame
+    );
+
+    for (const track of confirmed) {
+      await this._openEvent(track);
+    }
+
+    // Layer 2 is queued here rather than run here: the model is slow and the
+    // loop must not wait on it.
+    const now = Date.now();
+    for (const track of this._tracker.tracks) {
+      if (track.isAnalysisDue(now)) {
+        await this._queueAnalysis(track);
+      }
+    }
+
+    for (const track of finished) {
+      await this._closeEvent(track);
+    }
+
+    this._emitOverlay();
+  }
+
   /**
-   * Run detection on the latest frame from the stream service, and correlate
-   * detections across frames using spatial overlap (IoU).
+   * Layer 1: what objects are in this frame.
+   *
+   * Isolated so a stronger detector can be dropped in behind the same shape
+   * without the cascade around it changing.
    */
-  private async _detectFrame(): Promise<void> {
-    if (!this._model || !this._tf || !this._sharp) {
-      return;
-    }
-
-    // Read the latest frame from the stream service's combined FFmpeg process
-    const frameBuffer = this._streamService.getLatestFrame();
-    if (!frameBuffer) {
-      return; // No frame available yet
-    }
-
+  private async _detectObjects(frame: Buffer): Promise<{
+    observations: Observation[];
+    frameWidth: number;
+    frameHeight: number;
+  } | null> {
     try {
-      // Decode JPEG to raw pixels using sharp (pre-loaded)
-      const { data, info } = await this._sharp(frameBuffer)
-        .resize(1280, 720, { fit: 'inside' }) // 720p for better detection accuracy
+      const { data, info } = await this._sharp(frame)
+        .resize(1280, 720, { fit: 'inside' })
         .raw()
         .toBuffer({ resolveWithObject: true });
 
-      // Create tensor from raw pixel data
       const tensor = this._tf.tensor3d(new Uint8Array(data), [
         info.height,
         info.width,
         info.channels,
       ]);
 
-      // Run detection
-      const predictions = await this._model.detect(tensor);
-
-      // Clean up tensor
-      tensor.dispose();
-
-      // Filter predictions by threshold and enabled labels
-      const filtered = predictions.filter(
-        (p: any) =>
-          p.score >= this._threshold && this._enabledLabels.has(p.class)
-      );
-
-      const now = new Date();
-      const matchedTrackIds = new Set<string>();
-      const frameDetections: FrameDetection[] = [];
-
-      for (const prediction of filtered) {
-        const [x, y, width, height] = prediction.bbox;
-        const bbox = { x, y, width, height };
-
-        // Try to match against existing tracked objects of the same label
-        let bestMatch: TrackedObject | null = null;
-        let bestIoU = 0;
-
-        for (const tracked of this._trackedObjects.values()) {
-          if (tracked.label !== prediction.class) continue;
-          if (matchedTrackIds.has(tracked.id)) continue; // already matched
-          const iou = this._computeIoU(bbox, tracked.bbox);
-          if (iou >= this._iouThreshold && iou > bestIoU) {
-            bestMatch = tracked;
-            bestIoU = iou;
-          }
-        }
-
-        if (bestMatch) {
-          // Continuing tracked object — update in-place, no new DB event
-          bestMatch.bbox = bbox;
-          bestMatch.confidence = prediction.score;
-          bestMatch.lastSeen = now;
-          bestMatch.frameWidth = info.width;
-          bestMatch.frameHeight = info.height;
-          matchedTrackIds.add(bestMatch.id);
-
-          frameDetections.push({
-            id: bestMatch.eventId,
-            label: bestMatch.label,
-            confidence: bestMatch.confidence,
-            bbox: bestMatch.bbox,
-            frameWidth: info.width,
-            frameHeight: info.height,
-          });
-        } else {
-          // New object — save to DB, start tracking, emit event for feed
-          const saved = await this._createDetectionEvent(
-            prediction,
-            frameBuffer,
-            info.width,
-            info.height
-          );
-
-          const trackId = randomUUID();
-          this._trackedObjects.set(trackId, {
-            id: trackId,
-            label: prediction.class,
-            bbox,
-            confidence: prediction.score,
-            firstSeen: now,
-            lastSeen: now,
-            eventId: saved.id,
-            frameWidth: info.width,
-            frameHeight: info.height,
-            snapshotFilename: saved.snapshotFilename,
-          });
-
-          // Emit individual 'detection' event for the event feed (new objects only)
-          this._wsService.emitDetection({
-            id: saved.id,
-            timestamp: saved.timestamp,
-            label: saved.label,
-            confidence: saved.confidence,
-            snapshotFilename: saved.snapshotFilename || null,
-            bbox: saved.bbox,
-            frameWidth: saved.frameWidth,
-            frameHeight: saved.frameHeight,
-            pinned: saved.pinned,
-          });
-
-          frameDetections.push({
-            id: saved.id,
-            label: saved.label,
-            confidence: saved.confidence,
-            bbox: saved.bbox,
-            frameWidth: info.width,
-            frameHeight: info.height,
-          });
-
-          // Fire-and-forget notification (don't block the detection loop)
-          this._notificationService
-            .onDetection({
-              label: saved.label,
-              confidence: saved.confidence,
-              snapshotFilename: saved.snapshotFilename,
-            })
-            .catch((err) => console.error('Notification dispatch error:', err));
-
-          // Fire-and-forget scene analysis via Ollama vision model
-          this._analysisService
-            .onDetection({
-              detectionEventId: saved.id,
-              label: saved.label,
-              confidence: saved.confidence,
-              snapshotFilename: saved.snapshotFilename,
-            })
-            .catch((err) =>
-              console.error('Scene analysis dispatch error:', err)
-            );
-
-          console.log(
-            `🎯 New: ${prediction.class} (${Math.round(
-              prediction.score * 100
-            )}%)${saved.snapshotFilename ? ` → ${saved.snapshotFilename}` : ''}`
-          );
-        }
+      let predictions: any[];
+      try {
+        predictions = await this._model.detect(tensor);
+      } finally {
+        tensor.dispose();
       }
 
-      // Emit all current-frame detections for the live overlay
-      this._wsService.emitFrameDetections(frameDetections);
+      const observations: Observation[] = predictions
+        .filter(
+          (p: any) =>
+            p.score >= this._threshold && this._enabledLabels.has(p.class)
+        )
+        .map((p: any) => ({
+          label: p.class,
+          confidence: p.score,
+          bbox: {
+            x: p.bbox[0],
+            y: p.bbox[1],
+            width: p.bbox[2],
+            height: p.bbox[3],
+          },
+        }));
 
-      // Age out tracked objects not seen recently
-      this._ageOutTrackedObjects(now);
+      return {
+        observations,
+        frameWidth: info.width,
+        frameHeight: info.height,
+      };
     } catch (err) {
       console.error('Frame processing error:', err);
+      return null;
     }
   }
 
   /**
-   * Create a new detection event: save snapshot and store in DB.
-   * Does NOT emit via WebSocket — the caller handles that.
+   * Write the DB row for a newly confirmed track.
+   *
+   * Confirmation needs several frames, which is what keeps a single-frame
+   * detector blip from becoming an event in the log. The row is written as
+   * soon as the track is real so the live feed updates immediately, well
+   * before the model has anything to say about it.
    */
-  private async _createDetectionEvent(
-    prediction: { bbox: number[]; class: string; score: number },
-    frameBuffer: Buffer,
-    frameWidth: number,
-    frameHeight: number
-  ): Promise<DetectionEvent> {
-    const [x, y, width, height] = prediction.bbox;
+  private async _openEvent(track: Track): Promise<void> {
+    try {
+      const snapshotFilename = this._writeSnapshot(track);
 
-    // Save snapshot for high-confidence detections
-    let snapshotFilename: string | null = null;
-    if (prediction.score >= this._threshold) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      snapshotFilename = `${prediction.class}_${timestamp}_${Math.round(
-        prediction.score * 100
-      )}.jpg`;
-      const snapshotPath = join(this._snapshotDir, snapshotFilename);
+      const saved = await this._repository.save(
+        this._repository.create({
+          label: track.label,
+          confidence: track.confidence,
+          snapshotFilename,
+          bbox: track.bbox,
+          frameWidth: track.frameWidth,
+          frameHeight: track.frameHeight,
+        })
+      );
 
-      try {
-        writeFileSync(snapshotPath, frameBuffer);
-      } catch (err) {
-        console.error('Failed to save snapshot:', err);
-        snapshotFilename = null;
-      }
+      track.eventId = saved.id;
+      track.snapshotFilename = snapshotFilename;
+
+      this._wsService.emitDetection({
+        id: saved.id,
+        timestamp: saved.timestamp,
+        label: saved.label,
+        confidence: saved.confidence,
+        snapshotFilename: saved.snapshotFilename ?? null,
+        bbox: saved.bbox,
+        frameWidth: saved.frameWidth,
+        frameHeight: saved.frameHeight,
+        pinned: saved.pinned,
+        durationSec: saved.durationSec,
+        trajectory: saved.trajectory,
+      });
+
+      console.log(
+        `🎯 ${track.label} (${Math.round(track.confidence * 100)}%) confirmed after ${track.hits} frames`
+      );
+    } catch (err) {
+      console.error('Failed to open detection event:', err);
     }
+  }
 
-    // Store detection event in database
-    const event = this._repository.create({
-      label: prediction.class,
-      confidence: prediction.score,
+  /**
+   * Hand the episode so far to the vision model.
+   *
+   * The snapshot is rewritten from the best frame seen up to this point, so
+   * what the model reads — and what the UI shows — is the subject at their
+   * most legible rather than at the instant they first crossed the threshold.
+   */
+  private async _queueAnalysis(track: Track): Promise<void> {
+    if (!track.eventId) return;
+
+    const snapshotFilename = this._writeSnapshot(track) ?? track.snapshotFilename;
+    track.snapshotFilename = snapshotFilename;
+
+    const context = track.context(this._tracker.confirmedTracks.length);
+
+    await this._queue.enqueue({
+      detectionEventId: track.eventId,
+      label: track.label,
       snapshotFilename,
-      bbox: { x, y, width, height },
-      frameWidth,
-      frameHeight,
+      context,
     });
 
-    return this._repository.save(event);
+    track.markAnalysisQueued();
+
+    await this._repository
+      .update(track.eventId, {
+        snapshotFilename,
+        durationSec: context.durationSec,
+        trajectory: context.trajectory,
+      })
+      .catch((err) => console.error('Failed to update event episode:', err));
   }
 
   /**
-   * Compute Intersection over Union for two bounding boxes.
+   * Finalise a track that has left the scene.
+   *
+   * A subject that came and went inside the first analysis interval has not
+   * been described yet, and dropping it would lose exactly the brief visit
+   * worth knowing about — so it is queued on the way out.
    */
-  private _computeIoU(
-    a: { x: number; y: number; width: number; height: number },
-    b: { x: number; y: number; width: number; height: number }
-  ): number {
-    const x1 = Math.max(a.x, b.x);
-    const y1 = Math.max(a.y, b.y);
-    const x2 = Math.min(a.x + a.width, b.x + b.width);
-    const y2 = Math.min(a.y + a.height, b.y + b.height);
-    const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-    const areaA = a.width * a.height;
-    const areaB = b.width * b.height;
-    const union = areaA + areaB - intersection;
+  private async _closeEvent(track: Track): Promise<void> {
+    if (!track.confirmed || !track.eventId) return;
 
-    return union > 0 ? intersection / union : 0;
-  }
-
-  /**
-   * Remove tracked objects that haven't been seen within the stale timeout.
-   */
-  private _ageOutTrackedObjects(now: Date): void {
-    for (const [id, tracked] of this._trackedObjects) {
-      if (now.getTime() - tracked.lastSeen.getTime() > this._staleTimeoutMs) {
-        this._trackedObjects.delete(id);
-      }
+    if (track.analysisRound === 0) {
+      await this._queueAnalysis(track);
+      return;
     }
+
+    const context = track.context(this._tracker.confirmedTracks.length);
+    await this._repository
+      .update(track.eventId, {
+        durationSec: context.durationSec,
+        trajectory: context.trajectory,
+      })
+      .catch((err) => console.error('Failed to close detection event:', err));
+  }
+
+  /** Persist the track's best frame, reusing its filename across passes. */
+  private _writeSnapshot(track: Track): string | null {
+    if (!track.bestFrame) return null;
+
+    const filename =
+      track.snapshotFilename ??
+      `${track.label}_${new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')}_${track.id.slice(0, 8)}.jpg`;
+
+    try {
+      writeFileSync(join(this._snapshotDir, filename), track.bestFrame);
+      return filename;
+    } catch (err) {
+      console.error('Failed to save snapshot:', err);
+      return track.snapshotFilename;
+    }
+  }
+
+  /** Push the current boxes to the live overlay. */
+  private _emitOverlay(): void {
+    const frameDetections: FrameDetection[] = [];
+    for (const track of this._tracker.confirmedTracks) {
+      frameDetections.push({
+        id: track.eventId ?? track.id,
+        label: track.label,
+        confidence: track.confidence,
+        bbox: track.bbox,
+        frameWidth: track.frameWidth,
+        frameHeight: track.frameHeight,
+      });
+    }
+    this._wsService.emitFrameDetections(frameDetections);
   }
 }

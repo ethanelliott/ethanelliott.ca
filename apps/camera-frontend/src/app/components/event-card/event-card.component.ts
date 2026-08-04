@@ -90,6 +90,10 @@ export type EventCardVariant = 'compact' | 'detail' | 'gallery';
 
           <span class="spacer"></span>
 
+          @if (episode(); as summary) {
+          <span class="episode" [title]="episodeTitle()">{{ summary }}</span>
+          }
+
           <time class="time" [attr.datetime]="event().timestamp">
             {{ event().timestamp | date : timeFormat() }}
           </time>
@@ -470,6 +474,19 @@ export type EventCardVariant = 'compact' | 'detail' | 'gallery';
       flex: 1;
     }
 
+    .episode {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.05);
+      white-space: nowrap;
+    }
+
     .time {
       font-size: 11px;
       color: var(--text-muted);
@@ -621,6 +638,25 @@ export class EventCardComponent {
   readonly triggers = computed(() =>
     (this.analysis()?.triggers ?? []).map(triggerLabel)
   );
+
+  /**
+   * How long the subject was present. One row now covers a whole crossing
+   * rather than a moment, so the duration is what tells you which it was.
+   */
+  readonly episode = computed(() => {
+    const seconds = this.event().durationSec;
+    if (seconds == null || seconds < 1) return null;
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const minutes = Math.floor(seconds / 60);
+    return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h`;
+  });
+
+  readonly episodeTitle = computed(() => {
+    const trajectory = this.event().trajectory;
+    const seconds = this.event().durationSec;
+    const duration = seconds != null ? `Tracked ${Math.round(seconds)}s` : '';
+    return trajectory ? `${duration} · ${trajectory}` : duration;
+  });
 
   readonly accent = computed(() => labelColor(this.event().label));
   readonly icon = computed(() => labelIcon(this.event().label));

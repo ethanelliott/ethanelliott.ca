@@ -284,7 +284,6 @@ export class NotificationService {
    */
   async onAnalysis(analysis: {
     label: string;
-    confidence: number;
     snapshotFilename: string | null;
     summary: string;
     activity: SceneActivity | null;
