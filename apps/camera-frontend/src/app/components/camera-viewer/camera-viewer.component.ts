@@ -751,6 +751,9 @@ export class CameraViewerComponent implements AfterViewInit, OnDestroy {
 
     this.hls.on(Hls.Events.ERROR, (_event, data) => {
       if (!data.fatal) return;
+      // A load that never produced a picture has no frame to hold, and a
+      // pause left armed here would fire on whatever the user played next.
+      this.pauseWhenReady = false;
       switch (data.type) {
         case Hls.ErrorTypes.NETWORK_ERROR:
           this.error.set(

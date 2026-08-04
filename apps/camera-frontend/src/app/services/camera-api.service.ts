@@ -49,6 +49,12 @@ export interface DetectionStats {
   todayEvents: number;
   topLabels: { label: string; count: number }[];
   averageConfidence: number;
+  /** Subjects currently being tracked */
+  activeTracks: number;
+  framesInspected: number;
+  framesInferred: number;
+  /** Share of frames the motion gate kept away from the detector */
+  inferenceSkipRate: number;
 }
 
 export interface DetectionSettings {

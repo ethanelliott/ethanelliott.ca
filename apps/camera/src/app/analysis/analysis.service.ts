@@ -215,8 +215,9 @@ export class AnalysisService {
    * shed by the tracker sending one episode per subject instead of one per
    * frame it lost, and by the queue, which defers rather than discards.
    */
-  shouldAnalyze(label: string): boolean {
+  shouldAnalyze(label: string, confidence: number): boolean {
     if (!this._settings?.enabled) return false;
+    if (confidence < (this._settings.minConfidence ?? 0.7)) return false;
     const analyzeLabels = this._settings.analyzeLabels ?? [];
     return analyzeLabels.length === 0 || analyzeLabels.includes(label);
   }
@@ -228,13 +229,14 @@ export class AnalysisService {
   async processQueueItem(item: AnalysisQueueItem): Promise<void> {
     if (!this._settings?.enabled) return;
     if (!item.snapshotFilename) return;
-    if (!this.shouldAnalyze(item.label)) return;
+    if (!this.shouldAnalyze(item.label, item.confidence ?? 1)) return;
 
     await this._analyzeSnapshot({
       detectionEventId: item.detectionEventId,
       label: item.label,
       snapshotFilename: item.snapshotFilename,
       context: item.context,
+      observedAt: item.observedAt ?? item.createdAt,
     });
   }
 
@@ -449,6 +451,7 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
     label: string;
     snapshotFilename: string;
     context: EpisodeContext | null;
+    observedAt: Date;
   }): Promise<void> {
 
     const snapshotPath = join(this._snapshotDir, params.snapshotFilename);
@@ -558,6 +561,9 @@ plus near/mid/far, e.g. "center-right-near". /no_think`;
       const notified = await this._notificationService.onAnalysis({
         label: params.label,
         snapshotFilename: params.snapshotFilename,
+        // The subject was seen when the episode started, not when the model
+        // got round to describing it — the link must point at the footage.
+        at: params.observedAt,
         summary: saved.description,
         activity: saved.activity,
         threat: saved.threat,

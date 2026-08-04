@@ -285,6 +285,8 @@ export class NotificationService {
   async onAnalysis(analysis: {
     label: string;
     snapshotFilename: string | null;
+    /** When the subject was seen, so the alert can link back to it */
+    at: Date;
     summary: string;
     activity: SceneActivity | null;
     threat: ThreatLevel | null;
@@ -338,6 +340,7 @@ export class NotificationService {
     analysis: {
       label: string;
       snapshotFilename: string | null;
+      at: Date;
       summary: string;
       activity: SceneActivity | null;
       notifyReason: string | null;
@@ -373,6 +376,7 @@ export class NotificationService {
       tags,
       priority,
       snapshotFilename: s.attachSnapshot ? analysis.snapshotFilename : null,
+      click: this._deepLink(analysis.at),
     });
 
     console.log(
@@ -395,6 +399,8 @@ export class NotificationService {
     tags: string[];
     priority: number;
     snapshotFilename: string | null;
+    /** Deep link back to this moment in the camera timeline */
+    click?: string | null;
   }): Promise<void> {
     const s = this._settings!;
     const headers: Record<string, string> = {
@@ -415,6 +421,7 @@ export class NotificationService {
           Filename: payload.snapshotFilename,
           'Content-Type': 'image/jpeg',
         };
+        if (payload.click) putHeaders['Click'] = payload.click;
         if (s.authToken) putHeaders['Authorization'] = `Bearer ${s.authToken}`;
 
         const response = await fetch(`${s.serverUrl}/${s.topic}`, {
@@ -439,8 +446,25 @@ export class NotificationService {
       payload.title,
       payload.message,
       payload.tags,
-      payload.priority
+      payload.priority,
+      payload.click ?? null
     );
+  }
+
+  /**
+   * Link back to the moment the alert is about.
+   *
+   * The recording already holds the footage, so an alert can point at the
+   * instant rather than just describing it — tapping the notification opens
+   * the timeline paused there instead of at the live edge, where whatever
+   * happened is by then long gone.
+   */
+  private _deepLink(at: Date): string | null {
+    const base = process.env.CAMERA_APP_URL;
+    if (!base) return null;
+    return `${base.replace(/\/+$/, '')}/dashboard?at=${encodeURIComponent(
+      at.toISOString()
+    )}`;
   }
 
   /**
@@ -543,12 +567,20 @@ export class NotificationService {
     title: string,
     message: string,
     tags: string[],
-    priority: number
+    priority: number,
+    click: string | null = null
   ): Promise<void> {
     await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ topic, title, message, tags, priority }),
+      body: JSON.stringify({
+        topic,
+        title,
+        message,
+        tags,
+        priority,
+        ...(click ? { click } : {}),
+      }),
     });
   }
 

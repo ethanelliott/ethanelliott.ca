@@ -49,6 +49,9 @@ env:
   DATA_DIR: '/app/data'
   NTFY_SERVER_URL: 'http://ntfy.elliott-haus.svc.cluster.local'
   NTFY_TOPIC: 'camera-detections'
+  # Alerts link back to the moment they describe, so tapping one opens the
+  # timeline paused there rather than at the live edge.
+  CAMERA_APP_URL: 'https://camera.elliott.haus'
   OLLAMA_URL: 'http://ollama.elliott-haus.svc.cluster.local:11434'
   OLLAMA_MODEL: 'qwen3-vl:4b'
   RETENTION_DAYS: '7'

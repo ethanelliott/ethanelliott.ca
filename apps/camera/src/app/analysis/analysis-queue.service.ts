@@ -9,6 +9,8 @@ export interface EnqueueRequest {
   label: string;
   snapshotFilename: string | null;
   context: EpisodeContext;
+  observedAt: Date;
+  confidence: number;
 }
 
 export interface QueueStats {
@@ -96,6 +98,7 @@ export class AnalysisQueueService {
         existing.snapshotFilename = request.snapshotFilename;
         existing.context = request.context;
         existing.priority = priority;
+        existing.confidence = request.confidence;
         await this._repository.save(existing);
         return;
       }
@@ -108,6 +111,8 @@ export class AnalysisQueueService {
           label: request.label,
           snapshotFilename: request.snapshotFilename,
           context: request.context,
+          observedAt: request.observedAt,
+          confidence: request.confidence,
           priority,
           state: 'pending',
           attempts: 0,

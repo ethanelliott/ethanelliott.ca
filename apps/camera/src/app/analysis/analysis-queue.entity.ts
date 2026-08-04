@@ -39,6 +39,14 @@ export class AnalysisQueueItem {
   @Column('text', { nullable: true })
   snapshotFilename!: string | null;
 
+  /** When the subject was first seen — what an alert links back to */
+  @Column('datetime', { nullable: true })
+  observedAt!: Date | null;
+
+  /** Best detector confidence for the subject, for the analysis threshold */
+  @Column('real', { nullable: true })
+  confidence!: number | null;
+
   /** Higher runs first; a person outranks a cat, an early pass a late one. */
   @Column('integer', { default: 0 })
   @Index()

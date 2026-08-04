@@ -1,4 +1,5 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
@@ -10,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { CameraViewerComponent } from '../../components/camera-viewer/camera-viewer.component';
 import { EventCardComponent } from '../../components/event-card/event-card.component';
@@ -310,9 +311,19 @@ import { EventService } from '../../services/event.service';
     }
   `,
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, AfterViewInit {
   private readonly api = inject(CameraApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly events = inject(EventService);
+
+  /**
+   * Seconds of run-up shown before a linked moment.
+   *
+   * A notification names the instant the subject was first seen, which is the
+   * least useful frame to land on — starting a little earlier means the
+   * approach is on screen rather than already over.
+   */
+  private readonly linkPrerollSec = 5;
 
   private readonly clipPlayer =
     viewChild.required<ClipPlayerComponent>('clipPlayer');
@@ -406,6 +417,26 @@ export class DashboardComponent implements OnInit {
   /** Scrub the video to an event and hold on that frame. */
   jumpTo(event: DetectionEvent): void {
     this.viewer().seekAndPause(new Date(event.timestamp));
+  }
+
+  /**
+   * Honour a deep link from a push notification, e.g. ?at=2026-08-04T23:15:02Z.
+   * Waits for the view because the seek goes through the viewer component.
+   */
+  ngAfterViewInit(): void {
+    const at = this.route.snapshot.queryParamMap.get('at');
+    if (!at) return;
+
+    const target = new Date(at);
+    if (Number.isNaN(target.getTime())) return;
+
+    this.viewer().seekAndPause(
+      new Date(target.getTime() - this.linkPrerollSec * 1000)
+    );
+    // Backfill far enough to cover the linked moment, so the timeline has
+    // markers around it rather than an empty stretch.
+    const minutesBack = Math.ceil((Date.now() - target.getTime()) / 60_000) + 5;
+    this.loadWindow(Math.max(minutesBack, 30));
   }
 
   ngOnInit(): void {

@@ -322,6 +322,10 @@ export class DetectionService {
     todayEvents: number;
     topLabels: { label: string; count: number }[];
     averageConfidence: number;
+    activeTracks: number;
+    framesInspected: number;
+    framesInferred: number;
+    inferenceSkipRate: number;
   }> {
     const totalEvents = await this._repository.count();
 
@@ -354,6 +358,18 @@ export class DetectionService {
         count: parseInt(r.count, 10),
       })),
       averageConfidence: parseFloat(avgResult?.avg || '0'),
+      activeTracks: this._tracker.size,
+      framesInspected: this._framesInspected,
+      framesInferred: this._framesInferred,
+      // What the motion gate is actually saving. Worth watching while its
+      // thresholds are still guesses: near 0 means it is not firing, near 1
+      // means it may be gating away real subjects.
+      inferenceSkipRate:
+        this._framesInspected > 0
+          ? Math.round(
+              (1 - this._framesInferred / this._framesInspected) * 100
+            ) / 100
+          : 0,
     };
   }
 
@@ -698,6 +714,8 @@ export class DetectionService {
       label: track.label,
       snapshotFilename,
       context,
+      observedAt: new Date(track.startedAt),
+      confidence: track.confidence,
     });
 
     track.markAnalysisQueued();

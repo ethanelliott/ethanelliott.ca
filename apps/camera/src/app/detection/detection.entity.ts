@@ -109,6 +109,10 @@ export const DetectionStatsSchema = z.object({
     })
   ),
   averageConfidence: z.number(),
+  activeTracks: z.number(),
+  framesInspected: z.number(),
+  framesInferred: z.number(),
+  inferenceSkipRate: z.number(),
 });
 
 export type DetectionStats = z.infer<typeof DetectionStatsSchema>;
